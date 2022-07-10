@@ -1,2 +1,5 @@
-pip==22.1.1
+pip==22.1.2
+pydantic==1.9.1
+pylint==2.14.4
+pytest==7.1.2
 wheel==0.37.1
