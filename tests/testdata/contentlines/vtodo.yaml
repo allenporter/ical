@@ -1,0 +1,21 @@
+input: |-
+       BEGIN:VTODO
+       UID:20070313T123432Z-456553@example.com
+       DTSTAMP:20070313T123432Z
+       DUE;VALUE=DATE:20070501
+       SUMMARY:Submit Quebec Income Tax Return for 2006
+       CLASS:CONFIDENTIAL
+       CATEGORIES:FAMILY,FINANCE
+       STATUS:NEEDS-ACTION
+       END:VTODO
+output:
+  vtodo:
+    - uid: 20070313T123432Z-456553@example.com
+      dtstamp: 20070313T123432Z
+      due:
+        param: DATE
+        value: "20070501"
+      summary: Submit Quebec Income Tax Return for 2006
+      class: CONFIDENTIAL
+      categories: FAMILY,FINANCE
+      status: NEEDS-ACTION
