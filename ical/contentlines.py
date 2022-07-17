@@ -1,4 +1,9 @@
-"""Parse rfc5545 iCalendar content into a raw data model."""
+"""Parse rfc5545 iCalendar content into a raw data model.
+
+This is a very simple parser that converts lines into a very basic dictionary.
+The motivation is to make something that can be fed into pydantic to then
+handle the field/object specific parsing.
+"""
 
 # mypy: allow-any-generics
 
@@ -18,7 +23,13 @@ def parse_content(content: str) -> dict[str, list | dict]:
 
 
 def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
-    """Parse content lines into a calendar raw data model."""
+    """Parse content lines into a calendar raw data model.
+
+    This is fairly straight forward in that it walks through each line and uses
+    a stack to associate properties with the current object. This does the absolute
+    minimum possible parsing into a dictionary of objects to get the right structure.
+    All the more detailed parsing of the objects is handled by pydantic, elsewhere.
+    """
     stack: list[Tuple[str, dict]] = [("", {})]
     for line in lines:
         (name, value) = re.split(":|;", line, maxsplit=1)
