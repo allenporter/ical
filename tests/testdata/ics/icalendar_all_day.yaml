@@ -17,7 +17,7 @@ output:
       prodid: -//hacksw/handcal//NONSGML v1.0//EN
       events:
         - uid: 20070423T123432Z-541111@example.com
-          dtstamp: "2007-04-23T12:34:32"
+          dtstamp: "2007-04-23T12:34:32+00:00"
           dtstart: "2007-06-28"
           dtend: "2007-07-09"
           summary: Festival International de Jazz de Montreal
