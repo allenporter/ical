@@ -5,16 +5,19 @@ from __future__ import annotations
 import datetime
 import re
 from collections.abc import Callable
-from typing import Generator, Optional
+from typing import Any, Generator, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from .contentlines import parse_content
+from .contentlines import ATTR_PARAM, ATTR_VALUE, parse_content
 from .event import Event
 from .timeline import Timeline
 
 FOLD = re.compile("(\r?\n)+[ \t]")
-DATE_REGEX = re.compile(r"([0-9]{8})T([0-9]{6})(Z)?")
+DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
+DATE_REGEX = re.compile(r"^([0-9]{8})$")
+DATE_PARAM = "DATE"
+DATETIME_PARAM = "DATE-TIME"
 
 
 class Calendar(BaseModel):
@@ -28,6 +31,35 @@ class Calendar(BaseModel):
         return Timeline(self.events)
 
 
+class Date(datetime.date):
+    """Parser for rfc5545 date."""
+
+    @classmethod
+    def __get_validators__(
+        cls,
+    ) -> Generator[Callable[[str], datetime.date], None, None]:
+        yield cls.parse_date
+
+    @classmethod
+    def parse_date(cls, value: Any) -> datetime.date:
+        """Parse a rfc5545 into a datetime.date."""
+        if isinstance(value, dict):
+            if value.get(ATTR_PARAM) == DATE_PARAM and ATTR_VALUE in value:
+                value = value[ATTR_VALUE]
+            else:
+                raise TypeError(f"Expected '{ATTR_PARAM}' of '{DATE_PARAM}': {value}")
+        elif not isinstance(value, str):
+            raise TypeError(f"Expected string for {DATE_PARAM} value: {value}")
+
+        if not (match := DATE_REGEX.fullmatch(value)):
+            raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
+        date_value = match.group(1)
+        year = int(date_value[0:4])
+        month = int(date_value[4:6])
+        day = int(date_value[6:])
+        return datetime.date(year, month, day)
+
+
 class DateTime(datetime.datetime):
     """Parser for rfc5545 date times."""
 
@@ -38,12 +70,23 @@ class DateTime(datetime.datetime):
         yield cls.parse_date_time
 
     @classmethod
-    def parse_date_time(cls, value: str) -> datetime.datetime:
+    def parse_date_time(cls, value: Any) -> datetime.datetime:
         """Parse a rfc5545 into a datetime.datetime."""
-        if not isinstance(value, str):
-            raise TypeError(f"Expected string for DATE-TIME value: {value}")
-        if not (match := DATE_REGEX.fullmatch(value)):
-            raise ValueError(f"Expected DATE-TIME value: {value}")
+        if isinstance(value, dict):
+            if value.get(ATTR_PARAM) == DATETIME_PARAM and ATTR_VALUE in value:
+                value = value[ATTR_VALUE]
+            else:
+                raise TypeError(
+                    f"Expected '{ATTR_PARAM}' of '{DATETIME_PARAM}': {value}"
+                )
+        elif not isinstance(value, str):
+            raise TypeError(f"Expected string for {DATETIME_PARAM} value: {value}")
+
+        if not (match := DATETIME_REGEX.fullmatch(value)):
+            raise ValueError(
+                f"Expected value to match {DATETIME_PARAM} pattern: {value}"
+            )
+
         date_value = match.group(1)
         year = int(date_value[0:4])
         month = int(date_value[4:6])
@@ -62,11 +105,12 @@ class DateTime(datetime.datetime):
 class IcsEvent(BaseModel):
     """A calendar event component."""
 
-    dtstamp: DateTime
+    dtstamp: Union[DateTime, Date]
     uid: str
-    dtstart: DateTime
-    dtend: DateTime
+    dtstart: Union[DateTime, Date]
+    dtend: Union[DateTime, Date]
     summary: str
+    transparency: Optional[str] = Field(alias="transp")
 
 
 class IcsCalendar(BaseModel):
