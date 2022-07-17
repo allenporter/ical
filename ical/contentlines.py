@@ -1,7 +1,7 @@
 """Parse rfc5545 iCalendar content into a raw data model.
 
-This is a very simple parser that converts lines into a very basic dictionary.
-The motivation is to make something that can be fed into pydantic to then
+This is a very simple parser that converts lines into a very basic dictionary of
+properties. The motivation is to make something that can be fed into pydantic to then
 handle the field/object specific parsing.
 """
 
@@ -18,13 +18,16 @@ ATTR_END = "END"
 
 
 def parse_content(content: str) -> dict[str, list | dict]:
-    """Parse content, including any necessary unfolding of long lines, into raw data model."""
+    """Parse content into raw properties.
+
+    This includes all necessary unfolding of long lines into full properties.
+    """
     content = re.sub("\r?\n[ |\t]", "", content, flags=re.MULTILINE)
     return parse_contentlines(re.split("\r?\n", content))
 
 
 def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
-    """Parse content lines into a calendar raw data model.
+    """Parse content lines into a calendar raw properties data model.
 
     This is fairly straight forward in that it walks through each line and uses
     a stack to associate properties with the current object. This does the absolute

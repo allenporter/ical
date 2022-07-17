@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from .properties import Description
+from .property_values import Date, DateTime
 
 MIDNIGHT = datetime.time()
 
@@ -96,3 +99,15 @@ class Event(BaseModel):
         if not isinstance(other, Event):
             return NotImplemented
         return self._tuple() >= other._tuple()
+
+
+class IcsEvent(BaseModel):
+    """A calendar event component."""
+
+    dtstamp: Union[DateTime, Date]
+    uid: str
+    dtstart: Union[DateTime, Date]
+    dtend: Union[DateTime, Date]
+    summary: str
+    description: Optional[Description]
+    transparency: Optional[str] = Field(alias="transp")
