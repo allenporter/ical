@@ -1,0 +1,22 @@
+input: |-
+    BEGIN:VCALENDAR
+    VERSION:2.0
+    PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+    BEGIN:VEVENT
+    UID:19970610T172345Z-AF23B2@example.com
+    DTSTAMP:19980115T110500
+    DTSTART:19980118T230000
+    DTEND:19980118T233000
+    SUMMARY:Bastille Day Party
+    END:VEVENT
+    END:VCALENDAR
+output:
+  calendars:
+    - version: "2.0"
+      prodid: -//hacksw/handcal//NONSGML v1.0//EN
+      events:
+        - uid: 19970610T172345Z-AF23B2@example.com
+          dtstamp: "1998-01-15T11:05:00"
+          dtstart: "1998-01-18T23:00:00"
+          dtend: "1998-01-18T23:30:00"
+          summary: Bastille Day Party

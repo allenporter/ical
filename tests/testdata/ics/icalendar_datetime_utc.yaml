@@ -7,9 +7,7 @@ input: |-
     DTSTAMP:19970610T172345Z
     DTSTART:19970714T170000Z
     DTEND:19970715T040000Z
-    SUMMARY:Conference
-    DESCRIPTION;ALTREP="cid:part1.0001@example.org":The Fall'98 Wild
-      Wizards Conference - - Las Vegas\, NV\, USA
+    SUMMARY:Bastille Day Party
     END:VEVENT
     END:VCALENDAR
 output:
@@ -21,5 +19,4 @@ output:
           dtstamp: "1997-06-10T17:23:45+00:00"
           dtstart: "1997-07-14T17:00:00+00:00"
           dtend: "1997-07-15T04:00:00+00:00"
-          summary: Conference
-          description: The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA
+          summary: Bastille Day Party

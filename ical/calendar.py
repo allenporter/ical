@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import zoneinfo
 from collections.abc import Callable
 from typing import Any, Generator, Optional, Union
 
@@ -14,7 +15,8 @@ from .event import Event
 from .timeline import Timeline
 
 FOLD = re.compile("(\r?\n)+[ \t]")
-DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
+DATETIME_REGEX = re.compile(r"^(TZID=[^:]+:)?([0-9]{8})T([0-9]{6})(Z)?$")
+TZ_REGEX = re.compile(r"TZID=([^:]+):")
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 DATE_PARAM = "DATE"
 DATETIME_PARAM = "DATE-TIME"
@@ -93,19 +95,26 @@ class DateTime(datetime.datetime):
                 f"Expected value to match {DATETIME_PARAM} pattern: {value}"
             )
 
-        date_value = match.group(1)
+        # Example: TZID=America/New_York:19980119T020000
+        timezone: datetime.tzinfo | None = None
+        if match.group(1) and (tzmatch := TZ_REGEX.fullmatch(match.group(1))):
+            timezone = zoneinfo.ZoneInfo(tzmatch.group(1))
+        elif match.group(4):  # Example: 19980119T070000Z
+            timezone = datetime.timezone.utc
+
+        # Example: 19980118T230000
+        date_value = match.group(2)
         year = int(date_value[0:4])
         month = int(date_value[4:6])
         day = int(date_value[6:])
-
-        time_value = match.group(2)
+        time_value = match.group(3)
         hour = int(time_value[0:2])
         minute = int(time_value[2:4])
         second = int(time_value[4:6])
 
-        # In the future, add support for timezone offset handling
-        # is_utc_offset = m.group(3)
-        return datetime.datetime(year, month, day, hour, minute, second)
+        return datetime.datetime(
+            year, month, day, hour, minute, second, tzinfo=timezone
+        )
 
 
 class Description(str):
