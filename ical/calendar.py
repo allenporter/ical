@@ -9,7 +9,7 @@ from typing import Any, Generator, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from .contentlines import ATTR_PARAM, ATTR_VALUE, parse_content
+from .contentlines import parse_content
 from .event import Event
 from .timeline import Timeline
 
@@ -18,6 +18,18 @@ DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 DATE_PARAM = "DATE"
 DATETIME_PARAM = "DATE-TIME"
+
+PROPERTY_VALUE = re.compile(r"^VALUE=([^:]+):(.*)$")
+PROPERTY_ALTREP = re.compile(r"ALTREP=\"([^\"]+)\"")
+
+ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+
+
+def unescape(value: str) -> str:
+    """Escape human readable text items."""
+    for key, vin in ESCAPE_CHAR.items():
+        value = value.replace(key, vin)
+    return value
 
 
 class Calendar(BaseModel):
@@ -43,14 +55,12 @@ class Date(datetime.date):
     @classmethod
     def parse_date(cls, value: Any) -> datetime.date:
         """Parse a rfc5545 into a datetime.date."""
-        if isinstance(value, dict):
-            if value.get(ATTR_PARAM) == DATE_PARAM and ATTR_VALUE in value:
-                value = value[ATTR_VALUE]
-            else:
-                raise TypeError(f"Expected '{ATTR_PARAM}' of '{DATE_PARAM}': {value}")
-        elif not isinstance(value, str):
+        if not isinstance(value, str):
             raise TypeError(f"Expected string for {DATE_PARAM} value: {value}")
-
+        if value_match := PROPERTY_VALUE.fullmatch(value):
+            if value_match.group(1) != DATE_PARAM:
+                raise TypeError(f"Expected VALUE={DATE_PARAM} value: {value}")
+            value = value_match.group(2)
         if not (match := DATE_REGEX.fullmatch(value)):
             raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
         date_value = match.group(1)
@@ -72,16 +82,12 @@ class DateTime(datetime.datetime):
     @classmethod
     def parse_date_time(cls, value: Any) -> datetime.datetime:
         """Parse a rfc5545 into a datetime.datetime."""
-        if isinstance(value, dict):
-            if value.get(ATTR_PARAM) == DATETIME_PARAM and ATTR_VALUE in value:
-                value = value[ATTR_VALUE]
-            else:
-                raise TypeError(
-                    f"Expected '{ATTR_PARAM}' of '{DATETIME_PARAM}': {value}"
-                )
-        elif not isinstance(value, str):
+        if not isinstance(value, str):
             raise TypeError(f"Expected string for {DATETIME_PARAM} value: {value}")
-
+        if value_match := PROPERTY_VALUE.fullmatch(value):
+            if value_match.group(1) != DATETIME_PARAM:
+                raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
+            value = value_match.group(2)
         if not (match := DATETIME_REGEX.fullmatch(value)):
             raise ValueError(
                 f"Expected value to match {DATETIME_PARAM} pattern: {value}"
@@ -102,6 +108,29 @@ class DateTime(datetime.datetime):
         return datetime.datetime(year, month, day, hour, minute, second)
 
 
+class Description(str):
+    """A calendar description."""
+
+    @classmethod
+    def __get_validators__(
+        cls,
+    ) -> Generator[Callable[[str], str], None, None]:
+        yield cls.parse_description
+
+    @classmethod
+    def parse_description(cls, value: Any) -> str:
+        """Parse a rfc5545 description into a str."""
+        if not isinstance(value, str):
+            raise TypeError(f"Expected description as string: {value}")
+        if value_match := PROPERTY_ALTREP.match(value):
+            # This currently strips the altrep property, but needs to be updated
+            # to preserve it.
+            # altrep = value_match.group(1)
+            index = value_match.span()[1] + 1
+            value = value[index:]
+        return unescape(value)
+
+
 class IcsEvent(BaseModel):
     """A calendar event component."""
 
@@ -110,6 +139,7 @@ class IcsEvent(BaseModel):
     dtstart: Union[DateTime, Date]
     dtend: Union[DateTime, Date]
     summary: str
+    description: Optional[Description]
     transparency: Optional[str] = Field(alias="transp")
 
 

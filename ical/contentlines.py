@@ -13,12 +13,8 @@ import re
 from typing import Tuple
 
 FOLD = re.compile("(\r?\n)+[ \t]")
-VALUE = re.compile("VALUE=([^:]+):(.*)")
-
 ATTR_BEGIN = "BEGIN"
 ATTR_END = "END"
-ATTR_PARAM = "param"
-ATTR_VALUE = "value"
 
 
 def parse_content(content: str) -> dict[str, list | dict]:
@@ -53,12 +49,5 @@ def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
             # Add the built up dict to a new entry in the list
             stack[-1][1][value].append(values)
         else:
-            name = name.lower()
-            if match := VALUE.fullmatch(value):
-                stack[-1][1][name] = {
-                    ATTR_PARAM: match.group(1),
-                    ATTR_VALUE: match.group(2),
-                }
-            else:
-                stack[-1][1][name] = value
+            stack[-1][1][name.lower()] = value
     return stack[0][1]
