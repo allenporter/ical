@@ -1,22 +1,22 @@
 input: |-
-    BEGIN:VCALENDAR
-    VERSION:2.0
-    PRODID:-//hacksw/handcal//NONSGML v1.0//EN
-    BEGIN:VEVENT
-    UID:19970610T172345Z-AF23B2@example.com
-    DTSTAMP:19970610T172345Z
-    DTSTART:19970714T170000Z
-    DTEND:19970715T040000Z
-    SUMMARY:Bastille Day Party
-    END:VEVENT
-    END:VCALENDAR
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:Bastille Day Party
+  END:VEVENT
+  END:VCALENDAR
 output:
   calendars:
-    - version: "2.0"
-      prodid: -//hacksw/handcal//NONSGML v1.0//EN
-      events:
-        - uid: 19970610T172345Z-AF23B2@example.com
-          dtstamp: "1997-06-10T17:23:45+00:00"
-          dtstart: "1997-07-14T17:00:00+00:00"
-          dtend: "1997-07-15T04:00:00+00:00"
-          summary: Bastille Day Party
+  - version: '2.0'
+    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    events:
+    - uid: 19970610T172345Z-AF23B2@example.com
+      dtstamp: '1997-06-10T17:23:45+00:00'
+      dtstart: '1997-07-14T17:00:00+00:00'
+      dtend: '1997-07-15T04:00:00+00:00'
+      summary: Bastille Day Party

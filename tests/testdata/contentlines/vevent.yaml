@@ -1,19 +1,19 @@
 input: |-
-       BEGIN:VEVENT
-       UID:19970901T130000Z-123401@example.com
-       DTSTAMP:19970901T130000Z
-       DTSTART:19970903T163000Z
-       DTEND:19970903T190000Z
-       SUMMARY:Annual Employee Review
-       CLASS:PRIVATE
-       CATEGORIES:BUSINESS,HUMAN RESOURCES
-       END:VEVENT
+  BEGIN:VEVENT
+  UID:19970901T130000Z-123401@example.com
+  DTSTAMP:19970901T130000Z
+  DTSTART:19970903T163000Z
+  DTEND:19970903T190000Z
+  SUMMARY:Annual Employee Review
+  CLASS:PRIVATE
+  CATEGORIES:BUSINESS,HUMAN RESOURCES
+  END:VEVENT
 output:
   vevent:
-    - uid: "19970901T130000Z-123401@example.com"
-      dtstamp: "19970901T130000Z"
-      dtstart: "19970903T163000Z"
-      dtend: "19970903T190000Z"
-      summary: "Annual Employee Review"
-      class: "PRIVATE"
-      categories: "BUSINESS,HUMAN RESOURCES"
+  - uid: 19970901T130000Z-123401@example.com
+    dtstamp: 19970901T130000Z
+    dtstart: 19970903T163000Z
+    dtend: 19970903T190000Z
+    summary: Annual Employee Review
+    class: PRIVATE
+    categories: BUSINESS,HUMAN RESOURCES

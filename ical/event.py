@@ -7,7 +7,7 @@ from typing import Any, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
-from .properties import Description
+from .properties import Description, EventStatus, PropertyList
 from .property_values import Date, DateTime
 
 MIDNIGHT = datetime.time()
@@ -111,3 +111,5 @@ class IcsEvent(BaseModel):
     summary: str
     description: Optional[Description]
     transparency: Optional[str] = Field(alias="transp")
+    categories: Optional[PropertyList]
+    status: Optional[EventStatus]
