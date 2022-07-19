@@ -1,24 +1,24 @@
 input: |-
-   BEGIN:VCALENDAR
-   VERSION:2.0
-   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
-   BEGIN:VEVENT
-   UID:20070423T123432Z-541111@example.com
-   DTSTAMP:20070423T123432Z
-   DTSTART;VALUE=DATE:20070628
-   DTEND;VALUE=DATE:20070709
-   SUMMARY:Festival International de Jazz de Montreal
-   TRANSP:TRANSPARENT
-   END:VEVENT
-   END:VCALENDAR
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  UID:20070423T123432Z-541111@example.com
+  DTSTAMP:20070423T123432Z
+  DTSTART;VALUE=DATE:20070628
+  DTEND;VALUE=DATE:20070709
+  SUMMARY:Festival International de Jazz de Montreal
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
 output:
   calendars:
-    - version: "2.0"
-      prodid: -//hacksw/handcal//NONSGML v1.0//EN
-      events:
-        - uid: 20070423T123432Z-541111@example.com
-          dtstamp: "2007-04-23T12:34:32+00:00"
-          dtstart: "2007-06-28"
-          dtend: "2007-07-09"
-          summary: Festival International de Jazz de Montreal
-          transparency: TRANSPARENT
+  - version: '2.0'
+    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    events:
+    - uid: 20070423T123432Z-541111@example.com
+      dtstamp: '2007-04-23T12:34:32+00:00'
+      dtstart: '2007-06-28'
+      dtend: '2007-07-09'
+      summary: Festival International de Jazz de Montreal
+      transparency: TRANSPARENT

@@ -2,6 +2,6 @@ input: |-
   ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:
    jsmith@example.com
 output:
-  attendee: "RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:jsmith@example.com"
+  attendee: RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:jsmith@example.com
 #    rsvp: "TRUE"
 #    role: "REQ-PARTICIPANT:mailto:jsmith@example.com"

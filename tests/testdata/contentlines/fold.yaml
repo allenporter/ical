@@ -1,6 +1,6 @@
 input: |-
-    DESCRIPTION:This is a lo
-     ng description
-      that exists on a long line.
+  DESCRIPTION:This is a lo
+   ng description
+    that exists on a long line.
 output:
-  description: "This is a long description that exists on a long line."
+  description: This is a long description that exists on a long line.
