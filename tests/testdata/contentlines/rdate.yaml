@@ -1,4 +1,9 @@
 input: |-
   RDATE;VALUE=DATE:19970304,19970504,19970704,19970904
 output:
-  rdate: VALUE=DATE:19970304,19970504,19970704,19970904
+  rdate:
+  - params:
+    - name: VALUE
+      values:
+      - DATE
+    value: 19970304,19970504,19970704,19970904

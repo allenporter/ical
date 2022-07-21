@@ -1,7 +1,24 @@
 input: |-
+  BEGIN:VEVENT
   ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:
    jsmith@example.com
+  ATTENDEE;DELEGATED-TO="mailto:jdoe@example.com","mailto:jqpublic
+   @example.com":mailto:jsmith@example.com
+  END:VEVENT
 output:
-  attendee: RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:jsmith@example.com
-#    rsvp: "TRUE"
-#    role: "REQ-PARTICIPANT:mailto:jsmith@example.com"
+  vevent:
+  - attendee:
+    - params:
+      - name: RSVP
+        values:
+        - 'TRUE'
+      - name: ROLE
+        values:
+        - REQ-PARTICIPANT
+      value: mailto:jsmith@example.com
+    - params:
+      - name: DELEGATED-TO
+        values:
+        - mailto:jdoe@example.com
+        - mailto:jqpublic@example.com
+      value: mailto:jsmith@example.com

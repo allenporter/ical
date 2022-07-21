@@ -10,10 +10,17 @@ input: |-
   END:VEVENT
 output:
   vevent:
-  - uid: 19970901T130000Z-123401@example.com
-    dtstamp: 19970901T130000Z
-    dtstart: 19970903T163000Z
-    dtend: 19970903T190000Z
-    summary: Annual Employee Review
-    class: PRIVATE
-    categories: BUSINESS,HUMAN RESOURCES
+  - uid:
+    - value: 19970901T130000Z-123401@example.com
+    dtstamp:
+    - value: 19970901T130000Z
+    dtstart:
+    - value: 19970903T163000Z
+    dtend:
+    - value: 19970903T190000Z
+    summary:
+    - value: Annual Employee Review
+    class:
+    - value: PRIVATE
+    categories:
+    - value: BUSINESS,HUMAN RESOURCES

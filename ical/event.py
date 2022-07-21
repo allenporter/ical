@@ -5,10 +5,10 @@ from __future__ import annotations
 import datetime
 from typing import Any, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
-from .properties import Description, EventStatus, PropertyList
-from .property_values import Date, DateTime
+from .properties import EventStatus
+from .property_values import Date, DateTime, Text
 
 MIDNIGHT = datetime.time()
 
@@ -105,11 +105,31 @@ class IcsEvent(BaseModel):
     """A calendar event component."""
 
     dtstamp: Union[DateTime, Date]
-    uid: str
+    uid: Text
     dtstart: Union[DateTime, Date]
     dtend: Union[DateTime, Date]
-    summary: str
-    description: Optional[Description]
-    transparency: Optional[str] = Field(alias="transp")
-    categories: Optional[PropertyList]
-    status: Optional[EventStatus]
+    summary: Text
+    description: Optional[Text] = None
+    transparency: Optional[Text] = Field(alias="transp", default=None)
+    categories: list[str] = []
+    status: Optional[EventStatus] = None
+
+    @validator("status", pre=True)
+    def parse_status(cls, value: Any) -> str | None:
+        """Parse an EventStatus from a ParsedPropertyValue."""
+        for func in Text.__get_validators__():
+            value = func(value)
+        if value and not isinstance(value, str):
+            raise ValueError("Expected Text value as a string")
+        return value
+
+    @validator("categories", pre=True)
+    def parse_categories(cls, value: Any) -> list[str] | None:
+        """Parse EventCategories from a ParsedPropertyValue."""
+        for func in Text.__get_validators__():
+            value = func(value)
+        if not value:
+            return []
+        if not isinstance(value, str):
+            raise ValueError("Expected Text value as a string")
+        return value.split(",")

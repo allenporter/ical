@@ -1,0 +1,9 @@
+input: |-
+  NAME;PARAM-NAME=PARAM-VALUE:VALUE
+output:
+  name:
+  - value: VALUE
+    params:
+    - name: PARAM-NAME
+      values:
+      - PARAM-VALUE

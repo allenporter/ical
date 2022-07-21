@@ -10,10 +10,21 @@ input: |-
   END:VTODO
 output:
   vtodo:
-  - uid: 20070313T123432Z-456553@example.com
-    dtstamp: 20070313T123432Z
-    due: VALUE=DATE:20070501
-    summary: Submit Quebec Income Tax Return for 2006
-    class: CONFIDENTIAL
-    categories: FAMILY,FINANCE
-    status: NEEDS-ACTION
+  - uid:
+    - value: 20070313T123432Z-456553@example.com
+    dtstamp:
+    - value: 20070313T123432Z
+    due:
+    - value: '20070501'
+      params:
+      - name: VALUE
+        values:
+        - DATE
+    summary:
+    - value: Submit Quebec Income Tax Return for 2006
+    class:
+    - value: CONFIDENTIAL
+    categories:
+    - value: FAMILY,FINANCE
+    status:
+    - value: NEEDS-ACTION

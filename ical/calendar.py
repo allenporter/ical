@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .contentlines import parse_content
 from .event import Event, IcsEvent
+from .property_values import Text
 from .timeline import Timeline
 
 
@@ -25,12 +26,12 @@ class Calendar(BaseModel):
 class IcsCalendar(BaseModel):
     """A sequence of calendar properities and calendar components."""
 
-    prodid: str
-    version: str
-    calscale: Optional[str] = None
-    method: Optional[str] = None
-    x_prop: Optional[str] = None
-    iana_prop: Optional[str] = None
+    prodid: Text
+    version: Text
+    calscale: Optional[Text] = None
+    method: Optional[Text] = None
+    x_prop: Optional[Text] = None
+    iana_prop: Optional[Text] = None
     events: list[IcsEvent] = Field(alias="vevent")
 
 
