@@ -11,16 +11,16 @@ input: |-
 output:
   vevent:
   - uid:
-      - value: 19970901T130000Z-123401@example.com
+    - value: 19970901T130000Z-123401@example.com
     dtstamp:
-      - value: 19970901T130000Z
+    - value: 19970901T130000Z
     dtstart:
-      - value: 19970903T163000Z
+    - value: 19970903T163000Z
     dtend:
-      - value: 19970903T190000Z
+    - value: 19970903T190000Z
     summary:
-      - value: Annual Employee Review
+    - value: Annual Employee Review
     class:
-      - value: PRIVATE
+    - value: PRIVATE
     categories:
-      - value: BUSINESS,HUMAN RESOURCES
+    - value: BUSINESS,HUMAN RESOURCES

@@ -4,4 +4,4 @@ input: |-
     that exists on a long line.
 output:
   description:
-    - value: This is a long description that exists on a long line.
+  - value: This is a long description that exists on a long line.

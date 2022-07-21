@@ -7,18 +7,18 @@ input: |-
   END:VEVENT
 output:
   vevent:
-    - attendee:
-        - params:
-            - name: RSVP
-              values:
-                - 'TRUE'
-            - name: ROLE
-              values:
-                - REQ-PARTICIPANT
-          value: mailto:jsmith@example.com
-        - params:
-            - name: DELEGATED-TO
-              values:
-                - "mailto:jdoe@example.com"
-                - "mailto:jqpublic@example.com"
-          value: mailto:jsmith@example.com
+  - attendee:
+    - params:
+      - name: RSVP
+        values:
+        - 'TRUE'
+      - name: ROLE
+        values:
+        - REQ-PARTICIPANT
+      value: mailto:jsmith@example.com
+    - params:
+      - name: DELEGATED-TO
+        values:
+        - mailto:jdoe@example.com
+        - mailto:jqpublic@example.com
+      value: mailto:jsmith@example.com

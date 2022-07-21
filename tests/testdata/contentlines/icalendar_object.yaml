@@ -13,17 +13,17 @@ input: |-
 output:
   vcalendar:
   - version:
-      - value: '2.0'
+    - value: '2.0'
     prodid:
-      - value: -//hacksw/handcal//NONSGML v1.0//EN
+    - value: -//hacksw/handcal//NONSGML v1.0//EN
     vevent:
     - uid:
-        - value: 19970610T172345Z-AF23B2@example.com
+      - value: 19970610T172345Z-AF23B2@example.com
       dtstamp:
-        - value: 19970610T172345Z
+      - value: 19970610T172345Z
       dtstart:
-        - value: 19970714T170000Z
+      - value: 19970714T170000Z
       dtend:
-        - value: 19970715T040000Z
+      - value: 19970715T040000Z
       summary:
-        - value: Bastille Day Party
+      - value: Bastille Day Party
