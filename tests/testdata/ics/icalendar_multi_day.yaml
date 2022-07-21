@@ -26,8 +26,7 @@ output:
       dtstart: '1996-09-18T14:30:00+00:00'
       dtend: '1996-09-20T22:00:00+00:00'
       summary: Networld+Interop Conference
-      description: "Networld+Interop Conference and Exhibit\nAtlanta World Congress\
-        \ Center\nAtlanta, Georgia"
+      description: "Networld+Interop Conference and Exhibit\nAtlanta World Congress Center\nAtlanta, Georgia"
       status: CONFIRMED
       categories:
       - CONFERENCE

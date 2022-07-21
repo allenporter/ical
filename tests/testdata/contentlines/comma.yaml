@@ -2,5 +2,9 @@ input: |-
   DESCRIPTION;ALTREP="cid:part1.0001@example.org":The Fall'98 Wild
     Wizards Conference - - Las Vegas\, NV\, USA
 output:
-  description: ALTREP="cid:part1.0001@example.org":The Fall'98 Wild Wizards Conference
-    - - Las Vegas\, NV\, USA
+  description:
+    - value: The Fall'98 Wild Wizards Conference - - Las Vegas\, NV\, USA
+      params:
+        - name: ALTREP
+          values:
+            - cid:part1.0001@example.org

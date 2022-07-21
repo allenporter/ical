@@ -22,4 +22,4 @@ output:
       dtstart: '1997-07-14T17:00:00+00:00'
       dtend: '1997-07-15T04:00:00+00:00'
       summary: Conference
-      description: The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA
+      description: "The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA"
