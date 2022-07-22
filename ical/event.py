@@ -108,7 +108,7 @@ class IcsEvent(BaseModel):
     dtstamp: Union[DateTime, Date]
     uid: Text
     dtstart: Union[DateTime, Date]
-    dtend: Union[DateTime, Date]
+    dtend: Optional[Union[DateTime, Date]] = None
     summary: Text
     description: Optional[Text] = None
     transparency: Optional[Text] = Field(alias="transp", default=None)
@@ -127,7 +127,7 @@ class IcsEvent(BaseModel):
 
     @validator("categories", pre=True)
     def parse_categories(cls, value: Any) -> list[str] | None:
-        """Parse EventCategories from a ParsedPropertyValue."""
+        """Parse Categories from a ParsedPropertyValue."""
         for func in Text.__get_validators__():
             value = func(value)
         if not value:

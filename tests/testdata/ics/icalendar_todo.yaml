@@ -1,0 +1,46 @@
+input: |-
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VTODO
+  UID:20070313T123432Z-456553@example.com
+  DTSTAMP:20070313T123432Z
+  DUE;VALUE=DATE:20070501
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  CLASS:CONFIDENTIAL
+  CATEGORIES:FAMILY,FINANCE
+  STATUS:NEEDS-ACTION
+  END:VTODO
+  BEGIN:VTODO
+  UID:20070514T103211Z-123404@example.com
+  DTSTAMP:20070514T103211Z
+  DTSTART:20070514T110000Z
+  DUE:20070709T130000Z
+  COMPLETED:20070707T100000Z
+  SUMMARY:Submit Revised Internet-Draft
+  PRIORITY:1
+  STATUS:NEEDS-ACTION
+  END:VTODO
+  END:VCALENDAR
+output:
+  calendars:
+  - version: '2.0'
+    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    todos:
+    - uid: 20070313T123432Z-456553@example.com
+      dtstamp: '2007-03-13T12:34:32+00:00'
+      due: '2007-05-01'
+      summary: Submit Quebec Income Tax Return for 2006
+      categories:
+        - FAMILY
+        - FINANCE
+      classification: CONFIDENTIAL
+      status: NEEDS-ACTION
+    - uid: 20070514T103211Z-123404@example.com
+      dtstamp: '2007-05-14T10:32:11+00:00'
+      dtstart: '2007-05-14T11:00:00+00:00'
+      due: '2007-07-09T13:00:00+00:00'
+      summary: Submit Revised Internet-Draft
+      completed: '2007-07-07T10:00:00+00:00'
+      priority: 1
+      status: NEEDS-ACTION
