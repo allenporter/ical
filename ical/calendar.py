@@ -10,6 +10,7 @@ from .contentlines import parse_content
 from .event import Event, IcsEvent
 from .property_values import Text
 from .timeline import Timeline
+from .todo import IcsTodo
 
 
 class Calendar(BaseModel):
@@ -32,7 +33,9 @@ class IcsCalendar(BaseModel):
     method: Optional[Text] = None
     x_prop: Optional[Text] = None
     iana_prop: Optional[Text] = None
-    events: list[IcsEvent] = Field(alias="vevent")
+
+    events: list[IcsEvent] = Field(alias="vevent", default_factory=list)
+    todos: list[IcsTodo] = Field(alias="vtodo", default_factory=list)
 
 
 class IcsStream(BaseModel):

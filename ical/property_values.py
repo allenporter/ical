@@ -125,3 +125,17 @@ class Text(str):
         for key, vin in Text.ESCAPE_CHAR.items():
             value = value.replace(key, vin)
         return value
+
+
+class Integer(int):
+    """A type that contains a signed integer value."""
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
+        yield parse_property_value
+        yield cls.parse_int
+
+    @classmethod
+    def parse_int(cls, prop: ParsedProperty) -> int:
+        """Parse a rfc5545 into a text value."""
+        return int(prop.value)
