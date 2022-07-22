@@ -172,3 +172,10 @@ def test_included(
     assert [
         e.summary for e in calendar_times.timeline.included(start, end)
     ] == expected_events
+
+
+def test_multiple_calendars(calendar: Calendar, calendar_times: Calendar) -> None:
+    """Test multiple calendars have independent event lists."""
+    assert len(calendar.events) == 4
+    assert len(calendar_times.events) == 3
+    assert len(Calendar().events) == 0

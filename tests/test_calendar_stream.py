@@ -5,12 +5,12 @@ import json
 import pytest
 from pytest_golden.plugin import GoldenTestFixture
 
-from ical.calendar import IcsStream
+from ical.calendar_stream import CalendarStream
 
 
-@pytest.mark.golden_test("testdata/ics/*.yaml")
+@pytest.mark.golden_test("testdata/calendar_stream/*.yaml")
 def test_golden_files(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
-    cal = IcsStream.from_content(golden["input"])
+    cal = CalendarStream.from_ics(golden["input"])
     data = json.loads(cal.json(exclude_unset=True))
     assert data == golden["output"]
