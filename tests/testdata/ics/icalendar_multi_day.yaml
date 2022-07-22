@@ -31,3 +31,8 @@ output:
       status: CONFIRMED
       categories:
       - CONFERENCE
+      extras:
+        -
+          - organizer
+          - params:
+            value: mailto:jsmith@example.com

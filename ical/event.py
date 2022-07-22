@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, root_validator, validator
 
+from .contentlines import ParsedProperty
 from .properties import EventStatus
 from .property_values import Date, DateTime, Text
 
@@ -77,7 +78,7 @@ class Event(BaseModel):
             and self.end_datetime < other.end_datetime
         )
 
-    def _tuple(self) -> Tuple[datetime.datetime, datetime.datetime]:
+    def _tuple(self) -> tuple[datetime.datetime, datetime.datetime]:
         return (self.start_datetime, self.end_datetime)
 
     def __lt__(self, other: Any) -> bool:
@@ -111,8 +112,9 @@ class IcsEvent(BaseModel):
     summary: Text
     description: Optional[Text] = None
     transparency: Optional[Text] = Field(alias="transp", default=None)
-    categories: list[str] = []
+    categories: Optional[list[str]] = None
     status: Optional[EventStatus] = None
+    extras: Optional[list[tuple[str, ParsedProperty]]] = None
 
     @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
@@ -133,3 +135,19 @@ class IcsEvent(BaseModel):
         if not isinstance(value, str):
             raise ValueError("Expected Text value as a string")
         return value.split(",")
+
+    @root_validator(pre=True)
+    def parse_extra_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Parse extra fields not in the model."""
+        all_fields = {
+            field.alias for field in cls.__fields__.values() if field.alias != "extras"
+        }
+        extras: list[tuple[str, ParsedProperty]] = []
+        for field_name in list(values):
+            if field_name in all_fields:
+                continue
+            for prop in values.pop(field_name):
+                extras.append((field_name, prop))
+        if extras:
+            values["extras"] = extras
+        return values
