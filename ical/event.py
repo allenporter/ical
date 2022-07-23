@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import uuid
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, root_validator, validator
@@ -20,9 +21,44 @@ class Event(BaseModel):
     Can either be for a specific day, or with a start time and duration/end time.
     """
 
-    summary: str
-    start: Union[datetime.datetime, datetime.date]
-    end: Union[datetime.datetime, datetime.date]
+    dtstamp: Union[datetime.datetime, datetime.date, DateTime, Date] = Field(
+        default_factory=datetime.datetime.utcnow
+    )
+    uid: Text = Field(default_factory=uuid.uuid1)
+
+    # Has an alias of 'start'
+    dtstart: Union[datetime.datetime, datetime.date, DateTime, Date] = Field(
+        default=None,
+    )
+    # Has an alias of 'end'
+    dtend: Optional[Union[datetime.datetime, datetime.date, DateTime, Date]] = Field(
+        default=None,
+    )
+
+    summary: Union[str, Text]
+    description: Optional[Union[str, Text]] = None
+    transparency: Optional[Union[str, Text]] = Field(alias="transp", default=None)
+    categories: Optional[list[Union[str, Text]]] = None
+    status: Optional[EventStatus] = None
+    extras: Optional[list[tuple[str, ParsedProperty]]] = None
+
+    def __init__(self, **data: dict[str, Any]) -> None:
+        """Initialize Event."""
+        super().__init__(
+            dtstart=data.pop("dtstart", None) or data.pop("start", None),
+            dtend=data.pop("dtend", None) or data.pop("end", None),
+            **data,
+        )
+
+    @property
+    def start(self) -> Union[datetime.datetime, datetime.date]:
+        """Return the start time for the event."""
+        return self.dtstart
+
+    @property
+    def end(self) -> Union[datetime.datetime, datetime.date, None]:
+        """Return the end time for the event."""
+        return self.dtend
 
     @property
     def start_datetime(self) -> datetime.datetime:
@@ -45,6 +81,8 @@ class Event(BaseModel):
     @property
     def duration(self) -> datetime.timedelta:
         """Return the event duration."""
+        if not self.end:
+            raise ValueError("Cannot determine duration with no event end")
         return self.end - self.start
 
     def starts_within(self, other: "Event") -> bool:
@@ -101,21 +139,6 @@ class Event(BaseModel):
             return NotImplemented
         return self._tuple() >= other._tuple()
 
-
-class IcsEvent(BaseModel):
-    """A calendar event component."""
-
-    dtstamp: Union[DateTime, Date]
-    uid: Text
-    dtstart: Union[DateTime, Date]
-    dtend: Optional[Union[DateTime, Date]] = None
-    summary: Text
-    description: Optional[Text] = None
-    transparency: Optional[Text] = Field(alias="transp", default=None)
-    categories: Optional[list[str]] = None
-    status: Optional[EventStatus] = None
-    extras: Optional[list[tuple[str, ParsedProperty]]] = None
-
     @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
@@ -151,3 +174,7 @@ class IcsEvent(BaseModel):
         if extras:
             values["extras"] = extras
         return values
+
+
+#    class Config:
+#        allow_population_by_field_name = True

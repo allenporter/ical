@@ -11,7 +11,7 @@ from .properties import Priority, TodoStatus
 from .property_values import Date, DateTime, Text
 
 
-class IcsTodo(BaseModel):
+class Todo(BaseModel):
     """A calendar todo component."""
 
     dtstamp: Union[DateTime, Date]
