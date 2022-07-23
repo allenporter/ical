@@ -32,19 +32,11 @@ ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 TZID = "TZID"
 
 
-def parse_property_value(props: list[ParsedProperty]) -> ParsedProperty:
-    """Parse a potential list of properties into a single property."""
-    if not props or len(props) > 1:
-        raise ValueError(f"Expected one value for property: {props}")
-    return props[0]
-
-
 class Date(datetime.date):
     """Parser for rfc5545 date."""
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield parse_property_value
         yield cls.parse_date
 
     @classmethod
@@ -65,7 +57,6 @@ class DateTime(datetime.datetime):
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield parse_property_value
         yield cls.parse_date_time
 
     @classmethod
@@ -110,7 +101,6 @@ class Text(str):
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield parse_property_value
         yield cls.parse_text
         yield cls.unescape_text
 
@@ -132,7 +122,6 @@ class Integer(int):
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield parse_property_value
         yield cls.parse_int
 
     @classmethod

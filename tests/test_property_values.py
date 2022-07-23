@@ -14,13 +14,10 @@ class TextModel(BaseModel):
 
 def test_text() -> None:
     """Test for a text property value."""
-
     prop = ParsedProperty(
         value="Project XYZ Final Review\\nConference Room - 3B\\nCome Prepared."
     )
-
-    # Introspect the type rather than passing in a list here.
-    model = TextModel.parse_obj({"text_value": [prop]})
+    model = TextModel.parse_obj({"text_value": prop})
     assert model == {
         "text_value": "\n".join(
             ["Project XYZ Final Review", "Conference Room - 3B", "Come Prepared."]
