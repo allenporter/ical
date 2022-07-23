@@ -1,10 +1,12 @@
 """Libraries for translating parsed properties into pydantic data model.
 
 The data model returned by the contentlines parsing is a bag of ParsedProperty
-objects that support all the flexibility of the rfc5545 spec. This library
-helps reduce boilerplate for translating that complex structure into the
-simpler pydantic data model e.g. translating a list of properties with
-repeated values into a single string property specified by the pydantic model.
+objects that support all the flexibility of the rfc5545 spec. However in the
+common case the spec has a lot more flexibility than is needed for handling
+simple property types e.g. a single summary field that is specified only once.
+
+This library helps reduce boilerplate for translating that complex structure
+into the simpler pydantic data model.
 """
 
 from typing import Any, Union, get_args, get_origin
@@ -34,7 +36,7 @@ def _is_single_property(value: Any, field_type: type) -> bool:
     return False
 
 
-def parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
+def _parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
     """Convert a list of ParsedProperty into a single property."""
     if not props or len(props) > 1:
         raise ValueError(f"Expected one value for property: {props}")
@@ -47,5 +49,5 @@ def parse_property_fields(cls: BaseModel, values: dict[str, Any]) -> dict[str, A
         if not (prop_list := values.get(field.alias)):
             continue
         if field.shape != SHAPE_LIST and _is_single_property(prop_list, field.type_):
-            values[field.alias] = parse_single_property(prop_list)
+            values[field.alias] = _parse_single_property(prop_list)
     return values
