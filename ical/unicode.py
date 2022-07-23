@@ -7,6 +7,7 @@ input files, intended to be used by the contentlines parsing code.
 from __future__ import annotations
 
 import logging
+import re
 from typing import cast
 
 from pyparsing import unicode_set
@@ -62,13 +63,16 @@ class NonUsAscii(CharRange):
 
 NON_US_ASCII = NonUsAscii.all()
 
+# Characters that should be encoded in quotes
+UNSAFE_CHAR_RE = re.compile(r"[,:;]")
+
 
 class SafeChar(CharRange):
     """Any character except CONTROL, DQUOTE, ";", ":", ","."""
 
     _ranges: UnicodeRangeList = [
         (0x21,),  # Control charts before 0x21. 0x22 is "
-        (0x23, 0x2B),  # 0x2X is ,
+        (0x23, 0x2B),  # 0x2C is ,
         (0x2D, 0x39),  # 0x3A is : and 0x3B is ;
         (0x3C, 0x7E),  # 0x7E is DEL (control)
     ]

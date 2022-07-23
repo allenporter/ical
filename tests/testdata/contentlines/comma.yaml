@@ -8,3 +8,5 @@ output:
     - name: ALTREP
       values:
       - cid:part1.0001@example.org
+encoded: "DESCRIPTION;ALTREP=\"cid:part1.0001@example.org\":The Fall'98 Wild Wizards\
+  \ \n Conference - - Las Vegas\\, NV\\, USA"

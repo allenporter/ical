@@ -22,3 +22,9 @@ output:
         - mailto:jdoe@example.com
         - mailto:jqpublic@example.com
       value: mailto:jsmith@example.com
+encoded: |-
+  BEGIN:VEVENT
+  ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:jsmith@example.com
+  ATTENDEE;DELEGATED-TO="mailto:jdoe@example.com","mailto:jqpublic@example.co
+   m":mailto:jsmith@example.com
+  END:VEVENT
