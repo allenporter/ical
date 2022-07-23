@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+import textwrap
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -35,11 +36,13 @@ from pyparsing import (
     nums,
 )
 
-from .unicode import SAFE_CHAR, VALUE_CHAR
+from .unicode import SAFE_CHAR, UNSAFE_CHAR_RE, VALUE_CHAR
 
 _LOGGER = logging.getLogger(__name__)
 
 FOLD = r"\r?\n[ |\t]"
+FOLD_LEN = 75
+FOLD_INDENT = " "
 WSP = [" ", "\t"]
 ATTR_BEGIN = "BEGIN"
 ATTR_END = "END"
@@ -204,3 +207,62 @@ def parse_content_tokens(lines: list[str]) -> list[ParseResults]:
     if _LOGGER.isEnabledFor(logging.DEBUG):
         parser.set_debug(flag=True)
     return [parser.parse_string(line, parse_all=True) for line in lines]
+
+
+def encode_property(prop: ParsedProperty) -> str:
+    """Encode a ParsedProperty into the serialized format."""
+    result = []
+    if prop.params:
+        result.append(";")
+        result_params = []
+        for parameter in prop.params:
+            result_param_values = []
+            for value in parameter.values:
+                # Property parameters with values contain a colon, simicolon,
+                # or a comma character must be placed in quoted text
+                if UNSAFE_CHAR_RE.search(value):
+                    result_param_values.append(f'"{value}"')
+                else:
+                    result_param_values.append(value)
+            values = ",".join(result_param_values)
+            result_params.append(f"{parameter.name.upper()}={values}")
+        result.append(";".join(result_params))
+    result.append(":")
+    result.append(prop.value)
+    return "".join(result)
+
+
+def encode_component_property(name: str, prop: ParsedProperty) -> list[str]:
+    """Encode a ParsedProperty into the serialized format."""
+    encoded_property = encode_property(prop)
+    contentline = f"{name.upper()}{encoded_property}"
+    return textwrap.wrap(
+        contentline,
+        width=FOLD_LEN,
+        subsequent_indent=FOLD_INDENT,
+        drop_whitespace=False,
+        replace_whitespace=False,
+        expand_tabs=False,
+    )
+
+
+def encode_content_lines(parsed_properties: dict[str, list | dict]) -> list[str]:
+    """Encode a set of parsed properties into content lines."""
+    contentlines = []
+    for (component_name, component_props) in parsed_properties.items():
+        assert isinstance(component_props, list)
+        for prop in component_props:
+            if isinstance(prop, dict):
+                contentlines.append(f"{ATTR_BEGIN}:{component_name.upper()}")
+                contentlines.extend(encode_content_lines(prop))
+                contentlines.append(f"{ATTR_END}:{component_name.upper()}")
+            elif isinstance(prop, ParsedProperty):
+                contentlines.extend(encode_component_property(component_name, prop))
+            else:
+                raise ValueError(f"Unexpected property: {prop}")
+    return contentlines
+
+
+def encode_content(parsed_properties: dict[str, list | dict]) -> str:
+    """Encode a set of parsed properties into content."""
+    return "\n".join(encode_content_lines(parsed_properties))

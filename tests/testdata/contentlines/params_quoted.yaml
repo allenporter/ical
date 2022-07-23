@@ -1,5 +1,6 @@
 input: |-
   NAME;PARAM-NAME="PARAM-VALUE":VALUE
+  NAME;PARAM-NAME="PARAM:VALUE":VALUE
 output:
   name:
   - params:
@@ -7,3 +8,11 @@ output:
       values:
       - PARAM-VALUE
     value: VALUE
+  - params:
+    - name: PARAM-NAME
+      values:
+      - PARAM:VALUE
+    value: VALUE
+encoded: |-
+  NAME;PARAM-NAME=PARAM-VALUE:VALUE
+  NAME;PARAM-NAME="PARAM:VALUE":VALUE

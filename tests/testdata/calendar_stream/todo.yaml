@@ -32,8 +32,8 @@ output:
       due: '2007-05-01'
       summary: Submit Quebec Income Tax Return for 2006
       categories:
-        - FAMILY
-        - FINANCE
+      - FAMILY
+      - FINANCE
       classification: CONFIDENTIAL
       status: NEEDS-ACTION
     - uid: 20070514T103211Z-123404@example.com
