@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, root_validator, validator
 from .contentlines import ParsedProperty
 from .properties import Priority, TodoStatus
 from .property_values import Date, DateTime, Text
+from .validators import parse_property_fields
 
 
 class Todo(BaseModel):
@@ -26,9 +27,14 @@ class Todo(BaseModel):
 
     priority: Optional[Priority] = None
 
-    categories: Optional[list[str]] = None
+    categories: list[str] = Field(default_factory=list)
     status: Optional[TodoStatus] = None
-    extras: Optional[list[tuple[str, ParsedProperty]]] = None
+    extras: list[tuple[str, ParsedProperty]] = Field(default_factory=list)
+
+    # Flatten list[ParsedProperty] to ParsedProperty where appropriate
+    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
+        parse_property_fields
+    )
 
     @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
@@ -40,15 +46,17 @@ class Todo(BaseModel):
         return value
 
     @validator("categories", pre=True)
-    def parse_categories(cls, value: Any) -> list[str] | None:
-        """Parse Categories from a ParsedPropertyValue."""
-        for func in Text.__get_validators__():
-            value = func(value)
-        if not value:
-            return []
-        if not isinstance(value, str):
-            raise ValueError("Expected Text value as a string")
-        return value.split(",")
+    def parse_categories(cls, value: Any) -> list[str]:
+        """Parse Categories from a list of ParsedProperty."""
+        values: list[str] = []
+        for prop in value:
+            # Extract string from text value
+            for func in Text.__get_validators__():
+                prop = func(prop)
+            if not isinstance(prop, str):
+                raise ValueError("Expected Text value as a string")
+            values.extend(prop.split(","))
+        return values
 
     @root_validator(pre=True)
     def parse_extra_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
