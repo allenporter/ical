@@ -45,6 +45,23 @@ def test_comparisons() -> None:
     assert event2 > event1
 
 
+def test_invalid_comparisons() -> None:
+    """Test event comparisons that are not valid."""
+    event1 = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
+
+    with pytest.raises(TypeError):
+        assert event1 < "example"
+
+    with pytest.raises(TypeError):
+        assert event1 <= "example"
+
+    with pytest.raises(TypeError):
+        assert event1 > "example"
+
+    with pytest.raises(TypeError):
+        assert event1 >= "example"
+
+
 def test_within_and_includes() -> None:
     """Test more complex comparison methods."""
     event1 = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 10))
