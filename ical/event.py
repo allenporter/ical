@@ -66,9 +66,8 @@ class Event(BaseModel):
         """Return the events start as a datetime."""
         if isinstance(self.start, datetime.datetime):
             return self.start
-        if isinstance(self.start, datetime.date):
-            return datetime.datetime.combine(self.start, MIDNIGHT)
-        raise ValueError("Unable to convert date to datetime")
+        # is datetime.date
+        return datetime.datetime.combine(self.start, MIDNIGHT)
 
     @property
     def end_datetime(self) -> datetime.datetime:
