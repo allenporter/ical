@@ -17,6 +17,8 @@ class DataclassEncoder(json.JSONEncoder):
         if dataclasses.is_dataclass(o):
             # Omit empty
             return {k: v for (k, v) in dataclasses.asdict(o).items() if v}
+        if isinstance(o, dict):
+            return {k: v for (k, v) in o.items() if v}
         return super().default(o)
 
 

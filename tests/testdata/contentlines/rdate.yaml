@@ -1,9 +1,13 @@
 input: |-
+  BEGIN:VCALENDAR
   RDATE;VALUE=DATE:19970304,19970504,19970704,19970904
+  END:VCALENDAR
 output:
-  rdate:
-  - params:
-    - name: VALUE
-      values:
-      - DATE
-    value: 19970304,19970504,19970704,19970904
+  - name: vcalendar
+    properties:
+      - name: rdate
+        params:
+        - name: VALUE
+          values:
+          - DATE
+        value: 19970304,19970504,19970704,19970904

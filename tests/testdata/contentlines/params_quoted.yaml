@@ -1,18 +1,25 @@
 input: |-
+  BEGIN:VCALENDAR
   NAME;PARAM-NAME="PARAM-VALUE":VALUE
   NAME;PARAM-NAME="PARAM:VALUE":VALUE
+  END:VCALENDAR
 output:
-  name:
-  - params:
-    - name: PARAM-NAME
-      values:
-      - PARAM-VALUE
-    value: VALUE
-  - params:
-    - name: PARAM-NAME
-      values:
-      - PARAM:VALUE
-    value: VALUE
+  - name: vcalendar
+    properties:
+      - name: name
+        params:
+          - name: PARAM-NAME
+            values:
+            - PARAM-VALUE
+        value: VALUE
+      - name: name
+        params:
+        - name: PARAM-NAME
+          values:
+          - PARAM:VALUE
+        value: VALUE
 encoded: |-
+  BEGIN:VCALENDAR
   NAME;PARAM-NAME=PARAM-VALUE:VALUE
   NAME;PARAM-NAME="PARAM:VALUE":VALUE
+  END:VCALENDAR

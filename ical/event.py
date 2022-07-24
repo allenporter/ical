@@ -6,17 +6,17 @@ import datetime
 import uuid
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
+from .model import ComponentModel
 from .properties import EventStatus
 from .property_values import Date, DateTime, Text
-from .validators import parse_property_fields
 
 MIDNIGHT = datetime.time()
 
 
-class Event(BaseModel):
+class Event(ComponentModel):
     """A single event on a calendar.
 
     Can either be for a specific day, or with a start time and duration/end time.
@@ -27,6 +27,8 @@ class Event(BaseModel):
     )
     uid: Text = Field(default_factory=uuid.uuid1)
 
+    summary: Union[str, Text] = ""
+
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date, DateTime, Date] = Field(
         default=None,
@@ -35,13 +37,11 @@ class Event(BaseModel):
     dtend: Optional[Union[datetime.datetime, datetime.date, DateTime, Date]] = Field(
         default=None,
     )
-
-    summary: Union[str, Text]
     description: Optional[Union[str, Text]] = None
     transparency: Optional[Union[str, Text]] = Field(alias="transp", default=None)
     categories: Optional[list[Union[str, Text]]] = None
     status: Optional[EventStatus] = None
-    extras: Optional[list[tuple[str, ParsedProperty]]] = None
+    extras: Optional[list[ParsedProperty]] = None
 
     def __init__(self, **data: dict[str, Any]) -> None:
         """Initialize Event."""
@@ -139,11 +139,6 @@ class Event(BaseModel):
             return NotImplemented
         return self._tuple() >= other._tuple()
 
-    # Flatten list[ParsedProperty] to ParsedProperty where appropriate
-    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
-        parse_property_fields
-    )
-
     @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
@@ -166,18 +161,8 @@ class Event(BaseModel):
             values.extend(prop.split(","))
         return values
 
-    @root_validator(pre=True)
-    def parse_extra_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse extra fields not in the model."""
-        all_fields = {
-            field.alias for field in cls.__fields__.values() if field.alias != "extras"
-        }
-        extras: list[tuple[str, ParsedProperty]] = []
-        for field_name in list(values):
-            if field_name in all_fields:
-                continue
-            for prop in values.pop(field_name):
-                extras.append((field_name, prop))
-        if extras:
-            values["extras"] = extras
-        return values
+
+#    class Config:
+#        """Pydantic configuration for ComponentModel."""
+#
+#        orm_mode = True

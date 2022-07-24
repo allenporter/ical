@@ -19,8 +19,8 @@ from __future__ import annotations
 import logging
 import re
 import textwrap
-from dataclasses import dataclass
-from typing import Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Optional
 
 from pyparsing import (
     Combine,
@@ -66,6 +66,7 @@ class ParsedPropertyParameter:
 class ParsedProperty:
     """An rfc5545 property."""
 
+    name: str
     value: str
     params: Optional[list[ParsedPropertyParameter]] = None
 
@@ -89,7 +90,30 @@ class ParsedProperty:
         return values[0]
 
 
-def parse_content(content: str) -> dict[str, list | dict]:
+@dataclass
+class ParsedComponent:
+    """An rfc5545 component."""
+
+    name: str
+    properties: list[ParsedProperty] = field(default_factory=list)
+    components: list[ParsedComponent] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, str | list[ParsedProperty | dict]]:
+        """Convert the component into a pydantic parseable dictionary."""
+        result: dict[str, list[ParsedProperty | dict]] = {}
+        for prop in self.properties:
+            result.setdefault(prop.name, [])
+            result[prop.name].append(prop)
+        for component in self.components:
+            result.setdefault(component.name, [])
+            result[component.name].append(component.as_dict())
+        return {
+            "name": self.name,
+            **result,
+        }
+
+
+def parse_content(content: str) -> list[ParsedComponent]:
     """Parse content into raw properties.
 
     This includes all necessary unfolding of long lines into full properties.
@@ -117,7 +141,7 @@ def parse_property_params(
     return params
 
 
-def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
+def parse_contentlines(lines: list[str]) -> list[ParsedComponent]:
     """Parse content lines into a calendar raw properties data model.
 
     This is fairly straight forward in that it walks through each line and uses
@@ -127,7 +151,7 @@ def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
     """
     token_results = parse_content_tokens(lines)
 
-    stack: list[Tuple[str, dict]] = [("", {})]
+    stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
     for result in token_results:
         result_dict = result.as_dict()
         if PARSE_NAME not in result_dict or PARSE_VALUE not in result_dict:
@@ -137,29 +161,25 @@ def parse_contentlines(lines: list[str]) -> dict[str, list | dict]:
         name = result_dict[PARSE_NAME]
         value = result_dict[PARSE_VALUE]
         if name == ATTR_BEGIN:
-            value = value.lower()
-            if stack and value not in stack[-1][1]:
-                stack[-1][1][value] = []
-            stack.append((value, {}))
+            stack.append(ParsedComponent(name=value.lower()))
         elif name == ATTR_END:
             value = value.lower()
-            if value != stack[-1][0]:
+            component = stack.pop()
+            if value != component.name:
                 raise ValueError(
-                    f"Unexpected '{result}', expected {ATTR_END}:{stack[-1][0]}"
+                    f"Unexpected '{result}', expected {ATTR_END}:{component.name}"
                 )
-            (value, values) = stack.pop()
-            # Add the built up dict to a new entry in the list
-            stack[-1][1][value].append(values)
+            stack[-1].components.append(component)
         else:
+            name = name.lower()
             property_dict = {
+                PARSE_NAME: name,
                 PARSE_VALUE: result_dict[PARSE_VALUE],
             }
             if property_params := parse_property_params(result_dict):
                 property_dict[PARSE_PARAMS] = property_params
-            if name.lower() not in stack[-1][1]:
-                stack[-1][1][name.lower()] = []
-            stack[-1][1][name.lower()].append(ParsedProperty(**property_dict))
-    return stack[0][1]
+            stack[-1].properties.append(ParsedProperty(**property_dict))
+    return stack[0].components
 
 
 def create_parser() -> ParserElement:
@@ -232,10 +252,10 @@ def encode_property(prop: ParsedProperty) -> str:
     return "".join(result)
 
 
-def encode_component_property(name: str, prop: ParsedProperty) -> list[str]:
+def encode_component_property(prop: ParsedProperty) -> list[str]:
     """Encode a ParsedProperty into the serialized format."""
     encoded_property = encode_property(prop)
-    contentline = f"{name.upper()}{encoded_property}"
+    contentline = f"{prop.name.upper()}{encoded_property}"
     return textwrap.wrap(
         contentline,
         width=FOLD_LEN,
@@ -246,23 +266,18 @@ def encode_component_property(name: str, prop: ParsedProperty) -> list[str]:
     )
 
 
-def encode_content_lines(parsed_properties: dict[str, list | dict]) -> list[str]:
+def encode_content_lines(components: list[ParsedComponent]) -> list[str]:
     """Encode a set of parsed properties into content lines."""
     contentlines = []
-    for (component_name, component_props) in parsed_properties.items():
-        assert isinstance(component_props, list)
-        for prop in component_props:
-            if isinstance(prop, dict):
-                contentlines.append(f"{ATTR_BEGIN}:{component_name.upper()}")
-                contentlines.extend(encode_content_lines(prop))
-                contentlines.append(f"{ATTR_END}:{component_name.upper()}")
-            elif isinstance(prop, ParsedProperty):
-                contentlines.extend(encode_component_property(component_name, prop))
-            else:
-                raise ValueError(f"Unexpected property: {prop}")
+    for component in components:
+        contentlines.append(f"{ATTR_BEGIN}:{component.name.upper()}")
+        for prop in component.properties:
+            contentlines.extend(encode_component_property(prop))
+        contentlines.extend(encode_content_lines(component.components))
+        contentlines.append(f"{ATTR_END}:{component.name.upper()}")
     return contentlines
 
 
-def encode_content(parsed_properties: dict[str, list | dict]) -> str:
+def encode_content(components: list[ParsedComponent]) -> str:
     """Encode a set of parsed properties into content."""
-    return "\n".join(encode_content_lines(parsed_properties))
+    return "\n".join(encode_content_lines(components))

@@ -5,19 +5,19 @@ from __future__ import annotations
 from importlib import metadata
 from typing import Optional
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import Field
 
 from .event import Event
+from .model import ComponentModel
 from .property_values import Text
 from .timeline import Timeline
 from .todo import Todo
-from .validators import parse_property_fields
 
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]
 
 
-class Calendar(BaseModel):
+class Calendar(ComponentModel):
     """A sequence of calendar properities and calendar components."""
 
     prodid: Text = Field(default=_PRODID)
@@ -35,7 +35,7 @@ class Calendar(BaseModel):
         """Return a timeline view of events on the calendar."""
         return Timeline(self.events)
 
-    # Flatten list[ParsedProperty] to ParsedProperty where appropriate
-    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
-        parse_property_fields
-    )
+
+#    class Config:
+#        """Pydantic configuration for ComponentModel."""
+#        orm_mode = True

@@ -9,12 +9,17 @@ This library helps reduce boilerplate for translating that complex structure
 into the simpler pydantic data model.
 """
 
+from __future__ import annotations
+
+import logging
 from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import SHAPE_LIST
 
-from .contentlines import ParsedProperty
+from .contentlines import ParsedComponent, ParsedProperty
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _is_single_property(value: Any, field_type: type) -> bool:
@@ -43,11 +48,37 @@ def _parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
     return props[0]
 
 
-def parse_property_fields(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+def parse_property_fields(
+    cls: BaseModel, values: dict[str, list[ParsedProperty]]
+) -> dict[str, ParsedProperty | list[ParsedProperty]]:
     """Parse the contentlines schema of repeated items into single fields if needed."""
+    _LOGGER.debug("Parsing property fields %s", values)
+    result: dict[str, ParsedProperty | list[ParsedProperty]] = {}
     for field in cls.__fields__.values():
         if not (prop_list := values.get(field.alias)):
             continue
         if field.shape != SHAPE_LIST and _is_single_property(prop_list, field.type_):
-            values[field.alias] = _parse_single_property(prop_list)
+            result[field.alias] = _parse_single_property(prop_list)
+        else:
+            result[field.alias] = prop_list
+    return result
+
+
+def parse_extra_fields(
+    cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
+) -> dict[str, Any]:
+    """Parse extra fields not in the model."""
+    _LOGGER.debug("Parsing extra fields: %s", values)
+    all_fields = {
+        field.alias for field in cls.__fields__.values() if field.alias != "extras"
+    }
+    extras: list[ParsedProperty | ParsedComponent] = []
+    for (field_name, value) in values.items():
+        if field_name in all_fields:
+            continue
+        for prop in value:
+            if isinstance(prop, ParsedProperty):
+                extras.append(prop)
+    if extras:
+        values["extras"] = extras
     return values

@@ -1,8 +1,16 @@
 input: |-
+  BEGIN:VEVENT
   DESCRIPTION:This is a lo
    ng description
     that exists on a long line.
+  END:VEVENT
 output:
-  description:
-  - value: This is a long description that exists on a long line.
-encoded: DESCRIPTION:This is a long description that exists on a long line.
+  - name: vevent
+    properties:
+      - name: description
+        value: This is a long description that exists on a long line.
+        params:
+encoded: |-
+  BEGIN:VEVENT
+  DESCRIPTION:This is a long description that exists on a long line.
+  END:VEVENT

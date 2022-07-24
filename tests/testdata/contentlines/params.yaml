@@ -1,9 +1,13 @@
 input: |-
+  BEGIN:VCALENDAR
   NAME;PARAM-NAME=PARAM-VALUE:VALUE
+  END:VCALENDAR
 output:
-  name:
-  - value: VALUE
-    params:
-    - name: PARAM-NAME
-      values:
-      - PARAM-VALUE
+  - name: vcalendar
+    properties:
+      - name: name
+        value: VALUE
+        params:
+        - name: PARAM-NAME
+          values:
+          - PARAM-VALUE

@@ -32,6 +32,6 @@ output:
       categories:
       - CONFERENCE
       extras:
-      - - organizer
-        - params:
-          value: mailto:jsmith@example.com
+      - name: organizer
+        params:
+        value: mailto:jsmith@example.com
