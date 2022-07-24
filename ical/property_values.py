@@ -51,6 +51,11 @@ class Date(datetime.date):
         day = int(date_value[6:])
         return datetime.date(year, month, day)
 
+    @staticmethod
+    def ics(value: datetime.date) -> str:
+        """Serialize as an ICS value."""
+        return value.strftime("%Y%m%d")
+
 
 class DateTime(datetime.datetime):
     """Parser for rfc5545 date times."""
@@ -93,6 +98,14 @@ class DateTime(datetime.datetime):
             year, month, day, hour, minute, second, tzinfo=timezone
         )
 
+    @staticmethod
+    def ics(value: datetime.datetime) -> str:
+        """Serialize as an ICS value."""
+        if value.tzinfo is None:
+            return value.strftime("%Y%m%dT%H%M%S")
+        # Does not yet handle timezones and encoding property parameters
+        return value.strftime("%Y%m%dT%H%M%SZ")
+
 
 class Text(str):
     """A type that contains human readable text."""
@@ -128,3 +141,12 @@ class Integer(int):
     def parse_int(cls, prop: ParsedProperty) -> int:
         """Parse a rfc5545 into a text value."""
         return int(prop.value)
+
+
+ICS_ENCODERS = {
+    datetime.date: Date.ics,
+    Date: Date.ics,
+    datetime.datetime: DateTime.ics,
+    DateTime: DateTime.ics,
+    int: str,
+}

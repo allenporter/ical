@@ -4,15 +4,15 @@
 
 from __future__ import annotations
 
-import logging
+import json
 
 from pydantic import Field
 
 from .calendar import Calendar
-from .contentlines import parse_content
+from .contentlines import encode_content, parse_content
+from .encoders import encode_component
 from .model import ComponentModel
-
-_LOGGER = logging.getLogger(__name__)
+from .property_values import ICS_ENCODERS
 
 
 class CalendarStream(ComponentModel):
@@ -20,12 +20,28 @@ class CalendarStream(ComponentModel):
 
     calendars: list[Calendar] = Field(alias="vcalendar")
 
-    @staticmethod
-    def from_ics(content: str) -> "CalendarStream":
+    @classmethod
+    def from_ics(cls, content: str) -> "CalendarStream":
         """Factory method to create a new instance from an rfc5545 iCalendar content."""
         components = parse_content(content)
         result: dict[str, list] = {}
         for component in components:
             result.setdefault(component.name, [])
             result[component.name].append(component.as_dict())
-        return CalendarStream.parse_obj(result)
+        return cls.parse_obj(result)
+
+    def ics(self) -> str:
+        """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
+        model = json.loads(
+            self.json(exclude_unset=True, by_alias=True, exclude_none=True)
+        )
+        return encode_content(encode_component("stream", model).components)
+
+
+class IcsCalendarStream(CalendarStream):
+    """A calendar stream that supports re-encoding ICS."""
+
+    class Config:
+        """Configuration for IcsCalendarStream pydantic model."""
+
+        json_encoders = ICS_ENCODERS

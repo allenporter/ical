@@ -9,29 +9,29 @@ input: |-
   STATUS:NEEDS-ACTION
   END:VTODO
 output:
-  - name: vtodo
-    properties:
-      - name: uid
-        value: 20070313T123432Z-456553@example.com
-        params:
-      - name: dtstamp
-        value: 20070313T123432Z
-        params:
-      - name: due
-        value: '20070501'
-        params:
-          - name: VALUE
-            values:
-            - DATE
-      - name: summary
-        value: Submit Quebec Income Tax Return for 2006
-        params:
-      - name: class
-        value: CONFIDENTIAL
-        params:
-      - name: categories
-        value: FAMILY,FINANCE
-        params:
-      - name: status
-        value: NEEDS-ACTION
-        params:
+- name: vtodo
+  properties:
+  - name: uid
+    value: 20070313T123432Z-456553@example.com
+    params:
+  - name: dtstamp
+    value: 20070313T123432Z
+    params:
+  - name: due
+    value: '20070501'
+    params:
+    - name: VALUE
+      values:
+      - DATE
+  - name: summary
+    value: Submit Quebec Income Tax Return for 2006
+    params:
+  - name: class
+    value: CONFIDENTIAL
+    params:
+  - name: categories
+    value: FAMILY,FINANCE
+    params:
+  - name: status
+    value: NEEDS-ACTION
+    params:

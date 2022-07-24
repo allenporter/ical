@@ -231,6 +231,7 @@ def parse_content_tokens(lines: list[str]) -> list[ParseResults]:
 
 def encode_property(prop: ParsedProperty) -> str:
     """Encode a ParsedProperty into the serialized format."""
+    _LOGGER.debug("Encoding property: %s", prop)
     result = []
     if prop.params:
         result.append(";")
@@ -248,7 +249,7 @@ def encode_property(prop: ParsedProperty) -> str:
             result_params.append(f"{parameter.name.upper()}={values}")
         result.append(";".join(result_params))
     result.append(":")
-    result.append(prop.value)
+    result.append(str(prop.value))
     return "".join(result)
 
 

@@ -3,6 +3,7 @@ repos:
   rev: v4.0.1
   hooks:
   - id: trailing-whitespace
+    exclude: 'tests/testdata/.*yaml$'
   - id: end-of-file-fixer
   - id: check-yaml
   - id: check-added-large-files

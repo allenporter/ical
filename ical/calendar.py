@@ -20,8 +20,8 @@ _PRODID = metadata.metadata("ical")["prodid"]
 class Calendar(ComponentModel):
     """A sequence of calendar properities and calendar components."""
 
-    prodid: Text = Field(default=_PRODID)
     version: Text = Field(default=_VERSION)
+    prodid: Text = Field(default=_PRODID)
     calscale: Optional[Text] = None
     method: Optional[Text] = None
     x_prop: Optional[Text] = None

@@ -3,11 +3,11 @@ input: |-
   VERSION:2.0
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
   BEGIN:VEVENT
-  UID:20070423T123432Z-541111@example.com
   DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  SUMMARY:Festival International de Jazz de Montreal
   DTSTART;VALUE=DATE:20070628
   DTEND;VALUE=DATE:20070709
-  SUMMARY:Festival International de Jazz de Montreal
   TRANSP:TRANSPARENT
   END:VEVENT
   END:VCALENDAR
@@ -22,3 +22,16 @@ output:
       dtend: '2007-07-09'
       summary: Festival International de Jazz de Montreal
       transparency: TRANSPARENT
+encoded: |-
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  SUMMARY:Festival International de Jazz de Montreal
+  DTSTART:20070628
+  DTEND:20070709
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
