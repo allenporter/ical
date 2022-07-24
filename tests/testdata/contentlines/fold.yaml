@@ -5,11 +5,11 @@ input: |-
     that exists on a long line.
   END:VEVENT
 output:
-  - name: vevent
-    properties:
-      - name: description
-        value: This is a long description that exists on a long line.
-        params:
+- name: vevent
+  properties:
+  - name: description
+    value: This is a long description that exists on a long line.
+    params:
 encoded: |-
   BEGIN:VEVENT
   DESCRIPTION:This is a long description that exists on a long line.

@@ -9,26 +9,26 @@ input: |-
   CATEGORIES:BUSINESS,HUMAN RESOURCES
   END:VEVENT
 output:
-  - name: vevent
-    properties:
-    - name: uid
-      value: 19970901T130000Z-123401@example.com
-      params:
-    - name: dtstamp
-      value: 19970901T130000Z
-      params:
-    - name: dtstart
-      value: 19970903T163000Z
-      params:
-    - name: dtend
-      value: 19970903T190000Z
-      params:
-    - name: summary
-      value: Annual Employee Review
-      params:
-    - name: class
-      value: PRIVATE
-      params:
-    - name: categories
-      value: BUSINESS,HUMAN RESOURCES
-      params:
+- name: vevent
+  properties:
+  - name: uid
+    value: 19970901T130000Z-123401@example.com
+    params:
+  - name: dtstamp
+    value: 19970901T130000Z
+    params:
+  - name: dtstart
+    value: 19970903T163000Z
+    params:
+  - name: dtend
+    value: 19970903T190000Z
+    params:
+  - name: summary
+    value: Annual Employee Review
+    params:
+  - name: class
+    value: PRIVATE
+    params:
+  - name: categories
+    value: BUSINESS,HUMAN RESOURCES
+    params:

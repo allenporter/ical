@@ -3,11 +3,11 @@ input: |-
   VERSION:2.0
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
   BEGIN:VEVENT
-  UID:19970610T172345Z-AF23B2@example.com
   DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  SUMMARY:Conference
   DTSTART:19970714T170000Z
   DTEND:19970715T040000Z
-  SUMMARY:Conference
   DESCRIPTION;ALTREP="cid:part1.0001@example.org":The Fall'98 Wild
     Wizards Conference - - Las Vegas\, NV\, USA
   END:VEVENT
@@ -23,3 +23,16 @@ output:
       dtend: '1997-07-15T04:00:00+00:00'
       summary: Conference
       description: The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA
+encoded: |-
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  SUMMARY:Conference
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  DESCRIPTION:The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA
+  END:VEVENT
+  END:VCALENDAR

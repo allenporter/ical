@@ -22,12 +22,8 @@ from .contentlines import ParsedComponent, ParsedProperty
 _LOGGER = logging.getLogger(__name__)
 
 
-def _is_single_property(value: Any, field_type: type) -> bool:
+def is_single_property(field_type: type) -> bool:
     """Return true if pydantic field typing indicates a single value property."""
-
-    if not isinstance(value, list):
-        return False
-
     origin = get_origin(field_type)
     if origin is Union:
         args = get_args(field_type)
@@ -37,7 +33,6 @@ def _is_single_property(value: Any, field_type: type) -> bool:
 
     if origin is not list:
         return True
-
     return False
 
 
@@ -57,7 +52,12 @@ def parse_property_fields(
     for field in cls.__fields__.values():
         if not (prop_list := values.get(field.alias)):
             continue
-        if field.shape != SHAPE_LIST and _is_single_property(prop_list, field.type_):
+
+        if (
+            field.shape != SHAPE_LIST
+            and isinstance(prop_list, list)
+            and is_single_property(field.type_)
+        ):
             result[field.alias] = _parse_single_property(prop_list)
         else:
             result[field.alias] = prop_list

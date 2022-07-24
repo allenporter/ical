@@ -6,24 +6,24 @@ input: |-
    @example.com":mailto:jsmith@example.com
   END:VEVENT
 output:
-  - name: vevent
-    properties:
-      - name: attendee
-        params:
-        - name: RSVP
-          values:
-          - 'TRUE'
-        - name: ROLE
-          values:
-          - REQ-PARTICIPANT
-        value: mailto:jsmith@example.com
-      - name: attendee
-        params:
-        - name: DELEGATED-TO
-          values:
-          - mailto:jdoe@example.com
-          - mailto:jqpublic@example.com
-        value: mailto:jsmith@example.com
+- name: vevent
+  properties:
+  - name: attendee
+    params:
+    - name: RSVP
+      values:
+      - 'TRUE'
+    - name: ROLE
+      values:
+      - REQ-PARTICIPANT
+    value: mailto:jsmith@example.com
+  - name: attendee
+    params:
+    - name: DELEGATED-TO
+      values:
+      - mailto:jdoe@example.com
+      - mailto:jqpublic@example.com
+    value: mailto:jsmith@example.com
 encoded: |-
   BEGIN:VEVENT
   ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT:mailto:jsmith@example.com

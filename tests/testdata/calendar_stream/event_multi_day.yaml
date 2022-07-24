@@ -1,19 +1,19 @@
 input: |-
   BEGIN:VCALENDAR
-  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
   VERSION:2.0
+  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
   BEGIN:VEVENT
   DTSTAMP:19960704T120000Z
   UID:uid1@example.com
   ORGANIZER:mailto:jsmith@example.com
+  SUMMARY:Networld+Interop Conference
   DTSTART:19960918T143000Z
   DTEND:19960920T220000Z
-  STATUS:CONFIRMED
   CATEGORIES:CONFERENCE
-  SUMMARY:Networld+Interop Conference
   DESCRIPTION:Networld+Interop Conference
     and Exhibit\nAtlanta World Congress Center\n
    Atlanta\, Georgia
+  STATUS:CONFIRMED
   END:VEVENT
   END:VCALENDAR
 output:
@@ -35,3 +35,21 @@ output:
       - name: organizer
         params:
         value: mailto:jsmith@example.com
+encoded: |-
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  BEGIN:VEVENT
+  DTSTAMP:19960704T120000Z
+  UID:uid1@example.com
+  SUMMARY:Networld+Interop Conference
+  DTSTART:19960918T143000Z
+  DTEND:19960920T220000Z
+  DESCRIPTION:Networld+Interop Conference and Exhibit
+  Atlanta World Congress
+   Center
+  Atlanta, Georgia
+  CATEGORIES:CONFERENCE
+  STATUS:CONFIRMED
+  END:VEVENT
+  END:VCALENDAR

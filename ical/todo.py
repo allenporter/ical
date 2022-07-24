@@ -15,8 +15,8 @@ from .property_values import Date, DateTime, Text
 class Todo(ComponentModel):
     """A calendar todo component."""
 
-    dtstamp: Union[DateTime, Date]
     uid: Text
+    dtstamp: Union[DateTime, Date]
     summary: Text
     description: Optional[Text] = None
     dtstart: Optional[Union[DateTime, Date]] = None
