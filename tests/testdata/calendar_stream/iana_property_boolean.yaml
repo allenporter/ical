@@ -23,12 +23,12 @@ output:
       dtend: '1996-09-20T22:00:00+00:00'
       summary: Event Summary
       extras:
-      - - dresscode
-        - params:
-          value: CASUAL
-      - - non-smoking
-        - params:
-          - name: VALUE
-            values:
-            - BOOLEAN
-          value: 'TRUE'
+      - name: dresscode
+        params:
+        value: CASUAL
+      - name: non-smoking
+        params:
+        - name: VALUE
+          values:
+          - BOOLEAN
+        value: 'TRUE'

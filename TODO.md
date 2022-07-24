@@ -8,3 +8,4 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Complete vevent properties
 - Reduce visibility of internal parsers (e.g. contentlines)
 - Encoding escaped characters in properties
+- Unknown components (fix extra field parsing)
