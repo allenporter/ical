@@ -10,11 +10,6 @@ class TextModel(ComponentModel):
 
     text_value: Text
 
-    class Config:
-        """Configuration for TextModel."""
-
-        orm_mode = True
-
 
 def test_text() -> None:
     """Test for a text property value."""

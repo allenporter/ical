@@ -160,9 +160,3 @@ class Event(ComponentModel):
                 raise ValueError("Expected Text value as a string")
             values.extend(prop.split(","))
         return values
-
-
-#    class Config:
-#        """Pydantic configuration for ComponentModel."""
-#
-#        orm_mode = True

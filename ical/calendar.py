@@ -34,8 +34,3 @@ class Calendar(ComponentModel):
     def timeline(self) -> Timeline:
         """Return a timeline view of events on the calendar."""
         return Timeline(self.events)
-
-
-#    class Config:
-#        """Pydantic configuration for ComponentModel."""
-#        orm_mode = True
