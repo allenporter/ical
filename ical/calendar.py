@@ -8,10 +8,9 @@ from typing import Optional
 from pydantic import Field
 
 from .event import Event
-from .model import ComponentModel
-from .property_values import Text
 from .timeline import Timeline
 from .todo import Todo
+from .types import ComponentModel, Text
 
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]

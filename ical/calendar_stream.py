@@ -10,9 +10,7 @@ from pydantic import Field
 
 from .calendar import Calendar
 from .contentlines import encode_content, parse_content
-from .encoders import encode_component
-from .model import ComponentModel
-from .property_values import ICS_ENCODERS
+from .types import ICS_ENCODERS, ComponentModel, encode_component
 
 
 class CalendarStream(ComponentModel):

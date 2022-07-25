@@ -1,20 +1,32 @@
-"""Implementation of the strong types for rfc5545 properties.
+"""Libraries for translating between rfc5545 parsed objects and pydantic data.
 
-These types are pydantic custom field types. The content line parser
-produces a `list[ParsedProperty]`, supporting repeated values for the
-same property. (This likely needs to be decoupled and moved to a higer
-level).
+The data model returned by the contentlines parsing is a bag of ParsedProperty
+objects that support all the flexibility of the rfc5545 spec. However in the
+common case the spec has a lot more flexibility than is needed for handling
+simple property types e.g. a single summary field that is specified only once.
+
+This library helps reduce boilerplate for translating that complex structure
+into the simpler pydantic data model, and handles custom field types and
+validators.
 """
+
 
 from __future__ import annotations
 
 import datetime
+import logging
 import re
 import zoneinfo
 from collections.abc import Callable
-from typing import Generator
+from typing import Any, Generator, Union, get_args, get_origin
 
-from .contentlines import ParsedProperty
+from pydantic import BaseModel, root_validator
+from pydantic.fields import SHAPE_LIST
+
+from .contentlines import ParsedComponent, ParsedProperty
+
+_LOGGER = logging.getLogger(__name__)
+
 
 DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
@@ -143,6 +155,90 @@ class Integer(int):
         return int(prop.value)
 
 
+def is_single_property(field_type: type) -> bool:
+    """Return true if pydantic field typing indicates a single value property."""
+    origin = get_origin(field_type)
+    if origin is Union:
+        args = get_args(field_type)
+        if args and args[0] is not list:
+            return True
+        return False
+
+    if origin is not list:
+        return True
+    return False
+
+
+def _parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
+    """Convert a list of ParsedProperty into a single property."""
+    if not props or len(props) > 1:
+        raise ValueError(f"Expected one value for property: {props}")
+    return props[0]
+
+
+def parse_property_fields(
+    cls: BaseModel, values: dict[str, list[ParsedProperty]]
+) -> dict[str, ParsedProperty | list[ParsedProperty]]:
+    """Parse the contentlines schema of repeated items into single fields if needed."""
+    _LOGGER.debug("Parsing property fields %s", values)
+    result: dict[str, ParsedProperty | list[ParsedProperty]] = {}
+    for field in cls.__fields__.values():
+        if not (prop_list := values.get(field.alias)):
+            continue
+
+        if (
+            field.shape != SHAPE_LIST
+            and isinstance(prop_list, list)
+            and is_single_property(field.type_)
+        ):
+            result[field.alias] = _parse_single_property(prop_list)
+        else:
+            result[field.alias] = prop_list
+    return result
+
+
+def parse_extra_fields(
+    cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
+) -> dict[str, Any]:
+    """Parse extra fields not in the model."""
+    _LOGGER.debug("Parsing extra fields: %s", values)
+    all_fields = {
+        field.alias for field in cls.__fields__.values() if field.alias != "extras"
+    }
+    extras: list[ParsedProperty | ParsedComponent] = []
+    for (field_name, value) in values.items():
+        if field_name in all_fields:
+            continue
+        for prop in value:
+            if isinstance(prop, ParsedProperty):
+                extras.append(prop)
+    if extras:
+        values["extras"] = extras
+    return values
+
+
+def encode_component(name: str, model: dict[str, Any]) -> ParsedComponent:
+    """Encode a pydantic model for serialization as an iCalendar object."""
+    _LOGGER.debug("Encoding component %s: %s", name, model)
+    parent = ParsedComponent(name=name)
+    for (key, values) in model.items():
+        if key == "extras":
+            # Not supported yet
+            continue
+        if isinstance(values, list):
+            for value in values:
+                if isinstance(value, dict):
+                    parent.components.append(encode_component(key, value))
+                else:
+                    parent.properties.append(ParsedProperty(name=key, value=value))
+        else:
+            if isinstance(values, dict):
+                parent.components.append(encode_component(key, values))
+            else:
+                parent.properties.append(ParsedProperty(name=key, value=values))
+    return parent
+
+
 ICS_ENCODERS = {
     datetime.date: Date.ics,
     Date: Date.ics,
@@ -150,3 +246,12 @@ ICS_ENCODERS = {
     DateTime: DateTime.ics,
     int: str,
 }
+
+
+class ComponentModel(BaseModel):
+    """Abstract class for rfc5545 component model."""
+
+    _parse_extra_fields = root_validator(pre=True, allow_reuse=True)(parse_extra_fields)
+    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
+        parse_property_fields
+    )

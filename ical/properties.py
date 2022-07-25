@@ -8,7 +8,7 @@ from __future__ import annotations
 import enum
 from typing import Callable, Generator
 
-from .property_values import Integer
+from .types import Integer
 
 
 class EventStatus(str, enum.Enum):
