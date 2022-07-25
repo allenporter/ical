@@ -11,7 +11,6 @@ how the tokens fit together so they can be extracted. The meaning of the
 sequence of tokens is handled elsewhere.
 """
 
-
 # mypy: allow-any-generics
 
 from __future__ import annotations
@@ -89,6 +88,28 @@ class ParsedProperty:
             raise ValueError(f"Expected only a single parameter value, got {values}")
         return values[0]
 
+    def ics(self) -> str:
+        """Encode a ParsedProperty into the serialized format."""
+        result = [self.name.upper()]
+        if self.params:
+            result.append(";")
+            result_params = []
+            for parameter in self.params:
+                result_param_values = []
+                for value in parameter.values:
+                    # Property parameters with values contain a colon, simicolon,
+                    # or a comma character must be placed in quoted text
+                    if UNSAFE_CHAR_RE.search(value):
+                        result_param_values.append(f'"{value}"')
+                    else:
+                        result_param_values.append(value)
+                values = ",".join(result_param_values)
+                result_params.append(f"{parameter.name.upper()}={values}")
+            result.append(";".join(result_params))
+        result.append(":")
+        result.append(str(self.value))
+        return "".join(result)
+
 
 @dataclass
 class ParsedComponent:
@@ -112,6 +133,17 @@ class ParsedComponent:
             **result,
         }
 
+    def ics(self) -> str:
+        """Encode a component as rfc5545 text."""
+        contentlines = []
+        name = self.name.upper()
+        contentlines.append(f"{ATTR_BEGIN}:{name}")
+        for prop in self.properties:
+            contentlines.extend(_fold(prop.ics()))
+        contentlines.extend([component.ics() for component in self.components])
+        contentlines.append(f"{ATTR_END}:{name}")
+        return "\n".join(contentlines)
+
 
 def parse_content(content: str) -> list[ParsedComponent]:
     """Parse content into raw properties.
@@ -122,7 +154,7 @@ def parse_content(content: str) -> list[ParsedComponent]:
     return parse_contentlines(re.split("\r?\n", content))
 
 
-def parse_property_params(
+def _parse_property_params(
     parse_result_dict: dict[str, str | list]
 ) -> list[ParsedPropertyParameter]:
     """Extract the property parameters in a ParseResult."""
@@ -176,13 +208,13 @@ def parse_contentlines(lines: list[str]) -> list[ParsedComponent]:
                 PARSE_NAME: name,
                 PARSE_VALUE: result_dict[PARSE_VALUE],
             }
-            if property_params := parse_property_params(result_dict):
+            if property_params := _parse_property_params(result_dict):
                 property_dict[PARSE_PARAMS] = property_params
             stack[-1].properties.append(ParsedProperty(**property_dict))
     return stack[0].components
 
 
-def create_parser() -> ParserElement:
+def _create_parser() -> ParserElement:
     """Create rfc5545 parser."""
     iana_token = Word(alphanums + "-")
     vendor_id = Word(alphanums)
@@ -223,40 +255,13 @@ def create_parser() -> ParserElement:
 
 def parse_content_tokens(lines: list[str]) -> list[ParseResults]:
     """Parse a set of unfolded lines into parse results."""
-    parser = create_parser()
+    parser = _create_parser()
     if _LOGGER.isEnabledFor(logging.DEBUG):
         parser.set_debug(flag=True)
     return [parser.parse_string(line, parse_all=True) for line in lines]
 
 
-def encode_property(prop: ParsedProperty) -> str:
-    """Encode a ParsedProperty into the serialized format."""
-    _LOGGER.debug("Encoding property: %s", prop)
-    result = []
-    if prop.params:
-        result.append(";")
-        result_params = []
-        for parameter in prop.params:
-            result_param_values = []
-            for value in parameter.values:
-                # Property parameters with values contain a colon, simicolon,
-                # or a comma character must be placed in quoted text
-                if UNSAFE_CHAR_RE.search(value):
-                    result_param_values.append(f'"{value}"')
-                else:
-                    result_param_values.append(value)
-            values = ",".join(result_param_values)
-            result_params.append(f"{parameter.name.upper()}={values}")
-        result.append(";".join(result_params))
-    result.append(":")
-    result.append(str(prop.value))
-    return "".join(result)
-
-
-def encode_component_property(prop: ParsedProperty) -> list[str]:
-    """Encode a ParsedProperty into the serialized format."""
-    encoded_property = encode_property(prop)
-    contentline = f"{prop.name.upper()}{encoded_property}"
+def _fold(contentline: str) -> list[str]:
     return textwrap.wrap(
         contentline,
         width=FOLD_LEN,
@@ -267,18 +272,6 @@ def encode_component_property(prop: ParsedProperty) -> list[str]:
     )
 
 
-def encode_content_lines(components: list[ParsedComponent]) -> list[str]:
-    """Encode a set of parsed properties into content lines."""
-    contentlines = []
-    for component in components:
-        contentlines.append(f"{ATTR_BEGIN}:{component.name.upper()}")
-        for prop in component.properties:
-            contentlines.extend(encode_component_property(prop))
-        contentlines.extend(encode_content_lines(component.components))
-        contentlines.append(f"{ATTR_END}:{component.name.upper()}")
-    return contentlines
-
-
 def encode_content(components: list[ParsedComponent]) -> str:
     """Encode a set of parsed properties into content."""
-    return "\n".join(encode_content_lines(components))
+    return "\n".join([component.ics() for component in components])

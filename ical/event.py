@@ -9,9 +9,8 @@ from typing import Any, Optional, Union
 from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
-from .model import ComponentModel
 from .properties import EventStatus
-from .property_values import Date, DateTime, Text
+from .types import ComponentModel, Date, DateTime, Text
 
 MIDNIGHT = datetime.time()
 
