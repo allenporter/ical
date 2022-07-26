@@ -79,6 +79,8 @@ class DateTime(datetime.datetime):
     @classmethod
     def parse_date_time(cls, prop: ParsedProperty) -> datetime.datetime:
         """Parse a rfc5545 into a datetime.datetime."""
+        if not isinstance(prop, ParsedProperty):
+            raise ValueError(f"Expected ParsedProperty but was {prop}")
         value = prop.value
         if value_match := PROPERTY_VALUE.fullmatch(value):
             if value_match.group(1) != DATETIME_PARAM:
@@ -127,19 +129,13 @@ class Text(str):
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
         yield cls.parse_text
-        yield cls.unescape_text
 
     @classmethod
     def parse_text(cls, prop: ParsedProperty) -> str:
         """Parse a rfc5545 into a text value."""
-        return prop.value
-
-    @classmethod
-    def unescape_text(cls, value: str) -> str:
-        """Escape human readable text items."""
         for key, vin in Text.ESCAPE_CHAR.items():
-            value = value.replace(key, vin)
-        return value
+            prop.value = prop.value.replace(key, vin)
+        return prop.value
 
 
 class Integer(int):
@@ -246,12 +242,74 @@ ICS_ENCODERS = {
     DateTime: DateTime.ics,
     int: str,
 }
+ICS_DECODERS = {
+    datetime.date: Date.parse_date,
+    datetime.datetime: DateTime.parse_date_time,
+    str: Text.parse_text,
+    int: Integer.parse_int,
+}
+
+
+def _parse_identity(value: Any) -> Any:
+    return value
+
+
+def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
+    #    Callable[[ParsedProperty], Union[int, str, datetime.datetime, datetime.date, None]]
+    """Return validators for the specified field."""
+    origin = get_origin(field_type)
+    if origin is Union:
+        if not (args := get_args(field_type)):
+            raise ValueError(f"Unable to determine args of type: {field_type}")
+        # Decoder for any type in the union
+        return list(filter(None, [ICS_DECODERS.get(arg) for arg in args]))
+    # Decoder for single value
+    if field_type in ICS_DECODERS:
+        return [ICS_DECODERS[field_type]]
+    return [_parse_identity]
+
+
+def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
+    """Return the validated field from the first validator that succeeds."""
+    if not isinstance(value, ParsedProperty):
+        # Not from rfc5545 parser true so ignore
+        raise ValueError(f"Expected ParsedProperty: {value}")
+    for validator in validators:
+        try:
+            return validator(value)
+        except ValueError as err:
+            _LOGGER.debug("Failed to validate: %s", err)
+    raise ValueError(f"Failed to validate: {value}")
+
+
+def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+    """Parse individual property value fields."""
+    _LOGGER.debug("Parsing value data %s", values)
+
+    for field in cls.__fields__.values():
+        if not (value := values.get(field.alias)):
+            continue
+        if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
+            # The incoming value is not from the parse tree
+            continue
+
+        validators = _get_validators(field.type_)
+        if field.shape == SHAPE_LIST:
+            _LOGGER.debug("Parsing repeated value with validators: %s", validators)
+            values[field.alias] = [_validate_field(prop, validators) for prop in value]
+        else:
+            # Collapse repeated value from the parse tree into a single value
+            if len(value) > 1:
+                raise ValueError(f"Expected one value for field: {field.alias}")
+            values[field.alias] = _validate_field(value[0], validators)
+
+    return values
 
 
 class ComponentModel(BaseModel):
     """Abstract class for rfc5545 component model."""
 
     _parse_extra_fields = root_validator(pre=True, allow_reuse=True)(parse_extra_fields)
-    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
-        parse_property_fields
+    _parse_property_value = root_validator(pre=True, allow_reuse=True)(
+        parse_property_value
     )
