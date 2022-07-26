@@ -10,7 +10,7 @@ from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
 from .properties import EventStatus
-from .types import ComponentModel, Date, DateTime, Text
+from .types import ComponentModel, parse_text
 
 MIDNIGHT = datetime.time()
 
@@ -21,24 +21,24 @@ class Event(ComponentModel):
     Can either be for a specific day, or with a start time and duration/end time.
     """
 
-    dtstamp: Union[datetime.datetime, datetime.date, DateTime, Date] = Field(
+    dtstamp: Union[datetime.datetime, datetime.date] = Field(
         default_factory=datetime.datetime.utcnow
     )
-    uid: Text = Field(default_factory=uuid.uuid1)
+    uid: str = Field(default_factory=uuid.uuid1)
 
-    summary: Union[str, Text] = ""
+    summary: str = ""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date, DateTime, Date] = Field(
+    dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
     # Has an alias of 'end'
-    dtend: Optional[Union[datetime.datetime, datetime.date, DateTime, Date]] = Field(
+    dtend: Optional[Union[datetime.datetime, datetime.date]] = Field(
         default=None,
     )
-    description: Optional[Union[str, Text]] = None
-    transparency: Optional[Union[str, Text]] = Field(alias="transp", default=None)
-    categories: Optional[list[Union[str, Text]]] = None
+    description: Optional[str] = None
+    transparency: Optional[str] = Field(alias="transp", default=None)
+    categories: list[str] = Field(default_factory=list)
     status: Optional[EventStatus] = None
     extras: Optional[list[ParsedProperty]] = None
 
@@ -138,24 +138,20 @@ class Event(ComponentModel):
             return NotImplemented
         return self._tuple() >= other._tuple()
 
-    @validator("status", pre=True)
+    @validator("status", pre=True, allow_reuse=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
-        for func in Text.__get_validators__():
-            value = func(value)
+        value = parse_text(value)
         if value and not isinstance(value, str):
-            raise ValueError("Expected Text value as a string")
+            raise ValueError(f"Expected text value as a string: {value}")
         return value
 
-    @validator("categories", pre=True)
+    @validator("categories", pre=True, allow_reuse=True)
     def parse_categories(cls, value: Any) -> list[str]:
         """Parse Categories from a list of ParsedProperty."""
         values: list[str] = []
         for prop in value:
-            # Extract string from text value
-            for func in Text.__get_validators__():
-                prop = func(prop)
             if not isinstance(prop, str):
-                raise ValueError("Expected Text value as a string")
+                raise ValueError(f"Expected text value as a string: {value}")
             values.extend(prop.split(","))
         return values

@@ -10,7 +10,7 @@ from pydantic import Field
 from .event import Event
 from .timeline import Timeline
 from .todo import Todo
-from .types import ComponentModel, Text
+from .types import ComponentModel
 
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]
@@ -19,12 +19,12 @@ _PRODID = metadata.metadata("ical")["prodid"]
 class Calendar(ComponentModel):
     """A sequence of calendar properities and calendar components."""
 
-    version: Text = Field(default=_VERSION)
-    prodid: Text = Field(default=_PRODID)
-    calscale: Optional[Text] = None
-    method: Optional[Text] = None
-    x_prop: Optional[Text] = None
-    iana_prop: Optional[Text] = None
+    version: str = Field(default=_VERSION)
+    prodid: str = Field(default=_PRODID)
+    calscale: Optional[str] = None
+    method: Optional[str] = None
+    x_prop: Optional[str] = None
+    iana_prop: Optional[str] = None
 
     events: list[Event] = Field(alias="vevent", default_factory=list)
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)

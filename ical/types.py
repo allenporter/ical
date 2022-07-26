@@ -18,7 +18,7 @@ import logging
 import re
 import zoneinfo
 from collections.abc import Callable
-from typing import Any, Generator, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST
@@ -44,157 +44,76 @@ ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 TZID = "TZID"
 
 
-class Date(datetime.date):
-    """Parser for rfc5545 date."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_date
-
-    @classmethod
-    def parse_date(cls, prop: ParsedProperty) -> datetime.date | None:
-        """Parse a rfc5545 into a datetime.date."""
-        value = prop.value
-        if not (match := DATE_REGEX.fullmatch(value)):
-            raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        return datetime.date(year, month, day)
-
-    @staticmethod
-    def ics(value: datetime.date) -> str:
-        """Serialize as an ICS value."""
-        return value.strftime("%Y%m%d")
+def parse_date(prop: ParsedProperty) -> datetime.date | None:
+    """Parse a rfc5545 into a datetime.date."""
+    value = prop.value
+    if not (match := DATE_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
+    date_value = match.group(1)
+    year = int(date_value[0:4])
+    month = int(date_value[4:6])
+    day = int(date_value[6:])
+    return datetime.date(year, month, day)
 
 
-class DateTime(datetime.datetime):
-    """Parser for rfc5545 date times."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_date_time
-
-    @classmethod
-    def parse_date_time(cls, prop: ParsedProperty) -> datetime.datetime:
-        """Parse a rfc5545 into a datetime.datetime."""
-        value = prop.value
-        if value_match := PROPERTY_VALUE.fullmatch(value):
-            if value_match.group(1) != DATETIME_PARAM:
-                raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
-            value = value_match.group(2)
-        if not (match := DATETIME_REGEX.fullmatch(value)):
-            raise ValueError(
-                f"Expected value to match {DATETIME_PARAM} pattern: {value}"
-            )
-
-        # Example: TZID=America/New_York:19980119T020000
-        timezone: datetime.tzinfo | None = None
-        if tzid := prop.get_parameter_value(TZID):
-            timezone = zoneinfo.ZoneInfo(tzid)
-        elif match.group(3):  # Example: 19980119T070000Z
-            timezone = datetime.timezone.utc
-
-        # Example: 19980118T230000
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        time_value = match.group(2)
-        hour = int(time_value[0:2])
-        minute = int(time_value[2:4])
-        second = int(time_value[4:6])
-
-        return datetime.datetime(
-            year, month, day, hour, minute, second, tzinfo=timezone
-        )
-
-    @staticmethod
-    def ics(value: datetime.datetime) -> str:
-        """Serialize as an ICS value."""
-        if value.tzinfo is None:
-            return value.strftime("%Y%m%dT%H%M%S")
-        # Does not yet handle timezones and encoding property parameters
-        return value.strftime("%Y%m%dT%H%M%SZ")
+def encode_date_ics(value: datetime.date) -> str:
+    """Serialize as an ICS value."""
+    return value.strftime("%Y%m%d")
 
 
-class Text(str):
-    """A type that contains human readable text."""
+def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
+    """Parse a rfc5545 into a datetime.datetime."""
+    if not isinstance(prop, ParsedProperty):
+        raise ValueError(f"Expected ParsedProperty but was {prop}")
+    value = prop.value
+    if value_match := PROPERTY_VALUE.fullmatch(value):
+        if value_match.group(1) != DATETIME_PARAM:
+            raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
+        value = value_match.group(2)
+    if not (match := DATETIME_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match {DATETIME_PARAM} pattern: {value}")
 
-    ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+    # Example: TZID=America/New_York:19980119T020000
+    timezone: datetime.tzinfo | None = None
+    if tzid := prop.get_parameter_value(TZID):
+        timezone = zoneinfo.ZoneInfo(tzid)
+    elif match.group(3):  # Example: 19980119T070000Z
+        timezone = datetime.timezone.utc
 
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_text
-        yield cls.unescape_text
+    # Example: 19980118T230000
+    date_value = match.group(1)
+    year = int(date_value[0:4])
+    month = int(date_value[4:6])
+    day = int(date_value[6:])
+    time_value = match.group(2)
+    hour = int(time_value[0:2])
+    minute = int(time_value[2:4])
+    second = int(time_value[4:6])
 
-    @classmethod
-    def parse_text(cls, prop: ParsedProperty) -> str:
-        """Parse a rfc5545 into a text value."""
-        return prop.value
-
-    @classmethod
-    def unescape_text(cls, value: str) -> str:
-        """Escape human readable text items."""
-        for key, vin in Text.ESCAPE_CHAR.items():
-            value = value.replace(key, vin)
-        return value
-
-
-class Integer(int):
-    """A type that contains a signed integer value."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_int
-
-    @classmethod
-    def parse_int(cls, prop: ParsedProperty) -> int:
-        """Parse a rfc5545 into a text value."""
-        return int(prop.value)
+    return datetime.datetime(year, month, day, hour, minute, second, tzinfo=timezone)
 
 
-def is_single_property(field_type: type) -> bool:
-    """Return true if pydantic field typing indicates a single value property."""
-    origin = get_origin(field_type)
-    if origin is Union:
-        args = get_args(field_type)
-        if args and args[0] is not list:
-            return True
-        return False
-
-    if origin is not list:
-        return True
-    return False
+def encode_date_time_ics(value: datetime.datetime) -> str:
+    """Serialize as an ICS value."""
+    if value.tzinfo is None:
+        return value.strftime("%Y%m%dT%H%M%S")
+    # Does not yet handle timezones and encoding property parameters
+    return value.strftime("%Y%m%dT%H%M%SZ")
 
 
-def _parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
-    """Convert a list of ParsedProperty into a single property."""
-    if not props or len(props) > 1:
-        raise ValueError(f"Expected one value for property: {props}")
-    return props[0]
+ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 
 
-def parse_property_fields(
-    cls: BaseModel, values: dict[str, list[ParsedProperty]]
-) -> dict[str, ParsedProperty | list[ParsedProperty]]:
-    """Parse the contentlines schema of repeated items into single fields if needed."""
-    _LOGGER.debug("Parsing property fields %s", values)
-    result: dict[str, ParsedProperty | list[ParsedProperty]] = {}
-    for field in cls.__fields__.values():
-        if not (prop_list := values.get(field.alias)):
-            continue
+def parse_text(prop: ParsedProperty) -> str:
+    """Parse a rfc5545 into a text value."""
+    for key, vin in ESCAPE_CHAR.items():
+        prop.value = prop.value.replace(key, vin)
+    return prop.value
 
-        if (
-            field.shape != SHAPE_LIST
-            and isinstance(prop_list, list)
-            and is_single_property(field.type_)
-        ):
-            result[field.alias] = _parse_single_property(prop_list)
-        else:
-            result[field.alias] = prop_list
-    return result
+
+def parse_int(prop: ParsedProperty) -> int:
+    """Parse a rfc5545 into a text value."""
+    return int(prop.value)
 
 
 def parse_extra_fields(
@@ -240,18 +159,78 @@ def encode_component(name: str, model: dict[str, Any]) -> ParsedComponent:
 
 
 ICS_ENCODERS = {
-    datetime.date: Date.ics,
-    Date: Date.ics,
-    datetime.datetime: DateTime.ics,
-    DateTime: DateTime.ics,
+    datetime.date: encode_date_ics,
+    datetime.datetime: encode_date_time_ics,
     int: str,
 }
+ICS_DECODERS = {
+    datetime.date: parse_date,
+    datetime.datetime: parse_date_time,
+    str: parse_text,
+    int: parse_int,
+}
+
+
+def _parse_identity(value: Any) -> Any:
+    return value
+
+
+def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
+    #    Callable[[ParsedProperty], Union[int, str, datetime.datetime, datetime.date, None]]
+    """Return validators for the specified field."""
+    origin = get_origin(field_type)
+    if origin is Union:
+        if not (args := get_args(field_type)):
+            raise ValueError(f"Unable to determine args of type: {field_type}")
+        # Decoder for any type in the union
+        return list(filter(None, [ICS_DECODERS.get(arg) for arg in args]))
+    # Decoder for single value
+    if field_type in ICS_DECODERS:
+        return [ICS_DECODERS[field_type]]
+    return [_parse_identity]
+
+
+def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
+    """Return the validated field from the first validator that succeeds."""
+    if not isinstance(value, ParsedProperty):
+        # Not from rfc5545 parser true so ignore
+        raise ValueError(f"Expected ParsedProperty: {value}")
+    for validator in validators:
+        try:
+            return validator(value)
+        except ValueError as err:
+            _LOGGER.debug("Failed to validate: %s", err)
+    raise ValueError(f"Failed to validate: {value}")
+
+
+def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+    """Parse individual property value fields."""
+    _LOGGER.debug("Parsing value data %s", values)
+
+    for field in cls.__fields__.values():
+        if not (value := values.get(field.alias)):
+            continue
+        if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
+            # The incoming value is not from the parse tree
+            continue
+
+        validators = _get_validators(field.type_)
+        if field.shape == SHAPE_LIST:
+            _LOGGER.debug("Parsing repeated value with validators: %s", validators)
+            values[field.alias] = [_validate_field(prop, validators) for prop in value]
+        else:
+            # Collapse repeated value from the parse tree into a single value
+            if len(value) > 1:
+                raise ValueError(f"Expected one value for field: {field.alias}")
+            values[field.alias] = _validate_field(value[0], validators)
+
+    return values
 
 
 class ComponentModel(BaseModel):
     """Abstract class for rfc5545 component model."""
 
     _parse_extra_fields = root_validator(pre=True, allow_reuse=True)(parse_extra_fields)
-    _parse_property_fields = root_validator(pre=True, allow_reuse=True)(
-        parse_property_fields
+    _parse_property_value = root_validator(pre=True, allow_reuse=True)(
+        parse_property_value
     )

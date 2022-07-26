@@ -2,27 +2,28 @@
 
 from __future__ import annotations
 
+import datetime
 from typing import Any, Optional, Union
 
 from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
 from .properties import Priority, TodoStatus
-from .types import ComponentModel, Date, DateTime, Text
+from .types import ComponentModel, parse_text
 
 
 class Todo(ComponentModel):
     """A calendar todo component."""
 
-    uid: Text
-    dtstamp: Union[DateTime, Date]
-    summary: Text
-    description: Optional[Text] = None
-    dtstart: Optional[Union[DateTime, Date]] = None
-    due: Optional[Union[DateTime, Date]]
-    classification: Optional[Text] = Field(alias="class", default=None)
-    completed: Optional[DateTime] = None
-    created: Optional[DateTime] = None
+    uid: str
+    dtstamp: Union[datetime.datetime, datetime.date]
+    summary: str
+    description: Optional[str] = None
+    dtstart: Union[datetime.datetime, datetime.date, None] = None
+    due: Union[datetime.datetime, datetime.date, None] = None
+    classification: Optional[str] = Field(alias="class", default=None)
+    completed: Optional[datetime.datetime] = None
+    created: Optional[datetime.datetime] = None
 
     priority: Optional[Priority] = None
 
@@ -30,24 +31,18 @@ class Todo(ComponentModel):
     status: Optional[TodoStatus] = None
     extras: list[tuple[str, ParsedProperty]] = Field(default_factory=list)
 
-    @validator("status", pre=True)
+    @validator("status", pre=True, allow_reuse=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse a TodoStatus from a ParsedPropertyValue."""
-        for func in Text.__get_validators__():
-            value = func(value)
+        value = parse_text(value)
         if value and not isinstance(value, str):
-            raise ValueError("Expected Text value as a string")
+            raise ValueError(f"Expected text value as a string: {value}")
         return value
 
     @validator("categories", pre=True)
-    def parse_categories(cls, value: Any) -> list[str]:
+    def parse_categories(cls, value: list[str]) -> list[str]:
         """Parse Categories from a list of ParsedProperty."""
         values: list[str] = []
         for prop in value:
-            # Extract string from text value
-            for func in Text.__get_validators__():
-                prop = func(prop)
-            if not isinstance(prop, str):
-                raise ValueError("Expected Text value as a string")
             values.extend(prop.split(","))
         return values
