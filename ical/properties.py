@@ -6,9 +6,9 @@ This file contains properties that may appear in multiple components.
 from __future__ import annotations
 
 import enum
-from typing import Callable, Generator
+from typing import Any, Callable, Generator
 
-from .types import Integer
+from .types import parse_int
 
 
 class EventStatus(str, enum.Enum):
@@ -28,17 +28,17 @@ class TodoStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
-class Priority(Integer):
+class Priority(int):
     """Defines relative priority for a calendar component."""
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield from super().__get_validators__()
         yield cls.parse_priority
 
     @classmethod
-    def parse_priority(cls, priority: int) -> int:
+    def parse_priority(cls, value: Any) -> int:
         """Parse a rfc5545 into a text value."""
+        priority = parse_int(value)
         if priority < 0 or priority > 9:
             raise ValueError("Expected priority between 0-9")
         return priority

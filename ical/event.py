@@ -10,7 +10,7 @@ from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
 from .properties import EventStatus
-from .types import ComponentModel, Text
+from .types import ComponentModel, parse_text
 
 MIDNIGHT = datetime.time()
 
@@ -141,9 +141,9 @@ class Event(ComponentModel):
     @validator("status", pre=True, allow_reuse=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
-        value = Text.parse_text(value)
+        value = parse_text(value)
         if value and not isinstance(value, str):
-            raise ValueError(f"Expected Text value as a string: {value}")
+            raise ValueError(f"Expected text value as a string: {value}")
         return value
 
     @validator("categories", pre=True, allow_reuse=True)
@@ -152,6 +152,6 @@ class Event(ComponentModel):
         values: list[str] = []
         for prop in value:
             if not isinstance(prop, str):
-                raise ValueError(f"Expected Text value as a string: {value}")
+                raise ValueError(f"Expected text value as a string: {value}")
             values.extend(prop.split(","))
         return values

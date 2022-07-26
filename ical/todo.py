@@ -9,7 +9,7 @@ from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
 from .properties import Priority, TodoStatus
-from .types import ComponentModel, Text
+from .types import ComponentModel, parse_text
 
 
 class Todo(ComponentModel):
@@ -34,9 +34,9 @@ class Todo(ComponentModel):
     @validator("status", pre=True, allow_reuse=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse a TodoStatus from a ParsedPropertyValue."""
-        value = Text.parse_text(value)
+        value = parse_text(value)
         if value and not isinstance(value, str):
-            raise ValueError(f"Expected Text value as a string: {value}")
+            raise ValueError(f"Expected text value as a string: {value}")
         return value
 
     @validator("categories", pre=True)

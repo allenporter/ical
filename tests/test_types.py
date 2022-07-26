@@ -7,7 +7,7 @@ from typing import Optional, Union
 from pydantic import BaseModel
 
 from ical.contentlines import ParsedComponent, ParsedProperty
-from ical.types import ComponentModel, DateTime, encode_component
+from ical.types import ICS_ENCODERS, ComponentModel, encode_component
 
 
 def test_text() -> None:
@@ -42,21 +42,19 @@ def test_encode_component() -> None:
         other_value: str
         second_value: Optional[str] = None
 
-    class TestModel(BaseModel):
+    class TestModel(ComponentModel):
         """Model with a Text value."""
 
         text_value: str
         repeated_text_value: list[str]
         some_component: list[OtherComponent]
         single_component: OtherComponent
-        dt: DateTime
+        dt: datetime.datetime
 
         class Config:
-            """Configuration for TestModel pydantic model."""
+            """Pydantic model configuration."""
 
-            json_encoders = {
-                datetime.datetime: DateTime.ics,
-            }
+            json_encoders = ICS_ENCODERS
 
     model = TestModel.parse_obj(
         {
@@ -69,7 +67,7 @@ def test_encode_component() -> None:
             "single_component": {
                 "other_value": "value3",
             },
-            "dt": ParsedProperty(name="dt", value="20220724T120000"),
+            "dt": [ParsedProperty(name="dt", value="20220724T120000")],
         }
     )
     component = encode_component(

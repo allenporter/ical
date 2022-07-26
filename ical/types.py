@@ -18,7 +18,7 @@ import logging
 import re
 import zoneinfo
 from collections.abc import Callable
-from typing import Any, Generator, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST
@@ -44,111 +44,76 @@ ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 TZID = "TZID"
 
 
-class Date(datetime.date):
-    """Parser for rfc5545 date."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_date
-
-    @classmethod
-    def parse_date(cls, prop: ParsedProperty) -> datetime.date | None:
-        """Parse a rfc5545 into a datetime.date."""
-        value = prop.value
-        if not (match := DATE_REGEX.fullmatch(value)):
-            raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        return datetime.date(year, month, day)
-
-    @staticmethod
-    def ics(value: datetime.date) -> str:
-        """Serialize as an ICS value."""
-        return value.strftime("%Y%m%d")
+def parse_date(prop: ParsedProperty) -> datetime.date | None:
+    """Parse a rfc5545 into a datetime.date."""
+    value = prop.value
+    if not (match := DATE_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
+    date_value = match.group(1)
+    year = int(date_value[0:4])
+    month = int(date_value[4:6])
+    day = int(date_value[6:])
+    return datetime.date(year, month, day)
 
 
-class DateTime(datetime.datetime):
-    """Parser for rfc5545 date times."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_date_time
-
-    @classmethod
-    def parse_date_time(cls, prop: ParsedProperty) -> datetime.datetime:
-        """Parse a rfc5545 into a datetime.datetime."""
-        if not isinstance(prop, ParsedProperty):
-            raise ValueError(f"Expected ParsedProperty but was {prop}")
-        value = prop.value
-        if value_match := PROPERTY_VALUE.fullmatch(value):
-            if value_match.group(1) != DATETIME_PARAM:
-                raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
-            value = value_match.group(2)
-        if not (match := DATETIME_REGEX.fullmatch(value)):
-            raise ValueError(
-                f"Expected value to match {DATETIME_PARAM} pattern: {value}"
-            )
-
-        # Example: TZID=America/New_York:19980119T020000
-        timezone: datetime.tzinfo | None = None
-        if tzid := prop.get_parameter_value(TZID):
-            timezone = zoneinfo.ZoneInfo(tzid)
-        elif match.group(3):  # Example: 19980119T070000Z
-            timezone = datetime.timezone.utc
-
-        # Example: 19980118T230000
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        time_value = match.group(2)
-        hour = int(time_value[0:2])
-        minute = int(time_value[2:4])
-        second = int(time_value[4:6])
-
-        return datetime.datetime(
-            year, month, day, hour, minute, second, tzinfo=timezone
-        )
-
-    @staticmethod
-    def ics(value: datetime.datetime) -> str:
-        """Serialize as an ICS value."""
-        if value.tzinfo is None:
-            return value.strftime("%Y%m%dT%H%M%S")
-        # Does not yet handle timezones and encoding property parameters
-        return value.strftime("%Y%m%dT%H%M%SZ")
+def encode_date_ics(value: datetime.date) -> str:
+    """Serialize as an ICS value."""
+    return value.strftime("%Y%m%d")
 
 
-class Text(str):
-    """A type that contains human readable text."""
+def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
+    """Parse a rfc5545 into a datetime.datetime."""
+    if not isinstance(prop, ParsedProperty):
+        raise ValueError(f"Expected ParsedProperty but was {prop}")
+    value = prop.value
+    if value_match := PROPERTY_VALUE.fullmatch(value):
+        if value_match.group(1) != DATETIME_PARAM:
+            raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
+        value = value_match.group(2)
+    if not (match := DATETIME_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match {DATETIME_PARAM} pattern: {value}")
 
-    ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+    # Example: TZID=America/New_York:19980119T020000
+    timezone: datetime.tzinfo | None = None
+    if tzid := prop.get_parameter_value(TZID):
+        timezone = zoneinfo.ZoneInfo(tzid)
+    elif match.group(3):  # Example: 19980119T070000Z
+        timezone = datetime.timezone.utc
 
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_text
+    # Example: 19980118T230000
+    date_value = match.group(1)
+    year = int(date_value[0:4])
+    month = int(date_value[4:6])
+    day = int(date_value[6:])
+    time_value = match.group(2)
+    hour = int(time_value[0:2])
+    minute = int(time_value[2:4])
+    second = int(time_value[4:6])
 
-    @classmethod
-    def parse_text(cls, prop: ParsedProperty) -> str:
-        """Parse a rfc5545 into a text value."""
-        for key, vin in Text.ESCAPE_CHAR.items():
-            prop.value = prop.value.replace(key, vin)
-        return prop.value
+    return datetime.datetime(year, month, day, hour, minute, second, tzinfo=timezone)
 
 
-class Integer(int):
-    """A type that contains a signed integer value."""
+def encode_date_time_ics(value: datetime.datetime) -> str:
+    """Serialize as an ICS value."""
+    if value.tzinfo is None:
+        return value.strftime("%Y%m%dT%H%M%S")
+    # Does not yet handle timezones and encoding property parameters
+    return value.strftime("%Y%m%dT%H%M%SZ")
 
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_int
 
-    @classmethod
-    def parse_int(cls, prop: ParsedProperty) -> int:
-        """Parse a rfc5545 into a text value."""
-        return int(prop.value)
+ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+
+
+def parse_text(prop: ParsedProperty) -> str:
+    """Parse a rfc5545 into a text value."""
+    for key, vin in ESCAPE_CHAR.items():
+        prop.value = prop.value.replace(key, vin)
+    return prop.value
+
+
+def parse_int(prop: ParsedProperty) -> int:
+    """Parse a rfc5545 into a text value."""
+    return int(prop.value)
 
 
 def parse_extra_fields(
@@ -194,17 +159,15 @@ def encode_component(name: str, model: dict[str, Any]) -> ParsedComponent:
 
 
 ICS_ENCODERS = {
-    datetime.date: Date.ics,
-    Date: Date.ics,
-    datetime.datetime: DateTime.ics,
-    DateTime: DateTime.ics,
+    datetime.date: encode_date_ics,
+    datetime.datetime: encode_date_time_ics,
     int: str,
 }
 ICS_DECODERS = {
-    datetime.date: Date.parse_date,
-    datetime.datetime: DateTime.parse_date_time,
-    str: Text.parse_text,
-    int: Integer.parse_int,
+    datetime.date: parse_date,
+    datetime.datetime: parse_date_time,
+    str: parse_text,
+    int: parse_int,
 }
 
 
