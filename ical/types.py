@@ -151,48 +151,6 @@ class Integer(int):
         return int(prop.value)
 
 
-def is_single_property(field_type: type) -> bool:
-    """Return true if pydantic field typing indicates a single value property."""
-    origin = get_origin(field_type)
-    if origin is Union:
-        args = get_args(field_type)
-        if args and args[0] is not list:
-            return True
-        return False
-
-    if origin is not list:
-        return True
-    return False
-
-
-def _parse_single_property(props: list[ParsedProperty]) -> ParsedProperty:
-    """Convert a list of ParsedProperty into a single property."""
-    if not props or len(props) > 1:
-        raise ValueError(f"Expected one value for property: {props}")
-    return props[0]
-
-
-def parse_property_fields(
-    cls: BaseModel, values: dict[str, list[ParsedProperty]]
-) -> dict[str, ParsedProperty | list[ParsedProperty]]:
-    """Parse the contentlines schema of repeated items into single fields if needed."""
-    _LOGGER.debug("Parsing property fields %s", values)
-    result: dict[str, ParsedProperty | list[ParsedProperty]] = {}
-    for field in cls.__fields__.values():
-        if not (prop_list := values.get(field.alias)):
-            continue
-
-        if (
-            field.shape != SHAPE_LIST
-            and isinstance(prop_list, list)
-            and is_single_property(field.type_)
-        ):
-            result[field.alias] = _parse_single_property(prop_list)
-        else:
-            result[field.alias] = prop_list
-    return result
-
-
 def parse_extra_fields(
     cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
 ) -> dict[str, Any]:
