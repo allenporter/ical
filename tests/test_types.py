@@ -1,13 +1,12 @@
 """Tests for property values."""
 
 import datetime
-import json
 from typing import Optional, Union
 
 from pydantic import BaseModel
 
 from ical.contentlines import ParsedComponent, ParsedProperty
-from ical.types import ICS_ENCODERS, ComponentModel, encode_component
+from ical.types import ICS_ENCODERS, ComponentModel, encode_model
 
 
 def test_text() -> None:
@@ -31,6 +30,15 @@ def test_text() -> None:
             ["Project XYZ Final Review", "Conference Room - 3B", "Come Prepared."]
         )
     }
+    assert encode_model("model", model) == ParsedComponent(
+        name="model",
+        properties=[
+            ParsedProperty(
+                name="text_value",
+                value="Project XYZ Final Review\\nConference Room - 3B\\nCome Prepared.",
+            )
+        ],
+    )
 
 
 def test_encode_component() -> None:
@@ -70,9 +78,7 @@ def test_encode_component() -> None:
             "dt": [ParsedProperty(name="dt", value="20220724T120000")],
         }
     )
-    component = encode_component(
-        "TestModel", json.loads(model.json(exclude_unset=True))
-    )
+    component = encode_model("TestModel", model)
     assert component.name == "TestModel"
     assert component.properties == [
         ParsedProperty(name="text_value", value="Example text"),

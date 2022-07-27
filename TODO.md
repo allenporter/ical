@@ -14,4 +14,3 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Serializing extra properties
 - Encoded timezones
 - Add Organizer fields
-- Encode newlines in description fields properly ('event_multi_day.yaml' test)
