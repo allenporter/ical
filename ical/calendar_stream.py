@@ -4,13 +4,11 @@
 
 from __future__ import annotations
 
-import json
-
 from pydantic import Field
 
 from .calendar import Calendar
 from .contentlines import encode_content, parse_content
-from .types import ICS_ENCODERS, ComponentModel, encode_component
+from .types import ICS_ENCODERS, ComponentModel, encode_model
 
 
 class CalendarStream(ComponentModel):
@@ -30,10 +28,7 @@ class CalendarStream(ComponentModel):
 
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
-        model = json.loads(
-            self.json(exclude_unset=True, by_alias=True, exclude_none=True)
-        )
-        return encode_content(encode_component("stream", model).components)
+        return encode_content(encode_model("stream", self).components)
 
 
 class IcsCalendarStream(CalendarStream):

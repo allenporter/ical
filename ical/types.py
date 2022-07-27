@@ -14,6 +14,7 @@ validators.
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import re
 import zoneinfo
@@ -35,7 +36,8 @@ DATETIME_PARAM = "DATE-TIME"
 
 PROPERTY_VALUE = re.compile(r"^VALUE=([^:]+):(.*)$")
 
-ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
+ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 
 
 # This is a property parameter, currently used by the DATE-TIME type. It
@@ -101,14 +103,22 @@ def encode_date_time_ics(value: datetime.datetime) -> str:
     return value.strftime("%Y%m%dT%H%M%SZ")
 
 
-ESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
-
-
 def parse_text(prop: ParsedProperty) -> str:
     """Parse a rfc5545 into a text value."""
-    for key, vin in ESCAPE_CHAR.items():
+    for key, vin in UNESCAPE_CHAR.items():
+        if key not in prop.value:
+            continue
         prop.value = prop.value.replace(key, vin)
     return prop.value
+
+
+def encode_text(value: str) -> str:
+    """Serialize text as an ICS value."""
+    for key, vin in ESCAPE_CHAR.items():
+        if key not in value:
+            continue
+        value = value.replace(key, vin)
+    return value
 
 
 def parse_int(prop: ParsedProperty) -> int:
@@ -136,37 +146,53 @@ def parse_extra_fields(
     return values
 
 
-def encode_component(name: str, model: dict[str, Any]) -> ParsedComponent:
+def encode_model(name: str, model: BaseModel) -> ParsedComponent:
     """Encode a pydantic model for serialization as an iCalendar object."""
-    _LOGGER.debug("Encoding component %s: %s", name, model)
+    model_data = json.loads(
+        model.json(exclude_unset=True, by_alias=True, exclude_none=True)
+    )
+    return encode_component(name, model, model_data)
+
+
+def encode_component(
+    name: str, model: BaseModel, model_data: dict[str, Any]
+) -> ParsedComponent:
+    """Encode a pydantic model for serialization as an iCalendar object."""
+    _LOGGER.debug("Encoding component %s: %s", name, model_data)
     parent = ParsedComponent(name=name)
-    for (key, values) in model.items():
-        if key == "extras":
-            # Not supported yet
+    for field in model.__fields__.values():
+        key = field.alias
+        values = model_data.get(key)
+        if not values or key == "extras":
             continue
         if isinstance(values, list):
             for value in values:
                 if isinstance(value, dict):
-                    parent.components.append(encode_component(key, value))
+                    parent.components.append(encode_component(key, field.type_, value))
                 else:
+                    if field.type_ == str:
+                        value = encode_text(value)
                     parent.properties.append(ParsedProperty(name=key, value=value))
+        elif isinstance(values, dict):
+            parent.components.append(encode_component(key, field.type_, values))
         else:
-            if isinstance(values, dict):
-                parent.components.append(encode_component(key, values))
-            else:
-                parent.properties.append(ParsedProperty(name=key, value=values))
+            if field.type_ == str:
+                values = encode_text(values)
+            parent.properties.append(ParsedProperty(name=key, value=values))
     return parent
 
 
 ICS_ENCODERS = {
+    # string encoding is handled in encode_component and all other
+    # values use the pydantic json model encoders.
     datetime.date: encode_date_ics,
     datetime.datetime: encode_date_time_ics,
     int: str,
 }
 ICS_DECODERS = {
+    str: parse_text,
     datetime.date: parse_date,
     datetime.datetime: parse_date_time,
-    str: parse_text,
     int: parse_int,
 }
 
@@ -176,7 +202,6 @@ def _parse_identity(value: Any) -> Any:
 
 
 def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
-    #    Callable[[ParsedProperty], Union[int, str, datetime.datetime, datetime.date, None]]
     """Return validators for the specified field."""
     origin = get_origin(field_type)
     if origin is Union:

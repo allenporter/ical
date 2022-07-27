@@ -33,6 +33,6 @@ encoded: |-
   SUMMARY:Conference
   DTSTART:19970714T170000Z
   DTEND:19970715T040000Z
-  DESCRIPTION:The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA
+  DESCRIPTION:The Fall'98 Wild Wizards Conference - - Las Vegas\, NV\, USA
   END:VEVENT
   END:VCALENDAR
