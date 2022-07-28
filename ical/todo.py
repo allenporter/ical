@@ -8,8 +8,7 @@ from typing import Any, Optional, Union
 from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
-from .properties import Priority, TodoStatus
-from .types import ComponentModel, parse_text
+from .types import ComponentModel, Priority, TodoStatus, parse_text
 
 
 class Todo(ComponentModel):
