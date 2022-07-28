@@ -10,16 +10,17 @@ into the simpler pydantic data model, and handles custom field types and
 validators.
 """
 
-
 from __future__ import annotations
 
 import datetime
+import enum
 import json
 import logging
 import re
 import zoneinfo
 from collections.abc import Callable
-from typing import Any, Union, get_args, get_origin
+from dataclasses import dataclass
+from typing import Any, Generator, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST
@@ -44,6 +45,68 @@ ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 # should probably be composed in the property or in a separate file of
 # property parameters.
 TZID = "TZID"
+
+
+class EventStatus(str, enum.Enum):
+    """Status or confirmation of the event."""
+
+    CONFIRMED = "CONFIRMED"
+    TENTATIVE = "TENTATIVE"
+    CANCELLED = "CANCELLED"
+
+
+class TodoStatus(str, enum.Enum):
+    """Status or confirmation of the to-do."""
+
+    NEEDS_ACTION = "NEEDS-ACTION"
+    COMPLETED = "COMPLETED"
+    IN_PROCESS = "IN-PROCESS"
+    CANCELLED = "CANCELLED"
+
+
+class Classification(str, enum.Enum):
+    """Defines the access classification for a calendar component."""
+
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+    CONFIDENTIAL = "CONFIDENTIAL"
+
+
+class Priority(int):
+    """Defines relative priority for a calendar component."""
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
+        yield cls.parse_priority
+
+    @classmethod
+    def parse_priority(cls, value: Any) -> int:
+        """Parse a rfc5545 into a text value."""
+        priority = parse_int(value)
+        if priority < 0 or priority > 9:
+            raise ValueError("Expected priority between 0-9")
+        return priority
+
+
+@dataclass
+class Geo:
+    """Information related tot he global position for an activity."""
+
+    lat: float
+    lng: float
+
+
+def parse_geo(value: Any) -> Geo:
+    """Parse a rfc5545 lat long geo values."""
+    parts = parse_text(value).split(";", 2)
+    if len(parts) != 2:
+        raise ValueError(f"Value was not valid geo lat;long: {value}")
+    return Geo(lat=float(parts[0]), lng=float(parts[1]))
+
+
+def encode_geo_ics(value: Geo) -> str:
+    """Serialize as an ICS value."""
+    return f"{value.lat};{value.lng}"
 
 
 def parse_date(prop: ParsedProperty) -> datetime.date | None:
@@ -167,13 +230,15 @@ def encode_component(
             continue
         if isinstance(values, list):
             for value in values:
-                if isinstance(value, dict):
+                if issubclass(field.type_, BaseModel):
                     parent.components.append(encode_component(key, field.type_, value))
                 else:
                     if field.type_ == str:
                         value = encode_text(value)
                     parent.properties.append(ParsedProperty(name=key, value=value))
-        elif isinstance(values, dict):
+        elif get_origin(field.type_) is not Union and issubclass(
+            field.type_, BaseModel
+        ):
             parent.components.append(encode_component(key, field.type_, values))
         else:
             if field.type_ == str:
@@ -188,12 +253,14 @@ ICS_ENCODERS = {
     datetime.date: encode_date_ics,
     datetime.datetime: encode_date_time_ics,
     int: str,
+    Geo: encode_geo_ics,
 }
 ICS_DECODERS = {
     str: parse_text,
     datetime.date: parse_date,
     datetime.datetime: parse_date_time,
     int: parse_int,
+    Geo: parse_geo,
 }
 
 

@@ -9,8 +9,7 @@ from typing import Any, Optional, Union
 from pydantic import Field, validator
 
 from .contentlines import ParsedProperty
-from .properties import EventStatus
-from .types import ComponentModel, parse_text
+from .types import Classification, ComponentModel, EventStatus, Geo, parse_text
 
 MIDNIGHT = datetime.time()
 
@@ -27,7 +26,6 @@ class Event(ComponentModel):
     uid: str = Field(default_factory=uuid.uuid1)
 
     summary: str = ""
-
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
@@ -36,11 +34,37 @@ class Event(ComponentModel):
     dtend: Optional[Union[datetime.datetime, datetime.date]] = Field(
         default=None,
     )
-    description: Optional[str] = None
+    description: str = ""
     transparency: Optional[str] = Field(alias="transp", default=None)
     categories: list[str] = Field(default_factory=list)
     status: Optional[EventStatus] = None
     extras: Optional[list[ParsedProperty]] = None
+    classification: Optional[Classification] = Field(alias="class", default=None)
+    comment: list[str] = Field(default_factory=list)
+    geo: Optional[Geo] = None
+    location: str = ""
+    organization: str = ""
+    created: Optional[datetime.datetime] = None
+    last_modified: Optional[datetime.datetime] = Field(
+        alias="last-modified", default=None
+    )
+    resources: list[str] = Field(default_factory=list)
+
+    # Other properties needed:
+    # - organizer
+    # - priority
+    # - seq
+    # - status
+    # - url
+    # - recurid
+    # -- one or other
+    # - dtend
+    # - duration
+    # -- multiple
+    # - attach
+    # - attendee
+    # - contact
+    # - related
 
     def __init__(self, **data: dict[str, Any]) -> None:
         """Initialize Event."""
@@ -155,3 +179,26 @@ class Event(ComponentModel):
                 raise ValueError(f"Expected text value as a string: {value}")
             values.extend(prop.split(","))
         return values
+
+    @validator("resources", pre=True, allow_reuse=True)
+    def parse_resources(cls, value: Any) -> list[str]:
+        """Parse resources from a list of ParsedProperty."""
+        values: list[str] = []
+        for prop in value:
+            if not isinstance(prop, str):
+                raise ValueError(f"Expected text value as a string: {value}")
+            values.extend(prop.split(","))
+        return values
+
+    @validator("classification", pre=True, allow_reuse=True)
+    def parse_classification(cls, value: Any) -> str | None:
+        """Parse a Classification from a ParsedPropertyValue."""
+        value = parse_text(value)
+        if value and not isinstance(value, str):
+            raise ValueError(f"Expected text value as a string: {value}")
+        return value
+
+    class Config:
+        """Pydantic configuration."""
+
+        arbitrary_types_allowed = True

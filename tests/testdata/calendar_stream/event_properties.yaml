@@ -1,0 +1,39 @@
+input: |-
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  SUMMARY:Customer Meeting
+  DTSTART:20070628T090000
+  DTEND:20070628T100000
+  DESCRIPTION:Meeting to provide technical review for "Phoenix" 
+   design.\nHappy Face Conference Room. Phoenix design team MUST attend this 
+   meeting.\nRSVP to team leader.
+  CLASS:PRIVATE
+  COMMENT:The meeting really needs to include both ourselves and the 
+   customer. We can't hold this meeting without them. As a matter of fact\, 
+   the venue for the meeting ought to be at their site. - - John
+  GEO:37.386013;-122.082932
+  LOCATION:Conference Room - F123\, Bldg. 002
+  END:VEVENT
+  END:VCALENDAR
+output:
+  calendars:
+  - version: '2.0'
+    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    events:
+    - uid: 20070423T123432Z-541111@example.com
+      summary: Customer Meeting
+      dtstamp: '2007-04-23T12:34:32+00:00'
+      dtstart: '2007-06-28T09:00:00'
+      dtend: '2007-06-28T10:00:00'
+      classification: PRIVATE
+      description: "Meeting to provide technical review for \"Phoenix\" design.\nHappy Face Conference Room. Phoenix design team MUST attend this meeting.\nRSVP to team leader."
+      comment:
+        - The meeting really needs to include both ourselves and the customer. We can't hold this meeting without them. As a matter of fact, the venue for the meeting ought to be at their site. - - John
+      geo:
+        lat: 37.386013
+        lng: -122.082932
+      location: Conference Room - F123, Bldg. 002

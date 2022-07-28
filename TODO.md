@@ -14,3 +14,52 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Serializing extra properties
 - Encoded timezones
 - Add Organizer fields
+- Repeated property serialization e.g. 'resources.yaml'. Multi-line vs repeated, and preserving property parameters
+
+
+- Components
+  - Event
+    ---- once
+    - description
+    - priority
+    - seq
+    - status
+    - summary
+    - transp
+    - url
+    - recurid
+
+    -- one or other
+    - dtend
+    - duration
+
+    -- multiple
+    - attach
+    - attendee
+    - categories
+    - contact
+    - related
+  - todo
+  - journal
+  - free/busy
+  - time zone
+  - alarm
+
+- Compenent properties
+  - attachment
+  - categories
+  - classification
+  - comment
+  - description
+  - geographic position
+  - location
+  - percent complete
+  - proirity
+  - resources
+  - status
+  - summary
+
+- Recurrence
+  - rdate
+  - rstatus
+  - exdate
