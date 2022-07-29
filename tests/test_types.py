@@ -3,10 +3,11 @@
 import datetime
 from typing import Optional, Union
 
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 
-from ical.contentlines import ParsedComponent, ParsedProperty
-from ical.types import ICS_ENCODERS, ComponentModel, encode_model
+from ical.contentlines import ParsedComponent, ParsedProperty, ParsedPropertyParameter
+from ical.types import ICS_ENCODERS, ComponentModel, Priority, encode_model
 
 
 def test_text() -> None:
@@ -126,6 +127,74 @@ def test_datedatime_parser() -> None:
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
 
 
+def test_datedatime_value_parser() -> None:
+    """Test a datetime with a property paramer value."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        dt: Union[datetime.datetime, datetime.date]
+
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(
+                    name="dt",
+                    value="20220724T120000",
+                    params=[
+                        ParsedPropertyParameter(name="VALUE", values=["DATE-TIME"]),
+                    ],
+                )
+            ],
+        }
+    )
+    assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(
+                    name="dt",
+                    value="20220724",
+                    params=[
+                        ParsedPropertyParameter(name="VALUE", values=["DATE"]),
+                    ],
+                )
+            ],
+        }
+    )
+    assert model.dt == datetime.date(2022, 7, 24)
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724T120000",
+                        params=[
+                            ParsedPropertyParameter(name="VALUE", values=["INVALID"]),
+                        ],
+                    )
+                ],
+            }
+        )
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724",
+                        params=[
+                            ParsedPropertyParameter(name="VALUE", values=["INVALID"]),
+                        ],
+                    )
+                ],
+            }
+        )
+
+
 def test_date_parser() -> None:
     """Test for a date property value."""
 
@@ -221,3 +290,24 @@ def test_optional_field_parser() -> None:
         {"dt": [ParsedProperty(name="dt", value="20220724T120000")]}
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
+
+
+def test_priority() -> None:
+    """Test for priority fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        pri: Priority
+
+    model = TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="1")]})
+    assert model.pri == 1
+
+    model = TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="9")]})
+    assert model.pri == 9
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="-1")]})
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="10")]})

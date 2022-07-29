@@ -38,7 +38,6 @@ class Event(ComponentModel):
     transparency: Optional[str] = Field(alias="transp", default=None)
     categories: list[str] = Field(default_factory=list)
     status: Optional[EventStatus] = None
-    extras: Optional[list[ParsedProperty]] = None
     classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
     geo: Optional[Geo] = None
@@ -49,6 +48,8 @@ class Event(ComponentModel):
         alias="last-modified", default=None
     )
     resources: list[str] = Field(default_factory=list)
+
+    extras: list[ParsedProperty] = Field(default_factory=list)
 
     # Other properties needed:
     # - organizer
@@ -197,8 +198,3 @@ class Event(ComponentModel):
         if value and not isinstance(value, str):
             raise ValueError(f"Expected text value as a string: {value}")
         return value
-
-    class Config:
-        """Pydantic configuration."""
-
-        arbitrary_types_allowed = True

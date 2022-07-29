@@ -20,7 +20,7 @@ import re
 import zoneinfo
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generator, Union, get_args, get_origin
+from typing import Any, Generator, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST
@@ -35,8 +35,6 @@ DATE_REGEX = re.compile(r"^([0-9]{8})$")
 DATE_PARAM = "DATE"
 DATETIME_PARAM = "DATE-TIME"
 
-PROPERTY_VALUE = re.compile(r"^VALUE=([^:]+):(.*)$")
-
 UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 
@@ -45,6 +43,7 @@ ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 # should probably be composed in the property or in a separate file of
 # property parameters.
 TZID = "TZID"
+ATTR_VALUE = "VALUE"
 
 
 class EventStatus(str, enum.Enum):
@@ -131,10 +130,6 @@ def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
     if not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected ParsedProperty but was {prop}")
     value = prop.value
-    if value_match := PROPERTY_VALUE.fullmatch(value):
-        if value_match.group(1) != DATETIME_PARAM:
-            raise TypeError(f"Expected VALUE={DATETIME_PARAM} value: {value}")
-        value = value_match.group(2)
     if not (match := DATETIME_REGEX.fullmatch(value)):
         raise ValueError(f"Expected value to match {DATETIME_PARAM} pattern: {value}")
 
@@ -185,15 +180,24 @@ def encode_text(value: str) -> str:
 
 
 def parse_int(prop: ParsedProperty) -> int:
-    """Parse a rfc5545 into a text value."""
+    """Parse a rfc5545 property into a text value."""
     return int(prop.value)
+
+
+def parse_boolean(prop: ParsedProperty) -> bool:
+    """Parse an rfc5545 property into a boolean."""
+    return prop.value == "TRUE"
+
+
+def encode_boolean_ics(value: bool) -> str:
+    """Serialize boolean as an ICS value."""
+    return "TRUE" if value else "FALSE"
 
 
 def parse_extra_fields(
     cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
 ) -> dict[str, Any]:
     """Parse extra fields not in the model."""
-    _LOGGER.debug("Parsing extra fields: %s", values)
     all_fields = {
         field.alias for field in cls.__fields__.values() if field.alias != "extras"
     }
@@ -205,6 +209,7 @@ def parse_extra_fields(
             if isinstance(prop, ParsedProperty):
                 extras.append(prop)
     if extras:
+        _LOGGER.debug("Parsing extra fields: %s", extras)
         values["extras"] = extras
     return values
 
@@ -247,19 +252,79 @@ def encode_component(
     return parent
 
 
-ICS_ENCODERS = {
-    # string encoding is handled in encode_component and all other
-    # values use the pydantic json model encoders.
-    datetime.date: encode_date_ics,
-    datetime.datetime: encode_date_time_ics,
-    int: str,
+_T = TypeVar("_T")
+
+
+class PropertyDataType(enum.Enum):
+    """Strongly typed properties in rfc5545."""
+
+    # Types to support
+    #   BINARY
+    #   BOOLEAN
+    #   CAL-ADDRESS
+    #   DURATION
+    #   FLOAT
+    #   PERIOD
+    #   RECUR
+    #   TIME
+    #   URI
+    BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
+    DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
+    DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
+    INTEGER = ("INTEGER", int, parse_int, str)
+
+    # Note: Has special handling, not json encoder
+    TEXT = ("TEXT", str, parse_text, encode_text)
+
+    def __init__(
+        self,
+        name: str,
+        data_type: Any,
+        decode_fn: Callable[[_T], ParsedProperty],
+        encode_fn: Callable[[ParsedProperty], _T],
+    ):
+        self._name = name
+        self._data_type = data_type
+        self._decode_fn = decode_fn
+        self._encode_fn = encode_fn
+
+    @property
+    def data_type_name(self) -> str:
+        """Property value name from rfc5545."""
+        return self._name
+
+    @property
+    def data_type(self) -> Any:
+        """Python type that this property can handle."""
+        return self._data_type
+
+    def encode(self, value: ParsedProperty) -> Any:
+        """Encode a parsed object into a string value."""
+        return self._encode_fn(value)
+
+    def decode(self, value: _T) -> Any:
+        """Decode a property value into a parsed object."""
+        return self._decode_fn(value)
+
+
+VALUE_TYPES = {
+    **{
+        property_data_type.data_type_name: property_data_type
+        for property_data_type in PropertyDataType
+    },
+}
+ICS_ENCODERS: dict[Any, Callable[[Any], str]] = {
+    **{
+        property_data_type.data_type: property_data_type.encode
+        for property_data_type in PropertyDataType
+    },
     Geo: encode_geo_ics,
 }
-ICS_DECODERS = {
-    str: parse_text,
-    datetime.date: parse_date,
-    datetime.datetime: parse_date_time,
-    int: parse_int,
+ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
+    **{
+        property_data_type.data_type: property_data_type.decode
+        for property_data_type in PropertyDataType
+    },
     Geo: parse_geo,
 }
 
@@ -287,6 +352,16 @@ def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
     if not isinstance(value, ParsedProperty):
         # Not from rfc5545 parser true so ignore
         raise ValueError(f"Expected ParsedProperty: {value}")
+
+    if value_type := value.get_parameter_value(ATTR_VALUE):
+        # Property parameter specified a very specific type
+        if not (data_type := VALUE_TYPES.get(value_type)):
+            # Consider graceful degredation instead in the future
+            raise ValueError(
+                f"Property parameter specified unsupported type: {value_type}"
+            )
+        return data_type.decode(value)
+
     for validator in validators:
         try:
             return validator(value)
@@ -300,6 +375,8 @@ def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, An
     _LOGGER.debug("Parsing value data %s", values)
 
     for field in cls.__fields__.values():
+        if field.alias == "extras":
+            continue
         if not (value := values.get(field.alias)):
             continue
         if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
