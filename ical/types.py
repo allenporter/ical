@@ -33,7 +33,12 @@ _LOGGER = logging.getLogger(__name__)
 DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 DATE_PARAM = "DATE"
-DATETIME_PARAM = "DATE-TIME"
+
+DATE_PART = r"(\d+)D"
+TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
+DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
+WEEKS_PART = r"(\d+)W"
+DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}|{DATETIME_PART})$")
 
 UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
@@ -131,7 +136,7 @@ def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
         raise ValueError(f"Expected ParsedProperty but was {prop}")
     value = prop.value
     if not (match := DATETIME_REGEX.fullmatch(value)):
-        raise ValueError(f"Expected value to match {DATETIME_PARAM} pattern: {value}")
+        raise ValueError(f"Expected value to match DATE-TIME pattern: {value}")
 
     # Example: TZID=America/New_York:19980119T020000
     timezone: datetime.tzinfo | None = None
@@ -159,6 +164,64 @@ def encode_date_time_ics(value: datetime.datetime) -> str:
         return value.strftime("%Y%m%dT%H%M%S")
     # Does not yet handle timezones and encoding property parameters
     return value.strftime("%Y%m%dT%H%M%SZ")
+
+
+def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
+    """Parse a rfc5545 into a datetime.date."""
+    value = prop.value
+    _LOGGER.info("parse_duration=%s", value)
+    if not isinstance(prop, ParsedProperty):
+        raise ValueError(f"Expected ParsedProperty but was {prop}")
+    value = prop.value
+    if not (match := DURATION_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match DURATION pattern: {value}")
+    sign, weeks, days, hours, minutes, seconds = match.groups()
+    result: datetime.timedelta
+    if weeks:
+        result = datetime.timedelta(weeks=int(weeks))
+    else:
+        result = datetime.timedelta(
+            days=int(days or 0),
+            hours=int(hours or 0),
+            minutes=int(minutes or 0),
+            seconds=int(seconds or 0),
+        )
+    if sign == "-":
+        result = -result
+    return result
+
+
+def encode_duration_ics(value: Any) -> str:
+    """Serialize a time delta as a DURATION ICS value."""
+    if not isinstance(value, float):
+        raise ValueError("Unexpected value type")
+    duration = datetime.timedelta(seconds=value)
+    parts = []
+    if duration < datetime.timedelta(days=0):
+        parts.append("-")
+        duration = -duration
+    parts.append("P")
+    days = duration.days
+    weeks = int(days / 7)
+    days %= 7
+    if weeks > 0:
+        parts.append(f"{weeks}W")
+    if days > 0:
+        parts.append(f"{days}D")
+    if duration.seconds != 0:
+        parts.append("T")
+        seconds = duration.seconds
+        hours = int(seconds / 3600)
+        seconds %= 3600
+        if hours != 0:
+            parts.append(f"{hours}H")
+        minutes = int(seconds / 60)
+        seconds %= 60
+        if minutes != 0:
+            parts.append(f"{minutes}M")
+        if seconds != 0:
+            parts.append(f"{seconds}S")
+    return "".join(parts)
 
 
 def parse_text(prop: ParsedProperty) -> str:
@@ -242,7 +305,9 @@ def encode_component(
                 if issubclass(field.type_, BaseModel):
                     parent.components.append(encode_component(key, field.type_, value))
                 else:
-                    if field.type_ == str:
+                    if field.type_ == datetime.timedelta:
+                        value = encode_duration_ics(value)
+                    elif field.type_ == str:
                         value = encode_text(value)
                     parent.properties.append(ParsedProperty(name=key, value=value))
         elif get_origin(field.type_) is not Union and issubclass(
@@ -250,7 +315,9 @@ def encode_component(
         ):
             parent.components.append(encode_component(key, field.type_, values))
         else:
-            if field.type_ == str:
+            if field.type_ == datetime.timedelta:
+                values = encode_duration_ics(values)
+            elif field.type_ == str:
                 values = encode_text(values)
             parent.properties.append(ParsedProperty(name=key, value=values))
     return parent
@@ -264,7 +331,6 @@ class PropertyDataType(enum.Enum):
 
     # Types to support
     #   BINARY
-    #   BOOLEAN
     #   CAL-ADDRESS
     #   DURATION
     #   FLOAT
@@ -273,10 +339,10 @@ class PropertyDataType(enum.Enum):
     #   TIME
     #   URI
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
+    DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
     DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
     INTEGER = ("INTEGER", int, parse_int, str)
-
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
 

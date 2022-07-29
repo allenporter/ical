@@ -335,6 +335,36 @@ def test_bool() -> None:
         TestModel.parse_obj({"example": [ParsedProperty(name="example", value="efd")]})
 
 
+@pytest.mark.parametrize(
+    "value,duration,encoded_value",
+    [
+        (
+            "P15DT5H0M20S",
+            datetime.timedelta(days=15, hours=5, seconds=20),
+            "P2W1DT5H20S",
+        ),
+        ("P7W", datetime.timedelta(days=7 * 7), "P7W"),
+    ],
+)
+def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) -> None:
+    """Test for duration fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        duration: datetime.timedelta
+
+    model = TestModel.parse_obj(
+        {"duration": [ParsedProperty(name="duration", value=value)]}
+    )
+    assert model.duration == duration
+    component = encode_model("TestModel", model)
+    assert component.name == "TestModel"
+    assert component.properties == [
+        ParsedProperty(name="duration", value=encoded_value)
+    ]
+
+
 def test_geo() -> None:
     """Test for geo fields."""
 
