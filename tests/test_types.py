@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from ical.contentlines import ParsedComponent, ParsedProperty, ParsedPropertyParameter
-from ical.types import ICS_ENCODERS, ComponentModel, Priority, encode_model
+from ical.types import ICS_ENCODERS, ComponentModel, Geo, Priority, encode_model
 
 
 def test_text() -> None:
@@ -311,3 +311,43 @@ def test_priority() -> None:
 
     with pytest.raises(ValidationError):
         TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="10")]})
+
+
+def test_bool() -> None:
+    """Test for boolean fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: bool
+
+    model = TestModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="TRUE")]}
+    )
+    assert model.example
+
+    model = TestModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="FALSE")]}
+    )
+    assert not model.example
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"example": [ParsedProperty(name="example", value="efd")]})
+
+
+def test_geo() -> None:
+    """Test for geo fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        geo: Geo
+
+    model = TestModel.parse_obj(
+        {"geo": [ParsedProperty(name="geo", value="120.0;-30.1")]}
+    )
+    assert model.geo.lat == 120.0
+    assert model.geo.lng == -30.1
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"geo": [ParsedProperty(name="geo", value="10")]})

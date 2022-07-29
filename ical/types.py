@@ -186,7 +186,11 @@ def parse_int(prop: ParsedProperty) -> int:
 
 def parse_boolean(prop: ParsedProperty) -> bool:
     """Parse an rfc5545 property into a boolean."""
-    return prop.value == "TRUE"
+    if prop.value == "TRUE":
+        return True
+    if prop.value == "FALSE":
+        return False
+    raise ValueError(f"Invalid boolean value: {prop.value}")
 
 
 def encode_boolean_ics(value: bool) -> str:
