@@ -202,19 +202,22 @@ class Event(ComponentModel):
     @root_validator
     def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
-        if not (dtstart := values.get("dtstart")) or not (dtend := values.get("dtend")):
-            return values
-        if type(dtstart) != type(dtend):  # pylint: disable=unidiomatic-typecheck
+        if (
+            not (dtstart := values.get("dtstart"))
+            or not (dtend := values.get("dtend"))
+            or type(dtstart) != type(dtend)  # pylint: disable=unidiomatic-typecheck
+        ):
             raise ValueError("Expected end value type to match start")
         return values
 
     @root_validator
     def validate_date_time_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values have the same timezone information."""
-        if not (dtstart := values.get("dtstart")) or not (dtend := values.get("dtend")):
-            return values
-        if not isinstance(dtstart, datetime.datetime) or not isinstance(
-            dtend, datetime.datetime
+        if (
+            not (dtstart := values.get("dtstart"))
+            or not (dtend := values.get("dtend"))
+            or not isinstance(dtstart, datetime.datetime)
+            or not isinstance(dtend, datetime.datetime)
         ):
             return values
         if dtstart.tzinfo is None and dtend.tzinfo is not None:
