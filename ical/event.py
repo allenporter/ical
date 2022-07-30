@@ -6,7 +6,7 @@ import datetime
 import uuid
 from typing import Any, Optional, Union
 
-from pydantic import Field, validator
+from pydantic import Field, root_validator, validator
 
 from .contentlines import ParsedProperty
 from .types import Classification, ComponentModel, EventStatus, Geo, parse_text
@@ -198,3 +198,32 @@ class Event(ComponentModel):
         if value and not isinstance(value, str):
             raise ValueError(f"Expected text value as a string: {value}")
         return value
+
+    @root_validator
+    def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that start and end values are the same date or datetime type."""
+        if (
+            not (dtstart := values.get("dtstart"))
+            or not (dtend := values.get("dtend"))
+            or type(dtstart) != type(dtend)  # pylint: disable=unidiomatic-typecheck
+        ):
+            raise ValueError("Expected end value type to match start")
+        return values
+
+    @root_validator
+    def validate_date_time_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that start and end values have the same timezone information."""
+        if (
+            not (dtstart := values.get("dtstart"))
+            or not (dtend := values.get("dtend"))
+            or not isinstance(dtstart, datetime.datetime)
+            or not isinstance(dtend, datetime.datetime)
+        ):
+            return values
+        if dtstart.tzinfo is None and dtend.tzinfo is not None:
+            raise ValueError(
+                f"Expected end datetime value in localtime but was {dtend}"
+            )
+        if dtstart.tzinfo is not None and dtend.tzinfo is None:
+            raise ValueError(f"Expected end datetime with timezone but was {dtend}")
+        return values
