@@ -1,0 +1,46 @@
+input: |-
+ BEGIN:VCALENDAR
+ VERSION:2.0
+ PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+ BEGIN:VEVENT
+ DTSTAMP:20070423T123432Z
+ UID:20070423T123432Z-541111@example.com
+ SUMMARY:Festival International de Jazz de Montreal
+ DTSTART:20070628
+ DTEND:20070709
+ ATTENDEE;MEMBER="mailto:DEV-GROUP@example.com":
+  mailto:joecool@example.com
+ ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":
+  mailto:ildoit@example.com
+ ORGANIZER;CN=John Smith:mailto:jsmith@example.com
+ END:VEVENT
+ END:VCALENDAR
+output:
+  calendars:
+    - version: "2.0"
+      prodid: "-//hacksw/handcal//NONSGML v1.0//EN"
+      events:
+        - dtstamp: "2007-04-23T12:34:32+00:00"
+          uid: 20070423T123432Z-541111@example.com
+          summary: "Festival International de Jazz de Montreal"
+          dtstart: "2007-06-28"
+          dtend: "2007-07-09"
+          attendees:
+            - mailto:joecool@example.com
+            - mailto:ildoit@example.com
+          organizer: mailto:jsmith@example.com
+encoded: |-
+ BEGIN:VCALENDAR
+ VERSION:2.0
+ PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+ BEGIN:VEVENT
+ DTSTAMP:20070423T123432Z
+ UID:20070423T123432Z-541111@example.com
+ SUMMARY:Festival International de Jazz de Montreal
+ DTSTART:20070628
+ DTEND:20070709
+ ORGANIZER:mailto:jsmith@example.com
+ ATTENDEE:mailto:joecool@example.com
+ ATTENDEE:mailto:ildoit@example.com
+ END:VEVENT
+ END:VCALENDAR

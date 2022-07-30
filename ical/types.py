@@ -21,6 +21,7 @@ import zoneinfo
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Generator, TypeVar, Union, get_args, get_origin
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST
@@ -111,6 +112,20 @@ def parse_geo(value: Any) -> Geo:
 def encode_geo_ics(value: Geo) -> str:
     """Serialize as an ICS value."""
     return f"{value.lat};{value.lng}"
+
+
+class CalAddress(str):
+    """A property that contains a calendar user address."""
+
+    @classmethod
+    def __get_valiators__(cls) -> Generator[Callable[[Any], Any], None, None]:
+        yield cls.parse
+
+    @classmethod
+    def parse(cls, prop: ParsedProperty) -> CalAddress:
+        """Parse a calendar user address."""
+        urlparse(prop.value)
+        return CalAddress(prop.value)
 
 
 def parse_date(prop: ParsedProperty) -> datetime.date | None:
@@ -344,6 +359,7 @@ class PropertyDataType(enum.Enum):
     INTEGER = ("INTEGER", int, parse_int, str)
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
+    CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
 
     def __init__(
         self,

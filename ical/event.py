@@ -9,7 +9,14 @@ from typing import Any, Optional, Union
 from pydantic import Field, root_validator, validator
 
 from .contentlines import ParsedProperty
-from .types import Classification, ComponentModel, EventStatus, Geo, parse_text
+from .types import (
+    CalAddress,
+    Classification,
+    ComponentModel,
+    EventStatus,
+    Geo,
+    parse_text,
+)
 
 MIDNIGHT = datetime.time()
 
@@ -47,6 +54,8 @@ class Event(ComponentModel):
         alias="last-modified", default=None
     )
     resources: list[str] = Field(default_factory=list)
+    organizer: Optional[CalAddress] = None
+    attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
 
     extras: list[ParsedProperty] = Field(default_factory=list)
 
@@ -59,7 +68,6 @@ class Event(ComponentModel):
     # - recurid
     # -- multiple
     # - attach
-    # - attendee
     # - contact
     # - related
 

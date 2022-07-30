@@ -13,8 +13,8 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Serializing property parameters
 - Serializing extra properties
 - Encoded timezones
-- Add Organizer fields
 - Repeated property serialization e.g. 'resources.yaml'. Multi-line vs repeated, and preserving property parameters
+- Property parameters for attendee, organizer fields
 
 
 - Components
@@ -29,13 +29,8 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
     - url
     - recurid
 
-    -- one or other
-    - dtend
-    - duration
-
     -- multiple
     - attach
-    - attendee
     - categories
     - contact
     - related
