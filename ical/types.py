@@ -100,13 +100,17 @@ class Geo:
     lat: float
     lng: float
 
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
+        yield cls.parse_geo
 
-def parse_geo(value: Any) -> Geo:
-    """Parse a rfc5545 lat long geo values."""
-    parts = parse_text(value).split(";", 2)
-    if len(parts) != 2:
-        raise ValueError(f"Value was not valid geo lat;long: {value}")
-    return Geo(lat=float(parts[0]), lng=float(parts[1]))
+    @classmethod
+    def parse_geo(cls, value: Any) -> Geo:
+        """Parse a rfc5545 lat long geo values."""
+        parts = parse_text(value).split(";", 2)
+        if len(parts) != 2:
+            raise ValueError(f"Value was not valid geo lat;long: {value}")
+        return Geo(lat=float(parts[0]), lng=float(parts[1]))
 
 
 def encode_geo_ics(value: Geo) -> str:
@@ -116,10 +120,6 @@ def encode_geo_ics(value: Geo) -> str:
 
 class CalAddress(str):
     """A value type for a property that contains a calendar user address."""
-
-    @classmethod
-    def __get_valiators__(cls) -> Generator[Callable[[Any], Any], None, None]:
-        yield cls.parse
 
     @classmethod
     def parse(cls, prop: ParsedProperty) -> CalAddress:
@@ -360,12 +360,10 @@ class PropertyDataType(enum.Enum):
 
     # Types to support
     #   BINARY
-    #   CAL-ADDRESS
     #   FLOAT
     #   PERIOD
     #   RECUR
     #   TIME
-    #   URI
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
     DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
@@ -425,7 +423,6 @@ ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
         property_data_type.data_type: property_data_type.decode
         for property_data_type in PropertyDataType
     },
-    Geo: parse_geo,
 }
 
 
