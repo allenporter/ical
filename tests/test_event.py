@@ -30,10 +30,13 @@ SUMMARY = "test summary"
         ),
     ],
 )
-def test_duration(begin: datetime, end: datetime, duration: timedelta) -> None:
+def test_start_end_duration(
+    begin: datetime, end: datetime, duration: timedelta
+) -> None:
     """Test event duration calculation."""
     event = Event(summary=SUMMARY, start=begin, end=end)
-    assert event.duration == duration
+    assert event.computed_duration == duration
+    assert not event.duration
 
 
 def test_comparisons() -> None:
@@ -141,3 +144,27 @@ def test_start_end_local_time() -> None:
             start=datetime(2022, 9, 9, 10, 0, 0),
             end=datetime(2022, 9, 9, 11, 0, 0, tzinfo=timezone.utc),
         )
+
+
+def test_start_and_duration() -> None:
+    """Verify event created with a duration instead of explicit end time."""
+
+    event = Event(summary=SUMMARY, start=date(2022, 9, 9), duration=timedelta(days=3))
+    assert event.start == date(2022, 9, 9)
+    assert event.end == date(2022, 9, 12)
+
+    with pytest.raises(ValidationError):
+        Event(summary=SUMMARY, start=date(2022, 9, 9), duration=timedelta(days=-3))
+
+    with pytest.raises(ValidationError):
+        Event(summary=SUMMARY, start=date(2022, 9, 9), duration=timedelta(seconds=60))
+
+    event = Event(
+        summary=SUMMARY,
+        start=datetime(2022, 9, 9, 10, 0, 0),
+        duration=timedelta(seconds=60),
+    )
+    assert event.start == datetime(2022, 9, 9, 10, 0, 0)
+    assert event.end == datetime(2022, 9, 9, 10, 1, 0)
+    assert event.duration == timedelta(seconds=60)
+    assert event.computed_duration == timedelta(seconds=60)

@@ -31,9 +31,8 @@ class Event(ComponentModel):
         default=None,
     )
     # Has an alias of 'end'
-    dtend: Optional[Union[datetime.datetime, datetime.date]] = Field(
-        default=None,
-    )
+    dtend: Optional[Union[datetime.datetime, datetime.date]] = None
+    duration: Optional[datetime.timedelta] = None
     description: str = ""
     transparency: Optional[str] = Field(alias="transp", default=None)
     categories: list[str] = Field(default_factory=list)
@@ -58,9 +57,6 @@ class Event(ComponentModel):
     # - status
     # - url
     # - recurid
-    # -- one or other
-    # - dtend
-    # - duration
     # -- multiple
     # - attach
     # - attendee
@@ -83,6 +79,8 @@ class Event(ComponentModel):
     @property
     def end(self) -> Union[datetime.datetime, datetime.date, None]:
         """Return the end time for the event."""
+        if self.duration:
+            return self.dtstart + self.duration
         return self.dtend
 
     @property
@@ -103,11 +101,13 @@ class Event(ComponentModel):
         raise ValueError("Unable to convert date to datetime")
 
     @property
-    def duration(self) -> datetime.timedelta:
+    def computed_duration(self) -> datetime.timedelta:
         """Return the event duration."""
-        if not self.end:
-            raise ValueError("Cannot determine duration with no event end")
-        return self.end - self.start
+        if self.end:
+            return self.end - self.start
+        if not self.duration:
+            raise ValueError("Invalid state, expected end or duration")
+        return self.duration
 
     def starts_within(self, other: "Event") -> bool:
         """Return True if this event starts while the other event is active."""
@@ -203,9 +203,9 @@ class Event(ComponentModel):
     def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
         if (
-            not (dtstart := values.get("dtstart"))
-            or not (dtend := values.get("dtend"))
-            or type(dtstart) != type(dtend)  # pylint: disable=unidiomatic-typecheck
+            (dtstart := values.get("dtstart"))
+            and (dtend := values.get("dtend"))
+            and type(dtstart) != type(dtend)  # pylint: disable=unidiomatic-typecheck
         ):
             raise ValueError("Expected end value type to match start")
         return values
@@ -226,4 +226,24 @@ class Event(ComponentModel):
             )
         if dtstart.tzinfo is not None and dtend.tzinfo is None:
             raise ValueError(f"Expected end datetime with timezone but was {dtend}")
+        return values
+
+    @root_validator
+    def validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that only one of duration or end date may be set."""
+        if values.get("dtend") and values.get("duration"):
+            raise ValueError("Only one of dtend or duration may be set." "")
+        return values
+
+    @root_validator
+    def validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate the duration is the appropriate units."""
+        if not (duration := values.get("duration")):
+            return values
+        dtstart = values["dtstart"]
+        if type(dtstart) == datetime.date:  # pylint: disable=unidiomatic-typecheck
+            if duration.seconds != 0:
+                raise ValueError("Event with start date expects duration in days only")
+        if duration < datetime.timedelta(seconds=0):
+            raise ValueError(f"Expected duration to be positive but was {duration}")
         return values
