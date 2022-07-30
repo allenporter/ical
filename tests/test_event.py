@@ -1,8 +1,9 @@
 """Tests for Event library."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
+from pydantic import ValidationError
 
 from ical.event import Event
 
@@ -96,3 +97,47 @@ def test_within_and_includes() -> None:
     assert not event2.is_included_in(event3)
     assert not event3.is_included_in(event1)
     assert not event3.is_included_in(event2)
+
+
+def test_start_end_same_type() -> None:
+    """Verify that the start and end value are the same type."""
+
+    with pytest.raises(ValidationError):
+        Event(
+            summary=SUMMARY, start=date(2022, 9, 9), end=datetime(2022, 9, 9, 11, 0, 0)
+        )
+
+    with pytest.raises(ValidationError):
+        Event(
+            summary=SUMMARY, start=datetime(2022, 9, 9, 10, 0, 0), end=date(2022, 9, 9)
+        )
+
+
+def test_start_end_local_time() -> None:
+    """Verify that the start and end value are the same type."""
+
+    # Valid
+    Event(
+        summary=SUMMARY,
+        start=datetime(2022, 9, 9, 10, 0, 0),
+        end=datetime(2022, 9, 9, 11, 0, 0),
+    )
+    Event(
+        summary=SUMMARY,
+        start=datetime(2022, 9, 9, 10, 0, 0, tzinfo=timezone.utc),
+        end=datetime(2022, 9, 9, 11, 0, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ValidationError):
+        Event(
+            summary=SUMMARY,
+            start=datetime(2022, 9, 9, 10, 0, 0, tzinfo=timezone.utc),
+            end=datetime(2022, 9, 9, 11, 0, 0),
+        )
+
+    with pytest.raises(ValidationError):
+        Event(
+            summary=SUMMARY,
+            start=datetime(2022, 9, 9, 10, 0, 0),
+            end=datetime(2022, 9, 9, 11, 0, 0, tzinfo=timezone.utc),
+        )
