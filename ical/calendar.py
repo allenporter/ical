@@ -7,6 +7,7 @@ from typing import Optional
 
 from pydantic import Field
 
+from .contentlines import ParsedProperty
 from .event import Event
 from .timeline import Timeline
 from .todo import Todo
@@ -19,15 +20,17 @@ _PRODID = metadata.metadata("ical")["prodid"]
 class Calendar(ComponentModel):
     """A sequence of calendar properities and calendar components."""
 
-    version: str = Field(default=_VERSION)
-    prodid: str = Field(default=_PRODID)
     calscale: Optional[str] = None
     method: Optional[str] = None
-    x_prop: Optional[str] = None
-    iana_prop: Optional[str] = None
+    prodid: str = Field(default=_PRODID)
+    version: str = Field(default=_VERSION)
 
+    # Calendar components
     events: list[Event] = Field(alias="vevent", default_factory=list)
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)
+
+    # Unknown or unsupported properties
+    extras: list[ParsedProperty] = Field(default_factory=list)
 
     @property
     def timeline(self) -> Timeline:
