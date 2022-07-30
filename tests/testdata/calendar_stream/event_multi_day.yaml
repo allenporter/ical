@@ -31,10 +31,7 @@ output:
       status: CONFIRMED
       categories:
       - CONFERENCE
-      extras:
-      - name: organizer
-        params:
-        value: mailto:jsmith@example.com
+      organizer: mailto:jsmith@example.com
 encoded: |-
   BEGIN:VCALENDAR
   VERSION:2.0
@@ -49,5 +46,6 @@ encoded: |-
     Center\nAtlanta\, Georgia
   CATEGORIES:CONFERENCE
   STATUS:CONFIRMED
+  ORGANIZER:mailto:jsmith@example.com
   END:VEVENT
   END:VCALENDAR
