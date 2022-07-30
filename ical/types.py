@@ -332,7 +332,6 @@ class PropertyDataType(enum.Enum):
     # Types to support
     #   BINARY
     #   CAL-ADDRESS
-    #   DURATION
     #   FLOAT
     #   PERIOD
     #   RECUR
