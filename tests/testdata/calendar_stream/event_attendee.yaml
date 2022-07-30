@@ -5,9 +5,9 @@ input: |-
  BEGIN:VEVENT
  DTSTAMP:20070423T123432Z
  UID:20070423T123432Z-541111@example.com
- SUMMARY:Festival International de Jazz de Montreal
  DTSTART:20070628
  DTEND:20070709
+ SUMMARY:Festival International de Jazz de Montreal
  ATTENDEE;MEMBER="mailto:DEV-GROUP@example.com":
   mailto:joecool@example.com
  ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":
@@ -36,11 +36,11 @@ encoded: |-
  BEGIN:VEVENT
  DTSTAMP:20070423T123432Z
  UID:20070423T123432Z-541111@example.com
- SUMMARY:Festival International de Jazz de Montreal
  DTSTART:20070628
  DTEND:20070709
- ORGANIZER:mailto:jsmith@example.com
+ SUMMARY:Festival International de Jazz de Montreal
  ATTENDEE:mailto:joecool@example.com
  ATTENDEE:mailto:ildoit@example.com
+ ORGANIZER:mailto:jsmith@example.com
  END:VEVENT
  END:VCALENDAR

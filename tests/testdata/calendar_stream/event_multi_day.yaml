@@ -6,9 +6,9 @@ input: |-
   DTSTAMP:19960704T120000Z
   UID:uid1@example.com
   ORGANIZER:mailto:jsmith@example.com
-  SUMMARY:Networld+Interop Conference
   DTSTART:19960918T143000Z
   DTEND:19960920T220000Z
+  SUMMARY:Networld+Interop Conference
   CATEGORIES:CONFERENCE
   DESCRIPTION:Networld+Interop Conference
     and Exhibit\nAtlanta World Congress Center\n
@@ -39,13 +39,13 @@ encoded: |-
   BEGIN:VEVENT
   DTSTAMP:19960704T120000Z
   UID:uid1@example.com
-  SUMMARY:Networld+Interop Conference
   DTSTART:19960918T143000Z
   DTEND:19960920T220000Z
+  SUMMARY:Networld+Interop Conference
+  CATEGORIES:CONFERENCE
   DESCRIPTION:Networld+Interop Conference and Exhibit\nAtlanta World Congress
     Center\nAtlanta\, Georgia
-  CATEGORIES:CONFERENCE
-  STATUS:CONFIRMED
   ORGANIZER:mailto:jsmith@example.com
+  STATUS:CONFIRMED
   END:VEVENT
   END:VCALENDAR
