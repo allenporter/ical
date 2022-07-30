@@ -31,8 +31,6 @@ class Event(ComponentModel):
         default_factory=datetime.datetime.utcnow
     )
     uid: str = Field(default_factory=uuid.uuid1)
-
-    summary: str = ""
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
@@ -40,27 +38,29 @@ class Event(ComponentModel):
     # Has an alias of 'end'
     dtend: Optional[Union[datetime.datetime, datetime.date]] = None
     duration: Optional[datetime.timedelta] = None
-    description: str = ""
-    transparency: Optional[str] = Field(alias="transp", default=None)
+    summary: str = ""
+
+    attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
-    status: Optional[EventStatus] = None
     classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
-    geo: Optional[Geo] = None
-    location: str = ""
-    organization: str = ""
     created: Optional[datetime.datetime] = None
+    description: str = ""
+    geo: Optional[Geo] = None
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
     )
-    resources: list[str] = Field(default_factory=list)
+    location: str = ""
+    organization: str = ""
     organizer: Optional[CalAddress] = None
-    attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
+    resources: list[str] = Field(default_factory=list)
+    status: Optional[EventStatus] = None
+    transparency: Optional[str] = Field(alias="transp", default=None)
 
+    # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
 
     # Other properties needed:
-    # - organizer
     # - priority
     # - seq
     # - status

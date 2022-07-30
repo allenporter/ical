@@ -5,9 +5,9 @@ input: |-
   BEGIN:VEVENT
   DTSTAMP:20070423T123432Z
   UID:20070423T123432Z-541111@example.com
-  SUMMARY:Festival International de Jazz de Montreal
   DTSTART;VALUE=DATE:20070628
   DTEND;VALUE=DATE:20070709
+  SUMMARY:Festival International de Jazz de Montreal
   TRANSP:TRANSPARENT
   END:VEVENT
   END:VCALENDAR
@@ -29,9 +29,9 @@ encoded: |-
   BEGIN:VEVENT
   DTSTAMP:20070423T123432Z
   UID:20070423T123432Z-541111@example.com
-  SUMMARY:Festival International de Jazz de Montreal
   DTSTART:20070628
   DTEND:20070709
+  SUMMARY:Festival International de Jazz de Montreal
   TRANSP:TRANSPARENT
   END:VEVENT
   END:VCALENDAR
