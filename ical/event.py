@@ -15,6 +15,8 @@ from .types import (
     ComponentModel,
     EventStatus,
     Geo,
+    Priority,
+    Uri,
     parse_text,
 )
 
@@ -44,6 +46,7 @@ class Event(ComponentModel):
     categories: list[str] = Field(default_factory=list)
     classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
+    contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: str = ""
     geo: Optional[Geo] = None
@@ -53,23 +56,21 @@ class Event(ComponentModel):
     location: str = ""
     organization: str = ""
     organizer: Optional[CalAddress] = None
+    priority: Optional[Priority] = None
+    related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
+    url: Optional[Uri] = None
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
 
     # Other properties needed:
-    # - priority
     # - seq
-    # - status
-    # - url
     # - recurid
     # -- multiple
     # - attach
-    # - contact
-    # - related
 
     def __init__(self, **data: dict[str, Any]) -> None:
         """Initialize Event."""
