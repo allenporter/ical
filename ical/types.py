@@ -115,7 +115,7 @@ def encode_geo_ics(value: Geo) -> str:
 
 
 class CalAddress(str):
-    """A property that contains a calendar user address."""
+    """A value type for a property that contains a calendar user address."""
 
     @classmethod
     def __get_valiators__(cls) -> Generator[Callable[[Any], Any], None, None]:
@@ -126,6 +126,20 @@ class CalAddress(str):
         """Parse a calendar user address."""
         urlparse(prop.value)
         return CalAddress(prop.value)
+
+
+class Uri(str):
+    """A value type for a property that contains a uniform resource identifier."""
+
+    @classmethod
+    def __get_valiators__(cls) -> Generator[Callable[[Any], Any], None, None]:
+        yield cls.parse
+
+    @classmethod
+    def parse(cls, prop: ParsedProperty) -> Uri:
+        """Parse a calendar user address."""
+        urlparse(prop.value)
+        return Uri(prop.value)
 
 
 def parse_date(prop: ParsedProperty) -> datetime.date | None:
@@ -360,6 +374,7 @@ class PropertyDataType(enum.Enum):
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
     CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
+    URI = ("URI", Uri, Uri.parse, str)
 
     def __init__(
         self,
