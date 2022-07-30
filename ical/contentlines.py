@@ -258,7 +258,7 @@ def parse_content_tokens(lines: list[str]) -> list[ParseResults]:
     parser = _create_parser()
     if _LOGGER.isEnabledFor(logging.DEBUG):
         parser.set_debug(flag=True)
-    return [parser.parse_string(line, parse_all=True) for line in lines]
+    return [parser.parse_string(line, parse_all=True) for line in lines if line]
 
 
 def _fold(contentline: str) -> list[str]:
