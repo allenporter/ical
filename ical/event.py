@@ -214,7 +214,7 @@ class Event(ComponentModel):
         if not (dtstart := values.get("dtstart")) or not (dtend := values.get("dtend")):
             return values
         if not isinstance(dtstart, datetime.datetime) or not isinstance(
-            dtstart, datetime.datetime
+            dtend, datetime.datetime
         ):
             return values
         if dtstart.tzinfo is None and dtend.tzinfo is not None:
