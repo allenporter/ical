@@ -20,7 +20,7 @@ import re
 import zoneinfo
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Generator, TypeVar, Union, get_args, get_origin
+from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, root_validator
@@ -198,7 +198,6 @@ def encode_date_time_ics(value: datetime.datetime) -> str:
 def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
     """Parse a rfc5545 into a datetime.date."""
     value = prop.value
-    _LOGGER.info("parse_duration=%s", value)
     if not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected ParsedProperty but was {prop}")
     value = prop.value
@@ -276,6 +275,11 @@ def parse_int(prop: ParsedProperty) -> int:
     return int(prop.value)
 
 
+def parse_float(prop: ParsedProperty) -> float:
+    """Parse a rfc5545 property into a text value."""
+    return float(prop.value)
+
+
 def parse_boolean(prop: ParsedProperty) -> bool:
     """Parse an rfc5545 property into a boolean."""
     if prop.value == "TRUE":
@@ -288,6 +292,61 @@ def parse_boolean(prop: ParsedProperty) -> bool:
 def encode_boolean_ics(value: bool) -> str:
     """Serialize boolean as an ICS value."""
     return "TRUE" if value else "FALSE"
+
+
+@dataclass
+class Period:
+    """A value with a precise period of time."""
+
+    start: datetime.datetime
+    end: Optional[datetime.datetime] = None
+    duration: Optional[datetime.timedelta] = None
+
+    @property
+    def end_value(self) -> datetime.datetime:
+        """A computed end value based on either or duration."""
+        if self.end:
+            return self.end
+        if not self.duration:
+            raise ValueError("Invalid period missing both end and duration")
+        return self.start + self.duration
+
+    @classmethod
+    def parse(cls, prop: Any) -> Period:
+        """Parse a rfc5545 prioriry value."""
+        if not isinstance(prop, ParsedProperty):
+            raise ValueError(f"Expected ParsedProperty but was {prop}")
+        parts = prop.value.split("/")
+        if len(parts) != 2:
+            raise ValueError(f"Period did not have two time values: {prop.value}")
+        try:
+            start = parse_date_time(ParsedProperty(name="ignored", value=parts[0]))
+        except ValueError as err:
+            _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
+            raise err
+        try:
+            end = parse_date_time(ParsedProperty(name="ignored", value=parts[1]))
+            return Period(start, end=end)
+        except ValueError:
+            pass
+        try:
+            duration = parse_duration(ParsedProperty(name="ignored", value=parts[1]))
+        except ValueError as err:
+            raise err
+        return Period(start, duration=duration)
+
+
+def encode_period_ics(value: Period) -> str:
+    """Serialize a Period as an ICS value."""
+    if not value.end or not value.duration:
+        raise ValueError("Invalid period missing both end and duration")
+    if value.end:
+        return "".join(
+            [encode_date_time_ics(value.start), encode_date_time_ics(value.end)]
+        )
+    return "".join(
+        [encode_date_time_ics(value.start), encode_duration_ics(value.duration)]
+    )
 
 
 def parse_extra_fields(
@@ -360,18 +419,19 @@ class PropertyDataType(enum.Enum):
 
     # Types to support
     #   BINARY
-    #   FLOAT
     #   PERIOD
     #   RECUR
     #   TIME
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
-    DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
+    CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
     DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
+    DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
+    FLOAT = ("FLOAT", float, parse_float, str)
     INTEGER = ("INTEGER", int, parse_int, str)
+    PERIOD = ("PERIOD", Period, Period.parse, encode_period_ics)
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
-    CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
     URI = ("URI", Uri, Uri.parse, str)
 
     def __init__(
