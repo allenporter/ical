@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from ical.contentlines import ParsedComponent, ParsedProperty, ParsedPropertyParameter
-from ical.types import ICS_ENCODERS, ComponentModel, Geo, Priority, encode_model
+from ical.types import ICS_ENCODERS, ComponentModel, Geo, Period, Priority, encode_model
 
 
 def test_text() -> None:
@@ -381,3 +381,109 @@ def test_geo() -> None:
 
     with pytest.raises(ValidationError):
         TestModel.parse_obj({"geo": [ParsedProperty(name="geo", value="10")]})
+
+
+def test_integer() -> None:
+    """Test for int fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: list[int]
+
+    model = TestModel.parse_obj(
+        {
+            "example": [
+                ParsedProperty(name="example", value="45"),
+                ParsedProperty(name="example", value="-46"),
+                ParsedProperty(name="example", value="+47"),
+            ]
+        }
+    )
+    assert model.example == [45, -46, 47]
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+
+
+def test_float() -> None:
+    """Test for float fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: list[float]
+
+    model = TestModel.parse_obj(
+        {
+            "example": [
+                ParsedProperty(name="example", value="45"),
+                ParsedProperty(name="example", value="-46.2"),
+                ParsedProperty(name="example", value="+47.32"),
+            ]
+        }
+    )
+    assert model.example == [45, -46.2, 47.32]
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+
+
+def test_period() -> None:
+    """Test for duration fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: Period
+
+    # Time period with end date
+    model = TestModel.parse_obj(
+        {
+            "example": [
+                ParsedProperty(
+                    name="example", value="19970101T180000Z/19970102T070000Z"
+                )
+            ]
+        },
+    )
+    assert model.example.start == datetime.datetime(
+        1997, 1, 1, 18, 0, 0, tzinfo=datetime.timezone.utc
+    )
+    assert model.example.end
+    assert not model.example.duration
+    assert model.example.end_value == datetime.datetime(
+        1997, 1, 2, 7, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+    # Time period with duration
+    model = TestModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="19970101T180000Z/PT5H30M")]},
+    )
+    assert model.example.start == datetime.datetime(
+        1997, 1, 1, 18, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+    assert not model.example.end
+    assert model.example.duration
+    assert model.example.end_value == datetime.datetime(
+        1997, 1, 1, 23, 30, 0, tzinfo=datetime.timezone.utc
+    )
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {"example": [ParsedProperty(name="example", value="19970101T180000Z/a")]}
+        )
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {"example": [ParsedProperty(name="example", value="a/19970102T070000Z")]}
+        )
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {"example": [ParsedProperty(name="example", value="a/PT5H30M")]}
+        )
