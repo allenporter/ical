@@ -12,10 +12,18 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Accessing non-formatting property parameters
 - Serializing property parameters
 - Serializing extra properties
-- Encoded timezones
+- Encoded timezones e.g.
+        - DTSTART;TZID=America/Los_Angeles:20220802T090000
+        - DTEND;TZID=America/Los_Angeles:20220802T093000
+        + DTSTART:20220802T090000Z
+        + DTEND:20220802T093000Z
 - Repeated property serialization e.g. 'resources.yaml'. Multi-line vs repeated, and preserving property parameters
 - Property parameters for attendee, organizer fields
-
+- Recurrence
+  - Verify start date format is the same as the event
+  - Verify daylight saving time in until and start is the same
+- Recurrence timezone formattings
+- Recurrence datetime field encoded properly
 
 - Components
   - Event

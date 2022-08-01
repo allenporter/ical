@@ -1,0 +1,59 @@
+input: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTART;TZID=America/Los_Angeles:20220802T090000
+  DTEND;TZID=America/Los_Angeles:20220802T093000
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  RRULE:FREQ=DAILY
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  SUMMARY:Morning Daily Exercise
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR
+output:
+  calendars:
+    - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+      version: "2.0"
+      events:
+        - dtstamp: "2022-07-31T19:04:08+00:00"
+          uid: 5gog4qp8rohrj69q63ddvbnbt5@google.com
+          dtstart: "2022-08-02T09:00:00-07:00"
+          dtend: "2022-08-02T09:30:00-07:00"
+          summary: Morning Daily Exercise
+          created: "2022-07-31T19:02:07+00:00"
+          description: ""
+          last_modified: "2022-07-31T19:02:07+00:00"
+          location: ""
+          rrule:
+            freq: DAILY
+          sequence: 0
+          status: CONFIRMED
+          transparency: OPAQUE
+encoded: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  DTSTART:20220802T090000Z
+  DTEND:20220802T093000Z
+  SUMMARY:Morning Daily Exercise
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  RRULE:FREQ=DAILY
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR

@@ -19,7 +19,7 @@ import logging
 import re
 import textwrap
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, cast
 
 from pyparsing import (
     Combine,
@@ -186,12 +186,12 @@ def parse_contentlines(lines: list[str]) -> list[ParsedComponent]:
     stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
     for result in token_results:
         result_dict = result.as_dict()
-        if PARSE_NAME not in result_dict or PARSE_VALUE not in result_dict:
+        if PARSE_NAME not in result_dict:
             raise ValueError(
                 f"Missing fields {PARSE_NAME} or {PARSE_VALUE} in {result_dict}"
             )
         name = result_dict[PARSE_NAME]
-        value = result_dict[PARSE_VALUE]
+        value = result_dict.get(PARSE_VALUE, "")
         if name == ATTR_BEGIN:
             stack.append(ParsedComponent(name=value.lower()))
         elif name == ATTR_END:
@@ -206,7 +206,7 @@ def parse_contentlines(lines: list[str]) -> list[ParsedComponent]:
             name = name.lower()
             property_dict = {
                 PARSE_NAME: name,
-                PARSE_VALUE: result_dict[PARSE_VALUE],
+                PARSE_VALUE: value,
             }
             if property_params := _parse_property_params(result_dict):
                 property_dict[PARSE_PARAMS] = property_params
@@ -247,10 +247,10 @@ def _create_parser() -> ParserElement:
             PARSE_PARAMS, list_all_matches=True
         )
         + ":"
-        + Word(VALUE_CHAR).set_results_name(PARSE_VALUE)
+        + Word(VALUE_CHAR)[0, 1].set_results_name(PARSE_VALUE)
     )
     contentline.set_whitespace_chars("")
-    return contentline
+    return cast(ParserElement, contentline)
 
 
 def parse_content_tokens(lines: list[str]) -> list[ParseResults]:
