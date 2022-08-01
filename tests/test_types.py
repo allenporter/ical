@@ -128,7 +128,7 @@ def test_datedatime_parser() -> None:
 
 
 def test_datedatime_value_parser() -> None:
-    """Test a datetime with a property paramer value."""
+    """Test a datetime with a property parameter value."""
 
     class TestModel(ComponentModel):
         """Model under test."""

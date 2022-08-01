@@ -43,7 +43,7 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
   - time zone
   - alarm
 
-- Compenent properties
+- Component properties
   - attachment
   - categories
   - classification
@@ -52,7 +52,7 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
   - geographic position
   - location
   - percent complete
-  - proirity
+  - priority
   - resources
   - status
   - summary

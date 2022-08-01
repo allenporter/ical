@@ -88,7 +88,7 @@ def test_iteration(calendar: Calendar) -> None:
 def test_on_date(
     calendar: Calendar, when: datetime.date, expected_events: list[str]
 ) -> None:
-    """Test returning events on a particualr day."""
+    """Test returning events on a particular day."""
     assert [e.summary for e in calendar.timeline.on_date(when)] == expected_events
 
 

@@ -18,7 +18,7 @@ _PRODID = metadata.metadata("ical")["prodid"]
 
 
 class Calendar(ComponentModel):
-    """A sequence of calendar properities and calendar components."""
+    """A sequence of calendar properties and calendar components."""
 
     calscale: Optional[str] = None
     method: Optional[str] = None
