@@ -46,3 +46,7 @@ repos:
         "--disable=too-few-public-methods",
         "--disable=duplicate-code",
       ]
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.1.0
+  hooks:
+    - id: codespell

@@ -380,7 +380,7 @@ class Frequency(str, enum.Enum):
 class Recur(BaseModel):
     """A type used to identify properties that contain a recurrence rule specification.
 
-    The by properties reduce or limit the number of ocurrences generated. Only by day
+    The by properties reduce or limit the number of occurrences generated. Only by day
     of the week and by month day are supported.
 
     Parts of rfc5545 recurrence spec not supported:
@@ -397,7 +397,7 @@ class Recur(BaseModel):
     """The inclusive end date of the recurrence, or the last instance."""
 
     count: Optional[int] = None
-    """The number of occurences to bound the recurrence."""
+    """The number of occurrences to bound the recurrence."""
 
     interval: int = 1
     """Interval at which the recurrence rule repeats."""
@@ -621,7 +621,7 @@ def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
     if value_type := value.get_parameter_value(ATTR_VALUE):
         # Property parameter specified a very specific type
         if not (data_type := VALUE_TYPES.get(value_type)):
-            # Consider graceful degredation instead in the future
+            # Consider graceful degradation instead in the future
             raise ValueError(
                 f"Property parameter specified unsupported type: {value_type}"
             )

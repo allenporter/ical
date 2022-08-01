@@ -45,7 +45,7 @@ class Timeline(Iterable[Event]):
         start: datetime.date | datetime.datetime,
         end: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:
-        """Return an interator containing events active during the timespan."""
+        """Return an iterator containing events active during the timespan."""
         timespan = Event(summary="", start=start, end=end)
         for event in self:
             if event.intersects(timespan):
@@ -55,7 +55,7 @@ class Timeline(Iterable[Event]):
         self,
         instant: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:
-        """Return an interator containing events starting after the specified time."""
+        """Return an iterator containing events starting after the specified time."""
         for event in self:
             if event.start > instant:
                 yield event
@@ -64,7 +64,7 @@ class Timeline(Iterable[Event]):
         self,
         instant: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:  # pylint: disable
-        """Return an interator containing events starting after the specified time."""
+        """Return an iterator containing events starting after the specified time."""
         timespan = Event(summary="", start=instant, end=instant)
         for event in self:
             if event.includes(timespan):

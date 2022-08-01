@@ -21,5 +21,5 @@ $ py.tests
 
 ## Contributing
 
-Commiting the change will run all necessary formatting, type checking, and
+Committing the change will run all necessary formatting, type checking, and
 linting. Prefer small PRs to make reviews easy to manage.
