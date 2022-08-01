@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, Field, root_validator
 from pydantic.fields import SHAPE_LIST
 
 from .contentlines import ParsedComponent, ParsedProperty
@@ -349,6 +349,104 @@ def encode_period_ics(value: Period) -> str:
     )
 
 
+class Weekday(str, enum.Enum):
+    """Corresponds to a day of the week."""
+
+    SUNDAY = "SU"
+    MONDAY = "MO"
+    TUESDAY = "TU"
+    WEDNESDAY = "WE"
+    THURSDAY = "TH"
+    FRIDAY = "FR"
+    SATURDAY = "SA"
+
+
+class Frequency(str, enum.Enum):
+    """Type of recurrence rule.
+
+    Frequencies SECONDLY, MINUTELY, HOURLY, YEARLY are not supported.
+    """
+
+    DAILY = "DAILY"
+    """Repeating events based on an interval of a day or more."""
+
+    WEEKLY = "WEEKLY"
+    """Repeating events based on an interval of a week or more."""
+
+    MONTHLY = "MONTHLY"
+    """Repeating events based on an interval of a month or more."""
+
+
+class Recur(BaseModel):
+    """A type used to identify properties that contain a recurrence rule specification.
+
+    The by properties reduce or limit the number of ocurrences generated. Only by day
+    of the week and by month day are supported.
+
+    Parts of rfc5545 recurrence spec not supported:
+      By second, minute, hour
+      By yearday, weekno, month
+      Wkst rules are
+      Bysetpos rules
+      Negative "by" rules.
+    """
+
+    freq: Frequency
+
+    until: Optional[datetime.datetime] = None
+    """The inclusive end date of the recurrence, or the last instance."""
+
+    count: Optional[int] = None
+    """The number of occurences to bound the recurrence."""
+
+    interval: int = 1
+    """Interval at which the recurrence rule repeats."""
+
+    by_day: list[Weekday] = Field(alias="byday", default_factory=list)
+    """Supported days of the week."""
+
+    by_month_day: list[int] = Field(alias="bymonthday", default_factory=list)
+    """Days of the month between 1 to 31."""
+
+
+def parse_recur(prop: Any) -> dict[str, Any]:
+    """Parse the recurrence rule text as a dictionary as Pydantic input.
+
+    An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
+    into dictionary.
+    """
+    if not isinstance(prop, ParsedProperty):
+        raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
+    result: dict[str, datetime.datetime | str | list[str]] = {}
+    for part in prop.value.split(";"):
+        if "=" not in part:
+            raise ValueError(
+                f"Recurrence rule had unexpected format missing '=': {prop.value}"
+            )
+        key, value = part.split("=")
+        key = key.lower()
+        if key == "until":
+            result[key] = parse_date_time(ParsedProperty(name="ignored", value=value))
+        elif key in ("byday", "bymonthday"):
+            result[key] = value.split(",")
+        else:
+            result[key] = value
+    return result
+
+
+def encode_recur_ics(recur: Recur) -> str:
+    """Encode the recurence rule in ICS format."""
+    result = []
+    for key, value in dict(recur).items():
+        # Need to encode based on field type also using json encoders
+        if key == "until":
+            value = encode_date_time_ics(value)
+        elif key in ("byday", "bymonthday"):
+            value = ",".join([str(val) for val in value])
+        result.append(f"{key.upper()}={value}")
+    return ";".join(result)
+
+
 def parse_extra_fields(
     cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
 ) -> dict[str, Any]:
@@ -377,6 +475,15 @@ def encode_model(name: str, model: BaseModel) -> ParsedComponent:
     return encode_component(name, model, model_data)
 
 
+# For additional decoding of properties after they have already
+# been handled by the json encoder.
+POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
+    Recur: encode_recur_ics,
+    datetime.timedelta: encode_duration_ics,
+    str: encode_text,
+}
+
+
 def encode_component(
     name: str, model: BaseModel, model_data: dict[str, Any]
 ) -> ParsedComponent:
@@ -386,27 +493,27 @@ def encode_component(
     for field in model.__fields__.values():
         key = field.alias
         values = model_data.get(key)
-        if not values or key == "extras":
+        if values is None or key == "extras":
             continue
         if isinstance(values, list):
             for value in values:
-                if issubclass(field.type_, BaseModel):
+                if not (encoder := POST_JSON_ENCODERS.get(field.type_)) and issubclass(
+                    field.type_, BaseModel
+                ):
                     parent.components.append(encode_component(key, field.type_, value))
                 else:
-                    if field.type_ == datetime.timedelta:
-                        value = encode_duration_ics(value)
-                    elif field.type_ == str:
-                        value = encode_text(value)
+                    if encoder:
+                        value = encoder(value)
                     parent.properties.append(ParsedProperty(name=key, value=value))
-        elif get_origin(field.type_) is not Union and issubclass(
-            field.type_, BaseModel
+        elif (
+            not (encoder := POST_JSON_ENCODERS.get(field.type_))
+            and get_origin(field.type_) is not Union
+            and issubclass(field.type_, BaseModel)
         ):
             parent.components.append(encode_component(key, field.type_, values))
         else:
-            if field.type_ == datetime.timedelta:
-                values = encode_duration_ics(values)
-            elif field.type_ == str:
-                values = encode_text(values)
+            if encoder:
+                values = encoder(values)
             parent.properties.append(ParsedProperty(name=key, value=values))
     return parent
 
@@ -433,6 +540,7 @@ class PropertyDataType(enum.Enum):
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
     URI = ("URI", Uri, Uri.parse, str)
+    RECUR = ("RECUR", Recur, parse_recur, encode_recur_ics)
 
     def __init__(
         self,

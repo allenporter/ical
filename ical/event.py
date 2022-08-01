@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from typing import Any, Optional, Union
 
@@ -16,9 +17,12 @@ from .types import (
     EventStatus,
     Geo,
     Priority,
+    Recur,
     Uri,
     parse_text,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 MIDNIGHT = datetime.time()
 
@@ -59,6 +63,8 @@ class Event(ComponentModel):
     priority: Optional[Priority] = None
     related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
+    rrule: Optional[Recur] = None
+    sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
     url: Optional[Uri] = None
@@ -67,7 +73,6 @@ class Event(ComponentModel):
     extras: list[ParsedProperty] = Field(default_factory=list)
 
     # Other properties needed:
-    # - seq
     # - recurid
     # -- multiple
     # - attach
