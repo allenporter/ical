@@ -24,18 +24,14 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
   - Verify daylight saving time in until and start is the same
 - Recurrence timezone formattings
 - Recurrence datetime field encoded properly
+- Ignore and preserve unsupported Recurrence rules
 
 - Components
   - Event
     ---- once
-    - seq
-    - transp
-    - url
     - recurid
     -- multiple
     - attach
-    - categories
-    - contact
     - related
   - todo
   - journal
@@ -45,12 +41,8 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 
 - Component properties
   - attachment
-  - categories
-  - classification
   - comment
   - description
-  - geographic position
-  - location
   - percent complete
   - priority
   - resources

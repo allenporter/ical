@@ -393,7 +393,7 @@ class Recur(BaseModel):
 
     freq: Frequency
 
-    until: Optional[datetime.datetime] = None
+    until: Union[datetime.datetime, datetime.date, None] = None
     """The inclusive end date of the recurrence, or the last instance."""
 
     count: Optional[int] = None
@@ -402,11 +402,16 @@ class Recur(BaseModel):
     interval: int = 1
     """Interval at which the recurrence rule repeats."""
 
-    by_day: list[Weekday] = Field(alias="byday", default_factory=list)
+    by_week_day: list[Weekday] = Field(alias="byday", default_factory=list)
     """Supported days of the week."""
 
     by_month_day: list[int] = Field(alias="bymonthday", default_factory=list)
     """Days of the month between 1 to 31."""
+
+    class Config:
+        """Pydantic model configuration."""
+
+        allow_population_by_field_name = True
 
 
 def parse_recur(prop: Any) -> dict[str, Any]:
