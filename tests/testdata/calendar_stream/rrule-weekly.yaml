@@ -34,7 +34,7 @@ output:
           location: ""
           rrule:
             freq: WEEKLY
-            by_day:
+            by_week_day:
               - TH
           sequence: 0
           status: CONFIRMED
