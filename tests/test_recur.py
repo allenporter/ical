@@ -279,3 +279,30 @@ def test_monthly_iteration(
     )
     timeline = recur_timeline(event)
     assert [(e.start, e.end) for e in timeline] == expected
+
+
+def test_recur_no_bound() -> None:
+    """Test a recurrence rule with no end date."""
+
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 8, 1),
+        end=datetime.date(2022, 8, 2),
+        rrule=Recur(freq=Frequency.DAILY, interval=2),
+    )
+    timeline = recur_timeline(event)
+
+    def on_date(day: datetime.date) -> list[datetime.date]:
+        return [e.start for e in timeline.on_date(day)]
+
+    assert on_date(datetime.date(2022, 8, 1)) == [datetime.date(2022, 8, 1)]
+    assert on_date(datetime.date(2022, 8, 2)) == []
+    assert on_date(datetime.date(2022, 8, 3)) == [datetime.date(2022, 8, 3)]
+
+    assert on_date(datetime.date(2025, 1, 1)) == [datetime.date(2025, 1, 1)]
+    assert on_date(datetime.date(2025, 1, 2)) == []
+    assert on_date(datetime.date(2025, 1, 3)) == [datetime.date(2025, 1, 3)]
+
+    assert on_date(datetime.date(2035, 9, 1)) == []
+    assert on_date(datetime.date(2035, 9, 2)) == [datetime.date(2035, 9, 2)]
+    assert on_date(datetime.date(2035, 9, 3)) == []

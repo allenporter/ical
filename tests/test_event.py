@@ -168,3 +168,69 @@ def test_start_and_duration() -> None:
     assert event.end == datetime(2022, 9, 9, 10, 1, 0)
     assert event.duration == timedelta(seconds=60)
     assert event.computed_duration == timedelta(seconds=60)
+
+
+@pytest.mark.parametrize(
+    "range1,range2,expected",
+    [
+        (
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            True,
+        ),
+        (
+            (date(2022, 8, 1), date(2022, 8, 4)),
+            (date(2022, 8, 2), date(2022, 8, 3)),
+            True,
+        ),
+        (
+            (date(2022, 8, 1), date(2022, 8, 3)),
+            (date(2022, 8, 2), date(2022, 8, 4)),
+            True,
+        ),
+        (
+            (date(2022, 8, 2), date(2022, 8, 3)),
+            (date(2022, 8, 1), date(2022, 8, 4)),
+            True,
+        ),
+        (
+            (date(2022, 8, 3), date(2022, 8, 4)),
+            (date(2022, 8, 1), date(2022, 8, 4)),
+            True,
+        ),
+        (
+            (date(2022, 8, 2), date(2022, 8, 4)),
+            (date(2022, 8, 1), date(2022, 8, 4)),
+            True,
+        ),
+        (
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            (date(2022, 8, 3), date(2022, 8, 4)),
+            False,
+        ),
+        (
+            (date(2022, 8, 3), date(2022, 8, 4)),
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            False,
+        ),
+        (
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            (date(2022, 8, 2), date(2022, 8, 3)),
+            False,
+        ),
+        (
+            (date(2022, 8, 2), date(2022, 8, 3)),
+            (date(2022, 8, 1), date(2022, 8, 2)),
+            False,
+        ),
+    ],
+)
+def test_date_intersects(
+    range1: tuple[date, date],
+    range2: tuple[date, date],
+    expected: bool,
+) -> None:
+    """Test event intersection."""
+    event1 = Event(summary=SUMMARY, start=range1[0], end=range1[1])
+    event2 = Event(summary=SUMMARY, start=range2[0], end=range2[1])
+    assert event1.intersects(event2) == expected
