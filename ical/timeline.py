@@ -15,26 +15,6 @@ from .types import Frequency, Weekday
 _LOGGER = logging.getLogger(__name__)
 
 
-class SortedIterable(Iterable[Event]):
-    """Iterable that returns events in sorted order."""
-
-    def __init__(self, iterable: Iterable[Event]) -> None:
-        """Initialize timeline."""
-        self._iterable = iterable
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return an iterator as a traversal over events in chronological order."""
-        # Using a heap is faster than sorting if the number of events (n) is
-        # much bigger than the number of events we extract from the iterator (k).
-        # Complexity: O(n + k log n).
-        heap: list[tuple[datetime.date | datetime.datetime, Event]] = []
-        for event in iter(self._iterable):
-            heapq.heappush(heap, (event.start, event))
-        while heap:
-            (_, event) = heapq.heappop(heap)
-            yield event
-
-
 class Timeline(Iterable[Event]):
     """A set of events on a calendar."""
 
@@ -51,7 +31,10 @@ class Timeline(Iterable[Event]):
         start: datetime.date | datetime.datetime,
         end: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:
-        """Return an iterator for all events active during the timespan."""
+        """Return an iterator for all events active during the timespan.
+
+        The end date is exclusive.
+        """
         timespan = Event(summary="", start=start, end=end)
         for event in self:
             if event.is_included_in(timespan):
@@ -64,7 +47,10 @@ class Timeline(Iterable[Event]):
         start: datetime.date | datetime.datetime,
         end: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:
-        """Return an iterator containing events active during the timespan."""
+        """Return an iterator containing events active during the timespan.
+
+        The end date is exclusive.
+        """
         timespan = Event(summary="", start=start, end=end)
         for event in self:
             if event.intersects(timespan):
@@ -106,6 +92,28 @@ class Timeline(Iterable[Event]):
         return self.at_instant(datetime.datetime.now())
 
 
+class EventIterable(Iterable[Event]):
+    """Iterable that returns events in sorted order."""
+
+    def __init__(self, iterable: Iterable[Event]) -> None:
+        """Initialize timeline."""
+        self._iterable = iterable
+
+    def __iter__(self) -> Iterator[Event]:
+        """Return an iterator as a traversal over events in chronological order."""
+        # Using a heap is faster than sorting if the number of events (n) is
+        # much bigger than the number of events we extract from the iterator (k).
+        # Complexity: O(n + k log n).
+        heap: list[tuple[datetime.date | datetime.datetime, Event]] = []
+        for event in iter(self._iterable):
+            if event.rrule:
+                continue
+            heapq.heappush(heap, (event.start_datetime, event))
+        while heap:
+            (_, event) = heapq.heappop(heap)
+            yield event
+
+
 class RecurIterator(Iterator[Event]):
     """An iterator for a recurrence rule."""
 
@@ -117,6 +125,9 @@ class RecurIterator(Iterator[Event]):
         self._event_duration = event.computed_duration
         self._recur = recur
         self._is_all_day = not isinstance(self._event.dtstart, datetime.datetime)
+
+    def __iter__(self) -> Iterator[Event]:
+        return self
 
     def __next__(self) -> Event:
         """Return the next event in the recurrence."""
@@ -161,7 +172,7 @@ RRULE_WEEKDAY = {
 }
 
 
-def recur_timeline(event: Event) -> Timeline:
+def recur_iterable(event: Event) -> RecurIterable:
     """Create a timeline for a recurring event."""
     if not event.rrule:
         raise ValueError("Event did not have rrule")
@@ -181,4 +192,73 @@ def recur_timeline(event: Event) -> Timeline:
         bymonthday=event.rrule.by_month_day,
     )
     _LOGGER.debug("Creating timeline for rrule=%s", recur)
-    return Timeline(RecurIterable(event, recur))
+    return RecurIterable(event, recur)
+
+
+class PeekingIterator(Iterator[Event]):
+    """An iterator with a preview of the next item."""
+
+    def __init__(self, iterator: Iterator[Event]):
+        """Initialize PeekingIterator."""
+        self._iterator = iterator
+        self._next = next(self._iterator, None)
+
+    def __iter__(self) -> Iterator[Event]:
+        """Return this iterator."""
+        return self
+
+    def peek(self) -> Event | None:
+        """Peek at the next item without consuming."""
+        return self._next
+
+    def __next__(self) -> Event:
+        """Produce the next item from the merged set."""
+        result = self._next
+        self._next = next(self._iterator, None)
+        if result is None:
+            raise StopIteration()
+        return result
+
+
+class MergedIterator(Iterator[Event]):
+    """An iterator with a merged sorted view of the underlying sorted iterators."""
+
+    def __init__(self, iters: list[Iterator[Event]]):
+        """Initialize MergedIterator."""
+        self._iters = [PeekingIterator(iterator) for iterator in iters]
+
+    def __iter__(self) -> Iterator[Event]:
+        """Return this iterator."""
+        return self
+
+    def __next__(self) -> Event:
+        """Produce the next item from the merged set."""
+        heap: list[tuple[datetime.date | datetime.datetime, PeekingIterator]] = []
+        for iterator in self._iters:
+            peekd = iterator.peek()
+            if peekd:
+                heapq.heappush(heap, (peekd.start_datetime, iterator))
+        if not heap:
+            raise StopIteration()
+        (_, iterator) = heapq.heappop(heap)
+        return next(iterator)
+
+
+class MergedIterable(Iterable[Event]):
+    """An iterator that merges results from underlying sorted iterables."""
+
+    def __init__(self, iters: list[Iterable[Event]]) -> None:
+        """Initialize MergedIterable."""
+        self._iters = iters
+
+    def __iter__(self) -> Iterator[Event]:
+        return MergedIterator([iter(it) for it in self._iters])
+
+
+def calendar_timeline(events: list[Event]) -> Timeline:
+    """Create a timeline for events on a calendar, including recurrence."""
+    iters: list[Iterable[Event]] = [EventIterable(events)]
+    for event in events:
+        if event.rrule:
+            iters.append(recur_iterable(event))
+    return Timeline(MergedIterable(iters))

@@ -5,9 +5,17 @@ import datetime
 
 import pytest
 
+from ical.calendar import Calendar
 from ical.event import Event
-from ical.timeline import recur_timeline
+from ical.timeline import Timeline
 from ical.types import Frequency, Recur, Weekday
+
+
+def recur_timeline(event: Event) -> Timeline:
+    """Create a timeline for the specified recurring event."""
+    calendar = Calendar()
+    calendar.events.append(event)
+    return calendar.timeline
 
 
 @pytest.mark.parametrize(
@@ -306,3 +314,85 @@ def test_recur_no_bound() -> None:
     assert on_date(datetime.date(2035, 9, 1)) == []
     assert on_date(datetime.date(2035, 9, 2)) == [datetime.date(2035, 9, 2)]
     assert on_date(datetime.date(2035, 9, 3)) == []
+
+
+def test_merged_recur_event_timeline() -> None:
+    """Test merged recurring and events timeline."""
+    calendar = Calendar()
+    calendar.events.extend(
+        [
+            Event(
+                summary="Morning exercise",
+                start=datetime.datetime(2022, 8, 2, 6, 0, 0),
+                end=datetime.datetime(2022, 8, 2, 7, 0, 0),
+                rrule=Recur(freq=Frequency.DAILY),
+            ),
+            Event(
+                summary="Meeting",
+                start=datetime.datetime(2022, 8, 2, 10, 0, 0),
+                end=datetime.datetime(2022, 8, 2, 10, 30, 0),
+            ),
+            Event(
+                summary="Trash day",
+                start=datetime.date(2022, 8, 3),
+                end=datetime.date(2022, 8, 4),
+                rrule=Recur(freq=Frequency.WEEKLY, by_week_day=[Weekday.WEDNESDAY]),
+            ),
+            Event(
+                summary="Appointment",
+                start=datetime.datetime(2022, 8, 5, 8, 0, 0),
+                end=datetime.datetime(2022, 8, 5, 8, 30, 0),
+            ),
+            Event(
+                summary="Pay day",
+                start=datetime.date(2022, 8, 15),
+                end=datetime.date(2022, 8, 16),
+                rrule=Recur(freq=Frequency.MONTHLY, by_month_day=[15]),
+            ),
+        ]
+    )
+    events = calendar.timeline.included(
+        datetime.date(2022, 8, 1),
+        datetime.date(2022, 9, 2),
+    )
+    assert [(event.start, event.summary) for event in events] == [
+        (datetime.datetime(2022, 8, 2, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 2, 10, 0, 0), "Meeting"),
+        (datetime.date(2022, 8, 3), "Trash day"),
+        (datetime.datetime(2022, 8, 3, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 4, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 5, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 5, 8, 0, 0), "Appointment"),
+        (datetime.datetime(2022, 8, 6, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 7, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 8, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 9, 6, 0, 0), "Morning exercise"),
+        (datetime.date(2022, 8, 10), "Trash day"),
+        (datetime.datetime(2022, 8, 10, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 11, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 12, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 13, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 14, 6, 0, 0), "Morning exercise"),
+        (datetime.date(2022, 8, 15), "Pay day"),
+        (datetime.datetime(2022, 8, 15, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 16, 6, 0, 0), "Morning exercise"),
+        (datetime.date(2022, 8, 17), "Trash day"),
+        (datetime.datetime(2022, 8, 17, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 18, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 19, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 20, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 21, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 22, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 23, 6, 0, 0), "Morning exercise"),
+        (datetime.date(2022, 8, 24), "Trash day"),
+        (datetime.datetime(2022, 8, 24, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 25, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 26, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 27, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 28, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 29, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 30, 6, 0, 0), "Morning exercise"),
+        (datetime.date(2022, 8, 31), "Trash day"),
+        (datetime.datetime(2022, 8, 31, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 9, 1, 6, 0, 0), "Morning exercise"),
+    ]

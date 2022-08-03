@@ -179,3 +179,20 @@ def test_multiple_calendars(calendar: Calendar, calendar_times: Calendar) -> Non
     assert len(calendar.events) == 4
     assert len(calendar_times.events) == 3
     assert len(Calendar().events) == 0
+
+
+def test_multiple_iteration(calendar: Calendar) -> None:
+    """Test iterating over a timeline multiple times."""
+    line = calendar.timeline
+    assert [e.summary for e in line] == [
+        "first",
+        "second",
+        "third",
+        "fourth",
+    ]
+    assert [e.summary for e in line] == [
+        "first",
+        "second",
+        "third",
+        "fourth",
+    ]
