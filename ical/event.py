@@ -135,9 +135,9 @@ class Event(ComponentModel):
         """Return True if this event overlaps with the other event."""
         return (
             other.start_datetime <= self.start_datetime < other.end_datetime
-            or other.start_datetime <= self.end_datetime < other.end_datetime
+            or other.start_datetime < self.end_datetime <= other.end_datetime
             or self.start_datetime <= other.start_datetime < self.end_datetime
-            or self.start_datetime <= other.end_datetime < self.end_datetime
+            or self.start_datetime < other.end_datetime <= self.end_datetime
         )
 
     def includes(self, other: "Event") -> bool:

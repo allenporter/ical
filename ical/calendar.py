@@ -9,7 +9,7 @@ from pydantic import Field
 
 from .contentlines import ParsedProperty
 from .event import Event
-from .timeline import Timeline
+from .timeline import SortedIterable, Timeline
 from .todo import Todo
 from .types import ComponentModel
 
@@ -35,4 +35,4 @@ class Calendar(ComponentModel):
     @property
     def timeline(self) -> Timeline:
         """Return a timeline view of events on the calendar."""
-        return Timeline(self.events)
+        return Timeline(SortedIterable(self.events))

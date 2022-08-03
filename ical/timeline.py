@@ -15,8 +15,8 @@ from .types import Frequency, Weekday
 _LOGGER = logging.getLogger(__name__)
 
 
-class Timeline(Iterable[Event]):
-    """A set of events on a calendar."""
+class SortedIterable(Iterable[Event]):
+    """Iterable that returns events in sorted order."""
 
     def __init__(self, iterable: Iterable[Event]) -> None:
         """Initialize timeline."""
@@ -34,6 +34,18 @@ class Timeline(Iterable[Event]):
             (_, event) = heapq.heappop(heap)
             yield event
 
+
+class Timeline(Iterable[Event]):
+    """A set of events on a calendar."""
+
+    def __init__(self, iterable: Iterable[Event]) -> None:
+        """Initialize timeline."""
+        self._iterable = iterable
+
+    def __iter__(self) -> Iterator[Event]:
+        """Return an iterator as a traversal over events in chronological order."""
+        return iter(self._iterable)
+
     def included(
         self,
         start: datetime.date | datetime.datetime,
@@ -44,6 +56,8 @@ class Timeline(Iterable[Event]):
         for event in self:
             if event.is_included_in(timespan):
                 yield event
+            elif event > timespan:
+                break
 
     def overlapping(
         self,
@@ -55,6 +69,8 @@ class Timeline(Iterable[Event]):
         for event in self:
             if event.intersects(timespan):
                 yield event
+            elif event > timespan:
+                break
 
     def start_after(
         self,
@@ -74,6 +90,8 @@ class Timeline(Iterable[Event]):
         for event in self:
             if event.includes(timespan):
                 yield event
+            elif event > timespan:
+                break
 
     def on_date(self, day: datetime.date) -> Iterator[Event]:  # pylint: disable
         """Return an iterator containing all events active on the specified day."""
