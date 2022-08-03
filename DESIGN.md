@@ -38,6 +38,11 @@ consideration e.g. it can't serialize all events into the sorted heapq.
 The python library `dateutil` has an [rrule](https://dateutil.readthedocs.io/en/stable/rrule.html)
 module with a lightweight and complete implementation of recurrence rules.
 
+Events are generated using a timeline fed by bunch of iterators. There is
+one iterator for all non-recurring events, then a separate iterator for
+each recurring event. A merged iterator peeks into the input of each
+iterator to decide which one to pull from when determinig the next item
+in the iterator.
 
 ### Recurrence Editing
 
