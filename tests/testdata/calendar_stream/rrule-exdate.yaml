@@ -1,0 +1,49 @@
+input: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTART;VALUE=DATE:20220801
+  DTEND;VALUE=DATE:20220802
+  RRULE:FREQ=MONTHLY;BYMONTHDAY=1
+  EXDATE:20220901,20221001
+  EXDATE:20230101
+  DTSTAMP:20220731T190408Z
+  UID:2b83520vueebk0muv6osv1qci6@google.com
+  SUMMARY:First of the month
+  END:VEVENT
+  END:VCALENDAR
+output:
+  calendars:
+    - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+      version: "2.0"
+      events:
+        - dtstamp: "2022-07-31T19:04:08+00:00"
+          uid: 2b83520vueebk0muv6osv1qci6@google.com
+          dtstart: "2022-08-01"
+          dtend: "2022-08-02"
+          exdates:
+            - "2022-09-01"
+            - "2022-10-01"
+            - "2023-01-01"
+          summary: First of the month
+          rrule:
+            freq: MONTHLY
+            by_month_day:
+              - 1
+encoded: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:2b83520vueebk0muv6osv1qci6@google.com
+  DTSTART:20220801
+  DTEND:20220802
+  SUMMARY:First of the month
+  EXDATE:20220901
+  EXDATE:20221001
+  EXDATE:20230101
+  RRULE:FREQ=MONTHLY;BYMONTHDAY=1
+  END:VEVENT
+  END:VCALENDAR

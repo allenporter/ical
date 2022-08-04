@@ -12,6 +12,7 @@ validators.
 
 from __future__ import annotations
 
+import copy
 import datetime
 import enum
 import json
@@ -50,6 +51,16 @@ ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 # property parameters.
 TZID = "TZID"
 ATTR_VALUE = "VALUE"
+
+# Repeated values can either be specified as multiple separate values, but
+# also some values support repeated values within a single value with a
+# comma delimiter, listed here.
+ALLOW_REPEATED_VALUES = {
+    "categories",
+    "classification",
+    "exdate",
+    "resources",
+}
 
 
 class EventStatus(str, enum.Enum):
@@ -502,8 +513,10 @@ def encode_component(
             continue
         if isinstance(values, list):
             for value in values:
-                if not (encoder := POST_JSON_ENCODERS.get(field.type_)) and issubclass(
-                    field.type_, BaseModel
+                if (
+                    not (encoder := POST_JSON_ENCODERS.get(field.type_))
+                    and get_origin(field.type_) is not Union
+                    and issubclass(field.type_, BaseModel)
                 ):
                     parent.components.append(encode_component(key, field.type_, value))
                 else:
@@ -656,7 +669,17 @@ def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, An
         validators = _get_validators(field.type_)
         if field.shape == SHAPE_LIST:
             _LOGGER.debug("Parsing repeated value with validators: %s", validators)
-            values[field.alias] = [_validate_field(prop, validators) for prop in value]
+            validated = []
+            for prop in value:
+                # This property value may contain repeated values itself
+                if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
+                    for sub_value in prop.value.split(","):
+                        sub_prop = copy.deepcopy(prop)
+                        sub_prop.value = sub_value
+                        validated.append(_validate_field(sub_prop, validators))
+                else:
+                    validated.append(_validate_field(prop, validators))
+            values[field.alias] = validated
         else:
             # Collapse repeated value from the parse tree into a single value
             if len(value) > 1:
