@@ -53,6 +53,9 @@ class Event(ComponentModel):
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: str = ""
+    exdates: list[Union[datetime.datetime, datetime.date]] = Field(
+        alias="exdate", default_factory=list
+    )
     geo: Optional[Geo] = None
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
@@ -177,7 +180,7 @@ class Event(ComponentModel):
             return NotImplemented
         return self._tuple() >= other._tuple()
 
-    @validator("status", pre=True, allow_reuse=True)
+    @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
         value = parse_text(value)
@@ -185,27 +188,7 @@ class Event(ComponentModel):
             raise ValueError(f"Expected text value as a string: {value}")
         return value
 
-    @validator("categories", pre=True, allow_reuse=True)
-    def parse_categories(cls, value: Any) -> list[str]:
-        """Parse Categories from a list of ParsedProperty."""
-        values: list[str] = []
-        for prop in value:
-            if not isinstance(prop, str):
-                raise ValueError(f"Expected text value as a string: {value}")
-            values.extend(prop.split(","))
-        return values
-
-    @validator("resources", pre=True, allow_reuse=True)
-    def parse_resources(cls, value: Any) -> list[str]:
-        """Parse resources from a list of ParsedProperty."""
-        values: list[str] = []
-        for prop in value:
-            if not isinstance(prop, str):
-                raise ValueError(f"Expected text value as a string: {value}")
-            values.extend(prop.split(","))
-        return values
-
-    @validator("classification", pre=True, allow_reuse=True)
+    @validator("classification", pre=True)
     def parse_classification(cls, value: Any) -> str | None:
         """Parse a Classification from a ParsedPropertyValue."""
         value = parse_text(value)

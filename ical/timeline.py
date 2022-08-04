@@ -10,7 +10,7 @@ from collections.abc import Iterable, Iterator
 from dateutil import rrule
 
 from .event import Event
-from .types import Frequency, Weekday
+from .types import Frequency, Recur, Weekday
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ class RecurIterator(Iterator[Event]):
 class RecurIterable(Iterable[Event]):
     """A series of events from a recurring event."""
 
-    def __init__(self, event: Event, recur: rrule.rrule) -> None:
+    def __init__(self, event: Event, recur: rrule.rrule | rrule.rruleset) -> None:
         """Initialize timeline."""
         self._event = event
         self._recur = recur
@@ -172,27 +172,26 @@ RRULE_WEEKDAY = {
 }
 
 
-def recur_iterable(event: Event) -> RecurIterable:
-    """Create a timeline for a recurring event."""
-    if not event.rrule:
-        raise ValueError("Event did not have rrule")
-    if not (freq := RRULE_FREQ.get(event.rrule.freq)):
-        raise ValueError(f"Unsupported frequency in rrule: {event.rrule}")
+def _create_rrule(
+    dtstart: datetime.datetime | datetime.date, rule: Recur
+) -> rrule.rrule:
+    """Create a dateutil rrule for the specified event."""
+    if not (freq := RRULE_FREQ.get(rule.freq)):
+        raise ValueError(f"Unsupported frequency in rrule: {rule}")
 
     byweekday: list[rrule.weekday] | None = None
-    if event.rrule.by_week_day:
-        byweekday = [RRULE_WEEKDAY[week_day] for week_day in event.rrule.by_week_day]
-    recur = rrule.rrule(
+    if rule.by_week_day:
+        byweekday = [RRULE_WEEKDAY[week_day] for week_day in rule.by_week_day]
+    return rrule.rrule(
         freq=freq,
-        dtstart=event.dtstart,
-        interval=event.rrule.interval,
-        count=event.rrule.count,
-        until=event.rrule.until,
+        dtstart=dtstart,
+        interval=rule.interval,
+        count=rule.count,
+        until=rule.until,
         byweekday=byweekday,
-        bymonthday=event.rrule.by_month_day,
+        bymonthday=rule.by_month_day,
+        cache=True,
     )
-    _LOGGER.debug("Creating timeline for rrule=%s", recur)
-    return RecurIterable(event, recur)
 
 
 class PeekingIterator(Iterator[Event]):
@@ -259,6 +258,11 @@ def calendar_timeline(events: list[Event]) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
     iters: list[Iterable[Event]] = [EventIterable(events)]
     for event in events:
-        if event.rrule:
-            iters.append(recur_iterable(event))
+        if not event.rrule:
+            continue
+        ruleset = rrule.rruleset()
+        ruleset.rrule(_create_rrule(event.start, event.rrule))
+        for exdate in event.exdates:
+            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
+        iters.append(RecurIterable(event, ruleset))
     return Timeline(MergedIterable(iters))
