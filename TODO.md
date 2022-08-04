@@ -50,6 +50,4 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
   - summary
 
 - Recurrence
-  - rdate
   - rstatus
-  - exdate

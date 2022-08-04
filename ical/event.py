@@ -53,9 +53,7 @@ class Event(ComponentModel):
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: str = ""
-    exdates: list[Union[datetime.datetime, datetime.date]] = Field(
-        alias="exdate", default_factory=list
-    )
+    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     geo: Optional[Geo] = None
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
@@ -67,6 +65,7 @@ class Event(ComponentModel):
     related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
+    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)

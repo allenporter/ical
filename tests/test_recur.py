@@ -427,3 +427,42 @@ def test_exclude_date() -> None:
         (datetime.datetime(2022, 8, 9, 6, 0, 0), "Morning exercise"),
         (datetime.datetime(2022, 8, 10, 6, 0, 0), "Morning exercise"),
     ]
+
+
+def test_rdate() -> None:
+    """Test recurrence rule with specific dates and exclusions."""
+    calendar = Calendar()
+    calendar.events.extend(
+        [
+            Event(
+                summary="Morning exercise",
+                start=datetime.datetime(2022, 8, 2, 6, 0, 0),
+                end=datetime.datetime(2022, 8, 2, 7, 0, 0),
+                rdate=[
+                    datetime.datetime(2022, 8, 2, 6, 0, 0),
+                    datetime.datetime(2022, 8, 3, 6, 0, 0),
+                    datetime.datetime(2022, 8, 4, 6, 0, 0),
+                    datetime.datetime(2022, 8, 5, 6, 0, 0),
+                    datetime.datetime(2022, 8, 6, 6, 0, 0),
+                    datetime.datetime(2022, 8, 7, 6, 0, 0),
+                    datetime.datetime(2022, 8, 8, 6, 0, 0),
+                    datetime.datetime(2022, 8, 9, 6, 0, 0),
+                    datetime.datetime(2022, 8, 10, 6, 0, 0),
+                ],
+                exdate=[
+                    datetime.datetime(2022, 8, 3, 6, 0, 0),
+                    datetime.datetime(2022, 8, 4, 6, 0, 0),
+                    datetime.datetime(2022, 8, 6, 6, 0, 0),
+                    datetime.datetime(2022, 8, 7, 6, 0, 0),
+                ],
+            ),
+        ]
+    )
+    events = list(calendar.timeline)
+    assert [(event.start, event.summary) for event in events] == [
+        (datetime.datetime(2022, 8, 2, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 5, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 8, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 9, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 10, 6, 0, 0), "Morning exercise"),
+    ]

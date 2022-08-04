@@ -59,6 +59,7 @@ ALLOW_REPEATED_VALUES = {
     "categories",
     "classification",
     "exdate",
+    "rdate",
     "resources",
 }
 
