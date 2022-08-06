@@ -27,6 +27,16 @@ _LOGGER = logging.getLogger(__name__)
 MIDNIGHT = datetime.time()
 
 
+def dtstamp_factory() -> datetime.datetime:
+    """Factory method for new event timestamps to facilitate mocking."""
+    return datetime.datetime.utcnow()
+
+
+def uid_factory() -> uuid.UUID:
+    """Factory method for new uids to facilitate mocking."""
+    return uuid.uuid1()
+
+
 class Event(ComponentModel):
     """A single event on a calendar.
 
@@ -34,9 +44,9 @@ class Event(ComponentModel):
     """
 
     dtstamp: Union[datetime.datetime, datetime.date] = Field(
-        default_factory=datetime.datetime.utcnow
+        default_factory=dtstamp_factory
     )
-    uid: str = Field(default_factory=uuid.uuid1)
+    uid: str = Field(default_factory=uid_factory)
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
@@ -53,9 +63,7 @@ class Event(ComponentModel):
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: str = ""
-    exdates: list[Union[datetime.datetime, datetime.date]] = Field(
-        alias="exdate", default_factory=list
-    )
+    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     geo: Optional[Geo] = None
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
@@ -67,6 +75,7 @@ class Event(ComponentModel):
     related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
+    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
@@ -94,27 +103,33 @@ class Event(ComponentModel):
         return self.dtstart
 
     @property
-    def end(self) -> Union[datetime.datetime, datetime.date, None]:
+    def end(self) -> Union[datetime.datetime, datetime.date]:
         """Return the end time for the event."""
         if self.duration:
             return self.dtstart + self.duration
-        return self.dtend
+        if self.dtend:
+            return self.dtend
+        raise ValueError("Unexpected state with no duration or dtend")
 
     @property
     def start_datetime(self) -> datetime.datetime:
         """Return the events start as a datetime."""
         if isinstance(self.start, datetime.datetime):
-            return self.start
+            return self.start.astimezone(tz=datetime.timezone.utc)
         # is datetime.date
-        return datetime.datetime.combine(self.start, MIDNIGHT)
+        return datetime.datetime.combine(self.start, MIDNIGHT).astimezone(
+            tz=datetime.timezone.utc
+        )
 
     @property
     def end_datetime(self) -> datetime.datetime:
         """Return the events end as a datetime."""
         if isinstance(self.end, datetime.datetime):
-            return self.end
+            return self.end.astimezone(tz=datetime.timezone.utc)
         if isinstance(self.end, datetime.date):
-            return datetime.datetime.combine(self.end, MIDNIGHT)
+            return datetime.datetime.combine(self.end, MIDNIGHT).astimezone(
+                tz=datetime.timezone.utc
+            )
         raise ValueError("Unable to convert date to datetime")
 
     @property

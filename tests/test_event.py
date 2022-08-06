@@ -1,5 +1,8 @@
 """Tests for Event library."""
 
+from __future__ import annotations
+
+import zoneinfo
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -8,6 +11,7 @@ from pydantic import ValidationError
 from ical.event import Event
 
 SUMMARY = "test summary"
+LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
 
 
 @pytest.mark.parametrize(
@@ -39,11 +43,50 @@ def test_start_end_duration(
     assert not event.duration
 
 
-def test_comparisons() -> None:
+@pytest.mark.parametrize(
+    "event1_start,event1_end,event2_start,event2_end",
+    [
+        (date(2022, 9, 6), date(2022, 9, 7), date(2022, 9, 8), date(2022, 9, 10)),
+        (
+            datetime(2022, 9, 6, 6, 0, 0),
+            datetime(2022, 9, 6, 7, 0, 0),
+            datetime(2022, 9, 6, 8, 0, 0),
+            datetime(2022, 9, 6, 8, 30, 0),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 7, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 7, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 8, 8, 0, 0),
+            datetime(2022, 9, 8, 8, 30, 0),
+        ),
+    ],
+)
+def test_comparisons(
+    event1_start: datetime | date,
+    event1_end: datetime | date,
+    event2_start: datetime | date,
+    event2_end: datetime | date,
+) -> None:
     """Test event comparison methods."""
-    event1 = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
-    event2 = Event(summary=SUMMARY, start=date(2022, 9, 8), end=date(2022, 9, 10))
+    event1 = Event(summary=SUMMARY, start=event1_start, end=event1_end)
+    event2 = Event(summary=SUMMARY, start=event2_start, end=event2_end)
     assert event1 < event2
+    assert event1 <= event2
+    assert event2 >= event1
+    assert event2 > event1
+
     assert event1 <= event2
     assert event2 >= event1
     assert event2 > event1
