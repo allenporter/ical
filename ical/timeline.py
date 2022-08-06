@@ -232,7 +232,7 @@ class MergedIterator(Iterator[Event]):
 
     def __next__(self) -> Event:
         """Produce the next item from the merged set."""
-        heap: list[tuple[datetime.date | datetime.datetime, PeekingIterator]] = []
+        heap: list[tuple[datetime.datetime, PeekingIterator]] = []
         for iterator in self._iters:
             peekd = iterator.peek()
             if peekd:
