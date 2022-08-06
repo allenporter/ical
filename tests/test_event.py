@@ -277,3 +277,67 @@ def test_date_intersects(
     event1 = Event(summary=SUMMARY, start=range1[0], end=range1[1])
     event2 = Event(summary=SUMMARY, start=range2[0], end=range2[1])
     assert event1.intersects(event2) == expected
+
+
+@pytest.mark.parametrize(
+    "start_str,end_str,start,end",
+    [
+        (
+            "2022-09-16 12:00",
+            "2022-09-16 12:30",
+            datetime(2022, 9, 16, 12, 0, 0),
+            datetime(2022, 9, 16, 12, 30, 0),
+        ),
+        (
+            "2022-09-16",
+            "2022-09-17",
+            date(2022, 9, 16),
+            date(2022, 9, 17),
+        ),
+        (
+            "2022-09-16 06:00",
+            "2022-09-17 08:30",
+            datetime(2022, 9, 16, 6, 0, 0),
+            datetime(2022, 9, 17, 8, 30, 0),
+        ),
+        (
+            "2022-09-16T06:00",
+            "2022-09-17T08:30",
+            datetime(2022, 9, 16, 6, 0, 0),
+            datetime(2022, 9, 17, 8, 30, 0),
+        ),
+        (
+            "2022-09-16T06:00Z",
+            "2022-09-17T08:30Z",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 17, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            "2022-09-16T06:00+00:00",
+            "2022-09-17T08:30+00:00",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 17, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            "2022-09-16T06:00-07:00",
+            "2022-09-17T08:30-07:00",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone(offset=timedelta(hours=-7))),
+            datetime(
+                2022, 9, 17, 8, 30, 0, tzinfo=timezone(offset=timedelta(hours=-7))
+            ),
+        ),
+    ],
+)
+def test_parse_event_timezones(
+    start_str: str, end_str: str, start: datetime | date, end: datetime | date
+) -> None:
+    """Test parsing date/times from strings."""
+    event = Event.parse_obj(
+        {
+            "summary": SUMMARY,
+            "start": start_str,
+            "end": end_str,
+        }
+    )
+    assert event.start == start
+    assert event.end == end
