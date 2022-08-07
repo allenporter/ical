@@ -9,7 +9,7 @@ from collections.abc import Iterable, Iterator
 
 from dateutil import rrule
 
-from .event import Event
+from .event import Event, normalize_datetime
 from .types import Frequency, Recur, Weekday
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,11 +60,22 @@ class Timeline(Iterable[Event]):
 
     def start_after(
         self,
-        instant: datetime.date | datetime.datetime,
+        instant: datetime.datetime | datetime.date,
     ) -> Iterator[Event]:
         """Return an iterator containing events starting after the specified time."""
+        instant_value = normalize_datetime(instant)
         for event in self:
-            if event.start > instant:
+            if event.start_datetime > instant_value:
+                yield event
+
+    def active_after(
+        self,
+        instant: datetime.datetime | datetime.date,
+    ) -> Iterator[Event]:
+        """Return an iterator containing events active after the specified time."""
+        instant_value = normalize_datetime(instant)
+        for event in self:
+            if event.start_datetime > instant or event.end_datetime > instant_value:
                 yield event
 
     def at_instant(
