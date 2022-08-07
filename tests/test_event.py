@@ -366,3 +366,19 @@ def test_all_day_timezones() -> None:
             2022, 8, 1, 6, 0, 0, tzinfo=timezone.utc
         )
         assert event.end_datetime == datetime(2022, 8, 2, 6, 0, 0, tzinfo=timezone.utc)
+
+
+def test_validate_assignment() -> None:
+    """Test date type validations."""
+
+    event = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
+
+    # Validation on assignment ensures the start/end types can't be mismatched
+    with pytest.raises(ValidationError):
+        event.dtstart = datetime(2022, 9, 6, 6, 0, 0)
+    with pytest.raises(ValidationError):
+        event.dtend = datetime(2022, 9, 10, 6, 0, 0)
+
+    # But updates that are valid are OK
+    event.dtstart = date(2022, 9, 5)
+    event.dtend = date(2022, 9, 10)
