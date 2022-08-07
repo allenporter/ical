@@ -335,6 +335,12 @@ def test_bool() -> None:
     with pytest.raises(ValidationError):
         TestModel.parse_obj({"example": [ParsedProperty(name="example", value="efd")]})
 
+    # Populate based on bool object
+    model = TestModel(example=True)
+    assert model.example
+    model = TestModel(example=False)
+    assert not model.example
+
 
 @pytest.mark.parametrize(
     "value,duration,encoded_value",
@@ -428,6 +434,9 @@ def test_float() -> None:
 
     with pytest.raises(ValidationError):
         TestModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+
+    model = TestModel(example=[1, -2.2, 3.5])
+    assert model.example == [1, -2.2, 3.5]
 
 
 def test_period() -> None:
