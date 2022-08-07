@@ -288,33 +288,30 @@ def encode_text(value: str) -> str:
 
 def parse_int(prop: Any) -> int:
     """Parse a rfc5545 property into a text value."""
-    if isinstance(prop, int):
-        return prop
     if isinstance(prop, ParsedProperty):
         return int(prop.value)
-    if isinstance(prop, str):
-        return int(prop)
-    raise ValueError("Int was not ParsedProperty or string: %s")
+    return int(prop)
 
 
 def parse_float(prop: Any) -> float:
     """Parse a rfc5545 property into a text value."""
     if isinstance(prop, ParsedProperty):
         return float(prop.value)
-    if isinstance(prop, str):
-        return float(prop)
-    raise ValueError("Float was not ParsedProperty or string")
+    return float(prop)
 
 
 def parse_boolean(prop: Any) -> bool:
     """Parse an rfc5545 property into a boolean."""
-    if not isinstance(prop, ParsedProperty):
-        return bool(prop)
-    if prop.value == "TRUE":
+    if isinstance(prop, bool):
+        return prop
+    value = prop
+    if isinstance(prop, ParsedProperty):
+        value = prop.value
+    if value == "TRUE":
         return True
-    if prop.value == "FALSE":
+    if value == "FALSE":
         return False
-    raise ValueError(f"Invalid boolean value: {prop.value}")
+    raise ValueError(f"Unable to parse value as boolean: {prop}")
 
 
 def encode_boolean_ics(value: bool) -> str:
