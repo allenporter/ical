@@ -127,6 +127,10 @@ def test_datedatime_parser() -> None:
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
 
+    # Build from an object
+    model = TestModel(dt=datetime.datetime(2022, 7, 20, 13, 0, 0))
+    assert model.dt.isoformat() == "2022-07-20T13:00:00"
+
 
 def test_datedatime_value_parser() -> None:
     """Test a datetime with a property parameter value."""
@@ -210,6 +214,22 @@ def test_date_parser() -> None:
         }
     )
     assert model.d == datetime.date(2022, 7, 24)
+
+    with pytest.raises(ValidationError):
+        TestModel.parse_obj(
+            {
+                "d": [
+                    ParsedProperty(
+                        name="dt",
+                        value="invalid-value",
+                    )
+                ],
+            }
+        )
+
+    # Build from an object
+    model = TestModel(d=datetime.date(2022, 7, 20))
+    assert model.d.isoformat() == "2022-07-20"
 
 
 def test_union_date_parser() -> None:
@@ -338,8 +358,17 @@ def test_bool() -> None:
     # Populate based on bool object
     model = TestModel(example=True)
     assert model.example
+    component = encode_model("model", model)
+    assert component.properties == [
+        ParsedProperty(name="example", value="TRUE"),
+    ]
+
     model = TestModel(example=False)
     assert not model.example
+    component = encode_model("model", model)
+    assert component.properties == [
+        ParsedProperty(name="example", value="FALSE"),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -351,6 +380,7 @@ def test_bool() -> None:
             "P2W1DT5H20S",
         ),
         ("P7W", datetime.timedelta(days=7 * 7), "P7W"),
+        ("-P7W", datetime.timedelta(days=-7 * 7), "-P7W"),
     ],
 )
 def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) -> None:
@@ -370,6 +400,22 @@ def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) 
     assert component.properties == [
         ParsedProperty(name="duration", value=encoded_value)
     ]
+
+
+def test_duration_from_object() -> None:
+    """Test for a duration field from a native object."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        duration: datetime.timedelta
+
+    model = TestModel(duration=datetime.timedelta(hours=1))
+    assert model.duration == datetime.timedelta(hours=1)
+
+    component = encode_model("TestModel", model)
+    assert component.name == "TestModel"
+    assert component.properties == [ParsedProperty(name="duration", value="PT1H")]
 
 
 def test_geo() -> None:
@@ -440,7 +486,7 @@ def test_float() -> None:
 
 
 def test_period() -> None:
-    """Test for duration fields."""
+    """Test for period fields."""
 
     class TestModel(ComponentModel):
         """Model under test."""
@@ -497,3 +543,30 @@ def test_period() -> None:
         TestModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="a/PT5H30M")]}
         )
+
+
+def test_encode_period() -> None:
+    """Test encoded period."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: Period
+
+        class Config:
+            """Pydantic model configuration."""
+
+            json_encoders = ICS_ENCODERS
+
+    model = TestModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0),
+            end=datetime.datetime(2022, 8, 7, 6, 30, 0),
+        )
+    )
+    assert encode_model("model", model) == ParsedComponent(
+        name="model",
+        properties=[
+            ParsedProperty(name="example", value="20220807T06000020220807T063000")
+        ],
+    )
