@@ -15,6 +15,13 @@ def test_parse(golden: GoldenTestFixture) -> None:
     data = json.loads(cal.json(exclude_unset=True))
     assert data == golden["output"]
 
+    # Re-parse the data object to verify we get the original data values
+    # back. This effectively confirms that all fields can be parsed from the
+    # python native format in addition to rfc5545.
+    cal_reparsed = CalendarStream.parse_obj(data)
+    data_reparsed = json.loads(cal_reparsed.json(exclude_unset=True))
+    assert data_reparsed == data
+
 
 @pytest.mark.golden_test("testdata/*.yaml")
 def test_serialize(golden: GoldenTestFixture) -> None:
