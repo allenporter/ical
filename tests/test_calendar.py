@@ -104,6 +104,14 @@ def test_start_after(calendar: Calendar) -> None:
     ] == ["second", "third", "fourth"]
 
 
+def test_active_after(calendar: Calendar) -> None:
+    """Test chronological iteration starting at a specific time."""
+    assert [
+        e.summary
+        for e in calendar.timeline.start_after(datetime.datetime(2000, 1, 1, 12, 0, 0))
+    ] == ["second", "third", "fourth"]
+
+
 @pytest.mark.parametrize(
     "at_datetime,expected_events",
     [

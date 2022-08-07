@@ -37,6 +37,23 @@ def uid_factory() -> uuid.UUID:
     return uuid.uuid1()
 
 
+def local_timezone() -> datetime.tzinfo:
+    """Get the local timezone to use when converting date to datetime."""
+    local_tz = datetime.datetime.now().astimezone().tzinfo
+    if not local_tz:
+        return datetime.timezone.utc
+    return local_tz
+
+
+def normalize_datetime(value: datetime.date | datetime.datetime) -> datetime.datetime:
+    """Convert date or datetime to a value that can be used for comparison."""
+    if not isinstance(value, datetime.datetime):
+        value = datetime.datetime.combine(value, MIDNIGHT)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=local_timezone())
+    return value
+
+
 class Event(ComponentModel):
     """A single event on a calendar.
 
@@ -98,12 +115,12 @@ class Event(ComponentModel):
         )
 
     @property
-    def start(self) -> Union[datetime.datetime, datetime.date]:
+    def start(self) -> datetime.datetime | datetime.date:
         """Return the start time for the event."""
         return self.dtstart
 
     @property
-    def end(self) -> Union[datetime.datetime, datetime.date]:
+    def end(self) -> datetime.datetime | datetime.date:
         """Return the end time for the event."""
         if self.duration:
             return self.dtstart + self.duration
@@ -114,23 +131,12 @@ class Event(ComponentModel):
     @property
     def start_datetime(self) -> datetime.datetime:
         """Return the events start as a datetime."""
-        if isinstance(self.start, datetime.datetime):
-            return self.start.astimezone(tz=datetime.timezone.utc)
-        # is datetime.date
-        return datetime.datetime.combine(self.start, MIDNIGHT).astimezone(
-            tz=datetime.timezone.utc
-        )
+        return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
 
     @property
     def end_datetime(self) -> datetime.datetime:
         """Return the events end as a datetime."""
-        if isinstance(self.end, datetime.datetime):
-            return self.end.astimezone(tz=datetime.timezone.utc)
-        if isinstance(self.end, datetime.date):
-            return datetime.datetime.combine(self.end, MIDNIGHT).astimezone(
-                tz=datetime.timezone.utc
-            )
-        raise ValueError("Unable to convert date to datetime")
+        return normalize_datetime(self.end).astimezone(tz=datetime.timezone.utc)
 
     @property
     def computed_duration(self) -> datetime.timedelta:

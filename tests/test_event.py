@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import zoneinfo
 from datetime import date, datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -70,6 +71,18 @@ def test_start_end_duration(
             datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
             datetime(2022, 9, 8, 8, 0, 0),
             datetime(2022, 9, 8, 8, 30, 0),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            date(2022, 9, 8),
+            date(2022, 9, 9),
+        ),
+        (
+            date(2022, 9, 6),
+            date(2022, 9, 7),
+            datetime(2022, 9, 6, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 30, 0, tzinfo=timezone.utc),
         ),
     ],
 )
@@ -341,3 +354,15 @@ def test_parse_event_timezones(
     )
     assert event.start == start
     assert event.end == end
+
+
+def test_all_day_timezones() -> None:
+    """Test behavior of all day events interacting with timezones."""
+    with patch(
+        "ical.event.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ):
+        event = Event(summary=SUMMARY, start=date(2022, 8, 1), end=date(2022, 8, 2))
+        assert event.start_datetime == datetime(
+            2022, 8, 1, 6, 0, 0, tzinfo=timezone.utc
+        )
+        assert event.end_datetime == datetime(2022, 8, 2, 6, 0, 0, tzinfo=timezone.utc)
