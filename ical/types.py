@@ -120,6 +120,8 @@ class Geo:
     @classmethod
     def parse_geo(cls, value: Any) -> Geo:
         """Parse a rfc5545 lat long geo values."""
+        if isinstance(value, dict):
+            return Geo(**value)
         parts = parse_text(value).split(";", 2)
         if len(parts) != 2:
             raise ValueError(f"Value was not valid geo lat;long: {value}")
@@ -264,10 +266,10 @@ def encode_duration_ics(value: Any) -> str:
     return "".join(parts)
 
 
-def parse_text(prop: ParsedProperty) -> str:
+def parse_text(prop: Any) -> str:
     """Parse a rfc5545 into a text value."""
     if not isinstance(prop, ParsedProperty):
-        raise ValueError("Text value was not a ParsedProperty")
+        return str(prop)
     for key, vin in UNESCAPE_CHAR.items():
         if key not in prop.value:
             continue
@@ -284,23 +286,32 @@ def encode_text(value: str) -> str:
     return value
 
 
-def parse_int(prop: ParsedProperty) -> int:
+def parse_int(prop: Any) -> int:
     """Parse a rfc5545 property into a text value."""
-    return int(prop.value)
+    if isinstance(prop, ParsedProperty):
+        return int(prop.value)
+    return int(prop)
 
 
-def parse_float(prop: ParsedProperty) -> float:
+def parse_float(prop: Any) -> float:
     """Parse a rfc5545 property into a text value."""
-    return float(prop.value)
+    if isinstance(prop, ParsedProperty):
+        return float(prop.value)
+    return float(prop)
 
 
-def parse_boolean(prop: ParsedProperty) -> bool:
+def parse_boolean(prop: Any) -> bool:
     """Parse an rfc5545 property into a boolean."""
-    if prop.value == "TRUE":
+    if isinstance(prop, bool):
+        return prop
+    value = prop
+    if isinstance(prop, ParsedProperty):
+        value = prop.value
+    if value == "TRUE":
         return True
-    if prop.value == "FALSE":
+    if value == "FALSE":
         return False
-    raise ValueError(f"Invalid boolean value: {prop.value}")
+    raise ValueError(f"Unable to parse value as boolean: {prop}")
 
 
 def encode_boolean_ics(value: bool) -> str:
