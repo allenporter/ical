@@ -210,7 +210,6 @@ def encode_date_time_ics(value: datetime.datetime) -> str:
 
 def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
     """Parse a rfc5545 into a datetime.date."""
-    value = prop.value
     if not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected ParsedProperty but was {prop}")
     value = prop.value
@@ -267,6 +266,8 @@ def encode_duration_ics(value: Any) -> str:
 
 def parse_text(prop: ParsedProperty) -> str:
     """Parse a rfc5545 into a text value."""
+    if not isinstance(prop, ParsedProperty):
+        raise ValueError("Text value was not a ParsedProperty")
     for key, vin in UNESCAPE_CHAR.items():
         if key not in prop.value:
             continue
@@ -424,6 +425,7 @@ class Recur(BaseModel):
     class Config:
         """Pydantic model configuration."""
 
+        validate_assignment = True
         allow_population_by_field_name = True
 
 
@@ -471,9 +473,11 @@ def parse_extra_fields(
     cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
 ) -> dict[str, Any]:
     """Parse extra fields not in the model."""
-    all_fields = {
-        field.alias for field in cls.__fields__.values() if field.alias != "extras"
-    }
+    all_fields = set()
+    for field in cls.__fields__.values():
+        if field.alias == "extras":
+            continue
+        all_fields |= {field.name, field.alias}
     extras: list[ParsedProperty | ParsedComponent] = []
     for (field_name, value) in values.items():
         if field_name in all_fields:
@@ -482,7 +486,6 @@ def parse_extra_fields(
             if isinstance(prop, ParsedProperty):
                 extras.append(prop)
     if extras:
-        _LOGGER.debug("Parsing extra fields: %s", extras)
         values["extras"] = extras
     return values
 
@@ -700,3 +703,9 @@ class ComponentModel(BaseModel):
     _parse_property_value = root_validator(pre=True, allow_reuse=True)(
         parse_property_value
     )
+
+    class Config:
+        """Pyandtic model configuration."""
+
+        validate_assignment = True
+        allow_population_by_field_name = True

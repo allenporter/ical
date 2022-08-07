@@ -54,3 +54,5 @@ class IcsCalendarStream(CalendarStream):
         """Configuration for IcsCalendarStream pydantic model."""
 
         json_encoders = ICS_ENCODERS
+        validate_assignment = True
+        allow_population_by_field_name = True
