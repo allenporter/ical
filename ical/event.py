@@ -9,7 +9,7 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator, validator
 
-from .contentlines import ParsedProperty
+from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
     Classification,

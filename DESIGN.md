@@ -1,8 +1,39 @@
 # Design
 
-## Overall Design
+## Data Model
 
-TODO: Replace with overall design
+The calendar data model is described using [pydantic](https://github.com/samuelcolvin/pydantic)
+models. Pydantic allows expressing effectively a dataclass with types
+and validation rules, which are reused across components. The data model
+mirrors the rfc5545 spec with a separate object for each type of component
+e.g. a calendar, event, todo, etc.
+
+## Parsing and Encoding
+
+The rfc5545 spec defines a text file format, and the overall structure defines
+a series of components (e.g. a calendar, an event, a todo) and properties (e.g.
+a summary, start date and time, due date, category). Properties may additionally
+have parameters such as a timezone or alternative text display. Components
+have a hierarchy (e.g. a calendar component has an event sub-component).
+
+The ical library uses [pyparsing](https://github.com/pyparsing/pyparsing) to
+create a very simple gammar for rfc5545, converting the individual lines of an
+ics file (called "contentlines") into a structured `ParseResult` object which
+has a dictionary of fields. The library then iterates through each line to
+build a stack to manage components and subcomponents, parses individual
+properties and parameters associated with the active component, then returns
+a `ParsedComponent` which contains other components and properties. At this
+point we have a tree of components and properties, but have not yet interpreted
+the meaning.
+
+The data model is parsed using [pydantic](https://github.com/samuelcolvin/pydantic)
+and has parsing and validation rules for each type of data. That is, the library
+has a bridge between strongly typed rfc5545 properties (e.g. `DATE`, `DATE-TIME`) and
+python types (e.g. `datetime.date`, `datetime.datetime`). Where possible, the
+built in pydantic encoding and decoding is used, however ical makes heavy use of
+custom root validators to perform a lot of the type mapping. Additionally, we want
+to be able to support parsing the calendar data model from the output of the parser
+as well as parsing values supplied by the user when creating objects manually.
 
 ## Recurrence
 

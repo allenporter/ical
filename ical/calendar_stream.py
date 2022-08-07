@@ -7,7 +7,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from .calendar import Calendar
-from .contentlines import encode_content, parse_content
+from .parsing.component import encode_content, parse_content
 from .types import ICS_ENCODERS, ComponentModel, encode_model
 
 

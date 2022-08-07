@@ -8,7 +8,7 @@ from pytest_golden.plugin import GoldenTestFixture
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 
 
-@pytest.mark.golden_test("testdata/calendar_stream/*.yaml")
+@pytest.mark.golden_test("testdata/*.yaml")
 def test_parse(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = CalendarStream.from_ics(golden["input"])
@@ -16,7 +16,7 @@ def test_parse(golden: GoldenTestFixture) -> None:
     assert data == golden["output"]
 
 
-@pytest.mark.golden_test("testdata/calendar_stream/*.yaml")
+@pytest.mark.golden_test("testdata/*.yaml")
 def test_serialize(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = IcsCalendarStream.from_ics(golden["input"])

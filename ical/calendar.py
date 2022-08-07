@@ -7,8 +7,8 @@ from typing import Optional
 
 from pydantic import Field
 
-from .contentlines import ParsedProperty
 from .event import Event
+from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .todo import Todo
 from .types import ComponentModel

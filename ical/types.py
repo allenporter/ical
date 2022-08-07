@@ -27,7 +27,8 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field, root_validator
 from pydantic.fields import SHAPE_LIST
 
-from .contentlines import ParsedComponent, ParsedProperty
+from .parsing.component import ParsedComponent
+from .parsing.property import ParsedProperty
 
 _LOGGER = logging.getLogger(__name__)
 

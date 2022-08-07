@@ -6,7 +6,8 @@ from typing import Optional, Union
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from ical.contentlines import ParsedComponent, ParsedProperty, ParsedPropertyParameter
+from ical.parsing.component import ParsedComponent
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types import ICS_ENCODERS, ComponentModel, Geo, Period, Priority, encode_model
 
 

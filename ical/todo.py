@@ -7,7 +7,7 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, validator
 
-from .contentlines import ParsedProperty
+from .parsing.property import ParsedProperty
 from .types import ComponentModel, Priority, TodoStatus, parse_text
 
 
