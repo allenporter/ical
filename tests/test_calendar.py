@@ -2,11 +2,16 @@
 from __future__ import annotations
 
 import datetime
+import re
+import uuid
+from typing import Generator
+from unittest.mock import patch
 
 import pytest
 from freezegun import freeze_time
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 
 
@@ -96,6 +101,14 @@ def test_start_after(calendar: Calendar) -> None:
     """Test chronological iteration starting at a specific time."""
     assert [
         e.summary for e in calendar.timeline.start_after(datetime.date(2000, 1, 1))
+    ] == ["second", "third", "fourth"]
+
+
+def test_active_after(calendar: Calendar) -> None:
+    """Test chronological iteration starting at a specific time."""
+    assert [
+        e.summary
+        for e in calendar.timeline.start_after(datetime.datetime(2000, 1, 1, 12, 0, 0))
     ] == ["second", "third", "fourth"]
 
 
@@ -195,4 +208,70 @@ def test_multiple_iteration(calendar: Calendar) -> None:
         "second",
         "third",
         "fourth",
+    ]
+
+
+TEST_ICS = """BEGIN:VCALENDAR
+PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:19970610T172345Z
+UID:19970610T172345Z-AF23B2@example.com
+DTSTART:19970714T170000Z
+DTEND:19970715T040000Z
+SUMMARY:Bastille Day Party
+END:VEVENT
+END:VCALENDAR"""
+
+
+def test_calendar_serialization() -> None:
+    """Test single calendar serialization."""
+    calendar = IcsCalendarStream.calendar_from_ics(TEST_ICS)
+    assert len(calendar.events) == 1
+    assert calendar.events[0].summary == "Bastille Day Party"
+    output_ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert output_ics == TEST_ICS
+
+
+def test_empty_calendar() -> None:
+    """Test reading an empty calendar file."""
+    calendar = IcsCalendarStream.calendar_from_ics("")
+    assert len(calendar.events) == 0
+
+
+@pytest.fixture(name="_uid")
+def mock_uid() -> Generator[str, None, None]:
+    """Patch out uuid creation with a fixed value."""
+    value = str(uuid.uuid3(uuid.NAMESPACE_DNS, "fixed-name"))
+    with patch(
+        "ical.event.uuid.uuid1",
+        return_value=value,
+    ):
+        yield value
+
+
+@freeze_time("2000-01-01 12:30:00")
+def test_create_and_serialize_calendar(
+    _uid: str,
+) -> None:
+    """Test creating a calendar manually then serializing."""
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Event",
+            start=datetime.date(2000, 2, 1),
+            end=datetime.date(2000, 2, 2),
+        )
+    )
+    ics = IcsCalendarStream.calendar_to_ics(cal)
+    assert re.split("\r?\n", ics) == [
+        "BEGIN:VCALENDAR",
+        "BEGIN:VEVENT",
+        "DTSTAMP:20000101T123000",
+        "UID:68e9e07c-7557-36e2-91c1-8febe7527841",
+        "DTSTART:20000201",
+        "DTEND:20000202",
+        "SUMMARY:Event",
+        "END:VEVENT",
+        "END:VCALENDAR",
     ]

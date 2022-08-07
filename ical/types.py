@@ -59,6 +59,7 @@ ALLOW_REPEATED_VALUES = {
     "categories",
     "classification",
     "exdate",
+    "rdate",
     "resources",
 }
 
@@ -458,6 +459,8 @@ def encode_recur_ics(recur: Recur) -> str:
         if key == "until":
             value = encode_date_time_ics(value)
         elif key in ("byday", "bymonthday"):
+            if not value:
+                continue
             value = ",".join([str(val) for val in value])
         result.append(f"{key.upper()}={value}")
     return ";".join(result)
@@ -486,7 +489,7 @@ def parse_extra_fields(
 def encode_model(name: str, model: BaseModel) -> ParsedComponent:
     """Encode a pydantic model for serialization as an iCalendar object."""
     model_data = json.loads(
-        model.json(exclude_unset=True, by_alias=True, exclude_none=True)
+        model.json(by_alias=True, exclude_none=True, exclude_defaults=True)
     )
     return encode_component(name, model, model_data)
 

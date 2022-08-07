@@ -27,6 +27,33 @@ _LOGGER = logging.getLogger(__name__)
 MIDNIGHT = datetime.time()
 
 
+def dtstamp_factory() -> datetime.datetime:
+    """Factory method for new event timestamps to facilitate mocking."""
+    return datetime.datetime.utcnow()
+
+
+def uid_factory() -> uuid.UUID:
+    """Factory method for new uids to facilitate mocking."""
+    return uuid.uuid1()
+
+
+def local_timezone() -> datetime.tzinfo:
+    """Get the local timezone to use when converting date to datetime."""
+    local_tz = datetime.datetime.now().astimezone().tzinfo
+    if not local_tz:
+        return datetime.timezone.utc
+    return local_tz
+
+
+def normalize_datetime(value: datetime.date | datetime.datetime) -> datetime.datetime:
+    """Convert date or datetime to a value that can be used for comparison."""
+    if not isinstance(value, datetime.datetime):
+        value = datetime.datetime.combine(value, MIDNIGHT)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=local_timezone())
+    return value
+
+
 class Event(ComponentModel):
     """A single event on a calendar.
 
@@ -34,9 +61,9 @@ class Event(ComponentModel):
     """
 
     dtstamp: Union[datetime.datetime, datetime.date] = Field(
-        default_factory=datetime.datetime.utcnow
+        default_factory=dtstamp_factory
     )
-    uid: str = Field(default_factory=uuid.uuid1)
+    uid: str = Field(default_factory=uid_factory)
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
@@ -53,9 +80,7 @@ class Event(ComponentModel):
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: str = ""
-    exdates: list[Union[datetime.datetime, datetime.date]] = Field(
-        alias="exdate", default_factory=list
-    )
+    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     geo: Optional[Geo] = None
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
@@ -67,6 +92,7 @@ class Event(ComponentModel):
     related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
+    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
@@ -89,33 +115,28 @@ class Event(ComponentModel):
         )
 
     @property
-    def start(self) -> Union[datetime.datetime, datetime.date]:
+    def start(self) -> datetime.datetime | datetime.date:
         """Return the start time for the event."""
         return self.dtstart
 
     @property
-    def end(self) -> Union[datetime.datetime, datetime.date, None]:
+    def end(self) -> datetime.datetime | datetime.date:
         """Return the end time for the event."""
         if self.duration:
             return self.dtstart + self.duration
-        return self.dtend
+        if self.dtend:
+            return self.dtend
+        raise ValueError("Unexpected state with no duration or dtend")
 
     @property
     def start_datetime(self) -> datetime.datetime:
         """Return the events start as a datetime."""
-        if isinstance(self.start, datetime.datetime):
-            return self.start
-        # is datetime.date
-        return datetime.datetime.combine(self.start, MIDNIGHT)
+        return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
 
     @property
     def end_datetime(self) -> datetime.datetime:
         """Return the events end as a datetime."""
-        if isinstance(self.end, datetime.datetime):
-            return self.end
-        if isinstance(self.end, datetime.date):
-            return datetime.datetime.combine(self.end, MIDNIGHT)
-        raise ValueError("Unable to convert date to datetime")
+        return normalize_datetime(self.end).astimezone(tz=datetime.timezone.utc)
 
     @property
     def computed_duration(self) -> datetime.timedelta:

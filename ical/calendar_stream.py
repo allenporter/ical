@@ -14,13 +14,13 @@ from .types import ICS_ENCODERS, ComponentModel, encode_model
 class CalendarStream(ComponentModel):
     """A container that is a collection of calendaring information."""
 
-    calendars: list[Calendar] = Field(alias="vcalendar")
+    calendars: list[Calendar] = Field(alias="vcalendar", defaut_factory=[])
 
     @classmethod
     def from_ics(cls, content: str) -> "CalendarStream":
         """Factory method to create a new instance from an rfc5545 iCalendar content."""
         components = parse_content(content)
-        result: dict[str, list] = {}
+        result: dict[str, list] = {"vcalendar": []}
         for component in components:
             result.setdefault(component.name, [])
             result[component.name].append(component.as_dict())
@@ -33,6 +33,22 @@ class CalendarStream(ComponentModel):
 
 class IcsCalendarStream(CalendarStream):
     """A calendar stream that supports re-encoding ICS."""
+
+    @classmethod
+    def calendar_from_ics(cls, content: str) -> Calendar:
+        """Load a single calendar from an ics string."""
+        stream = cls.from_ics(content)
+        if len(stream.calendars) == 1:
+            return stream.calendars[0]
+        if len(stream.calendars) == 0:
+            return Calendar()
+        raise ValueError("Calendar Stream had more than one calendar")
+
+    @classmethod
+    def calendar_to_ics(cls, calendar: Calendar) -> str:
+        """Serialize a calendar as an ICS stream."""
+        stream = cls(vcalendar=[calendar])
+        return stream.ics()
 
     class Config:
         """Configuration for IcsCalendarStream pydantic model."""

@@ -1,6 +1,10 @@
 """Tests for Event library."""
 
+from __future__ import annotations
+
+import zoneinfo
 from datetime import date, datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -8,6 +12,7 @@ from pydantic import ValidationError
 from ical.event import Event
 
 SUMMARY = "test summary"
+LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
 
 
 @pytest.mark.parametrize(
@@ -39,11 +44,62 @@ def test_start_end_duration(
     assert not event.duration
 
 
-def test_comparisons() -> None:
+@pytest.mark.parametrize(
+    "event1_start,event1_end,event2_start,event2_end",
+    [
+        (date(2022, 9, 6), date(2022, 9, 7), date(2022, 9, 8), date(2022, 9, 10)),
+        (
+            datetime(2022, 9, 6, 6, 0, 0),
+            datetime(2022, 9, 6, 7, 0, 0),
+            datetime(2022, 9, 6, 8, 0, 0),
+            datetime(2022, 9, 6, 8, 30, 0),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 7, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 7, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 8, 8, 0, 0),
+            datetime(2022, 9, 8, 8, 30, 0),
+        ),
+        (
+            datetime(2022, 9, 6, 6, 0, 0, tzinfo=LOS_ANGELES),
+            datetime(2022, 9, 6, 7, 0, 0, tzinfo=LOS_ANGELES),
+            date(2022, 9, 8),
+            date(2022, 9, 9),
+        ),
+        (
+            date(2022, 9, 6),
+            date(2022, 9, 7),
+            datetime(2022, 9, 6, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+    ],
+)
+def test_comparisons(
+    event1_start: datetime | date,
+    event1_end: datetime | date,
+    event2_start: datetime | date,
+    event2_end: datetime | date,
+) -> None:
     """Test event comparison methods."""
-    event1 = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
-    event2 = Event(summary=SUMMARY, start=date(2022, 9, 8), end=date(2022, 9, 10))
+    event1 = Event(summary=SUMMARY, start=event1_start, end=event1_end)
+    event2 = Event(summary=SUMMARY, start=event2_start, end=event2_end)
     assert event1 < event2
+    assert event1 <= event2
+    assert event2 >= event1
+    assert event2 > event1
+
     assert event1 <= event2
     assert event2 >= event1
     assert event2 > event1
@@ -234,3 +290,79 @@ def test_date_intersects(
     event1 = Event(summary=SUMMARY, start=range1[0], end=range1[1])
     event2 = Event(summary=SUMMARY, start=range2[0], end=range2[1])
     assert event1.intersects(event2) == expected
+
+
+@pytest.mark.parametrize(
+    "start_str,end_str,start,end",
+    [
+        (
+            "2022-09-16 12:00",
+            "2022-09-16 12:30",
+            datetime(2022, 9, 16, 12, 0, 0),
+            datetime(2022, 9, 16, 12, 30, 0),
+        ),
+        (
+            "2022-09-16",
+            "2022-09-17",
+            date(2022, 9, 16),
+            date(2022, 9, 17),
+        ),
+        (
+            "2022-09-16 06:00",
+            "2022-09-17 08:30",
+            datetime(2022, 9, 16, 6, 0, 0),
+            datetime(2022, 9, 17, 8, 30, 0),
+        ),
+        (
+            "2022-09-16T06:00",
+            "2022-09-17T08:30",
+            datetime(2022, 9, 16, 6, 0, 0),
+            datetime(2022, 9, 17, 8, 30, 0),
+        ),
+        (
+            "2022-09-16T06:00Z",
+            "2022-09-17T08:30Z",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 17, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            "2022-09-16T06:00+00:00",
+            "2022-09-17T08:30+00:00",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 17, 8, 30, 0, tzinfo=timezone.utc),
+        ),
+        (
+            "2022-09-16T06:00-07:00",
+            "2022-09-17T08:30-07:00",
+            datetime(2022, 9, 16, 6, 0, 0, tzinfo=timezone(offset=timedelta(hours=-7))),
+            datetime(
+                2022, 9, 17, 8, 30, 0, tzinfo=timezone(offset=timedelta(hours=-7))
+            ),
+        ),
+    ],
+)
+def test_parse_event_timezones(
+    start_str: str, end_str: str, start: datetime | date, end: datetime | date
+) -> None:
+    """Test parsing date/times from strings."""
+    event = Event.parse_obj(
+        {
+            "summary": SUMMARY,
+            "start": start_str,
+            "end": end_str,
+        }
+    )
+    assert event.start == start
+    assert event.end == end
+
+
+def test_all_day_timezones() -> None:
+    """Test behavior of all day events interacting with timezones."""
+    with patch(
+        "ical.event.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ):
+        event = Event(summary=SUMMARY, start=date(2022, 8, 1), end=date(2022, 8, 2))
+        assert event.start_datetime == datetime(
+            2022, 8, 1, 6, 0, 0, tzinfo=timezone.utc
+        )
+        assert event.end_datetime == datetime(2022, 8, 2, 6, 0, 0, tzinfo=timezone.utc)

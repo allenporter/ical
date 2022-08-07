@@ -9,7 +9,7 @@ from collections.abc import Iterable, Iterator
 
 from dateutil import rrule
 
-from .event import Event
+from .event import Event, normalize_datetime
 from .types import Frequency, Recur, Weekday
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,11 +60,22 @@ class Timeline(Iterable[Event]):
 
     def start_after(
         self,
-        instant: datetime.date | datetime.datetime,
+        instant: datetime.datetime | datetime.date,
     ) -> Iterator[Event]:
         """Return an iterator containing events starting after the specified time."""
+        instant_value = normalize_datetime(instant)
         for event in self:
-            if event.start > instant:
+            if event.start_datetime > instant_value:
+                yield event
+
+    def active_after(
+        self,
+        instant: datetime.datetime | datetime.date,
+    ) -> Iterator[Event]:
+        """Return an iterator containing events active after the specified time."""
+        instant_value = normalize_datetime(instant)
+        for event in self:
+            if event.start_datetime > instant or event.end_datetime > instant_value:
                 yield event
 
     def at_instant(
@@ -106,7 +117,7 @@ class EventIterable(Iterable[Event]):
         # Complexity: O(n + k log n).
         heap: list[tuple[datetime.date | datetime.datetime, Event]] = []
         for event in iter(self._iterable):
-            if event.rrule:
+            if event.rrule or event.rdate:
                 continue
             heapq.heappush(heap, (event.start_datetime, event))
         while heap:
@@ -232,7 +243,7 @@ class MergedIterator(Iterator[Event]):
 
     def __next__(self) -> Event:
         """Produce the next item from the merged set."""
-        heap: list[tuple[datetime.date | datetime.datetime, PeekingIterator]] = []
+        heap: list[tuple[datetime.datetime, PeekingIterator]] = []
         for iterator in self._iters:
             peekd = iterator.peek()
             if peekd:
@@ -258,11 +269,14 @@ def calendar_timeline(events: list[Event]) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
     iters: list[Iterable[Event]] = [EventIterable(events)]
     for event in events:
-        if not event.rrule:
+        if not event.rrule and not event.rdate:
             continue
         ruleset = rrule.rruleset()
-        ruleset.rrule(_create_rrule(event.start, event.rrule))
-        for exdate in event.exdates:
+        if event.rrule:
+            ruleset.rrule(_create_rrule(event.start, event.rrule))
+        for rdate in event.rdate:
+            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
+        for exdate in event.exdate:
             ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
         iters.append(RecurIterable(event, ruleset))
     return Timeline(MergedIterable(iters))
