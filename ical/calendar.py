@@ -8,6 +8,7 @@ from typing import Optional
 from pydantic import Field
 
 from .event import Event
+from .journal import Journal
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .todo import Todo
@@ -28,6 +29,7 @@ class Calendar(ComponentModel):
     # Calendar components
     events: list[Event] = Field(alias="vevent", default_factory=list)
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)
+    journal: list[Journal] = Field(alias="vjournal", default_factory=list)
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)

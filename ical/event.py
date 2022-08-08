@@ -1,4 +1,4 @@
-"""Event implementation."""
+"""A grouping of component properties that describe a calendar event."""
 
 # pylint: disable=unnecessary-lambda
 
@@ -188,14 +188,6 @@ class Event(ComponentModel):
     @validator("status", pre=True)
     def parse_status(cls, value: Any) -> str | None:
         """Parse an EventStatus from a ParsedPropertyValue."""
-        value = parse_text(value)
-        if value and not isinstance(value, str):
-            raise ValueError(f"Expected text value as a string: {value}")
-        return value
-
-    @validator("classification", pre=True)
-    def parse_classification(cls, value: Any) -> str | None:
-        """Parse a Classification from a ParsedPropertyValue."""
         value = parse_text(value)
         if value and not isinstance(value, str):
             raise ValueError(f"Expected text value as a string: {value}")
