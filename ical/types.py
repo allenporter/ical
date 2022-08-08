@@ -363,7 +363,7 @@ class Period:
 
 def encode_period_ics(value: Period) -> str:
     """Serialize a Period as an ICS value."""
-    if not value.end or not value.duration:
+    if not value.end and not value.duration:
         raise ValueError("Invalid period missing both end and duration")
     if value.end:
         return "".join(
@@ -514,6 +514,7 @@ def encode_model(name: str, model: BaseModel) -> ParsedComponent:
 POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
     Recur: encode_recur_ics,
     datetime.timedelta: encode_duration_ics,
+    bool: encode_boolean_ics,
     str: encode_text,
 }
 
