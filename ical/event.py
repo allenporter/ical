@@ -9,10 +9,10 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator, validator
 
+from .alarm import Alarm
 from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
-    Classification,
     ComponentModel,
     EventStatus,
     Geo,
@@ -76,7 +76,7 @@ class Event(ComponentModel):
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
-    classification: Optional[Classification] = Field(alias="class", default=None)
+    classification: Optional[str] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
@@ -97,7 +97,9 @@ class Event(ComponentModel):
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
-    request_status: Optional[RequestStatus] = Field(alias="request-status")
+    request_status: Optional[RequestStatus] = Field(
+        alias="request-status", default_value=None
+    )
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
@@ -105,6 +107,8 @@ class Event(ComponentModel):
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
+
+    alarm: list[Alarm] = Field(alias="valarm", default_factory=list)
 
     # Other properties needed:
     # -- multiple

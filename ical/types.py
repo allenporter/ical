@@ -273,9 +273,15 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
 
 def encode_duration_ics(value: Any) -> str:
     """Serialize a time delta as a DURATION ICS value."""
-    if not isinstance(value, float):
-        raise ValueError("Unexpected value type")
-    duration = datetime.timedelta(seconds=value)
+    duration: datetime.timedelta
+    if isinstance(value, str):
+        return value  # Already encoded as ics
+    if isinstance(value, datetime.timedelta):
+        duration = value
+    elif isinstance(value, float):
+        duration = datetime.timedelta(seconds=value)
+    else:
+        raise ValueError(f"Unexpected value type: {value}")
     parts = []
     if duration < datetime.timedelta(days=0):
         parts.append("-")
@@ -702,7 +708,7 @@ def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
                 f"Property parameter specified unsupported type: {value_type}"
             )
         return data_type.decode(value)
-
+    _LOGGER.info("_validate_field: %s", value)
     for validator in validators:
         try:
             return validator(value)
