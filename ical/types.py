@@ -161,9 +161,9 @@ class Uri(str):
 class RequestStatus:
     """Status code returned for a scheduling request."""
 
-    statcode: int
+    statcode: float
     statdesc: str
-    exdata: Optional[str]
+    exdata: Optional[str] = None
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
@@ -172,18 +172,26 @@ class RequestStatus:
     @classmethod
     def parse_rstatus(cls, value: Any) -> RequestStatus:
         """Parse a rfc5545 request status value."""
+        if isinstance(value, dict):
+            return RequestStatus(**value)
         parts = parse_text(value).split(";")
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(f"Value was not valid Request Status: {value}")
-        exdata = parts[2] if len(parts) == 3 else None
-        return RequestStatus(int(parts[0]), parts[1], exdata)
+        exdata: str | None = None
+        if len(parts) == 3:
+            exdata = parts[2]
+        return RequestStatus(
+            statcode=float(parts[0]),
+            statdesc=parts[1],
+            exdata=exdata,
+        )
 
 
 def encode_rstatus_ics(value: RequestStatus) -> str:
     """Encoded RequestStatus as an ICS property."""
-    result = "{value.statcode};{value.statdesc}"
+    result = f"{value.statcode};{value.statdesc}"
     if value.exdata:
-        result += "{value.exdata}"
+        result += f";{value.exdata}"
     return result
 
 

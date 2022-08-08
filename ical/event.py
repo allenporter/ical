@@ -97,7 +97,7 @@ class Event(ComponentModel):
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
-    rstatus: Optional[RequestStatus] = None
+    request_status: Optional[RequestStatus] = Field(alias="request-status")
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
