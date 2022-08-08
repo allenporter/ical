@@ -1,4 +1,4 @@
-"""Tests for Event components."""
+"""Tests for Event component."""
 
 from __future__ import annotations
 

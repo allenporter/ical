@@ -1,4 +1,4 @@
-"""Tests for Todo components."""
+"""Tests for Todo component."""
 
 from __future__ import annotations
 

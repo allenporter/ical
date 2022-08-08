@@ -62,34 +62,30 @@ class Alarm(ComponentModel):
     # - attach
 
     @root_validator
-    def parse_audio_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate required fields for audio actions."""
-        if values["action"] != ACTION_AUDIO:
-            return values
-        if not values.get("trigger"):
-            raise ValueError("Trigger value is required for action AUDIO")
-        return values
-
-    @root_validator
     def parse_display_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for display actions."""
-        if values["action"] != ACTION_DISPLAY:
+        if values.get("action") != ACTION_DISPLAY:
             return values
         if not values.get("description"):
             raise ValueError("Description value is required for action AUDIO")
-        if not values.get("trigger"):
-            raise ValueError("Trigger value is required for action AUDIO")
         return values
 
     @root_validator
     def parse_email_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for email actions."""
-        if values["action"] != ACTION_EMAIL:
+        if values.get("action") != ACTION_EMAIL:
             return values
         if not values.get("description"):
             raise ValueError("Description value is required for action AUDIO")
-        if not values.get("trigger"):
-            raise ValueError("Trigger value is required for action AUDIO")
         if not values.get("summary"):
             raise ValueError("Summary value is required for action AUDIO")
+        return values
+
+    @root_validator
+    def parse_repeat_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Assert the relationship between repeat and duration."""
+        if (values.get("duration") is None) != (values.get("repeat") is None):
+            raise ValueError(
+                "Duration and Repeat must both be specified or both omitted"
+            )
         return values
