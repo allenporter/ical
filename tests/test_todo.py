@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime
+import zoneinfo
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -45,3 +47,9 @@ def test_duration() -> None:
     todo = Todo(start=datetime.date(2022, 8, 7), due=datetime.date(2022, 8, 8))
     assert todo.start
     assert todo.due
+    assert todo.start_datetime
+
+    with patch(
+        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ):
+        assert todo.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
