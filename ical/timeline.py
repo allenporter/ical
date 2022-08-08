@@ -9,8 +9,9 @@ from collections.abc import Iterable, Iterator
 
 from dateutil import rrule
 
-from .event import Event, normalize_datetime
+from .event import Event
 from .types import Frequency, Recur, Weekday
+from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
 

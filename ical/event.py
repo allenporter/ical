@@ -1,10 +1,11 @@
 """Event implementation."""
 
+# pylint: disable=unnecessary-lambda
+
 from __future__ import annotations
 
 import datetime
 import logging
-import uuid
 from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator, validator
@@ -22,49 +23,24 @@ from .types import (
     Uri,
     parse_text,
 )
+from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
-
-MIDNIGHT = datetime.time()
-
-
-def dtstamp_factory() -> datetime.datetime:
-    """Factory method for new event timestamps to facilitate mocking."""
-    return datetime.datetime.utcnow()
-
-
-def uid_factory() -> uuid.UUID:
-    """Factory method for new uids to facilitate mocking."""
-    return uuid.uuid1()
-
-
-def local_timezone() -> datetime.tzinfo:
-    """Get the local timezone to use when converting date to datetime."""
-    local_tz = datetime.datetime.now().astimezone().tzinfo
-    if not local_tz:
-        return datetime.timezone.utc
-    return local_tz
-
-
-def normalize_datetime(value: datetime.date | datetime.datetime) -> datetime.datetime:
-    """Convert date or datetime to a value that can be used for comparison."""
-    if not isinstance(value, datetime.datetime):
-        value = datetime.datetime.combine(value, MIDNIGHT)
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=local_timezone())
-    return value
 
 
 class Event(ComponentModel):
     """A single event on a calendar.
 
     Can either be for a specific day, or with a start time and duration/end time.
+
+    The dtstamp and uid functions have factory methods invoked with a lambda to facilitate
+    mocking in unit tests.
     """
 
     dtstamp: Union[datetime.datetime, datetime.date] = Field(
-        default_factory=dtstamp_factory
+        default_factory=lambda: dtstamp_factory()
     )
-    uid: str = Field(default_factory=uid_factory)
+    uid: str = Field(default_factory=lambda: uid_factory())
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
@@ -116,11 +92,11 @@ class Event(ComponentModel):
 
     def __init__(self, **data: dict[str, Any]) -> None:
         """Initialize Event."""
-        super().__init__(
-            dtstart=data.pop("dtstart", None) or data.pop("start", None),
-            dtend=data.pop("dtend", None) or data.pop("end", None),
-            **data,
-        )
+        if "start" in data:
+            data["dtstart"] = data.pop("start")
+        if "end" in data:
+            data["dtend"] = data.pop("end")
+        super().__init__(**data)
 
     @property
     def start(self) -> datetime.datetime | datetime.date:

@@ -26,12 +26,14 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
     ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
     ATTENDEE:mailto:jqpublic@example.com
 
+- Related TO:
+    - VTODO can be related to VTODO or VEVENT
+
 - Components
   - Event
     -- multiple
     - attach
     - related
-  - todo
   - journal
   - free/busy
   - time zone

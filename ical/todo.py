@@ -20,13 +20,16 @@ from .types import (
     Uri,
     parse_text,
 )
+from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 
 class Todo(ComponentModel):
     """A calendar todo component."""
 
-    dtstamp: Union[datetime.datetime, datetime.date]
-    uid: str
+    dtstamp: Union[datetime.datetime, datetime.date] = Field(
+        default_factory=dtstamp_factory
+    )
+    uid: str = Field(default_factory=uid_factory)
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
@@ -36,7 +39,10 @@ class Todo(ComponentModel):
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
     description: Optional[str] = None
+
+    # Has alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date, None] = None
+
     due: Union[datetime.datetime, datetime.date, None] = None
     duration: Optional[datetime.timedelta] = None
     exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
@@ -57,12 +63,30 @@ class Todo(ComponentModel):
     rrule: Optional[Recur] = None
     sequence: Optional[int] = None
     status: Optional[TodoStatus] = None
-    summary: str
+    summary: Optional[str] = None
     url: Optional[Uri] = None
 
     alarms: list[Alarm] = Field(alias="valarm", default_factory=list)
 
     extras: list[ParsedProperty] = Field(default_factory=list)
+
+    def __init__(self, **data: dict[str, Any]) -> None:
+        """Initialize Todo."""
+        if "start" in data:
+            data["dtstart"] = data.pop("start")
+        super().__init__(**data)
+
+    @property
+    def start(self) -> datetime.datetime | datetime.date | None:
+        """Return the start time for the todo."""
+        return self.dtstart
+
+    @property
+    def start_datetime(self) -> datetime.datetime | None:
+        """Return the todos start as a datetime."""
+        if not self.dtstart:
+            return None
+        return normalize_datetime(self.dtstart).astimezone(tz=datetime.timezone.utc)
 
     @validator("status", pre=True, allow_reuse=True)
     def parse_status(cls, value: Any) -> str | None:

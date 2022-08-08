@@ -608,7 +608,6 @@ class PropertyDataType(enum.Enum):
     # Types to support
     #   BINARY
     #   PERIOD
-    #   RECUR
     #   TIME
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
     CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
@@ -708,7 +707,7 @@ def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
                 f"Property parameter specified unsupported type: {value_type}"
             )
         return data_type.decode(value)
-    _LOGGER.info("_validate_field: %s", value)
+
     for validator in validators:
         try:
             return validator(value)
