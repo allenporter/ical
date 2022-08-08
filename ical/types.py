@@ -157,6 +157,36 @@ class Uri(str):
         return Uri(prop.value)
 
 
+@dataclass
+class RequestStatus:
+    """Status code returned for a scheduling request."""
+
+    statcode: int
+    statdesc: str
+    exdata: Optional[str]
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
+        yield cls.parse_rstatus
+
+    @classmethod
+    def parse_rstatus(cls, value: Any) -> RequestStatus:
+        """Parse a rfc5545 request status value."""
+        parts = parse_text(value).split(";")
+        if len(parts) < 2 or len(parts) > 3:
+            raise ValueError(f"Value was not valid Request Status: {value}")
+        exdata = parts[2] if len(parts) == 3 else None
+        return RequestStatus(int(parts[0]), parts[1], exdata)
+
+
+def encode_rstatus_ics(value: RequestStatus) -> str:
+    """Encoded RequestStatus as an ICS property."""
+    result = "{value.statcode};{value.statdesc}"
+    if value.exdata:
+        result += "{value.exdata}"
+    return result
+
+
 def parse_date(prop: ParsedProperty) -> datetime.date | None:
     """Parse a rfc5545 into a datetime.date."""
     value = prop.value
@@ -622,6 +652,7 @@ ICS_ENCODERS: dict[Any, Callable[[Any], str]] = {
         for property_data_type in PropertyDataType
     },
     Geo: encode_geo_ics,
+    RequestStatus: encode_rstatus_ics,
 }
 ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
     **{

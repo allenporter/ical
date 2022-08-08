@@ -18,6 +18,7 @@ from .types import (
     Geo,
     Priority,
     Recur,
+    RequestStatus,
     Uri,
     parse_text,
 )
@@ -89,10 +90,14 @@ class Event(ComponentModel):
     organization: str = ""
     organizer: Optional[CalAddress] = None
     priority: Optional[Priority] = None
+    recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
+        alias="recurrence-id"
+    )
     related: list[str] = Field(default_factory=list)
     resources: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    rstatus: Optional[RequestStatus] = None
     sequence: Optional[int] = None
     status: Optional[EventStatus] = None
     transparency: Optional[str] = Field(alias="transp", default=None)
@@ -102,7 +107,6 @@ class Event(ComponentModel):
     extras: list[ParsedProperty] = Field(default_factory=list)
 
     # Other properties needed:
-    # - recurid
     # -- multiple
     # - attach
 

@@ -29,8 +29,6 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 
 - Components
   - Event
-    ---- once
-    - recurid
     -- multiple
     - attach
     - related
@@ -49,6 +47,3 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
   - resources
   - status
   - summary
-
-- Recurrence
-  - rstatus

@@ -16,6 +16,7 @@ input: |-
   STATUS:CONFIRMED
   SUMMARY:First of the month
   TRANSP:TRANSPARENT
+  RECURRENCE-ID;VALUE=DATE:19960401
   END:VEVENT
   END:VCALENDAR
 output:
@@ -32,6 +33,7 @@ output:
           description: ""
           last_modified: "2022-07-31T19:03:39+00:00"
           location: ""
+          recurrence_id: "1996-04-01"
           rrule:
             freq: MONTHLY
             by_month_day:
@@ -51,6 +53,7 @@ encoded: |-
   SUMMARY:First of the month
   CREATED:20220731T190327Z
   LAST-MODIFIED:20220731T190339Z
+  RECURRENCE-ID:19960401
   RRULE:FREQ=MONTHLY;BYMONTHDAY=1
   SEQUENCE:0
   STATUS:CONFIRMED
