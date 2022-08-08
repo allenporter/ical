@@ -1,0 +1,100 @@
+"""A grouping of component properties that describe a journal entry."""
+
+# pylint: disable=unnecessary-lambda
+
+from __future__ import annotations
+
+import datetime
+import logging
+from typing import Any, Optional, Union
+
+from pydantic import Field, validator
+
+from .parsing.property import ParsedProperty
+from .types import (
+    CalAddress,
+    ComponentModel,
+    JournalStatus,
+    Recur,
+    RequestStatus,
+    Uri,
+    parse_text,
+)
+from .util import dtstamp_factory, normalize_datetime, uid_factory
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class Journal(ComponentModel):
+    """A single journal entry on a calendar.
+
+    A journal entry consists of one or more text notes associated with a
+    specific calendar date.
+
+    Can either be for a specific day, or with a start time and duration/end time.
+
+    The dtstamp and uid functions have factory methods invoked with a lambda to facilitate
+    mocking in unit tests.
+    """
+
+    dtstamp: Union[datetime.datetime, datetime.date] = Field(
+        default_factory=lambda: dtstamp_factory()
+    )
+    uid: str = Field(default_factory=lambda: uid_factory())
+    attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
+    categories: list[str] = Field(default_factory=list)
+    classification: Optional[str] = Field(alias="class", default=None)
+    comment: list[str] = Field(default_factory=list)
+    contacts: list[str] = Field(alias="contact", default_factory=list)
+    created: Optional[datetime.datetime] = None
+    description: Optional[str] = None
+    # Has an alias of 'start'
+    dtstart: Union[datetime.datetime, datetime.date] = Field(
+        default=None,
+    )
+    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    last_modified: Optional[datetime.datetime] = Field(
+        alias="last-modified", default=None
+    )
+    organizer: Optional[CalAddress] = None
+    recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
+        alias="recurrence-id"
+    )
+    related: list[str] = Field(default_factory=list)
+    rrule: Optional[Recur] = None
+    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    request_status: Optional[RequestStatus] = Field(
+        alias="request-status", default_value=None
+    )
+    sequence: Optional[int] = None
+    status: Optional[JournalStatus] = None
+    summary: Optional[str] = None
+    url: Optional[Uri] = None
+
+    # Unknown or unsupported properties
+    extras: list[ParsedProperty] = Field(default_factory=list)
+
+    # Other properties needed:
+    # -- multiple
+    # - attach
+
+    def __init__(self, **data: dict[str, Any]) -> None:
+        """Initialize Event."""
+        if "start" in data:
+            data["dtstart"] = data.pop("start")
+        super().__init__(**data)
+
+    @property
+    def start(self) -> datetime.datetime | datetime.date:
+        """Return the start time for the event."""
+        return self.dtstart
+
+    @property
+    def start_datetime(self) -> datetime.datetime:
+        """Return the events start as a datetime."""
+        return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
+
+    @validator("status", pre=True)
+    def parse_status(cls, value: Any) -> str | None:
+        """Parse an EventStatus from a ParsedPropertyValue."""
+        return parse_text(value)

@@ -82,6 +82,14 @@ class TodoStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class JournalStatus(str, enum.Enum):
+    """Status or confirmation of the journal entry."""
+
+    DRAFT = "DRAFT"
+    FINAL = "FINAL"
+    CANCELLED = "CANCELLED"
+
+
 class Classification(str, enum.Enum):
     """Defines the access classification for a calendar component."""
 

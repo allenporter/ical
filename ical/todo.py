@@ -1,4 +1,4 @@
-"""Grouping of calendar properties that describe a to-do."""
+"""A grouping of component properties that describe a to-do."""
 
 from __future__ import annotations
 
