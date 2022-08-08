@@ -10,6 +10,7 @@ input: |-
   SUMMARY:Customer Meeting
   RESOURCES:EASEL,PROJECTOR,VCR
   RESOURCES;LANGUAGE=fr:Nettoyeur haute pression
+  REQUEST-STATUS:2.0;Success
   END:VEVENT
   END:VCALENDAR
 output:
@@ -27,6 +28,10 @@ output:
         - PROJECTOR
         - VCR
         - Nettoyeur haute pression
+      request_status:
+        statcode: 2.0
+        statdesc: Success
+        exdata:
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
@@ -41,5 +46,6 @@ encoded: |-
   RESOURCES:PROJECTOR
   RESOURCES:VCR
   RESOURCES:Nettoyeur haute pression
+  REQUEST-STATUS:2.0;Success
   END:VEVENT
   END:VCALENDAR

@@ -13,6 +13,7 @@ input: |-
  ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":
   mailto:ildoit@example.com
  ORGANIZER;CN=John Smith:mailto:jsmith@example.com
+ REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
  END:VEVENT
  END:VCALENDAR
 output:
@@ -29,6 +30,10 @@ output:
             - mailto:joecool@example.com
             - mailto:ildoit@example.com
           organizer: mailto:jsmith@example.com
+          request_status:
+            statcode: 3.1
+            statdesc: Invalid property value
+            exdata: DTSTART:96-Apr-01
 encoded: |-
  BEGIN:VCALENDAR
  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
@@ -42,5 +47,6 @@ encoded: |-
  ATTENDEE:mailto:joecool@example.com
  ATTENDEE:mailto:ildoit@example.com
  ORGANIZER:mailto:jsmith@example.com
+ REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
  END:VEVENT
  END:VCALENDAR
