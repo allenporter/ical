@@ -4,11 +4,7 @@ This captures known parts of rfc5545 that are currently missing, mostly as a
 TODO tracker so they are not forgotten. This is not meant to be fully exhaustive.
 
 - Testing example (e.g. using shared fixtures)
-- Ignore and preserve x-comp and iana-comp values unrecognized
-- Complete todo properties
-- Complete vevent properties
 - Reduce visibility of internal parsers (e.g. contentlines)
-- Encoding escaped characters in property values (e.g. commas)
 - Unknown components (fix extra field parsing)
 - Accessing non-formatting property parameters
 - Serializing property parameters
@@ -26,13 +22,18 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Recurrence timezone formattings
 - Recurrence datetime field encoded properly
 - Ignore and preserve unsupported Recurrence rules
+- Attendee parameters, e.g.
+    ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
+    ATTENDEE:mailto:jqpublic@example.com
+
+- Related TO:
+    - VTODO can be related to VTODO or VEVENT
 
 - Components
   - Event
     -- multiple
     - attach
     - related
-  - todo
   - journal
   - free/busy
   - time zone

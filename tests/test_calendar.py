@@ -244,7 +244,7 @@ def mock_uid() -> Generator[str, None, None]:
     """Patch out uuid creation with a fixed value."""
     value = str(uuid.uuid3(uuid.NAMESPACE_DNS, "fixed-name"))
     with patch(
-        "ical.event.uuid.uuid1",
+        "ical.event.uid_factory",
         return_value=value,
     ):
         yield value

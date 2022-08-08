@@ -1,4 +1,4 @@
-"""Tests for Event library."""
+"""Tests for Event component."""
 
 from __future__ import annotations
 
@@ -359,7 +359,7 @@ def test_parse_event_timezones(
 def test_all_day_timezones() -> None:
     """Test behavior of all day events interacting with timezones."""
     with patch(
-        "ical.event.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
     ):
         event = Event(summary=SUMMARY, start=date(2022, 8, 1), end=date(2022, 8, 2))
         assert event.start_datetime == datetime(

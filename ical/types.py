@@ -273,9 +273,15 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
 
 def encode_duration_ics(value: Any) -> str:
     """Serialize a time delta as a DURATION ICS value."""
-    if not isinstance(value, float):
-        raise ValueError("Unexpected value type")
-    duration = datetime.timedelta(seconds=value)
+    duration: datetime.timedelta
+    if isinstance(value, str):
+        return value  # Already encoded as ics
+    if isinstance(value, datetime.timedelta):
+        duration = value
+    elif isinstance(value, float):
+        duration = datetime.timedelta(seconds=value)
+    else:
+        raise ValueError(f"Unexpected value type: {value}")
     parts = []
     if duration < datetime.timedelta(days=0):
         parts.append("-")
@@ -602,7 +608,6 @@ class PropertyDataType(enum.Enum):
     # Types to support
     #   BINARY
     #   PERIOD
-    #   RECUR
     #   TIME
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
     CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)

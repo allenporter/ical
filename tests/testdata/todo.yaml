@@ -27,8 +27,8 @@ output:
   - version: '2.0'
     prodid: -//hacksw/handcal//NONSGML v1.0//EN
     todos:
-    - uid: 20070313T123432Z-456553@example.com
-      dtstamp: '2007-03-13T12:34:32+00:00'
+    - dtstamp: '2007-03-13T12:34:32+00:00'
+      uid: 20070313T123432Z-456553@example.com
       due: '2007-05-01'
       summary: Submit Quebec Income Tax Return for 2006
       categories:
@@ -49,23 +49,23 @@ encoded: |-
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
   VERSION:2.0
   BEGIN:VTODO
-  UID:20070313T123432Z-456553@example.com
   DTSTAMP:20070313T123432Z
-  SUMMARY:Submit Quebec Income Tax Return for 2006
-  DUE:20070501
-  CLASS:CONFIDENTIAL
+  UID:20070313T123432Z-456553@example.com
   CATEGORIES:FAMILY
   CATEGORIES:FINANCE
+  CLASS:CONFIDENTIAL
+  DUE:20070501
   STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
   END:VTODO
   BEGIN:VTODO
-  UID:20070514T103211Z-123404@example.com
   DTSTAMP:20070514T103211Z
-  SUMMARY:Submit Revised Internet-Draft
+  UID:20070514T103211Z-123404@example.com
+  COMPLETED:20070707T100000Z
   DTSTART:20070514T110000Z
   DUE:20070709T130000Z
-  COMPLETED:20070707T100000Z
   PRIORITY:1
   STATUS:NEEDS-ACTION
+  SUMMARY:Submit Revised Internet-Draft
   END:VTODO
   END:VCALENDAR
