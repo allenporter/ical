@@ -24,5 +24,5 @@ output:
           contacts:
             - Jim Dolittle, ABC Industries, +1-919-555-1234
           organizer:
-            value: mailto:jsmith@example.com
+            uri: mailto:jsmith@example.com
           url: http://www.example.com/calendar/busytime/jsmith.ifb

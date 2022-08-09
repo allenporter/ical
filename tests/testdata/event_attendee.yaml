@@ -27,10 +27,10 @@ output:
           dtstart: "2007-06-28"
           dtend: "2007-07-09"
           attendees:
-            - value: mailto:joecool@example.com
-            - value: mailto:ildoit@example.com
+            - uri: mailto:joecool@example.com
+            - uri: mailto:ildoit@example.com
           organizer:
-            value: mailto:jsmith@example.com
+            uri: mailto:jsmith@example.com
             common_name: John Smith
           request_status:
             statcode: 3.1

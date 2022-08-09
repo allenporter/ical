@@ -8,6 +8,16 @@ simple property types e.g. a single summary field that is specified only once.
 This library helps reduce boilerplate for translating that complex structure
 into the simpler pydantic data model, and handles custom field types and
 validators.
+
+Just as the pydantic model provides syntax glue for parsing data and
+associating necessary validators, this is the same for the opposite
+direction.
+
+A custom class with the method `__encode_component__` is used to serialize
+the object as a ParsedComponent.
+
+A custom class with the method `__encode_property__` is used to serialize
+the object as a ParsedProperty.
 """
 
 from __future__ import annotations
@@ -28,9 +38,8 @@ from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST
 
-from .parameters import encode_parameter_attributes, set_parameter_attributes
 from .parsing.component import ParsedComponent
-from .parsing.property import ParsedProperty
+from .parsing.property import ParsedProperty, ParsedPropertyParameter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -137,35 +146,38 @@ def encode_geo_ics(value: Geo) -> str:
     return f"{value.lat};{value.lng}"
 
 
-@dataclass
-class CalAddress:
+class CalAddress(BaseModel):
     """A value type for a property that contains a calendar user address.
 
     This is a subclass of string so that it can be used in place of a string
     to get the calendar address, but also supports additional properties.
     """
 
-    value: str
+    uri: str = Field(alias="value")
     """The calendar user address as a uri."""
 
-    common_name: Optional[str] = None
-    directory_entry: Optional[str] = None
-    sent_by: Optional[str] = None
-    language: Optional[str] = None
+    common_name: Optional[str] = Field(alias="CN", default=None)
+    directory_entry: Optional[str] = Field(alias="DIR", default=None)
+    sent_by: Optional[str] = Field(alias="SENT-BY", default=None)
+    language: Optional[str] = Field(alias="LANGUAGE", default=None)
 
-    @classmethod
-    def parse(cls, prop: ParsedProperty) -> CalAddress:
-        """Parse a calendar user address."""
-        urlparse(prop.value)
-        address = CalAddress(value=prop.value)
-        if prop.params:
-            try:
-                set_parameter_attributes(address, prop.params)
-            except ValueError as err:
-                raise ValueError(
-                    "Failed to set parameter attributes for CalAddress: {str(err)}"
-                ) from err
-        return address
+    def __encode_property__(cls, name: str, values: dict[str, Any]) -> ParsedProperty:
+        """Encode this object as a property."""
+        return encode_property_with_params(cls, name, values)
+
+    class Config:
+        """Pyandtic model configuration."""
+
+        allow_population_by_field_name = True
+
+
+def property_to_dataclass(prop: ParsedProperty) -> dict[str, str]:
+    """Convert a parsed property to input suitable to be prased as a data class."""
+    result = {"value": prop.value}
+    if prop.params:
+        for param in prop.params:
+            result[param.name] = param.values[0]
+    return result
 
 
 class Uri(str):
@@ -498,6 +510,10 @@ class Recur(BaseModel):
         validate_assignment = True
         allow_population_by_field_name = True
 
+    def __encode_property__(cls, name: str, values: dict[str, Any]) -> ParsedProperty:
+        """Encode this object as a property."""
+        return ParsedProperty(name, encode_recur_ics(values))
+
 
 def parse_recur(prop: Any) -> dict[str, Any]:
     """Parse the recurrence rule text as a dictionary as Pydantic input.
@@ -524,10 +540,10 @@ def parse_recur(prop: Any) -> dict[str, Any]:
     return result
 
 
-def encode_recur_ics(recur: Recur) -> str:
+def encode_recur_ics(data: dict[str, Any]) -> str:
     """Encode the recurence rule in ICS format."""
     result = []
-    for key, value in dict(recur).items():
+    for key, value in data.items():
         # Need to encode based on field type also using json encoders
         if key == "until":
             value = encode_date_time_ics(value)
@@ -560,7 +576,7 @@ def parse_extra_fields(
     return values
 
 
-def encode_model(name: str, model: BaseModel) -> ParsedComponent:
+def encode_model(name: str, model: ComponentModel) -> ParsedComponent:
     """Encode a pydantic model for serialization as an iCalendar object."""
     model_data = json.loads(
         model.json(by_alias=True, exclude_none=True, exclude_defaults=True)
@@ -571,11 +587,29 @@ def encode_model(name: str, model: BaseModel) -> ParsedComponent:
 # For additional decoding of properties after they have already
 # been handled by the json encoder.
 POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
-    Recur: encode_recur_ics,
     datetime.timedelta: encode_duration_ics,
     bool: encode_boolean_ics,
     str: encode_text,
 }
+
+
+def encode_property_with_params(
+    cls: BaseModel, name: str, model_data: dict[str, Any]
+) -> ParsedProperty:
+    """Encode a pydantic model as a property with parameters."""
+    _LOGGER.debug("Encoding property with params %s: %s", name, model_data)
+    prop = ParsedProperty(name=name, value=model_data.pop("value"))
+    params = []
+    for field in cls.__fields__.values():
+        key = field.alias
+        if (values := model_data.get(key)) is None:
+            continue
+        if encoder := POST_JSON_ENCODERS.get(field.type_):
+            values = encoder(values)
+        params.append(ParsedPropertyParameter(name=key, values=[values]))
+    if params:
+        prop.params = params
+    return prop
 
 
 def encode_component(
@@ -589,48 +623,18 @@ def encode_component(
         values = model_data.get(key)
         if values is None or key == "extras":
             continue
-        encoder = POST_JSON_ENCODERS.get(field.type_)
-        if isinstance(values, list):
-            for value in values:
-                if (
-                    not encoder
-                    and get_origin(field.type_) is not Union
-                    and issubclass(field.type_, BaseModel)
-                ):
-                    parent.components.append(encode_component(key, field.type_, value))
-                elif dataclasses.is_dataclass(field.type_) and isinstance(value, dict):
-                    _LOGGER.debug("Encode dict attributes: %s", values)
-                    parent.properties.append(
-                        ParsedProperty(
-                            name=key,
-                            value=value.pop("value"),
-                            params=encode_parameter_attributes(value),
-                        )
-                    )
-                else:
-                    if encoder:
-                        value = encoder(value)
-                    parent.properties.append(ParsedProperty(name=key, value=value))
-        elif (
-            not encoder
-            and get_origin(field.type_) is not Union
-            and issubclass(field.type_, BaseModel)
-        ):
-            parent.components.append(encode_component(key, field.type_, values))
-        elif dataclasses.is_dataclass(field.type_) and isinstance(values, dict):
-            _LOGGER.debug("Encode dict attributes: %s", values)
-            parent.properties.append(
-                ParsedProperty(
-                    name=key,
-                    value=values.pop("value"),
-                    params=encode_parameter_attributes(values),
-                )
-            )
-        else:
-            _LOGGER.debug("Encode component attributes: %s", values)
-            if encoder:
-                values = encoder(values)
-            parent.properties.append(ParsedProperty(name=key, value=values))
+        if not isinstance(values, list):
+            values = [values]
+        for value in values:
+            if component_encoder := getattr(field.type_, "__encode_component__", None):
+                parent.components.append(component_encoder(field.type_, key, value))
+                continue
+            if property_encoder := getattr(field.type_, "__encode_property__", None):
+                parent.properties.append(property_encoder(field.type_, key, value))
+                continue
+            if value_encoder := POST_JSON_ENCODERS.get(field.type_):
+                value = value_encoder(value)
+            parent.properties.append(ParsedProperty(name=key, value=value))
     return parent
 
 
@@ -648,7 +652,7 @@ class PropertyDataType(enum.Enum):
     CAL_ADDRESS = (
         "CAL-ADDRESS",
         CalAddress,
-        CalAddress.parse,
+        property_to_dataclass,
         dataclasses.asdict,
     )
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
@@ -770,26 +774,25 @@ def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, An
         if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
             # The incoming value is not from the parse tree
             continue
-
         validators = _get_validators(field.type_)
+        validated = []
+        for prop in value:
+            # This property value may contain repeated values itself
+            if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
+                for sub_value in prop.value.split(","):
+                    sub_prop = copy.deepcopy(prop)
+                    sub_prop.value = sub_value
+                    validated.append(_validate_field(sub_prop, validators))
+            else:
+                validated.append(_validate_field(prop, validators))
+
         if field.shape == SHAPE_LIST:
-            _LOGGER.debug("Parsing repeated value with validators: %s", validators)
-            validated = []
-            for prop in value:
-                # This property value may contain repeated values itself
-                if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
-                    for sub_value in prop.value.split(","):
-                        sub_prop = copy.deepcopy(prop)
-                        sub_prop.value = sub_value
-                        validated.append(_validate_field(sub_prop, validators))
-                else:
-                    validated.append(_validate_field(prop, validators))
             values[field.alias] = validated
+        elif len(validated) > 1:
+            raise ValueError(f"Expected one value for field: {field.alias}")
         else:
             # Collapse repeated value from the parse tree into a single value
-            if len(value) > 1:
-                raise ValueError(f"Expected one value for field: {field.alias}")
-            values[field.alias] = _validate_field(value[0], validators)
+            values[field.alias] = validated[0]
 
     return values
 
@@ -801,6 +804,10 @@ class ComponentModel(BaseModel):
     _parse_property_value = root_validator(pre=True, allow_reuse=True)(
         parse_property_value
     )
+
+    def __encode_component__(cls, name: str, values: dict[str, Any]) -> ParsedComponent:
+        """Encode this object as a component."""
+        return encode_component(name, cls, values)
 
     class Config:
         """Pyandtic model configuration."""

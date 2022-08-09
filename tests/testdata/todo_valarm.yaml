@@ -29,10 +29,10 @@ output:
         - dtstamp: "1998-01-30T13:45:00+00:00"
           uid: uid4@example.com
           attendees:
-            - value: mailto:jqpublic@example.com
+            - uri: mailto:jqpublic@example.com
           due: "1998-04-15T00:00:00"
           organizer:
-            value: mailto:unclesam@example.com
+            uri: mailto:unclesam@example.com
           sequence: 2
           status: NEEDS-ACTION
           summary: Submit Income Taxes

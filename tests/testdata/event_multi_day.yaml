@@ -32,7 +32,7 @@ output:
       categories:
       - CONFERENCE
       organizer:
-        value: mailto:jsmith@example.com
+        uri: mailto:jsmith@example.com
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN

@@ -25,6 +25,7 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
 - Attendee parameters, e.g.
     ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
     ATTENDEE:mailto:jqpublic@example.com
+- Quoting/Dequoting in property parameters
 
 - Related TO:
     - VTODO can be related to VTODO or VEVENT
