@@ -124,8 +124,6 @@ class Geo:
     @classmethod
     def parse_geo(cls, value: Any) -> Geo:
         """Parse a rfc5545 lat long geo values."""
-        #        if isinstance(value, dict):
-        #            return Geo(**value)
         parts = parse_text(value).split(";", 2)
         if len(parts) != 2:
             raise ValueError(f"Value was not valid geo lat;long: {value}")
@@ -151,10 +149,6 @@ class Uri(str):
     """A value type for a property that contains a uniform resource identifier."""
 
     @classmethod
-    def __get_valiators__(cls) -> Generator[Callable[[Any], Any], None, None]:
-        yield cls.parse
-
-    @classmethod
     def parse(cls, prop: ParsedProperty) -> Uri:
         """Parse a calendar user address."""
         urlparse(prop.value)
@@ -172,8 +166,6 @@ class RequestStatus:
     @classmethod
     def parse_rstatus(cls, value: Any) -> RequestStatus:
         """Parse a rfc5545 request status value."""
-        #        if isinstance(value, dict):
-        #            return RequestStatus(**value)
         parts = parse_text(value).split(";")
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(f"Value was not valid Request Status: {value}")
