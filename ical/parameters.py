@@ -40,7 +40,11 @@ class ParameterType(ABC):
 
 
 class AlternateText(ParameterType):
-    """An alternate text representation for the property value."""
+    """An alternate text representation for the property value.
+
+    Typically specified on a text property such as Comment, Description,
+    Location, Resource, Summary.
+    """
 
     ics_name = "ALTREP"
     attribute_name = "alternate_text"

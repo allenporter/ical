@@ -9,17 +9,23 @@ from ical.calendar_stream import CalendarStream, IcsCalendarStream
 
 
 @pytest.mark.golden_test("testdata/*.yaml")
-def test_parse(golden: GoldenTestFixture) -> None:
+def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = CalendarStream.from_ics(golden["input"])
-    data = json.loads(cal.json(exclude_unset=True, exclude_none=True))
+    data = json.loads(
+        cal.json(exclude_unset=True, exclude_none=True, encoder=json_encoder.default)
+    )
     assert data == golden["output"]
 
     # Re-parse the data object to verify we get the original data values
     # back. This effectively confirms that all fields can be parsed from the
     # python native format in addition to rfc5545.
     cal_reparsed = CalendarStream.parse_obj(data)
-    data_reparsed = json.loads(cal_reparsed.json(exclude_unset=True, exclude_none=True))
+    data_reparsed = json.loads(
+        cal_reparsed.json(
+            exclude_unset=True, exclude_none=True, encoder=json_encoder.default
+        )
+    )
     assert data_reparsed == data
 
 

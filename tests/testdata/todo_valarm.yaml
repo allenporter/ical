@@ -30,17 +30,9 @@ output:
           uid: uid4@example.com
           attendees:
             - value: mailto:jqpublic@example.com
-              common_name:
-              directory_entry:
-              language:
-              sent_by:
           due: "1998-04-15T00:00:00"
           organizer:
             value: mailto:unclesam@example.com
-            common_name:
-            directory_entry:
-            language:
-            sent_by:
           sequence: 2
           status: NEEDS-ACTION
           summary: Submit Income Taxes

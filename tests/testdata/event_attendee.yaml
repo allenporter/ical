@@ -28,21 +28,10 @@ output:
           dtend: "2007-07-09"
           attendees:
             - value: mailto:joecool@example.com
-              common_name:
-              directory_entry:
-              language:
-              sent_by:
             - value: mailto:ildoit@example.com
-              common_name:
-              directory_entry:
-              language:
-              sent_by:
           organizer:
             value: mailto:jsmith@example.com
             common_name: John Smith
-            directory_entry:
-            language:
-            sent_by:
           request_status:
             statcode: 3.1
             statdesc: Invalid property value

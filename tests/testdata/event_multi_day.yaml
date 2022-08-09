@@ -33,10 +33,6 @@ output:
       - CONFERENCE
       organizer:
         value: mailto:jsmith@example.com
-        common_name:
-        directory_entry:
-        language:
-        sent_by:
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN

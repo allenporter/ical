@@ -24,7 +24,6 @@ output:
       summary: Event Summary
       extras:
       - name: dresscode
-        params:
         value: CASUAL
       - name: non-smoking
         params:
