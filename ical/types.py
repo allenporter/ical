@@ -146,6 +146,35 @@ def encode_geo_ics(value: Geo) -> str:
     return f"{value.lat};{value.lng}"
 
 
+def parse_parameter_values(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+    """Convert property parameters to member variables."""
+    if params := values.get("params"):
+        for param in params:
+            if len(param["values"]) > 1:
+                raise ValueError("Unexpected repeated property parameter")
+            values[param["name"]] = param["values"][0]
+    return values
+
+
+def encode_property_with_params(
+    cls: BaseModel, name: str, model_data: dict[str, Any]
+) -> ParsedProperty:
+    """Encode a pydantic model as a property with parameters."""
+    _LOGGER.debug("Encoding property with params %s: %s", name, model_data)
+    prop = ParsedProperty(name=name, value=model_data.pop("value"))
+    params = []
+    for field in cls.__fields__.values():
+        key = field.alias
+        if (values := model_data.get(key)) is None:
+            continue
+        if encoder := POST_JSON_ENCODERS.get(field.type_):
+            values = encoder(values)
+        params.append(ParsedPropertyParameter(name=key, values=[values]))
+    if params:
+        prop.params = params
+    return prop
+
+
 class CalAddress(BaseModel):
     """A value type for a property that contains a calendar user address.
 
@@ -161,23 +190,15 @@ class CalAddress(BaseModel):
     sent_by: Optional[str] = Field(alias="SENT-BY", default=None)
     language: Optional[str] = Field(alias="LANGUAGE", default=None)
 
-    def __encode_property__(cls, name: str, values: dict[str, Any]) -> ParsedProperty:
-        """Encode this object as a property."""
-        return encode_property_with_params(cls, name, values)
+    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
+        parse_parameter_values
+    )
+    __encode_property__ = encode_property_with_params
 
     class Config:
         """Pyandtic model configuration."""
 
         allow_population_by_field_name = True
-
-
-def property_to_dataclass(prop: ParsedProperty) -> dict[str, str]:
-    """Convert a parsed property to input suitable to be prased as a data class."""
-    result = {"value": prop.value}
-    if prop.params:
-        for param in prop.params:
-            result[param.name] = param.values[0]
-    return result
 
 
 class Uri(str):
@@ -593,25 +614,6 @@ POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
 }
 
 
-def encode_property_with_params(
-    cls: BaseModel, name: str, model_data: dict[str, Any]
-) -> ParsedProperty:
-    """Encode a pydantic model as a property with parameters."""
-    _LOGGER.debug("Encoding property with params %s: %s", name, model_data)
-    prop = ParsedProperty(name=name, value=model_data.pop("value"))
-    params = []
-    for field in cls.__fields__.values():
-        key = field.alias
-        if (values := model_data.get(key)) is None:
-            continue
-        if encoder := POST_JSON_ENCODERS.get(field.type_):
-            values = encoder(values)
-        params.append(ParsedPropertyParameter(name=key, values=[values]))
-    if params:
-        prop.params = params
-    return prop
-
-
 def encode_component(
     name: str, model: BaseModel, model_data: dict[str, Any]
 ) -> ParsedComponent:
@@ -652,7 +654,7 @@ class PropertyDataType(enum.Enum):
     CAL_ADDRESS = (
         "CAL-ADDRESS",
         CalAddress,
-        property_to_dataclass,
+        dataclasses.asdict,
         dataclasses.asdict,
     )
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
