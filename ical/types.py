@@ -146,6 +146,8 @@ class CalAddress:
     """
 
     value: str
+    """The calendar user address as a uri."""
+
     common_name: Optional[str] = None
     directory_entry: Optional[str] = None
     sent_by: Optional[str] = None
@@ -156,7 +158,6 @@ class CalAddress:
         """Parse a calendar user address."""
         urlparse(prop.value)
         address = CalAddress(value=prop.value)
-        # Parse and set any parameters
         if prop.params:
             try:
                 set_parameter_attributes(address, prop.params)
@@ -564,8 +565,6 @@ def encode_model(name: str, model: BaseModel) -> ParsedComponent:
     model_data = json.loads(
         model.json(by_alias=True, exclude_none=True, exclude_defaults=True)
     )
-    _LOGGER.info("Model=%s", model)
-    _LOGGER.info("model_data=%s", model_data)
     return encode_component(name, model, model_data)
 
 
@@ -590,10 +589,11 @@ def encode_component(
         values = model_data.get(key)
         if values is None or key == "extras":
             continue
+        encoder = POST_JSON_ENCODERS.get(field.type_)
         if isinstance(values, list):
             for value in values:
                 if (
-                    not (encoder := POST_JSON_ENCODERS.get(field.type_))
+                    not encoder
                     and get_origin(field.type_) is not Union
                     and issubclass(field.type_, BaseModel)
                 ):
@@ -612,7 +612,7 @@ def encode_component(
                         value = encoder(value)
                     parent.properties.append(ParsedProperty(name=key, value=value))
         elif (
-            not (encoder := POST_JSON_ENCODERS.get(field.type_))
+            not encoder
             and get_origin(field.type_) is not Union
             and issubclass(field.type_, BaseModel)
         ):

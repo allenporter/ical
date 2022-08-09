@@ -4,11 +4,15 @@ Property parameters are additional modifiers on a property to specify extra
 information about the value for the property (e.g. language, value type, a
 display attribute, etc).
 
-Property parameters are stored as additional fields on a dataclass.
+Property parameters are stored as additional fields on a dataclass. A dataclass
+that supports parameters should have a field with the name `value` that accepts
+the primary input, then additional fields with the `attribute_name` of the parameter
+type defined in this file.
 """
 
 from __future__ import annotations
 
+import enum
 import logging
 from abc import ABC
 from typing import Any, Callable
@@ -61,12 +65,18 @@ class CommonName(ParameterType):
     encode = str
 
 
-# Known values of the CalendarUserType string.
-USER_TYPE_INDIVIDUAL = "INDIVIDUAL"
-USER_TYPE_GROUP = "GROUP"
-USER_TYPE_RESOURCE = "RESOURCE"
-USER_TYPE_ROOM = "ROOM"
-USER_TYPE_UNKNOWN = "UNKNOWN"
+class UserType(str, enum.Enum):
+    """Known values of the CalendarUserType string.
+
+    A calendar user type may specify other values beyond what is defined in
+    this enum and if they are not known then they should be trated as UNKNOWN.
+    """
+
+    INDIVIDUAL = "INDIVIDUAL"
+    GROUP = "GROUP"
+    RESOURCE = "RESOURCE"
+    ROOM = "ROOM"
+    UNKNOWN = "UNKNOWN"
 
 
 class CalendarUserType(ParameterType):
