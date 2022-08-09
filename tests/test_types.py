@@ -4,7 +4,7 @@ import datetime
 from typing import Optional, Union
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -46,7 +46,7 @@ def test_text() -> None:
 def test_encode_component() -> None:
     """Test for a text property value."""
 
-    class OtherComponent(BaseModel):
+    class OtherComponent(ComponentModel):
         """Model used as a sub-component."""
 
         other_value: str

@@ -31,7 +31,6 @@ output:
       request_status:
         statcode: 2.0
         statdesc: Success
-        exdata:
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN

@@ -31,7 +31,8 @@ output:
       status: CONFIRMED
       categories:
       - CONFERENCE
-      organizer: mailto:jsmith@example.com
+      organizer:
+        uri: mailto:jsmith@example.com
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
