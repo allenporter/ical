@@ -13,6 +13,7 @@ validators.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import datetime
 import enum
 import json
@@ -27,6 +28,7 @@ from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST
 
+from .parameters import encode_parameter_attributes, set_parameter_attributes
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 
@@ -135,14 +137,34 @@ def encode_geo_ics(value: Geo) -> str:
     return f"{value.lat};{value.lng}"
 
 
-class CalAddress(str):
-    """A value type for a property that contains a calendar user address."""
+@dataclass
+class CalAddress:
+    """A value type for a property that contains a calendar user address.
+
+    This is a subclass of string so that it can be used in place of a string
+    to get the calendar address, but also supports additional properties.
+    """
+
+    value: str
+    common_name: Optional[str] = None
+    directory_entry: Optional[str] = None
+    sent_by: Optional[str] = None
+    language: Optional[str] = None
 
     @classmethod
     def parse(cls, prop: ParsedProperty) -> CalAddress:
         """Parse a calendar user address."""
         urlparse(prop.value)
-        return CalAddress(prop.value)
+        address = CalAddress(value=prop.value)
+        # Parse and set any parameters
+        if prop.params:
+            try:
+                set_parameter_attributes(address, prop.params)
+            except ValueError as err:
+                raise ValueError(
+                    "Failed to set parameter attributes for CalAddress: {str(err)}"
+                ) from err
+        return address
 
 
 class Uri(str):
@@ -542,6 +564,8 @@ def encode_model(name: str, model: BaseModel) -> ParsedComponent:
     model_data = json.loads(
         model.json(by_alias=True, exclude_none=True, exclude_defaults=True)
     )
+    _LOGGER.info("Model=%s", model)
+    _LOGGER.info("model_data=%s", model_data)
     return encode_component(name, model, model_data)
 
 
@@ -574,6 +598,15 @@ def encode_component(
                     and issubclass(field.type_, BaseModel)
                 ):
                     parent.components.append(encode_component(key, field.type_, value))
+                elif dataclasses.is_dataclass(field.type_) and isinstance(value, dict):
+                    _LOGGER.debug("Encode dict attributes: %s", values)
+                    parent.properties.append(
+                        ParsedProperty(
+                            name=key,
+                            value=value.pop("value"),
+                            params=encode_parameter_attributes(value),
+                        )
+                    )
                 else:
                     if encoder:
                         value = encoder(value)
@@ -584,7 +617,17 @@ def encode_component(
             and issubclass(field.type_, BaseModel)
         ):
             parent.components.append(encode_component(key, field.type_, values))
+        elif dataclasses.is_dataclass(field.type_) and isinstance(values, dict):
+            _LOGGER.debug("Encode dict attributes: %s", values)
+            parent.properties.append(
+                ParsedProperty(
+                    name=key,
+                    value=values.pop("value"),
+                    params=encode_parameter_attributes(values),
+                )
+            )
         else:
+            _LOGGER.debug("Encode component attributes: %s", values)
             if encoder:
                 values = encoder(values)
             parent.properties.append(ParsedProperty(name=key, value=values))
@@ -602,7 +645,12 @@ class PropertyDataType(enum.Enum):
     #   PERIOD
     #   TIME
     BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
-    CAL_ADDRESS = ("CAL-ADDRESS", CalAddress, CalAddress.parse, str)
+    CAL_ADDRESS = (
+        "CAL-ADDRESS",
+        CalAddress,
+        CalAddress.parse,
+        dataclasses.asdict,
+    )
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
     DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
     DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)

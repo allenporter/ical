@@ -23,5 +23,10 @@ output:
           dtend: "1998-04-10T14:17:11+00:00"
           contacts:
             - Jim Dolittle, ABC Industries, +1-919-555-1234
-          organizer: mailto:jsmith@example.com
+          organizer:
+            value: mailto:jsmith@example.com
+            common_name:
+            directory_entry:
+            language:
+            sent_by:
           url: http://www.example.com/calendar/busytime/jsmith.ifb

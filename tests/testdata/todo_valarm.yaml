@@ -29,9 +29,18 @@ output:
         - dtstamp: "1998-01-30T13:45:00+00:00"
           uid: uid4@example.com
           attendees:
-            - mailto:jqpublic@example.com
+            - value: mailto:jqpublic@example.com
+              common_name:
+              directory_entry:
+              language:
+              sent_by:
           due: "1998-04-15T00:00:00"
-          organizer: mailto:unclesam@example.com
+          organizer:
+            value: mailto:unclesam@example.com
+            common_name:
+            directory_entry:
+            language:
+            sent_by:
           sequence: 2
           status: NEEDS-ACTION
           summary: Submit Income Taxes

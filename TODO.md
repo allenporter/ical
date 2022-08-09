@@ -15,7 +15,7 @@ TODO tracker so they are not forgotten. This is not meant to be fully exhaustive
         + DTSTART:20220802T090000Z
         + DTEND:20220802T093000Z
 - Repeated property serialization e.g. 'resources.yaml'. Multi-line vs repeated, and preserving property parameters
-- Property parameters for attendee, organizer fields
+- Repeated property parameters. Are these allowed and should be supported? Or just over-write?
 - Recurrence
   - Verify start date format is the same as the event
   - Verify daylight saving time in until and start is the same

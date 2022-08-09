@@ -27,9 +27,22 @@ output:
           dtstart: "2007-06-28"
           dtend: "2007-07-09"
           attendees:
-            - mailto:joecool@example.com
-            - mailto:ildoit@example.com
-          organizer: mailto:jsmith@example.com
+            - value: mailto:joecool@example.com
+              common_name:
+              directory_entry:
+              language:
+              sent_by:
+            - value: mailto:ildoit@example.com
+              common_name:
+              directory_entry:
+              language:
+              sent_by:
+          organizer:
+            value: mailto:jsmith@example.com
+            common_name: John Smith
+            directory_entry:
+            language:
+            sent_by:
           request_status:
             statcode: 3.1
             statdesc: Invalid property value
@@ -46,7 +59,7 @@ encoded: |-
  SUMMARY:Festival International de Jazz de Montreal
  ATTENDEE:mailto:joecool@example.com
  ATTENDEE:mailto:ildoit@example.com
- ORGANIZER:mailto:jsmith@example.com
+ ORGANIZER;CN=John Smith:mailto:jsmith@example.com
  REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
  END:VEVENT
  END:VCALENDAR
