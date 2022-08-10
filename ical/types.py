@@ -235,15 +235,12 @@ class CalAddress(BaseModel):
     values not known by this library so it uses a string.
     """
 
-    # Quoted
     delegator: Optional[list[str]] = Field(alias="DELEGATED-FROM", default=None)
     """The users that have delegated their participation to this user."""
 
-    # Quoted
     delegate: Optional[list[str]] = Field(alias="DELEGATED-TO", default=None)
     """The users to whom the user has delegated participation."""
 
-    # Quoted.  Is a uri.
     directory_entry: Optional[str] = Field(alias="DIR", default=None)
     """Reference to a directory entry associated with the calendar user."""
 
