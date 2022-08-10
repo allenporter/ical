@@ -567,6 +567,17 @@ def test_encode_period() -> None:
     assert encode_model("model", model) == ParsedComponent(
         name="model",
         properties=[
-            ParsedProperty(name="example", value="20220807T06000020220807T063000")
+            ParsedProperty(name="example", value="20220807T060000/20220807T063000")
         ],
+    )
+
+    model = TestModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0),
+            duration=datetime.timedelta(hours=5, minutes=30),
+        )
+    )
+    assert encode_model("model", model) == ParsedComponent(
+        name="model",
+        properties=[ParsedProperty(name="example", value="20220807T060000/PT5H30M")],
     )

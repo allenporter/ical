@@ -40,8 +40,8 @@ output:
       alarms:
       - action: AUDIO
         trigger: '1998-04-03T12:00:00+00:00'
-        repeat: 4
         duration: 3600.0
+        repeat: 4
         extras:
         - name: attach
           value: http://example.com/pub/audio-files/ssbanner.aud

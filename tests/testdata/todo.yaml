@@ -24,26 +24,26 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
     todos:
     - dtstamp: '2007-03-13T12:34:32+00:00'
       uid: 20070313T123432Z-456553@example.com
-      due: '2007-05-01'
-      summary: Submit Quebec Income Tax Return for 2006
       categories:
       - FAMILY
       - FINANCE
       classification: CONFIDENTIAL
+      due: '2007-05-01'
       status: NEEDS-ACTION
-    - uid: 20070514T103211Z-123404@example.com
-      dtstamp: '2007-05-14T10:32:11+00:00'
+      summary: Submit Quebec Income Tax Return for 2006
+    - dtstamp: '2007-05-14T10:32:11+00:00'
+      uid: 20070514T103211Z-123404@example.com
+      completed: '2007-07-07T10:00:00+00:00'
       dtstart: '2007-05-14T11:00:00+00:00'
       due: '2007-07-09T13:00:00+00:00'
-      summary: Submit Revised Internet-Draft
-      completed: '2007-07-07T10:00:00+00:00'
       priority: 1
       status: NEEDS-ACTION
+      summary: Submit Revised Internet-Draft
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN

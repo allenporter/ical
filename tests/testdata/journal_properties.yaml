@@ -20,8 +20,8 @@ output:
       uid: 19970901T130000Z-123405@example.com
       classification: PUBLIC
       dtstart: '1997-03-17'
-      summary: Staff meeting minutes
       status: FINAL
+      summary: Staff meeting minutes
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//ABC Corporation//NONSGML My Product//EN

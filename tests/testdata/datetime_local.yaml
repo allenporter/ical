@@ -12,11 +12,11 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
     events:
-    - uid: 19970610T172345Z-AF23B2@example.com
-      dtstamp: '1998-01-15T11:05:00'
+    - dtstamp: '1998-01-15T11:05:00'
+      uid: 19970610T172345Z-AF23B2@example.com
       dtstart: '1998-01-18T23:00:00'
       dtend: '1998-01-18T23:30:00'
       summary: Bastille Day Party

@@ -15,7 +15,7 @@ def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> Non
     data = json.loads(
         cal.json(exclude_unset=True, exclude_none=True, encoder=json_encoder.default)
     )
-    assert data == golden["output"]
+    assert data == golden.out["output"]
 
     # Re-parse the data object to verify we get the original data values
     # back. This effectively confirms that all fields can be parsed from the

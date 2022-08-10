@@ -73,6 +73,7 @@ ALLOW_REPEATED_VALUES = {
     "exdate",
     "rdate",
     "resources",
+    "freebusy",
 }
 
 
@@ -276,6 +277,7 @@ class CalAddress(BaseModel):
     _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
         parse_parameter_values
     )
+
     __encode_property__ = encode_property_with_params
 
     class Config:
@@ -484,13 +486,35 @@ def encode_boolean_ics(value: bool) -> str:
     return "TRUE" if value else "FALSE"
 
 
-@dataclass
-class Period:
+class FbType(str, enum.Enum):
+    """Specifies the free/busy time type."""
+
+    FREE = "FREE"
+    """The time interval is free for scheduling."""
+
+    BUSY = "BUSY"
+    """One or more events have been scheduled for the interval."""
+
+    BUSY_UNAVAILABLE = "BUSY-UNAVAILABLE"
+    """The interval can not be scheduled."""
+
+    BUSY_TENTATIVE = "BUSY-TENTATIVE"
+    """One or more events have been tentatively scheduled for the interval."""
+
+
+class Period(BaseModel):
     """A value with a precise period of time."""
 
     start: datetime.datetime
     end: Optional[datetime.datetime] = None
     duration: Optional[datetime.timedelta] = None
+
+    # Parameters
+    fb_type: Optional[FbType] = Field(alias="FBTYPE", default=None)
+
+    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
+        parse_parameter_values
+    )
 
     @property
     def end_value(self) -> datetime.datetime:
@@ -501,42 +525,57 @@ class Period:
             raise ValueError("Invalid period missing both end and duration")
         return self.start + self.duration
 
-    @classmethod
-    def parse(cls, prop: Any) -> Period:
+    @root_validator(pre=True, allow_reuse=True)
+    def parse_period_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Parse a rfc5545 prioriry value."""
-        if not isinstance(prop, ParsedProperty):
-            raise ValueError(f"Expected ParsedProperty but was {prop}")
-        parts = prop.value.split("/")
+        if not (value := values.pop("value", None)):
+            return values
+        parts = value.split("/")
         if len(parts) != 2:
-            raise ValueError(f"Period did not have two time values: {prop.value}")
+            raise ValueError(f"Period did not have two time values: {value}")
         try:
             start = parse_date_time(ParsedProperty(name="ignored", value=parts[0]))
         except ValueError as err:
             _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
             raise err
+        values["start"] = start
         try:
             end = parse_date_time(ParsedProperty(name="ignored", value=parts[1]))
-            return Period(start, end=end)
         except ValueError:
             pass
+        else:
+            values["end"] = end
+            return values
         try:
             duration = parse_duration(ParsedProperty(name="ignored", value=parts[1]))
         except ValueError as err:
             raise err
-        return Period(start, duration=duration)
+        values["duration"] = duration
+        return values
 
+    def __encode_property__(
+        cls, name: str, model_data: dict[str, Any]
+    ) -> ParsedProperty:
+        """Encode property value."""
+        if not (start := model_data.pop("start", None)):
+            raise ValueError(f"Invalid period object missing start: {model_data}")
+        end = model_data.pop("end", None)
+        duration = model_data.pop("duration", None)
+        if not end and not duration:
+            raise ValueError(
+                f"Invalid period missing both end and duration: {model_data}"
+            )
+        # End and duration are already encoded values
+        if end:
+            model_data["value"] = "/".join([start, end])
+        else:
+            model_data["value"] = "/".join([start, duration])
+        return encode_property_with_params(cls, name, model_data)
 
-def encode_period_ics(value: Period) -> str:
-    """Serialize a Period as an ICS value."""
-    if not value.end and not value.duration:
-        raise ValueError("Invalid period missing both end and duration")
-    if value.end:
-        return "".join(
-            [encode_date_time_ics(value.start), encode_date_time_ics(value.end)]
-        )
-    return "".join(
-        [encode_date_time_ics(value.start), encode_duration_ics(value.duration)]
-    )
+    class Config:
+        """Pyandtic model configuration."""
+
+        allow_population_by_field_name = True
 
 
 class Weekday(str, enum.Enum):
@@ -735,7 +774,7 @@ class PropertyDataType(enum.Enum):
     DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
     FLOAT = ("FLOAT", float, parse_float, str)
     INTEGER = ("INTEGER", int, parse_int, str)
-    PERIOD = ("PERIOD", Period, Period.parse, encode_period_ics)
+    PERIOD = ("PERIOD", Period, dataclasses.asdict, dataclasses.asdict)
     # Note: Has special handling, not json encoder
     TEXT = ("TEXT", str, parse_text, encode_text)
     URI = ("URI", Uri, Uri.parse, str)
