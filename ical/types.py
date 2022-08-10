@@ -177,6 +177,8 @@ def encode_property_with_params(
             continue
         if field.shape != SHAPE_LIST:
             values = [values]
+        if field.type_ == bool:
+            values = [encode_boolean_ics(value) for value in values]
         params.append(ParsedPropertyParameter(name=key, values=values))
     if params:
         prop.params = params
@@ -253,7 +255,7 @@ class CalAddress(BaseModel):
     role: Optional[str] = Field(alias="ROLE", default=None)
     """The participation role for the calendar user."""
 
-    rsvp: Optional[str] = Field(alias="RSVP", default=None)
+    rsvp: Optional[bool] = Field(alias="RSVP", default=None)
     """Whether there is an expectation of a favor of a reply from the calendar user."""
 
     sent_by: Optional[str] = Field(alias="SENT-BY", default=None)
