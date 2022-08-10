@@ -13,12 +13,12 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-    - prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
-      version: "2.0"
-      events:
-        - dtstamp: "2007-05-14T10:32:11+00:00"
-          uid: 20070514T103211Z-123404@example.com
-          dtstart: "2007-05-14T11:00:00+00:00"
-          dtend: "2007-05-14T11:30:00+00:00"
-          summary: "Client meeting"
-          priority: 1
+  - prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+    version: '2.0'
+    events:
+    - dtstamp: '2007-05-14T10:32:11+00:00'
+      uid: 20070514T103211Z-123404@example.com
+      dtstart: '2007-05-14T11:00:00+00:00'
+      dtend: '2007-05-14T11:30:00+00:00'
+      summary: Client meeting
+      priority: 1
