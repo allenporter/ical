@@ -30,9 +30,13 @@ output:
       dtstart: '2007-06-28T09:00:00'
       dtend: '2007-06-28T10:00:00'
       classification: PRIVATE
-      description: "Meeting to provide technical review for \"Phoenix\" design.\nHappy Face Conference Room. Phoenix design team MUST attend this meeting.\nRSVP to team leader."
+      description: "Meeting to provide technical review for \"Phoenix\" design.\n\
+        Happy Face Conference Room. Phoenix design team MUST attend this meeting.\n\
+        RSVP to team leader."
       comment:
-        - The meeting really needs to include both ourselves and the customer. We can't hold this meeting without them. As a matter of fact, the venue for the meeting ought to be at their site. - - John
+      - The meeting really needs to include both ourselves and the customer. We can't
+        hold this meeting without them. As a matter of fact, the venue for the meeting
+        ought to be at their site. - - John
       geo:
         lat: 37.386013
         lng: -122.082932

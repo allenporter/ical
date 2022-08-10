@@ -13,15 +13,15 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-    - prodid: -//ABC Corporation//NONSGML My Product//EN
-      version: "2.0"
-      journal:
-        - dtstamp: "1997-09-01T13:00:00+00:00"
-          uid: 19970901T130000Z-123405@example.com
-          classification: PUBLIC
-          dtstart: "1997-03-17"
-          summary: Staff meeting minutes
-          status: FINAL
+  - prodid: -//ABC Corporation//NONSGML My Product//EN
+    version: '2.0'
+    journal:
+    - dtstamp: '1997-09-01T13:00:00+00:00'
+      uid: 19970901T130000Z-123405@example.com
+      classification: PUBLIC
+      dtstart: '1997-03-17'
+      summary: Staff meeting minutes
+      status: FINAL
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//ABC Corporation//NONSGML My Product//EN

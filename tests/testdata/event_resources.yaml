@@ -24,10 +24,10 @@ output:
       dtstart: '2007-06-28T09:00:00'
       dtend: '2007-06-28T10:00:00'
       resources:
-        - EASEL
-        - PROJECTOR
-        - VCR
-        - Nettoyeur haute pression
+      - EASEL
+      - PROJECTOR
+      - VCR
+      - Nettoyeur haute pression
       request_status:
         statcode: 2.0
         statdesc: Success
