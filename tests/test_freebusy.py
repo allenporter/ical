@@ -48,7 +48,6 @@ def test_start_datetime() -> None:
     )
     assert freebusy.start
     assert freebusy.start.isoformat() == "2022-08-07T05:00:00+00:00"
-    assert freebusy.end
     assert freebusy.start_datetime
     assert freebusy.start_datetime.isoformat() == "2022-08-07T05:00:00+00:00"
     assert not freebusy.end
