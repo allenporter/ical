@@ -1,6 +1,7 @@
 """Alarm information for calendar components."""
 
 import datetime
+import enum
 from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
@@ -8,17 +9,32 @@ from pydantic import Field, root_validator
 from .parsing.property import ParsedProperty
 from .types import CalAddress, ComponentModel
 
-# Common values for an Alarm action
-ACTION_AUDIO = "ACTION"
-ACTION_DISPLAY = "DISPLAY"
-ACTION_EMAIL = "EMAIL"
+
+class Action(str, enum.Enum):
+    """Type of actioninvoked when alarm is triggered."""
+
+    AUDIO = "AUDIO"
+    """An alarm that causes sound to be played to alert the user.
+
+    The attachment is a sound resource, or a fallback is used.
+    """
+
+    DISPLAY = "DISPLAY"
+    """An alarm that displays the description text to the user."""
+
+    EMAIL = "EMAIL"
+    """An email is composed and delivered to the attendees.
+
+    The description is the body of the message, summary is the subject,
+    and attachments are email attachments.
+    """
 
 
 class Alarm(ComponentModel):
     """An alarm component for a calendar.
 
-    The action (e.g. "AUDIO", "DISPLAY", "EMAIL" or something else) determine
-    which properties are also specified.
+    The action (e.g. AUDIO, DISPLAY, EMAIL) determine which properties
+    are also specified.
     """
 
     action: str
@@ -64,7 +80,7 @@ class Alarm(ComponentModel):
     @root_validator
     def parse_display_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for display actions."""
-        if values.get("action") != ACTION_DISPLAY:
+        if values.get("action") != Action.DISPLAY:
             return values
         if not values.get("description"):
             raise ValueError("Description value is required for action AUDIO")
@@ -73,7 +89,7 @@ class Alarm(ComponentModel):
     @root_validator
     def parse_email_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for email actions."""
-        if values.get("action") != ACTION_EMAIL:
+        if values.get("action") != Action.EMAIL:
             return values
         if not values.get("description"):
             raise ValueError("Description value is required for action AUDIO")

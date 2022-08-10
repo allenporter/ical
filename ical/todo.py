@@ -5,12 +5,13 @@ from __future__ import annotations
 import datetime
 from typing import Any, Optional, Union
 
-from pydantic import Field, root_validator, validator
+from pydantic import Field, root_validator
 
 from .alarm import Alarm
 from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
+    Classification,
     ComponentModel,
     Geo,
     Priority,
@@ -18,7 +19,6 @@ from .types import (
     RequestStatus,
     TodoStatus,
     Uri,
-    parse_text,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -33,7 +33,7 @@ class Todo(ComponentModel):
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
-    classification: Optional[str] = Field(alias="class", default=None)
+    classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
     completed: Optional[datetime.datetime] = None
     contacts: list[str] = Field(alias="contact", default_factory=list)
@@ -87,22 +87,6 @@ class Todo(ComponentModel):
         if not self.dtstart:
             return None
         return normalize_datetime(self.dtstart).astimezone(tz=datetime.timezone.utc)
-
-    @validator("status", pre=True, allow_reuse=True)
-    def parse_status(cls, value: Any) -> str | None:
-        """Parse a TodoStatus from a ParsedPropertyValue."""
-        value = parse_text(value)
-        if value and not isinstance(value, str):
-            raise ValueError(f"Expected text value as a string: {value}")
-        return value
-
-    @validator("categories", pre=True, allow_reuse=True)
-    def parse_categories(cls, value: list[str]) -> list[str]:
-        """Parse Categories from a list of ParsedProperty."""
-        values: list[str] = []
-        for prop in value:
-            values.extend(prop.split(","))
-        return values
 
     @root_validator
     def validate_one_due_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:

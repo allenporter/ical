@@ -8,17 +8,17 @@ import datetime
 import logging
 from typing import Any, Optional, Union
 
-from pydantic import Field, validator
+from pydantic import Field
 
 from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
+    Classification,
     ComponentModel,
     JournalStatus,
     Recur,
     RequestStatus,
     Uri,
-    parse_text,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -43,7 +43,7 @@ class Journal(ComponentModel):
     uid: str = Field(default_factory=lambda: uid_factory())
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
-    classification: Optional[str] = Field(alias="class", default=None)
+    classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
@@ -93,8 +93,3 @@ class Journal(ComponentModel):
     def start_datetime(self) -> datetime.datetime:
         """Return the events start as a datetime."""
         return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
-
-    @validator("status", pre=True)
-    def parse_status(cls, value: Any) -> str | None:
-        """Parse an EventStatus from a ParsedPropertyValue."""
-        return parse_text(value)
