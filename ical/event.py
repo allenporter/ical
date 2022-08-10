@@ -8,12 +8,13 @@ import datetime
 import logging
 from typing import Any, Optional, Union
 
-from pydantic import Field, root_validator, validator
+from pydantic import Field, root_validator
 
 from .alarm import Alarm
 from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
+    Classification,
     ComponentModel,
     EventStatus,
     Geo,
@@ -21,7 +22,6 @@ from .types import (
     Recur,
     RequestStatus,
     Uri,
-    parse_text,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -52,7 +52,7 @@ class Event(ComponentModel):
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
-    classification: Optional[str] = Field(alias="class", default=None)
+    classification: Optional[Classification] = Field(alias="class", default=None)
     comment: list[str] = Field(default_factory=list)
     contacts: list[str] = Field(alias="contact", default_factory=list)
     created: Optional[datetime.datetime] = None
@@ -184,14 +184,6 @@ class Event(ComponentModel):
         if not isinstance(other, Event):
             return NotImplemented
         return self._tuple() >= other._tuple()
-
-    @validator("status", pre=True)
-    def parse_status(cls, value: Any) -> str | None:
-        """Parse an EventStatus from a ParsedPropertyValue."""
-        value = parse_text(value)
-        if value and not isinstance(value, str):
-            raise ValueError(f"Expected text value as a string: {value}")
-        return value
 
     @root_validator
     def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:

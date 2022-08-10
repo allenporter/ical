@@ -318,9 +318,8 @@ def encode_rstatus_ics(value: RequestStatus) -> str:
 
 def parse_date(prop: ParsedProperty) -> datetime.date | None:
     """Parse a rfc5545 into a datetime.date."""
-    value = prop.value
-    if not (match := DATE_REGEX.fullmatch(value)):
-        raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {value}")
+    if not (match := DATE_REGEX.fullmatch(prop.value)):
+        raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {prop.value}")
     date_value = match.group(1)
     year = int(date_value[0:4])
     month = int(date_value[4:6])
@@ -335,11 +334,8 @@ def encode_date_ics(value: datetime.date) -> str:
 
 def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
     """Parse a rfc5545 into a datetime.datetime."""
-    if not isinstance(prop, ParsedProperty):
-        raise ValueError(f"Expected ParsedProperty but was {prop}")
-    value = prop.value
-    if not (match := DATETIME_REGEX.fullmatch(value)):
-        raise ValueError(f"Expected value to match DATE-TIME pattern: {value}")
+    if not (match := DATETIME_REGEX.fullmatch(prop.value)):
+        raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
 
     # Example: TZID=America/New_York:19980119T020000
     timezone: datetime.tzinfo | None = None
@@ -373,9 +369,8 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
     """Parse a rfc5545 into a datetime.date."""
     if not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected ParsedProperty but was {prop}")
-    value = prop.value
-    if not (match := DURATION_REGEX.fullmatch(value)):
-        raise ValueError(f"Expected value to match DURATION pattern: {value}")
+    if not (match := DURATION_REGEX.fullmatch(prop.value)):
+        raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
     sign, weeks, days, hours, minutes, seconds = match.groups()
     result: datetime.timedelta
     if weeks:
@@ -394,9 +389,9 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
 
 def encode_duration_ics(value: Any) -> str:
     """Serialize a time delta as a DURATION ICS value."""
-    duration: datetime.timedelta
     if isinstance(value, str):
         return value  # Already encoded as ics
+    duration: datetime.timedelta
     if isinstance(value, datetime.timedelta):
         duration = value
     elif isinstance(value, float):
@@ -439,6 +434,11 @@ def parse_text(prop: Any) -> str:
         if key not in prop.value:
             continue
         prop.value = prop.value.replace(key, vin)
+    return prop.value
+
+
+def parse_enum(prop: ParsedProperty) -> str:
+    """Parse a rfc5545 into a text value."""
     return prop.value
 
 
@@ -791,6 +791,10 @@ ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
         property_data_type.data_type: property_data_type.decode
         for property_data_type in PropertyDataType
     },
+    Classification: parse_enum,
+    EventStatus: parse_enum,
+    TodoStatus: parse_enum,
+    JournalStatus: parse_enum,
     Geo: Geo.parse_geo,
     RequestStatus: RequestStatus.parse_rstatus,
 }
@@ -814,27 +818,27 @@ def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
     return [_parse_identity]
 
 
-def _validate_field(value: Any, validators: list[Callable[[Any], Any]]) -> Any:
+def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
     """Return the validated field from the first validator that succeeds."""
-    if not isinstance(value, ParsedProperty):
+    if not isinstance(prop, ParsedProperty):
         # Not from rfc5545 parser true so ignore
-        raise ValueError(f"Expected ParsedProperty: {value}")
+        raise ValueError(f"Expected ParsedProperty: {prop}")
 
-    if value_type := value.get_parameter_value(ATTR_VALUE):
+    if value_type := prop.get_parameter_value(ATTR_VALUE):
         # Property parameter specified a very specific type
         if not (data_type := VALUE_TYPES.get(value_type)):
             # Consider graceful degradation instead in the future
             raise ValueError(
                 f"Property parameter specified unsupported type: {value_type}"
             )
-        return data_type.decode(value)
+        return data_type.decode(prop)
 
     for validator in validators:
         try:
-            return validator(value)
+            return validator(prop)
         except ValueError as err:
             _LOGGER.debug("Failed to validate: %s", err)
-    raise ValueError(f"Failed to validate: {value}")
+    raise ValueError(f"Failed to validate: {prop}")
 
 
 def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
