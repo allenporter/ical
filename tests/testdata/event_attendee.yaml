@@ -28,7 +28,11 @@ output:
           dtend: "2007-07-09"
           attendees:
             - uri: mailto:joecool@example.com
+              member:
+                - mailto:DEV-GROUP@example.com
             - uri: mailto:ildoit@example.com
+              delegator:
+                - mailto:immud@example.com
           organizer:
             uri: mailto:jsmith@example.com
             common_name: John Smith
@@ -46,8 +50,9 @@ encoded: |-
  DTSTART:20070628
  DTEND:20070709
  SUMMARY:Festival International de Jazz de Montreal
- ATTENDEE:mailto:joecool@example.com
- ATTENDEE:mailto:ildoit@example.com
+ ATTENDEE;MEMBER="mailto:DEV-GROUP@example.com":mailto:joecool@example.com
+ ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":mailto:ildoit@example.co
+  m
  ORGANIZER;CN=John Smith:mailto:jsmith@example.com
  REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
  END:VEVENT

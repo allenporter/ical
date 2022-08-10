@@ -72,6 +72,7 @@ def _fold(contentline: str) -> list[str]:
         drop_whitespace=False,
         replace_whitespace=False,
         expand_tabs=False,
+        break_on_hyphens=False,
     )
 
 
