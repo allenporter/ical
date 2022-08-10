@@ -29,26 +29,40 @@ class FreeBusy(ComponentModel):
     """The persistent globally unique identifier."""
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
-    """."""
+    """The user who's free/busy time is represented."""
 
     comment: list[str] = Field(default_factory=list)
+    """Non-processing information intended to provide comments to the calendar user."""
+
     contacts: list[str] = Field(alias="contact", default_factory=list)
+    """Contact information associated with this component."""
+
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
+    """Start of the time range covered by this component."""
+
     # Has an alias of 'end'
     dtend: Optional[Union[datetime.datetime, datetime.date]] = None
+    """End of the time range covered by this component."""
 
     freebusy: list[Period] = Field(default_factory=list)
     """The free/busy intervals."""
 
     organizer: Optional[CalAddress] = None
+    """The calendar user who requested free/busy information."""
+
     request_status: Optional[RequestStatus] = Field(
         alias="request-status", default_value=None
     )
+    """Return code for the scheduling request."""
+
     sequence: Optional[int] = None
+    """The revision sequence number of this calendar component."""
+
     url: Optional[Uri] = None
+    """The URL associated with this component."""
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
