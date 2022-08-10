@@ -104,9 +104,10 @@ class FreeBusy(ComponentModel):
             return None
         return self.end - self.start
 
-    @validator("freebusy", allow_reuse=True)
+    @validator("freebusy")
     def verify_freebusy_utc(cls, values: list[Period]) -> list[Period]:
         """Validate that the free/busy periods must be in UTC."""
+        _LOGGER.info("verify_freebusy_utc")
         for value in values:
             if not value.start:
                 continue
