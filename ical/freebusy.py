@@ -86,8 +86,10 @@ class FreeBusy(ComponentModel):
         return self.dtend
 
     @property
-    def start_datetime(self) -> datetime.datetime:
+    def start_datetime(self) -> datetime.datetime | None:
         """Return the events start as a datetime."""
+        if not self.start:
+            return None
         return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
 
     @property
