@@ -58,7 +58,8 @@ class Todo(ComponentModel):
         alias="recurrence-id"
     )
     request_status: Optional[RequestStatus] = Field(
-        alias="request-status", default_value=None
+        alias="request-status",
+        default_value=None,
     )
     rrule: Optional[Recur] = None
     sequence: Optional[int] = None

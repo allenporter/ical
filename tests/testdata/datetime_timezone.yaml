@@ -12,11 +12,11 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
     events:
-    - uid: 19970610T172345Z-AF23B2@example.com
-      dtstamp: '1997-06-10T17:23:45+00:00'
+    - dtstamp: '1997-06-10T17:23:45+00:00'
+      uid: 19970610T172345Z-AF23B2@example.com
       dtstart: '1997-07-14T13:30:00-04:00'
       dtend: '1997-07-14T14:00:00-04:00'
       summary: Mid July check-in

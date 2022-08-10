@@ -18,14 +18,14 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
     events:
     - dtstamp: '2007-04-23T12:34:32+00:00'
       uid: 20070423T123432Z-541111@example.com
-      summary: Festival International de Jazz de Montreal
       dtstart: '2007-06-28'
       dtend: '2007-07-09'
+      summary: Festival International de Jazz de Montreal
       attendees:
       - uri: mailto:joecool@example.com
         member:

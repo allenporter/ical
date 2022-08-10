@@ -14,11 +14,11 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  - prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+    version: '2.0'
     events:
-    - uid: uid1@example.com
-      dtstamp: '1996-07-04T12:00:00+00:00'
+    - dtstamp: '1996-07-04T12:00:00+00:00'
+      uid: uid1@example.com
       dtstart: '1996-09-18T14:30:00+00:00'
       dtend: '1996-09-20T22:00:00+00:00'
       summary: Event Summary
@@ -26,11 +26,11 @@ output:
       - name: dresscode
         value: CASUAL
       - name: non-smoking
+        value: 'TRUE'
         params:
         - name: VALUE
           values:
           - BOOLEAN
-        value: 'TRUE'
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN

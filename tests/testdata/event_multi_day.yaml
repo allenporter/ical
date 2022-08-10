@@ -18,21 +18,23 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - version: '2.0'
-    prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  - prodid: -//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+    version: '2.0'
     events:
-    - uid: uid1@example.com
-      dtstamp: '1996-07-04T12:00:00+00:00'
+    - dtstamp: '1996-07-04T12:00:00+00:00'
+      uid: uid1@example.com
       dtstart: '1996-09-18T14:30:00+00:00'
       dtend: '1996-09-20T22:00:00+00:00'
       summary: Networld+Interop Conference
-      description: "Networld+Interop Conference and Exhibit\nAtlanta World Congress\
-        \ Center\nAtlanta, Georgia"
-      status: CONFIRMED
       categories:
       - CONFERENCE
+      description: |-
+        Networld+Interop Conference and Exhibit
+        Atlanta World Congress Center
+        Atlanta, Georgia
       organizer:
         uri: mailto:jsmith@example.com
+      status: CONFIRMED
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
