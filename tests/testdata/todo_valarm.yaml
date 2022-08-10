@@ -30,6 +30,7 @@ output:
           uid: uid4@example.com
           attendees:
             - uri: mailto:jqpublic@example.com
+              status: ACCEPTED
           due: "1998-04-15T00:00:00"
           organizer:
             uri: mailto:unclesam@example.com
@@ -55,7 +56,7 @@ encoded: |-
   BEGIN:VTODO
   DTSTAMP:19980130T134500Z
   UID:uid4@example.com
-  ATTENDEE:mailto:jqpublic@example.com
+  ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
   DUE:19980415T000000
   ORGANIZER:mailto:unclesam@example.com
   SEQUENCE:2

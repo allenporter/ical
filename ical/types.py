@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
-from pydantic.fields import SHAPE_LIST
+from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -146,13 +146,21 @@ def encode_geo_ics(value: Geo) -> str:
     return f"{value.lat};{value.lng}"
 
 
-def parse_parameter_values(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Convert property parameters to member variables."""
     if params := values.get("params"):
+        all_fields: dict[str, ModelField] = {}
+        for model_field in cls.__fields__.values():
+            all_fields[model_field.alias] = model_field
         for param in params:
-            if len(param["values"]) > 1:
-                raise ValueError("Unexpected repeated property parameter")
-            values[param["name"]] = param["values"][0]
+            if not (field := all_fields.get(param["name"])):
+                continue
+            if field.shape == SHAPE_LIST:
+                values[param["name"]] = param["values"]
+            else:
+                if len(param["values"]) > 1:
+                    raise ValueError("Unexpected repeated property parameter")
+                values[param["name"]] = param["values"][0]
     return values
 
 
@@ -167,12 +175,44 @@ def encode_property_with_params(
         key = field.alias
         if (values := model_data.get(key)) is None:
             continue
-        if encoder := POST_JSON_ENCODERS.get(field.type_):
-            values = encoder(values)
-        params.append(ParsedPropertyParameter(name=key, values=[values]))
+        if field.shape != SHAPE_LIST:
+            values = [values]
+        params.append(ParsedPropertyParameter(name=key, values=values))
     if params:
         prop.params = params
     return prop
+
+
+class CalendarUserType(str, enum.Enum):
+    """The type of calendar user."""
+
+    INDIVIDUAL = "INDIVIDUAL"
+    GROUP = "GROUP"
+    RESOURCE = "GROUP"
+    ROOM = "ROOM"
+    UNKNOWN = "UNKNOWN"
+
+
+class ParticipationStatus(str, enum.Enum):
+    """Participation status for a calendar user."""
+
+    NEEDS_ACTION = "NEEDS-ACTION"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+    # Additional statuses for Events and Todos
+    TENTATIVE = "TENTATIVE"
+    DELEGATED = "DELEGATED"
+    # Additional status for TODOs
+    COMPLETED = "COMPLETED"
+
+
+class Role(str, enum.Enum):
+    """Role for the calendar user."""
+
+    CHAIR = "CHAIR"
+    REQUIRED = "REQ-PARTICIPANT"
+    OPTIONAL = "OPT-PARTICIPANT"
+    NON_PARTICIPANT = "NON-PARTICIPANT"
 
 
 class CalAddress(BaseModel):
@@ -186,8 +226,42 @@ class CalAddress(BaseModel):
     """The calendar user address as a uri."""
 
     common_name: Optional[str] = Field(alias="CN", default=None)
+    """The common name associated with the calendar user."""
+
+    user_type: Optional[str] = Field(alias="CUTYPE", default=None)
+    """The type of calendar user specified by the property.
+
+    Common values are defined in CalendarUserType, though also supports other
+    values not known by this library so it uses a string.
+    """
+
+    # Quoted
+    delegator: Optional[list[str]] = Field(alias="DELEGATED-FROM", default=None)
+    """The users that have delegated their participation to this user."""
+
+    # Quoted
+    delegate: Optional[list[str]] = Field(alias="DELEGATED-TO", default=None)
+    """The users to whom the user has delegated participation."""
+
+    # Quoted.  Is a uri.
     directory_entry: Optional[str] = Field(alias="DIR", default=None)
+    """Reference to a directory entry associated with the calendar user."""
+
+    member: Optional[list[str]] = Field(alias="MEMBER", default=None)
+    """The group or list membership of the calendar user."""
+
+    status: Optional[str] = Field(alias="PARTSTAT", default=None)
+    """The participation status for the calendar user."""
+
+    role: Optional[str] = Field(alias="ROLE", default=None)
+    """The participation role for the calendar user."""
+
+    rsvp: Optional[str] = Field(alias="RSVP", default=None)
+    """Whether there is an expectation of a favor of a reply from the calendar user."""
+
     sent_by: Optional[str] = Field(alias="SENT-BY", default=None)
+    """Specifies the calendar user is acting on behalf of another user."""
+
     language: Optional[str] = Field(alias="LANGUAGE", default=None)
 
     _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
