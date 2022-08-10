@@ -86,10 +86,6 @@ class Event(ComponentModel):
 
     alarm: list[Alarm] = Field(alias="valarm", default_factory=list)
 
-    # Other properties needed:
-    # -- multiple
-    # - attach
-
     def __init__(self, **data: dict[str, Any]) -> None:
         """Initialize Event."""
         if "start" in data:
