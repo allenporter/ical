@@ -486,7 +486,7 @@ def encode_boolean_ics(value: bool) -> str:
     return "TRUE" if value else "FALSE"
 
 
-class FbType(str, enum.Enum):
+class FreeBusyType(str, enum.Enum):
     """Specifies the free/busy time type."""
 
     FREE = "FREE"
@@ -509,8 +509,8 @@ class Period(BaseModel):
     end: Optional[datetime.datetime] = None
     duration: Optional[datetime.timedelta] = None
 
-    # Parameters
-    fb_type: Optional[FbType] = Field(alias="FBTYPE", default=None)
+    # Parameters, may only be present in some context (e.g. FreeBusy object)
+    free_busy_type: Optional[FreeBusyType] = Field(alias="FBTYPE", default=None)
 
     _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
         parse_parameter_values

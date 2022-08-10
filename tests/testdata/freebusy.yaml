@@ -46,22 +46,22 @@ output:
       freebusy:
       - start: '1997-03-08T16:00:00+00:00'
         duration: 30600.0
-        fb_type: BUSY-UNAVAILABLE
+        free_busy_type: BUSY-UNAVAILABLE
       - start: '1997-03-08T16:00:00+00:00'
         duration: 10800.0
-        fb_type: FREE
+        free_busy_type: FREE
       - start: '1997-03-08T20:00:00+00:00'
         duration: 3600.0
-        fb_type: FREE
+        free_busy_type: FREE
       - start: '1997-03-08T16:00:00+00:00'
         duration: 10800.0
-        fb_type: FREE
+        free_busy_type: FREE
       - start: '1997-03-08T20:00:00+00:00'
         duration: 3600.0
-        fb_type: FREE
+        free_busy_type: FREE
       - start: '1997-03-08T23:00:00+00:00'
         end: '1997-03-09T00:00:00+00:00'
-        fb_type: FREE
+        free_busy_type: FREE
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//RDU Software//NONSGML HandCal//EN
