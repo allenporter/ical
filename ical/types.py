@@ -164,6 +164,16 @@ def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, 
     return values
 
 
+class Uri(str):
+    """A value type for a property that contains a uniform resource identifier."""
+
+    @classmethod
+    def parse(cls, prop: ParsedProperty) -> Uri:
+        """Parse a calendar user address."""
+        urlparse(prop.value)
+        return Uri(prop.value)
+
+
 def encode_property_with_params(
     cls: BaseModel, name: str, model_data: dict[str, Any]
 ) -> ParsedProperty:
@@ -224,7 +234,7 @@ class CalAddress(BaseModel):
     to get the calendar address, but also supports additional properties.
     """
 
-    uri: str = Field(alias="value")
+    uri: Uri = Field(alias="value")
     """The calendar user address as a uri."""
 
     common_name: Optional[str] = Field(alias="CN", default=None)
@@ -237,16 +247,16 @@ class CalAddress(BaseModel):
     values not known by this library so it uses a string.
     """
 
-    delegator: Optional[list[str]] = Field(alias="DELEGATED-FROM", default=None)
+    delegator: Optional[list[Uri]] = Field(alias="DELEGATED-FROM", default=None)
     """The users that have delegated their participation to this user."""
 
-    delegate: Optional[list[str]] = Field(alias="DELEGATED-TO", default=None)
+    delegate: Optional[list[Uri]] = Field(alias="DELEGATED-TO", default=None)
     """The users to whom the user has delegated participation."""
 
-    directory_entry: Optional[str] = Field(alias="DIR", default=None)
+    directory_entry: Optional[Uri] = Field(alias="DIR", default=None)
     """Reference to a directory entry associated with the calendar user."""
 
-    member: Optional[list[str]] = Field(alias="MEMBER", default=None)
+    member: Optional[list[Uri]] = Field(alias="MEMBER", default=None)
     """The group or list membership of the calendar user."""
 
     status: Optional[str] = Field(alias="PARTSTAT", default=None)
@@ -258,7 +268,7 @@ class CalAddress(BaseModel):
     rsvp: Optional[bool] = Field(alias="RSVP", default=None)
     """Whether there is an expectation of a favor of a reply from the calendar user."""
 
-    sent_by: Optional[str] = Field(alias="SENT-BY", default=None)
+    sent_by: Optional[Uri] = Field(alias="SENT-BY", default=None)
     """Specifies the calendar user is acting on behalf of another user."""
 
     language: Optional[str] = Field(alias="LANGUAGE", default=None)
@@ -272,16 +282,6 @@ class CalAddress(BaseModel):
         """Pyandtic model configuration."""
 
         allow_population_by_field_name = True
-
-
-class Uri(str):
-    """A value type for a property that contains a uniform resource identifier."""
-
-    @classmethod
-    def parse(cls, prop: ParsedProperty) -> Uri:
-        """Parse a calendar user address."""
-        urlparse(prop.value)
-        return Uri(prop.value)
 
 
 @dataclass
