@@ -595,21 +595,6 @@ class UtcOffset:
 
     offset: datetime.timedelta
 
-    def __init__(self, offset: datetime.timedelta) -> None:
-        """Initialize UtfOffset."""
-        self.offset = offset
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        _LOGGER.info("__get_validators__")
-        yield cls.parse_offset
-
-    @classmethod
-    def parse_offset(cls, value: Any) -> UtcOffset:
-        """Parse a rfc5545 into a text value."""
-        _LOGGER.info("parse_offset")
-        return parse_utc_offset(value)
-
 
 def parse_utc_offset(prop: Any) -> UtcOffset:
     """Parse a UTC Offset."""
@@ -996,12 +981,14 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
             )
         return data_type.decode(prop)
 
+    errors: list[str] = []
     for validate in validators:
         try:
             return validate(prop)
         except ValueError as err:
             _LOGGER.debug("Failed to validate: %s", err)
-    raise ValueError(f"Failed to validate: {prop}")
+            errors.append(str(err))
+    raise ValueError(f"Failed to validate: {prop}, errors: ({errors})")
 
 
 def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
