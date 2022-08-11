@@ -34,8 +34,8 @@ output:
       location: ''
       rrule:
         freq: WEEKLY
-        by_week_day:
-        - TH
+        by_weekday:
+        - weekday: TH
       sequence: 0
       status: CONFIRMED
       transparency: TRANSPARENT

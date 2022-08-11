@@ -172,6 +172,7 @@ RRULE_FREQ = {
     Frequency.DAILY: rrule.DAILY,
     Frequency.WEEKLY: rrule.WEEKLY,
     Frequency.MONTHLY: rrule.MONTHLY,
+    Frequency.YEARLY: rrule.YEARLY,
 }
 RRULE_WEEKDAY = {
     Weekday.MONDAY: rrule.MO,
@@ -188,12 +189,17 @@ def _create_rrule(
     dtstart: datetime.datetime | datetime.date, rule: Recur
 ) -> rrule.rrule:
     """Create a dateutil rrule for the specified event."""
-    if not (freq := RRULE_FREQ.get(rule.freq)):
-        raise ValueError(f"Unsupported frequency in rrule: {rule}")
+    if (freq := RRULE_FREQ.get(rule.freq)) is None:
+        raise ValueError(f"Unsupported frequency in rrule: {rule.freq}")
 
     byweekday: list[rrule.weekday] | None = None
-    if rule.by_week_day:
-        byweekday = [RRULE_WEEKDAY[week_day] for week_day in rule.by_week_day]
+    if rule.by_weekday:
+        byweekday = [
+            RRULE_WEEKDAY[weekday.weekday](
+                1 if weekday.occurrence is None else weekday.occurrence
+            )
+            for weekday in rule.by_weekday
+        ]
     return rrule.rrule(
         freq=freq,
         dtstart=dtstart,
@@ -201,7 +207,8 @@ def _create_rrule(
         count=rule.count,
         until=rule.until,
         byweekday=byweekday,
-        bymonthday=rule.by_month_day,
+        bymonthday=rule.by_month_day if rule.by_month_day else None,
+        bymonth=rule.by_month if rule.by_month else None,
         cache=True,
     )
 

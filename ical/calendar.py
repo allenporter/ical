@@ -12,6 +12,7 @@ from .freebusy import FreeBusy
 from .journal import Journal
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
+from .timezone import Timezone
 from .todo import Todo
 from .types import ComponentModel
 
@@ -32,6 +33,7 @@ class Calendar(ComponentModel):
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)
     journal: list[Journal] = Field(alias="vjournal", default_factory=list)
     freebusy: list[FreeBusy] = Field(alias="vfreebusy", default_factory=list)
+    timezones: list[Timezone] = Field(alias="vtimezone", default_factory=list)
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)

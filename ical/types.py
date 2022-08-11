@@ -20,6 +20,8 @@ A custom class with the method `__encode_property__` is used to serialize
 the object as a ParsedProperty.
 """
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import copy
@@ -53,6 +55,8 @@ TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
 DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
 WEEKS_PART = r"(\d+)W"
 DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}|{DATETIME_PART})$")
+UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})$")
+WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
 
 UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
 ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
@@ -391,6 +395,7 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
 
 def encode_duration_ics(value: Any) -> str:
     """Serialize a time delta as a DURATION ICS value."""
+    _LOGGER.info("encode_duration_ics=%s", value)
     if isinstance(value, str):
         return value  # Already encoded as ics
     duration: datetime.timedelta
@@ -584,6 +589,71 @@ class Period(BaseModel):
         allow_population_by_field_name = True
 
 
+@dataclass
+class UtcOffset:
+    """Contains an offset from UTC to local time."""
+
+    offset: datetime.timedelta
+
+    def __init__(self, offset: datetime.timedelta) -> None:
+        """Initialize UtfOffset."""
+        self.offset = offset
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
+        _LOGGER.info("__get_validators__")
+        yield cls.parse_offset
+
+    @classmethod
+    def parse_offset(cls, value: Any) -> UtcOffset:
+        """Parse a rfc5545 into a text value."""
+        _LOGGER.info("parse_offset")
+        return parse_utc_offset(value)
+
+
+def parse_utc_offset(prop: Any) -> UtcOffset:
+    """Parse a UTC Offset."""
+    if isinstance(prop, UtcOffset):
+        return prop
+    value = prop
+    if isinstance(prop, ParsedProperty):
+        value = prop.value
+    if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
+        raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
+    sign, hours, minutes = match.groups()
+    result = datetime.timedelta(
+        hours=int(hours or 0),
+        minutes=int(minutes or 0),
+    )
+    if sign == "-":
+        result = -result
+    _LOGGER.info("parse_utc_offset")
+    return UtcOffset(result)
+
+
+def encode_utc_offset_ics(value: Any) -> str:
+    """Serialize a time delta as a UTC-OFFSET ICS value."""
+    if isinstance(value, str):
+        return value  # Already encoded as ics
+    duration: datetime.timedelta
+    if isinstance(value, UtcOffset):
+        duration = value.offset
+    else:
+        raise ValueError(f"Unexpected UTC OFFSET value type: {value}")
+    parts = []
+    if duration < datetime.timedelta(days=0):
+        parts.append("-")
+        duration = -duration
+    seconds = duration.seconds
+    hours = int(seconds / 3600)
+    seconds %= 3600
+    parts.append(f"{hours:02}")
+    minutes = int(seconds / 60)
+    seconds %= 60
+    parts.append(f"{minutes:02}")
+    return "".join(parts)
+
+
 class Weekday(str, enum.Enum):
     """Corresponds to a day of the week."""
 
@@ -594,6 +664,22 @@ class Weekday(str, enum.Enum):
     THURSDAY = "TH"
     FRIDAY = "FR"
     SATURDAY = "SA"
+
+
+@dataclass
+class WeekdayValue:
+    """Holds a weekday value and optional occurrence value."""
+
+    weekday: Weekday
+    """Day of the week value."""
+
+    occurrence: Optional[int] = None
+    """The occurrence value indicates the nth occurrence.
+
+    Indicates the nth occurrence of a specific day within the MONTHLY or
+    YEARLY "RRULE". For example +1 represents the first Monday of the
+    month, or -1 represents the last Monday of the month.
+    """
 
 
 class Frequency(str, enum.Enum):
@@ -610,6 +696,9 @@ class Frequency(str, enum.Enum):
 
     MONTHLY = "MONTHLY"
     """Repeating events based on an interval of a month or more."""
+
+    YEARLY = "YEARLY"
+    """Repeating events based on an interval of a year or more."""
 
 
 class Recur(BaseModel):
@@ -637,11 +726,14 @@ class Recur(BaseModel):
     interval: int = 1
     """Interval at which the recurrence rule repeats."""
 
-    by_week_day: list[Weekday] = Field(alias="byday", default_factory=list)
+    by_weekday: list[WeekdayValue] = Field(alias="byday", default_factory=list)
     """Supported days of the week."""
 
     by_month_day: list[int] = Field(alias="bymonthday", default_factory=list)
     """Days of the month between 1 to 31."""
+
+    by_month: list[int] = Field(alias="bymonth", default_factory=list)
+    """Month number between 1 and 12."""
 
     class Config:
         """Pydantic model configuration."""
@@ -660,9 +752,10 @@ def parse_recur(prop: Any) -> dict[str, Any]:
     An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
     into dictionary.
     """
+    _LOGGER.info("parse_recur=%s", prop)
     if not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
-    result: dict[str, datetime.datetime | str | list[str]] = {}
+    result: dict[str, datetime.datetime | str | list[str] | list[dict[str, str]]] = {}
     for part in prop.value.split(";"):
         if "=" not in part:
             raise ValueError(
@@ -672,8 +765,22 @@ def parse_recur(prop: Any) -> dict[str, Any]:
         key = key.lower()
         if key == "until":
             result[key] = parse_date_time(ParsedProperty(name="ignored", value=value))
-        elif key in ("byday", "bymonthday"):
+        elif key in ("bymonthday", "bymonth"):
             result[key] = value.split(",")
+        elif key == "byday":
+            # Build inputs for WeekdayValue dataclass
+            results: list[dict[str, str]] = []
+            for value in value.split(","):
+                if not (match := WEEKDAY_REGEX.fullmatch(value)):
+                    raise ValueError(
+                        f"Expected value to match UTC-OFFSET pattern: {value}"
+                    )
+                occurrence, weekday = match.groups()
+                weekday_result = {"weekday": weekday}
+                if occurrence:
+                    weekday_result["occurrence"] = occurrence
+                results.append(weekday_result)
+            result[key] = results
         else:
             result[key] = value
     return result
@@ -684,12 +791,21 @@ def encode_recur_ics(data: dict[str, Any]) -> str:
     result = []
     for key, value in data.items():
         # Need to encode based on field type also using json encoders
-        if key == "until":
-            value = encode_date_time_ics(value)
-        elif key in ("byday", "bymonthday"):
+        if key in ("bymonthday", "bymonth"):
             if not value:
                 continue
             value = ",".join([str(val) for val in value])
+        elif key == "byday":
+            values = []
+            for weekday_dict in value:
+                weekday = weekday_dict["weekday"]
+                occurrence = weekday_dict.get("occurrence")
+                if occurrence is None:
+                    occurrence = ""
+                values.append(f"{occurrence}{weekday}")
+            value = ",".join(values)
+        if not value:
+            continue
         result.append(f"{key.upper()}={value}")
     return ";".join(result)
 
@@ -726,6 +842,7 @@ def encode_model(name: str, model: ComponentModel) -> ParsedComponent:
 # For additional decoding of properties after they have already
 # been handled by the json encoder.
 POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
+    UtcOffset: encode_utc_offset_ics,
     datetime.timedelta: encode_duration_ics,
     bool: encode_boolean_ics,
     str: encode_text,
@@ -777,6 +894,7 @@ class PropertyDataType(enum.Enum):
     )
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
     DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
+    UTC_OFFSET = ("UTC-OFFSET", UtcOffset, parse_utc_offset, encode_utc_offset_ics)
     DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
     FLOAT = ("FLOAT", float, parse_float, str)
     INTEGER = ("INTEGER", int, parse_int, str)
@@ -878,9 +996,9 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
             )
         return data_type.decode(prop)
 
-    for validator in validators:
+    for validate in validators:
         try:
-            return validator(prop)
+            return validate(prop)
         except ValueError as err:
             _LOGGER.debug("Failed to validate: %s", err)
     raise ValueError(f"Failed to validate: {prop}")
@@ -938,3 +1056,4 @@ class ComponentModel(BaseModel):
 
         validate_assignment = True
         allow_population_by_field_name = True
+        # arbitrary_types_allowed = True
