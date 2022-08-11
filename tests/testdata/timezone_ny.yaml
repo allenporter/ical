@@ -1,0 +1,225 @@
+input: |-
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VTIMEZONE
+  DTSTAMP:20220811T061212
+  TZID:America/New_York
+  LAST-MODIFIED:20050809T050000Z
+  BEGIN:DAYLIGHT
+  DTSTART:19670430T020000
+  RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=-1SU;UNTIL=19730429T070000Z
+  TZOFFSETFROM:-0500
+  TZOFFSETTO:-0400
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:STANDARD
+  DTSTART:19671029T020000
+  RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU;UNTIL=20061029T060000Z
+  TZOFFSETFROM:-0400
+  TZOFFSETTO:-0500
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19740106T020000
+  RDATE:19750223T020000
+  TZOFFSETFROM:-0500
+  TZOFFSETTO:-0400
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19760425T020000
+  RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=-1SU;UNTIL=19860427T070000Z
+  TZOFFSETFROM:-0500
+  TZOFFSETTO:-0400
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19870405T020000
+  RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU;UNTIL=20060402T070000Z
+  TZOFFSETFROM:-0500
+  TZOFFSETTO:-0400
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:20070311T020000
+  RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+  TZOFFSETFROM:-0500
+  TZOFFSETTO:-0400
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:STANDARD
+  DTSTART:20071104T020000
+  RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+  TZOFFSETFROM:-0400
+  TZOFFSETTO:-0500
+  TZNAME:EST
+  END:STANDARD
+  END:VTIMEZONE
+  END:VCALENDAR
+output:
+  calendars:
+  - prodid: -//ABC Corporation//NONSGML My Product//EN
+    version: '2.0'
+    timezones:
+    - dtstamp: '2022-08-11T06:12:12'
+      tz_id: America/New_York
+      standard:
+      - dtstart: '1967-10-29T02:00:00'
+        tz_offset_to:
+          offset: -18000.0
+        tz_offset_from:
+          offset: -14400.0
+        rrule:
+          freq: YEARLY
+          until: '2006-10-29T06:00:00+00:00'
+          by_weekday:
+          - weekday: SU
+            occurrence: -1
+          by_month:
+          - 10
+        tz_name:
+        - EST
+      - dtstart: '2007-11-04T02:00:00'
+        tz_offset_to:
+          offset: -18000.0
+        tz_offset_from:
+          offset: -14400.0
+        rrule:
+          freq: YEARLY
+          by_weekday:
+          - weekday: SU
+            occurrence: 1
+          by_month:
+          - 11
+        tz_name:
+        - EST
+      daylight:
+      - dtstart: '1967-04-30T02:00:00'
+        tz_offset_to:
+          offset: -14400.0
+        tz_offset_from:
+          offset: -18000.0
+        rrule:
+          freq: YEARLY
+          until: '1973-04-29T07:00:00+00:00'
+          by_weekday:
+          - weekday: SU
+            occurrence: -1
+          by_month:
+          - 4
+        tz_name:
+        - EDT
+      - dtstart: '1974-01-06T02:00:00'
+        tz_offset_to:
+          offset: -14400.0
+        tz_offset_from:
+          offset: -18000.0
+        rdate:
+        - '1975-02-23T02:00:00'
+        tz_name:
+        - EDT
+      - dtstart: '1976-04-25T02:00:00'
+        tz_offset_to:
+          offset: -14400.0
+        tz_offset_from:
+          offset: -18000.0
+        rrule:
+          freq: YEARLY
+          until: '1986-04-27T07:00:00+00:00'
+          by_weekday:
+          - weekday: SU
+            occurrence: -1
+          by_month:
+          - 4
+        tz_name:
+        - EDT
+      - dtstart: '1987-04-05T02:00:00'
+        tz_offset_to:
+          offset: -14400.0
+        tz_offset_from:
+          offset: -18000.0
+        rrule:
+          freq: YEARLY
+          until: '2006-04-02T07:00:00+00:00'
+          by_weekday:
+          - weekday: SU
+            occurrence: 1
+          by_month:
+          - 4
+        tz_name:
+        - EDT
+      - dtstart: '2007-03-11T02:00:00'
+        tz_offset_to:
+          offset: -14400.0
+        tz_offset_from:
+          offset: -18000.0
+        rrule:
+          freq: YEARLY
+          by_weekday:
+          - weekday: SU
+            occurrence: 2
+          by_month:
+          - 3
+        tz_name:
+        - EDT
+      last_modified: '2005-08-09T05:00:00+00:00'
+encoded: |-
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VTIMEZONE
+  DTSTAMP:20220811T061212
+  TZID:America/New_York
+  LAST-MODIFIED:20050809T050000Z
+  BEGIN:STANDARD
+  DTSTART:19671029T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;UNTIL=20061029T060000Z;BYDAY=-1SU;BYMONTH=10
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:20071104T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19670430T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=19730429T070000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19740106T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RDATE:19750223T020000
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19760425T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=19860427T070000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19870405T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=20060402T070000Z;BYDAY=1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:20070311T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:EDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR

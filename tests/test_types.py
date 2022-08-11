@@ -8,7 +8,15 @@ from pydantic import ValidationError
 
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.types import ICS_ENCODERS, ComponentModel, Geo, Period, Priority, encode_model
+from ical.types import (
+    ICS_ENCODERS,
+    ComponentModel,
+    Geo,
+    Period,
+    Priority,
+    UtcOffset,
+    encode_model,
+)
 
 
 def test_text() -> None:
@@ -581,3 +589,30 @@ def test_encode_period() -> None:
         name="model",
         properties=[ParsedProperty(name="example", value="20220807T060000/PT5H30M")],
     )
+
+
+def test_utc_offset() -> None:
+    """Test for UTC offset fields."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        example: UtcOffset
+
+    model = TestModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="-0400")]}
+    )
+    assert model.example.offset == datetime.timedelta(hours=-4)
+
+    model = TestModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="0500")]}
+    )
+    assert model.example.offset == datetime.timedelta(hours=5)
+
+    model = TestModel(example=UtcOffset(offset=datetime.timedelta(hours=5)))
+    assert model.example.offset == datetime.timedelta(hours=5)
+
+    with pytest.raises(ValidationError, match=r".*match UTC-OFFSET pattern.*"):
+        TestModel.parse_obj(
+            {"example": [ParsedProperty(name="example", value="abcdef")]},
+        )

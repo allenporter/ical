@@ -1,0 +1,49 @@
+input: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  UID:19970901T130000Z-123403@example.com
+  DTSTAMP:19970901T130000Z
+  DTSTART;VALUE=DATE:19971102
+  SUMMARY:Our Blissful Anniversary
+  TRANSP:TRANSPARENT
+  CLASS:CONFIDENTIAL
+  CATEGORIES:ANNIVERSARY,PERSONAL,SPECIAL OCCASION
+  RRULE:FREQ=YEARLY
+  END:VEVENT
+  END:VCALENDAR
+output:
+  calendars:
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
+    events:
+    - dtstamp: '1997-09-01T13:00:00+00:00'
+      uid: 19970901T130000Z-123403@example.com
+      dtstart: '1997-11-02'
+      summary: Our Blissful Anniversary
+      classification: CONFIDENTIAL
+      categories:
+        - ANNIVERSARY
+        - PERSONAL
+        - SPECIAL OCCASION
+      rrule:
+        freq: YEARLY
+      transparency: TRANSPARENT
+encoded: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19970901T130000Z
+  UID:19970901T130000Z-123403@example.com
+  DTSTART:19971102
+  SUMMARY:Our Blissful Anniversary
+  CATEGORIES:ANNIVERSARY
+  CATEGORIES:PERSONAL
+  CATEGORIES:SPECIAL OCCASION
+  CLASS:CONFIDENTIAL
+  RRULE:FREQ=YEARLY
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
