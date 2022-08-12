@@ -1,0 +1,222 @@
+input: |-
+  +--------+--------------+------------------+------------------------+
+  | File   | Hexadecimal  | Record Name /    | Field Value            |
+  | Offset | Octets       | Field Name       |                        |
+  +--------+--------------+------------------+------------------------+
+  | 000    | 54 5a 69 66  | magic            | "TZif"                 |
+  | 004    | 32           | version          | '2' (2)                |
+  | 005    | 00 00 00 00  |                  |                        |
+  |        | 00 00 00 00  |                  |                        |
+  |        | 00 00 00 00  |                  |                        |
+  |        | 00 00 00     |                  |                        |
+  | 020    | 00 00 00 06  | isutccnt         | 6                      |
+  | 024    | 00 00 00 06  | isstdcnt         | 6                      |
+  | 028    | 00 00 00 00  | isleapcnt        | 0                      |
+  | 032    | 00 00 00 07  | timecnt          | 7                      |
+  | 036    | 00 00 00 06  | typecnt          | 6                      |
+  | 040    | 00 00 00 14  | charcnt          | 20                     |
+  |        |              |                  |                        |
+  | 044    | 80 00 00 00  | trans time[0]    | -2147483648            |
+  |        |              |                  | (1901-12-13T20:45:52Z) |
+  | 048    | bb 05 43 48  | trans time[1]    | -1157283000            |
+  |        |              |                  | (1933-04-30T12:30:00Z) |
+  | 052    | bb 21 71 58  | trans time[2]    | -1155436200            |
+  |        |              |                  | (1933-05-21T21:30:00Z) |
+  | 056    | cb 89 3d c8  | trans time[3]    | -880198200             |
+  |        |              |                  | (1942-02-09T12:30:00Z) |
+  | 060    | d2 23 f4 70  | trans time[4]    | -769395600             |
+  |        |              |                  | (1945-08-14T23:00:00Z) |
+  | 064    | d2 61 49 38  | trans time[5]    | -765376200             |
+  |        |              |                  | (1945-09-30T11:30:00Z) |
+  | 068    | d5 8d 73 48  | trans time[6]    | -712150200             |
+  |        |              |                  | (1947-06-08T12:30:00Z) |
+  |        |              |                  |                        |
+  | 072    | 01           | trans type[0]    | 1                      |
+  | 073    | 02           | trans type[1]    | 2                      |
+  | 074    | 01           | trans type[2]    | 1                      |
+  | 075    | 03           | trans type[3]    | 3                      |
+  | 076    | 04           | trans type[4]    | 4                      |
+  | 077    | 01           | trans type[5]    | 1                      |
+  | 078    | 05           | trans type[6]    | 5                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[0] |                        |
+  | 079    | ff ff 6c 02  | utcoff           | -37886 (-10:21:26)     |
+  | 083    | 00           | isdst            | 0 (no)                 |
+  | 084    | 00           | desigidx         | 0                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[1] |                        |
+  | 085    | ff ff 6c 58  | utcoff           | -37800 (-10:30)        |
+  | 089    | 00           | isdst            | 0 (no)                 |
+  | 090    | 04           | desigidx         | 4                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[2] |                        |
+  | 091    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 095    | 01           | isdst            | 1 (yes)                |
+  | 096    | 08           | desigidx         | 8                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[3] |                        |
+  | 097    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 101    | 01           | isdst            | 1 (yes)                |
+  | 102    | 0c           | desigidx         | 12                     |
+  |        |              |                  |                        |
+  |        |              | localtimetype[4] |                        |
+  | 103    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 107    | 01           | isdst            | 1 (yes)                |
+  | 108    | 10           | desigidx         | 16                     |
+  |        |              |                  |                        |
+  |        |              | localtimetype[5] |                        |
+  | 109    | ff ff 73 60  | utcoff           | -36000 (-10:00)        |
+  | 113    | 00           | isdst            | 0 (no)                 |
+  | 114    | 04           | desigidx         | 4                      |
+  |        |              |                  |                        |
+  | 115    | 4c 4d 54 00  | designations[0]  | "LMT"                  |
+  | 119    | 48 53 54 00  | designations[4]  | "HST"                  |
+  | 123    | 48 44 54 00  | designations[8]  | "HDT"                  |
+  | 127    | 48 57 54 00  | designations[12] | "HWT"                  |
+  | 131    | 48 50 54 00  | designations[16] | "HPT"                  |
+  |        |              |                  |                        |
+  | 135    | 00           | UT/local[0]      | 1 (UT)                 |
+  | 136    | 00           | UT/local[1]      | 0 (local)              |
+  | 137    | 00           | UT/local[2]      | 0 (local)              |
+  | 138    | 00           | UT/local[3]      | 0 (local)              |
+  | 139    | 01           | UT/local[4]      | 1 (UT)                 |
+  | 140    | 00           | UT/local[5]      | 0 (local)              |
+  |        |              |                  |                        |
+  | 141    | 00           | standard/wall[0] | 1 (standard)           |
+  | 142    | 00           | standard/wall[1] | 0 (wall)               |
+  | 143    | 00           | standard/wall[2] | 0 (wall)               |
+  | 144    | 00           | standard/wall[3] | 0 (wall)               |
+  | 145    | 01           | standard/wall[4] | 1 (standard)           |
+  | 146    | 00           | standard/wall[5] | 0 (wall)               |
+  |        |              |                  |                        |
+  | 147    | 54 5a 69 66  | magic            | "TZif"                 |
+  | 151    | 32           | version          | '2' (2)                |
+  | 152    | 00 00 00 00  |                  |                        |
+  |        | 00 00 00 00  |                  |                        |
+  |        | 00 00 00 00  |                  |                        |
+  |        | 00 00 00     |                  |                        |
+  | 167    | 00 00 00 06  | isutccnt         | 6                      |
+  | 171    | 00 00 00 06  | isstdcnt         | 6                      |
+  | 175    | 00 00 00 00  | isleapcnt        | 0                      |
+  | 179    | 00 00 00 07  | timecnt          | 7                      |
+  | 183    | 00 00 00 06  | typecnt          | 6                      |
+  | 187    | 00 00 00 14  | charcnt          | 20                     |
+  |        |              |                  |                        |
+  | 191    | ff ff ff ff  | trans time[0]    | -2334101314            |
+  |        | 74 e0 70 be  |                  | (1896-01-13T22:31:26Z) |
+  | 199    | ff ff ff ff  | trans time[1]    | -1157283000            |
+  |        | bb 05 43 48  |                  | (1933-04-30T12:30:00Z) |
+  | 207    | ff ff ff ff  | trans time[2]    | -1155436200            |
+  |        | bb 21 71 58  |                  | (1933-05-21T21:30:00Z) |
+  | 215    | ff ff ff ff  | trans time[3]    | -880198200             |
+  |        | cb 89 3d c8  |                  | (1942-02-09T12:30:00Z) |
+  | 223    | ff ff ff ff  | trans time[4]    | -769395600             |
+  |        | d2 23 f4 70  |                  | (1945-08-14T23:00:00Z) |
+  | 231    | ff ff ff ff  | trans time[5]    | -765376200             |
+  |        | d2 61 49 38  |                  | (1945-09-30T11:30:00Z) |
+  | 239    | ff ff ff ff  | trans time[6]    | -712150200             |
+  |        | d5 8d 73 48  |                  | (1947-06-08T12:30:00Z) |
+  |        |              |                  |                        |
+  | 247    | 01           | trans type[0]    | 1                      |
+  | 248    | 02           | trans type[1]    | 2                      |
+  | 249    | 01           | trans type[2]    | 1                      |
+  | 250    | 03           | trans type[3]    | 3                      |
+  | 251    | 04           | trans type[4]    | 4                      |
+  | 252    | 01           | trans type[5]    | 1                      |
+  | 253    | 05           | trans type[6]    | 5                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[0] |                        |
+  | 254    | ff ff 6c 02  | utcoff           | -37886 (-10:21:26)     |
+  | 258    | 00           | isdst            | 0 (no)                 |
+  | 259    | 00           | desigidx         | 0                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[1] |                        |
+  | 260    | ff ff 6c 58  | utcoff           | -37800 (-10:30)        |
+  | 264    | 00           | isdst            | 0 (no)                 |
+  | 265    | 04           | desigidx         | 4                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[2] |                        |
+  | 266    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 270    | 01           | isdst            | 1 (yes)                |
+  | 271    | 08           | desigidx         | 8                      |
+  |        |              |                  |                        |
+  |        |              | localtimetype[3] |                        |
+  | 272    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 276    | 01           | isdst            | 1 (yes)                |
+  | 277    | 0c           | desigidx         | 12                     |
+  |        |              |                  |                        |
+  |        |              | localtimetype[4] |                        |
+  | 278    | ff ff 7a 68  | utcoff           | -34200 (-09:30)        |
+  | 282    | 01           | isdst            | 1 (yes)                |
+  | 283    | 10           | desigidx         | 16                     |
+  |        |              |                  |                        |
+  |        |              | localtimetype[5] |                        |
+  | 284    | ff ff 73 60  | utcoff           | -36000 (-10:00)        |
+  | 288    | 00           | isdst            | 0 (no)                 |
+  | 289    | 04           | desigidx         | 4                      |
+  |        |              |                  |                        |
+  | 290    | 4c 4d 54 00  | designations[0]  | "LMT"                  |
+  | 294    | 48 53 54 00  | designations[4]  | "HST"                  |
+  | 298    | 48 44 54 00  | designations[8]  | "HDT"                  |
+  | 302    | 48 57 54 00  | designations[12] | "HWT"                  |
+  | 306    | 48 50 54 00  | designations[16] | "HPT"                  |
+  |        |              |                  |                        |
+  | 310    | 00           | UT/local[0]      | 0 (local)              |
+  | 311    | 00           | UT/local[1]      | 0 (local)              |
+  | 312    | 00           | UT/local[2]      | 0 (local)              |
+  | 313    | 00           | UT/local[3]      | 0 (local)              |
+  | 314    | 01           | UT/local[4]      | 1 (UT)                 |
+  | 315    | 00           | UT/local[5]      | 0 (local)              |
+  |        |              |                  |                        |
+  | 316    | 00           | standard/wall[0] | 0 (wall)               |
+  | 317    | 00           | standard/wall[1] | 0 (wall)               |
+  | 318    | 00           | standard/wall[2] | 0 (wall)               |
+  | 319    | 00           | standard/wall[3] | 0 (wall)               |
+  | 320    | 01           | standard/wall[4] | 1 (standard)           |
+  | 321    | 00           | standard/wall[5] | 0 (wall)               |
+  |        |              |                  |                        |
+  | 322    | 0a           | NL               | '\n'                   |
+  | 323    | 48 53 54 31  | TZ string        | "HST10"                |
+  |        | 30           |                  |                        |
+  | 328    | 0a           | NL               | '\n'                   |
+  +--------+--------------+------------------+------------------------+
+output:
+  transitions:
+  - transition_time: -2334101314
+    utoff: -37800
+    dst: false
+    isstdcnt: false
+    isutccnt: false
+    designation: HST
+  - transition_time: -1157283000
+    utoff: -34200
+    dst: true
+    isstdcnt: false
+    isutccnt: false
+    designation: HDT
+  - transition_time: -1155436200
+    utoff: -37800
+    dst: false
+    isstdcnt: false
+    isutccnt: false
+    designation: HST
+  - transition_time: -880198200
+    utoff: -34200
+    dst: true
+    isstdcnt: false
+    isutccnt: false
+    designation: HWT
+  - transition_time: -769395600
+    utoff: -34200
+    dst: true
+    isstdcnt: true
+    isutccnt: true
+    designation: HPT
+  - transition_time: -765376200
+    utoff: -37800
+    dst: false
+    isstdcnt: false
+    isutccnt: false
+    designation: HST
+  leap_seconds: []
+  rule: HST10
