@@ -43,4 +43,4 @@ jobs:
         verbose: true
     - uses: codespell-project/actions-codespell@master
       with:
-        skip: tests/tzif/testdata/rfc8536-v3.yaml
+        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
