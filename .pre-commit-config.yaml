@@ -50,3 +50,7 @@ repos:
   rev: v2.1.0
   hooks:
     - id: codespell
+      exclude: |
+          (?x)^(
+              tests/tzif/testdata/rfc8536-v3.yaml
+          )$

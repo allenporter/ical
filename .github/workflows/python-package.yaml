@@ -42,3 +42,5 @@ jobs:
         fail_ci_if_error: true
         verbose: true
     - uses: codespell-project/actions-codespell@master
+      with:
+        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
