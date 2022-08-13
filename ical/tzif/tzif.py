@@ -46,11 +46,13 @@ def read_timezones() -> set[str]:
     with resources.files("tzdata").joinpath("zones").open(
         "r", encoding="utf-8"
     ) as zones_file:
-        return set(zones_file.readlines())
+        return {line.strip() for line in zones_file.readlines()}
 
 
 def iana_key_to_resource(key: str) -> tuple[str, str]:
     """Returns the package and resource file for the specified timezone."""
+    if "/" not in key:
+        return "tzdata.zoneinfo", key
     package_loc, resource = key.rsplit("/", 1)
     package = "tzdata.zoneinfo." + package_loc.replace("/", ".")
     return package, resource
