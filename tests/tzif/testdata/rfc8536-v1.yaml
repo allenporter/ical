@@ -163,60 +163,58 @@ input: |-
   | 271   | 00            | standard/wall[0] | 0 (wall)               |
   +-------+---------------+------------------+------------------------+
 output:
-  transitions: []
   leap_seconds:
-  - occurrence: 78796800
-    correction: 1
-  - occurrence: 94694401
-    correction: 2
-  - occurrence: 126230402
-    correction: 3
-  - occurrence: 157766403
-    correction: 4
-  - occurrence: 189302404
-    correction: 5
-  - occurrence: 220924805
-    correction: 6
-  - occurrence: 252460806
-    correction: 7
-  - occurrence: 283996807
-    correction: 8
-  - occurrence: 315532808
-    correction: 9
-  - occurrence: 362793609
-    correction: 10
-  - occurrence: 394329610
-    correction: 11
-  - occurrence: 425865611
-    correction: 12
-  - occurrence: 489024012
-    correction: 13
-  - occurrence: 567993613
-    correction: 14
-  - occurrence: 631152014
-    correction: 15
-  - occurrence: 662688015
-    correction: 16
-  - occurrence: 709948816
-    correction: 17
-  - occurrence: 741484817
-    correction: 18
-  - occurrence: 773020818
-    correction: 19
-  - occurrence: 820454419
-    correction: 20
-  - occurrence: 867715220
-    correction: 21
-  - occurrence: 915148821
-    correction: 22
-  - occurrence: 1136073622
-    correction: 23
-  - occurrence: 1230768023
-    correction: 24
-  - occurrence: 1341100824
-    correction: 25
-  - occurrence: 1435708825
-    correction: 26
-  - occurrence: 1483228826
-    correction: 27
-  rule:
+  - - 78796800
+    - 1
+  - - 94694401
+    - 2
+  - - 126230402
+    - 3
+  - - 157766403
+    - 4
+  - - 189302404
+    - 5
+  - - 220924805
+    - 6
+  - - 252460806
+    - 7
+  - - 283996807
+    - 8
+  - - 315532808
+    - 9
+  - - 362793609
+    - 10
+  - - 394329610
+    - 11
+  - - 425865611
+    - 12
+  - - 489024012
+    - 13
+  - - 567993613
+    - 14
+  - - 631152014
+    - 15
+  - - 662688015
+    - 16
+  - - 709948816
+    - 17
+  - - 741484817
+    - 18
+  - - 773020818
+    - 19
+  - - 820454419
+    - 20
+  - - 867715220
+    - 21
+  - - 915148821
+    - 22
+  - - 1136073622
+    - 23
+  - - 1230768023
+    - 24
+  - - 1341100824
+    - 25
+  - - 1435708825
+    - 26
+  - - 1483228826
+    - 27

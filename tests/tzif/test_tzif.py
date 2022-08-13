@@ -2,7 +2,7 @@
 
 import pytest
 
-from ical.tzif import tzif
+from ical.tzif import timezoneinfo, tzif
 
 V1_HEADER = b"".join(
     [
@@ -60,20 +60,8 @@ def test_invalid_header(header: bytes, match: str) -> None:
         tzif.read_tzif(header)
 
 
-def test_header() -> None:
-    """Tests for tzif header parsing."""
-    header = tzif.Header.from_bytes(V1_HEADER)
-    assert header.version == b"\x00"
-    assert header.isutccnt == 1
-    assert header.isstdcnt == 1
-    assert header.leapcnt == 27
-    assert header.timecnt == 0
-    assert header.typecnt == 1
-    assert header.charcnt == 4
-
-
 def test_tzif() -> None:
     """Tests for tzif parser."""
-    result = tzif.read("America/Los_Angeles")
+    result = timezoneinfo.read("America/Los_Angeles")
     assert len(result.transitions) > 0
     assert result.rule == "PST8PDT,M3.2.0,M11.1.0"
