@@ -12,17 +12,22 @@ This package uses the tzdata package as a definition for timezones, under
 the assumption that it should be similar to existing python supported
 timezones.
 
-rfc8536
+Note: This implementation is more verbose than the zoneinfo implementation
+and contains more documentation and references to the file format to serve
+as a resource for understanding the format. See rfc8536 for TZif file format.
 """
 
-# pylint: disable=too-many-locals
-
+import enum
 import io
 import struct
+from collections import namedtuple
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
-from typing import Any, Optional, Sequence
+from typing import Sequence
+
+from .model import LeapSecond, TimezoneInfo, Transition
 
 # Records specifying the local time type
 LOCAL_TIME_TYPE_STRUCT_FORMAT = "".join(
@@ -58,6 +63,34 @@ def iana_key_to_resource(key: str) -> tuple[str, str]:
     return package, resource
 
 
+class TZifVersion(enum.Enum):
+    """Defines information related to TZifVersions."""
+
+    V1 = (b"\x00", 4, "l")  # 32-bit in v1
+    V2 = (b"2", 8, "q")  # 64-bit in v2+
+    V3 = (b"3", 8, "q")
+
+    def __init__(self, version: bytes, time_size: int, time_format: str):
+        self._version = version
+        self._time_size = time_size
+        self._time_format = time_format
+
+    @property
+    def version(self) -> bytes:
+        """Return the version byte string."""
+        return self._version
+
+    @property
+    def time_size(self) -> int:
+        """Return the TIME_SIZE used in the data block parsing."""
+        return self._time_size
+
+    @property
+    def time_format(self) -> str:
+        """Return the struct unpack format string for TIME_SIZE objects."""
+        return self._time_format
+
+
 @dataclass
 class Header:
     """TZif Header information."""
@@ -73,9 +106,6 @@ class Header:
         ]
     )
     MAGIC = "TZif".encode()
-    V1 = b"\x00"
-    V2 = b"2"
-    V3 = b"3"
 
     version: bytes
     """The version of the files format."""
@@ -124,188 +154,139 @@ class Header:
         return Header(version, isutccnt, isstdcnt, leapcnt, timecnt, typecnt, charcnt)
 
 
-@dataclass
-class Transition:
-    """An individual item in the Datablock."""
+TransitionBlock = namedtuple(
+    "TransitionBlock", ["transition_time", "time_type", "isstdcnt", "isutccnt"]
+)
 
-    transition_time: int
-    """A transition time at which the rules for computing local time may change."""
-
-    utoff: int
-    """Number of seconds added to UTC to determine local time."""
-
-    dst: bool
-    """Determines if local time is Daylight Savings Time (else Standard time)."""
-
-    isstdcnt: bool
-    """Determines if the transition time is standard time (else, wall clock time)."""
-
-    isutccnt: bool
-    """Determines if the transition time is UCT time, else is a local time."""
-
-    designation: str
-    """A designation string."""
+# A series of records specifying the local time type:
+#  - utoff (4 bytes): Number of seconds to add to UTC to determine local time
+#  - dst (1 byte): Indicates the time is DST (1) or standard (0)
+#  - idx (1 byte):  Offset index into the time zone designiation octets (0-charcnt-1)
+# is the utoff (4 bytes), dst (1 byte), idx (1 byte).
+LocalTimeType = namedtuple("LocalTimeType", ["utoff", "dst", "idx"])
 
 
-@dataclass
-class LeapSecond:
-    """A correction that needs to be applied to UTC in order to determine TAI."""
+def new_transition(
+    transition: TransitionBlock,
+    local_time_types: list[LocalTimeType],
+    get_tz_designations: Callable[[int], str],
+) -> Transition:
+    """ddd."""
+    if transition.time_type >= len(local_time_types):
+        raise ValueError(
+            f"transition_type out of bounds {transition.time_type} >= {len(local_time_types)}"
+        )
+    if transition.isutccnt and not transition.isstdcnt:
+        raise ValueError("isutccnt was True but isstdcnt was False")
+    (utoff, dst, idx) = local_time_types[transition.time_type]
+    return Transition(
+        transition.transition_time,
+        utoff,
+        dst,
+        transition.isstdcnt,
+        transition.isutccnt,
+        get_tz_designations(idx),
+    )
 
-    occurrence: int
-    """The time at which the leap-second correction occurs."""
 
-    correction: int
-    """The value of LEAPCORR on or after the occurrence (1 or -1)."""
+def read_datablock(
+    header: Header, version: TZifVersion, buf: io.BytesIO
+) -> tuple[list[Transition], list[LeapSecond]]:
+    """Read records from the buffer."""
+    # A series of leap-time values in sorted order
+    transition_times = struct.unpack(
+        f">{header.timecnt}{version.time_format}",
+        buf.read(header.timecnt * version.time_size),
+    )
 
-
-@dataclass
-class Result:
-    """The results of parsing the TZif file."""
-
-    transitions: list[Transition]
-    """Local time changes."""
-
-    leap_seconds: list[LeapSecond]
-
-    rule: Optional[str] = None
-    """A rule for computing local time changes after the last transition."""
-
-
-@dataclass
-class DatablockReader:
-    """A series of items made up of variable length elements."""
-
-    def __init__(self, header: Header, time_size: int, time_size_format: str) -> None:
-        """Initialize Datablock."""
-        self._header = header
-        self._time_size = time_size
-        self._time_size_format = time_size_format
-
-    @classmethod
-    def for_header(cls, header: Header, version: bytes) -> "DatablockReader":
-        """Create a new DatablockReader for the specified header and version."""
-        if version == Header.V1:
-            return cls(header, 4, "l")  # 32-bit in v1
-        return cls(header, 8, "q")  # 64-bit in v2+
-
-    def read(self, buf: io.BytesIO) -> tuple[list[Transition], list[LeapSecond]]:
-        """Read records from the buffer."""
-        # A series of leap-time values in sorted order
-        transition_times = struct.unpack(
-            f">{self._header.timecnt}{self._time_size_format}",
-            buf.read(self._header.timecnt * self._time_size),
+    # A series of integers specifying the type of local time of the corresponding
+    # transition time. These are zero-based indices into the array of local
+    # time type records. (from 0 to typecnt-1)
+    transition_types: Sequence[int] = []
+    if header.timecnt > 0:
+        transition_types = struct.unpack(
+            f">{header.timecnt}B", buf.read(header.timecnt)
         )
 
-        # A series of integers specifying the type of local time of the corresponding
-        # transition time. These are zero-based indices into the array of local
-        # time type records. (from 0 to typecnt-1)
-        transition_types: Sequence[int] = []
-        if self._header.timecnt > 0:
-            transition_types = struct.unpack(
-                f">{self._header.timecnt}B", buf.read(self._header.timecnt)
+    local_time_types: list[LocalTimeType] = [
+        LocalTimeType._make(
+            struct.unpack(
+                LOCAL_TIME_TYPE_STRUCT_FORMAT, buf.read(LOCAL_TIME_RECORD_SIZE)
             )
+        )
+        for _ in range(header.typecnt)
+    ]
 
-        # A series of records specifying the local time type:
-        #  - utoff (4 bytes): Number of seconds to add to UTC to determine local time
-        #  - dst (1 byte): Indicates the time is DST (1) or standard (0)
-        #  - idx (1 byte):  Offset index into the time zone designiation octets (0-charcnt-1)
-        # is the utoff (4 bytes), dst (1 byte), idx (1 byte).
-        local_time_types: list[tuple[Any, ...]] = []
-        for _ in range(self._header.typecnt):
-            local_time_types.append(
-                struct.unpack(
-                    LOCAL_TIME_TYPE_STRUCT_FORMAT, buf.read(LOCAL_TIME_RECORD_SIZE)
-                )
+    # An array of NUL-terminated time zone designation strings
+    tz_designations = buf.read(header.charcnt)
+
+    @cache
+    def get_tz_designations(idx: int) -> str:
+        """Find the null terminated string starting at the specified index."""
+        end = tz_designations.find(b"\x00", idx)
+        return tz_designations[idx:end].decode("UTF-8")
+
+    leap_seconds: list[LeapSecond] = [
+        LeapSecond._make(
+            struct.unpack(
+                f">{version.time_format}l",
+                buf.read(version.time_size + 4),  # occur + corr
             )
+        )
+        for _ in range(header.leapcnt)
+    ]
 
-        # An array of NUL-terminated time zone designation strings
-        tz_designations = buf.read(self._header.charcnt)
+    # Standard/wall indicators determine if the transition times are standard time (1)
+    # or wall clock time (0).
+    isstdcnt_types: Sequence[bool]
+    if header.isstdcnt > 0:
+        isstdcnt_types = struct.unpack(
+            f">{header.isstdcnt}?",
+            buf.read(header.isstdcnt),
+        )
+    else:
+        isstdcnt_types = [False] * header.timecnt
 
-        @cache
-        def get_tz_designations(idx: int) -> str:
-            """Find the null terminated string starting at the specified index."""
-            end = tz_designations.find(b"\x00", idx)
-            return tz_designations[idx:end].decode("UTF-8")
+    # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
+    isutccnt_types: Sequence[bool]
+    if header.isutccnt > 0:
+        isutccnt_types = struct.unpack(
+            f">{header.isutccnt}?", buf.read(header.isutccnt)
+        )
+    else:
+        isutccnt_types = [False] * header.timecnt
 
-        leap_seconds: list[LeapSecond] = []
-        for _ in range(self._header.leapcnt):
-            leap_second_record = struct.unpack(
-                f">{self._time_size_format}l",
-                buf.read(self._time_size + 4),  # occur + corr
-            )
-            leap_seconds.append(
-                LeapSecond(leap_second_record[0], leap_second_record[1])
-            )
+    transitions = [
+        new_transition(TransitionBlock(*values), local_time_types, get_tz_designations)
+        for values in zip(
+            transition_times, transition_types, isstdcnt_types, isutccnt_types
+        )
+    ]
 
-        # Standard/wall indicators determine if the transition times are standard time (1)
-        # or wall clock time (0).
-        isstdcnt_types: Sequence[bool]
-        if self._header.isstdcnt > 0:
-            isstdcnt_types = struct.unpack(
-                f">{self._header.isstdcnt}?",
-                buf.read(self._header.isstdcnt),
-            )
-        else:
-            isstdcnt_types = [False] * self._header.timecnt
-
-        # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
-        isutccnt_types: Sequence[bool]
-        if self._header.isutccnt > 0:
-            isutccnt_types = struct.unpack(
-                f">{self._header.isutccnt}?", buf.read(self._header.isutccnt)
-            )
-        else:
-            isutccnt_types = [False] * self._header.timecnt
-
-        transitions = []
-        for (transition_time, transition_type, isstdcnt, isutccnt) in zip(
-            transition_times,
-            transition_types,
-            isstdcnt_types,
-            isutccnt_types,
-        ):
-            if transition_type >= len(local_time_types):
-                raise ValueError(
-                    f"transition_type out of bounds {transition_type} >= {len(local_time_types)}"
-                )
-            if isutccnt and not isstdcnt:
-                raise ValueError("isutccnt was True but isstdcnt was False")
-            (utoff, dst, idx) = local_time_types[transition_type]
-            transitions.append(
-                Transition(
-                    transition_time,
-                    utoff,
-                    dst,
-                    isstdcnt,
-                    isutccnt,
-                    get_tz_designations(idx),
-                )
-            )
-        return (transitions, leap_seconds)
+    return (transitions, leap_seconds)
 
 
-def read(key: str) -> Result:
+def read(key: str) -> TimezoneInfo:
     """Read the TZif file from the tzdata package and return timezone records."""
     (package, resource) = iana_key_to_resource(key)
     with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
         return read_tzif(tzdata_file.read())
 
 
-def read_tzif(content: bytes) -> Result:
+def read_tzif(content: bytes) -> TimezoneInfo:
     """Read the TZif file and parse and return the timezone records."""
     buf = io.BytesIO(content)
 
     # V1 header and block
     header = Header.from_bytes(buf.read(Header.SIZE))
-    if header.version == Header.V1:
+    if header.version == TZifVersion.V1.version:
         if header.typecnt == 0:
             raise ValueError("Local time records in block is zero")
         if header.charcnt == 0:
             raise ValueError("Total number of octets is zero")
-    reader = DatablockReader.for_header(header, Header.V1)
-    (transitions, leap_seconds) = reader.read(buf)
-    if header.version == Header.V1:
-        return Result(transitions, leap_seconds)
+    (transitions, leap_seconds) = read_datablock(header, TZifVersion.V1, buf)
+    if header.version == TZifVersion.V1.version:
+        return TimezoneInfo(transitions, leap_seconds)
 
     # V2+ header and block
     header = Header.from_bytes(buf.read(Header.SIZE))
@@ -314,12 +295,11 @@ def read_tzif(content: bytes) -> Result:
     if header.charcnt == 0:
         raise ValueError("Total number of octets is zero")
 
-    reader = DatablockReader.for_header(header, Header.V2)
-    (transitions, leap_seconds) = reader.read(buf)
+    (transitions, leap_seconds) = read_datablock(header, TZifVersion.V2, buf)
 
     # V2+ footer
     footer = buf.read()
     parts = footer.decode("UTF-8").split("\n")
     if len(parts) != 3:
         raise ValueError("Failed to read TZ footer")
-    return Result(transitions, leap_seconds, rule=parts[1])
+    return TimezoneInfo(transitions, leap_seconds, rule=parts[1])
