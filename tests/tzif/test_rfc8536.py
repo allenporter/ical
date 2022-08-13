@@ -1,7 +1,7 @@
 """Tests for rfc8536 examples."""
 
-import dataclasses
 import io
+import json
 import re
 
 import pytest
@@ -26,11 +26,11 @@ def rfc_to_binary(rfc_text: str) -> bytes:
 
 
 @pytest.mark.golden_test("testdata/rfc*.yaml")
-def test_parse(golden: GoldenTestFixture) -> None:
+def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> None:
     """Test that reads RFC examples from golden files."""
     if golden.get("disabled"):
         return
-
     content = rfc_to_binary(golden["input"])
     result = read_tzif(content)
-    assert dataclasses.asdict(result) == golden.out["output"]
+    obj_data = json.loads(json.dumps(result, default=json_encoder.default))
+    assert obj_data == golden.out["output"]
