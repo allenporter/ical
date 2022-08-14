@@ -34,15 +34,12 @@ def _find_tzfile(key: str) -> str | None:
 
 
 @cache
-def read_tzdata_timezones() -> set[str]:
+def _read_tzdata_timezones() -> set[str]:
     """Returns the set of valid timezones."""
-    try:
-        with resources.files("tzdata").joinpath("zones").open(
-            "r", encoding="utf-8"
-        ) as zones_file:
-            return {line.strip() for line in zones_file.readlines()}
-    except ModuleNotFoundError as err:
-        raise TimezoneInfoError("Unable to read timezone from tzdata") from err
+    with resources.files("tzdata").joinpath("zones").open(
+        "r", encoding="utf-8"
+    ) as zones_file:
+        return {line.strip() for line in zones_file.readlines()}
 
 
 def _iana_key_to_resource(key: str) -> tuple[str, str]:
@@ -63,10 +60,18 @@ def read(key: str) -> TimezoneInfo:
             return read_tzif(tzfile_file.read())
 
     # Fallback to tzdata package if that module is installed
+    try:
+        tzdata_timezones = _read_tzdata_timezones()
+    except ModuleNotFoundError as err:
+        _LOGGER.debug("tzdata package is not loaded")
+        tzdata_timezones = set()
+
+    if key not in tzdata_timezones:
+        raise TimezoneInfoError(f"Unable to find timezone: {key}")
+
     (package, resource) = _iana_key_to_resource(key)
     try:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
-    except (ModuleNotFoundError, FileNotFoundError) as err:
-        # Timezone not found in system path or tzdata
-        raise TimezoneInfoError(f"Unable to find timezone: {key}")
+    except FileNotFoundError as err:
+        raise TimezoneInfoError(f"Unable to read tzdata file: {key}")
