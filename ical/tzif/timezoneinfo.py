@@ -62,11 +62,11 @@ def read(key: str) -> TimezoneInfo:
         with open(tzfile, "rb") as tzfile_file:
             return read_tzif(tzfile_file.read())
 
-    # Fallback to tzdata package
+    # Fallback to tzdata package if that module is installed
     (package, resource) = _iana_key_to_resource(key)
     try:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
-    except ModuleNotFoundError as err:
+    except ModuleNotFoundError | FileNotFoundError as err:
         # Timezone not found in system path or tzdata
         raise TimezoneInfoError(f"Unable to find timezone: {key}")
