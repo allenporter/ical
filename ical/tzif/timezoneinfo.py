@@ -62,8 +62,7 @@ def read(key: str) -> TimezoneInfo:
     # Fallback to tzdata package if that module is installed
     try:
         tzdata_timezones = _read_tzdata_timezones()
-    except ModuleNotFoundError as err:
-        _LOGGER.debug("tzdata package is not loaded")
+    except ModuleNotFoundError:
         tzdata_timezones = set()
 
     if key not in tzdata_timezones:
@@ -74,4 +73,4 @@ def read(key: str) -> TimezoneInfo:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
     except FileNotFoundError as err:
-        raise TimezoneInfoError(f"Unable to read tzdata file: {key}")
+        raise TimezoneInfoError(f"Unable to read tzdata file: {key}") from err
