@@ -64,5 +64,9 @@ def read(key: str) -> TimezoneInfo:
 
     # Fallback to tzdata package
     (package, resource) = _iana_key_to_resource(key)
-    with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
-        return read_tzif(tzdata_file.read())
+    try:
+        with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
+            return read_tzif(tzdata_file.read())
+    except ModuleNotFoundError as err:
+        # Timezone not found in system path or tzdata
+        raise TimezoneInfoError(f"Unable to find timezone: {key}")
