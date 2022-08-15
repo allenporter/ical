@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import datetime
 import logging
-from dataclasses import dataclass
 from typing import Any, Optional
 
 from pydantic import BaseModel, root_validator, validator
@@ -51,26 +50,31 @@ def _parse_time(values: dict[str, Any]) -> str | int:
     if not values:
         return 0
     hour = values["hour"]
+    sign = 1
     if hour.startswith("+"):
         hour = hour[1:]
-    minutes = values.get("minutes", "00")
-    seconds = values.get("seconds", "00")
-    result = f"{hour}:{minutes}:{seconds}"
-    return result
+    elif hour.startswith("-"):
+        sign = -1
+        hour = hour[1:]
+    minutes = values.get("minutes", "0")
+    seconds = values.get("seconds", "0")
+    return sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
 
 
-@dataclass
-class RuleDate:
+class RuleDate(BaseModel):
     """A date referenced in a timezone rule."""
 
-    month: int
+    month: Optional[int]
     """A month between 1 and 12."""
 
-    day_of_week: int
+    day_of_week: Optional[int]
     """A day of the week between 0 (Sunday) and 6 (Saturday)."""
 
-    week_of_month: int
+    week_of_month: Optional[int]
     """A week number of the month (1 to 5) based on the first occurrence of day_of_week."""
+
+    day_of_year: Optional[int]
+    """Julian day of the year between 1 and 365 ignoring leap days."""
 
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
@@ -78,8 +82,7 @@ class RuleDate:
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
 
-@dataclass
-class RuleOccurrence:
+class RuleOccurrence(BaseModel):
     """A TimeZone rule occurrence."""
 
     name: str
@@ -93,7 +96,10 @@ class RuleOccurrence:
     @validator("offset", allow_reuse=True)
     def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        return _ZERO - value
+        _LOGGER.debug("offset=%s", value)
+        result = _ZERO - value
+        _LOGGER.debug("inverted offset=%s", result)
+        return result
 
 
 def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
@@ -153,15 +159,20 @@ def parse_tz_rule(tz_str: str) -> Rule:
     onset = name.set_results_name("name") + Group(Opt(tz_time)).set_results_name(
         "offset"
     )
-    tz_date = (
+    month_date = (
         "M"
         + Word(nums).set_results_name("month")
         + "."
         + Word(nums).set_results_name("week_of_month")
         + "."
         + Word(nums).set_results_name("day_of_week")
-        + Opt("/" + Group(tz_time).set_results_name("time"))
     )
+    julian_date = "J" + Word(nums).set_results_name("day_of_year")
+    if ",J" in tz_str:
+        tz_days = julian_date
+    else:
+        tz_days = month_date
+    tz_date = tz_days + Opt("/" + Group(tz_time).set_results_name("time"))
 
     tz_rule = (
         Group(onset).set_results_name("std")

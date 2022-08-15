@@ -169,3 +169,19 @@ def test_tz_offset() -> None:
     assert rule.dst_end.week_of_month == 5
     assert rule.dst_end.day_of_week == 0
     assert rule.dst_end.time == datetime.timedelta(hours=-1)
+
+
+def test_iran_rule_offset() -> None:
+    """Test a more complex timezone rule."""
+    rule = tz_rule.parse_tz_rule("<+0330>-3:30<+0430>,J79/24,J263/24")
+    assert rule.std.name == "<+0330>"
+    assert rule.std.offset == datetime.timedelta(hours=3, minutes=30)
+    assert rule.dst
+    assert rule.dst.name == "<+0430>"
+    assert rule.dst.offset == datetime.timedelta(hours=4, minutes=30)
+    assert rule.dst_start
+    assert rule.dst_start.day_of_year == 79
+    assert rule.dst_start.time == datetime.timedelta(hours=24)
+    assert rule.dst_end
+    assert rule.dst_end.day_of_year == 263
+    assert rule.dst_end.time == datetime.timedelta(hours=24)
