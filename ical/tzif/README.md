@@ -22,4 +22,11 @@ This package works similarly to the `zoneinfo` package, exposing the underlying
 datasources for use by libraries that need timezone transitions. Timezone data
 is stored in the Time Zone Information Format (TZif) described in [rfc8536](https://datatracker.ietf.org/doc/html/rfc8536).
 
-Currently this library just reads the `tzdata` sources.
+The library will read both from the system TZ paths or from the tzdata package.
+
+TZif v3 files support a posix TZ string that describe the rules for the timezone
+going forward without explicit transitions. These two resources were helpful to
+better describe the string since it is not references in the RFC for TZif:
+
+   - https://developer.ibm.com/articles/au-aix-posix/
+   - https://www.di-mgt.com.au/wclock/help/wclo_tzexplain.html
