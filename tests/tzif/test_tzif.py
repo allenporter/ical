@@ -1,5 +1,7 @@
 """Tests for the tzif library."""
 
+import datetime
+
 import pytest
 
 from ical.tzif import timezoneinfo, tzif
@@ -64,4 +66,10 @@ def test_tzif() -> None:
     """Tests for tzif parser."""
     result = timezoneinfo.read("America/Los_Angeles")
     assert len(result.transitions) > 0
-    assert result.rule == "PST8PDT,M3.2.0,M11.1.0"
+    assert result.rule
+    assert result.rule.std
+    assert result.rule.std.name == "PST"
+    assert result.rule.std.offset == datetime.timedelta(hours=-8)
+    assert result.rule.dst
+    assert result.rule.dst.name == "PDT"
+    assert result.rule.dst.offset == datetime.timedelta(hours=-7)

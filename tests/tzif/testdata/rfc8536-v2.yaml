@@ -218,4 +218,10 @@ output:
     isstdcnt: false
     isutccnt: false
     designation: HST
-  rule: HST10
+  rule:
+    std:
+      name: HST
+      offset: -36000.0
+    dst:
+    dst_end:
+    dst_start:

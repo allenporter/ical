@@ -69,7 +69,7 @@ def _create_parser() -> ParserElement:
     param_value = Or([param_text, quoted_string])
     # There are multiple levels of property parameter grouping since there can
     # either be repreated property parameters with the same name or property
-    # parameters with repeated values. A two level structure is used to grab
+    # s parameters with repeated values. A two level structure is used to grab
     # both, which is then flattened when consuming the result.
     param = Group(
         param_name.set_results_name(PARSE_PARAM_NAME)

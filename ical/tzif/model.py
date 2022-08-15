@@ -4,6 +4,8 @@ from collections import namedtuple
 from dataclasses import dataclass
 from typing import Optional
 
+from .tz_rule import Rule
+
 
 @dataclass
 class Transition:
@@ -45,5 +47,5 @@ class TimezoneInfo:
 
     leap_seconds: list[LeapSecond]
 
-    rule: Optional[str] = None
+    rule: Optional[Rule] = None
     """A rule for computing local time changes after the last transition."""

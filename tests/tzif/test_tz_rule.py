@@ -69,6 +69,18 @@ def test_dst_implicit_offset() -> None:
     assert rule.dst_end is None
 
 
+def test_standard_dst_implied_offset() -> None:
+    """Test standard time with an offset with an explicit plus."""
+    rule = tz_rule.parse_tz_rule("PST8PDT")
+    assert rule.std.name == "PST"
+    assert rule.std.offset == datetime.timedelta(hours=-8)
+    assert rule.dst
+    assert rule.dst.name == "PDT"
+    assert rule.dst.offset == datetime.timedelta(hours=-7)
+    assert rule.dst_start is None
+    assert rule.dst_end is None
+
+
 def test_dst_explicit_offset() -> None:
     """Test standard time with no daylight savings time."""
     rule = tz_rule.parse_tz_rule("EST5EDT4")
@@ -93,12 +105,12 @@ def test_dst_rules() -> None:
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
-    assert rule.dst_start.time == datetime.time(2, 0, 0)
+    assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
-    assert rule.dst_end.time == datetime.time(2, 0, 0)
+    assert rule.dst_end.time == datetime.timedelta(hours=2)
 
 
 def test_dst_implement_time_rules() -> None:
@@ -113,27 +125,63 @@ def test_dst_implement_time_rules() -> None:
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
-    assert rule.dst_start.time == datetime.time(2, 0, 0)
+    assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
-    assert rule.dst_end.time == datetime.time(2, 0, 0)
+    assert rule.dst_end.time == datetime.timedelta(hours=2)
 
 
 @pytest.mark.parametrize(
-    "tz_string,match",
+    "tz_string",
     [
-        ("", "Unable to parse TZ rule occurrence"),
-        ("1234", "Unable to parse TZ rule occurrence"),
-        ("EST+5EDT,M3.2.0/2", "TZ rule had unexpected ','"),
-        ("EST+5EDT,M3.2.0/2,M11.1.0/2,M3", "TZ rule had unexpected ','"),
-        ("EST+5EDT,3.2.0/2,M11.1.0/2", "missing M prefix"),
-        ("EST+5EDT,M3.2/2,M11.1.0/2", "Rule date had unexpected number of parts"),
-        ("EST+5EDT,M3.2.0.4/2,M11.1.0/2", "Rule date had unexpected number of parts"),
+        "",
+        "1234",
+        "EST+5EDT,M3.2.0/2",
+        "EST+5EDT,M3.2.0/2,M11.1.0/2,M3",
+        "EST+5EDT,3.2.0/2,M11.1.0/2",
+        "EST+5EDT,M3.2/2,M11.1.0/2",
+        "EST+5EDT,M3.2.0.4/2,M11.1.0/2",
     ],
 )
-def test_invalid(tz_string: str, match: str) -> None:
+def test_invalid(tz_string: str) -> None:
     """Test an invalid rule occurrence"""
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(ValueError, match="Unable to parse TZ string"):
         tz_rule.parse_tz_rule(tz_string)
+
+
+def test_tz_offset() -> None:
+    """Test standard time offset with hours and minutes."""
+    rule = tz_rule.parse_tz_rule("<-03>3<-02>,M3.5.0/-2,M10.5.0/-1")
+    assert rule.std.name == "<-03>"
+    assert rule.std.offset == datetime.timedelta(hours=-3)
+    assert rule.dst
+    assert rule.dst.name == "<-02>"
+    assert rule.dst.offset == datetime.timedelta(hours=-2)
+    assert rule.dst_start
+    assert rule.dst_start.month == 3
+    assert rule.dst_start.week_of_month == 5
+    assert rule.dst_start.day_of_week == 0
+    assert rule.dst_start.time == datetime.timedelta(hours=-2)
+    assert rule.dst_end
+    assert rule.dst_end.month == 10
+    assert rule.dst_end.week_of_month == 5
+    assert rule.dst_end.day_of_week == 0
+    assert rule.dst_end.time == datetime.timedelta(hours=-1)
+
+
+def test_iran_rule_offset() -> None:
+    """Test a more complex timezone rule."""
+    rule = tz_rule.parse_tz_rule("<+0330>-3:30<+0430>,J79/24,J263/24")
+    assert rule.std.name == "<+0330>"
+    assert rule.std.offset == datetime.timedelta(hours=3, minutes=30)
+    assert rule.dst
+    assert rule.dst.name == "<+0430>"
+    assert rule.dst.offset == datetime.timedelta(hours=4, minutes=30)
+    assert rule.dst_start
+    assert rule.dst_start.day_of_year == 79
+    assert rule.dst_start.time == datetime.timedelta(hours=24)
+    assert rule.dst_end
+    assert rule.dst_end.day_of_year == 263
+    assert rule.dst_end.time == datetime.timedelta(hours=24)

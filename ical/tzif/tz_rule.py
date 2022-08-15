@@ -25,59 +25,64 @@ from __future__ import annotations
 
 import datetime
 import logging
-import re
-from dataclasses import dataclass
 from typing import Any, Optional
 
 from pydantic import BaseModel, root_validator, validator
+from pyparsing import (
+    Char,
+    Combine,
+    Group,
+    Opt,
+    ParseException,
+    ParserElement,
+    Word,
+    alphas,
+    nums,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 _ZERO = datetime.timedelta(seconds=0)
 
 
-def _parse_time(value: str) -> str | int:
+def _parse_time(values: dict[str, Any]) -> str | int:
     """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format."""
-    if not value:
+    if not values:
         return 0
-    parts = value.split(":")
-    if len(parts) < 2:
-        parts.append("00")
-    if len(parts) < 3:
-        parts.append("00")
-    if parts[0].startswith("+"):  # Strip a leading +
-        parts[0] = parts[0][1:]
-    return ":".join(parts)
+    hour = values["hour"]
+    sign = 1
+    if hour.startswith("+"):
+        hour = hour[1:]
+    elif hour.startswith("-"):
+        sign = -1
+        hour = hour[1:]
+    minutes = values.get("minutes", "0")
+    seconds = values.get("seconds", "0")
+    return sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
 
 
-@dataclass
-class RuleDate:
+class RuleDate(BaseModel):
     """A date referenced in a timezone rule."""
 
-    month: int
+    month: Optional[int]
     """A month between 1 and 12."""
 
-    day_of_week: int
+    day_of_week: Optional[int]
     """A day of the week between 0 (Sunday) and 6 (Saturday)."""
 
-    week_of_month: int
+    week_of_month: Optional[int]
     """A week number of the month (1 to 5) based on the first occurrence of day_of_week."""
 
-    time: Optional[datetime.time] = None
-    """Time in current local time when the rule goes into effect, defaulting to 02:00:00."""
+    day_of_year: Optional[int]
+    """Julian day of the year between 1 and 365 ignoring leap days."""
+
+    time: datetime.timedelta
+    """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
-    @validator("month", pre=True)
-    def parse_month(cls, value: str) -> str:
-        """Convert a TZ month to an integer."""
-        if not value.startswith("M"):
-            raise ValueError(f"Unexpected month date format missing M prefix: {value}")
-        return value[1:]
 
-
-@dataclass
-class RuleOccurrence:
+class RuleOccurrence(BaseModel):
     """A TimeZone rule occurrence."""
 
     name: str
@@ -88,46 +93,20 @@ class RuleOccurrence:
 
     _parse_offset = validator("offset", pre=True, allow_reuse=True)(_parse_time)
 
-    @validator("offset")
+    @validator("offset", allow_reuse=True)
     def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        return _ZERO - value
+        _LOGGER.debug("offset=%s", value)
+        result = _ZERO - value
+        _LOGGER.debug("inverted offset=%s", result)
+        return result
 
 
-# RE for matching: std offset dst [offset]
-_OCURRENCE_RE = re.compile(
-    r"^(?P<std>[a-zA-Z]+[-+:0-9]*?)(?P<dst>[a-zA-Z]+[-+0-9]*?)?$"
-)
-_OCURRENCE_SPLIT_RE = re.compile(r"^(?P<name>[a-zA-Z]+)(?P<offset>[-+:0-9]+)?$")
-
-
-def _parse_rule_occurrence(value: str) -> dict[str, Any]:
-    """Rule for parsing a rule occurrence into input for RuleOcurrence."""
-    if not (match := _OCURRENCE_SPLIT_RE.match(value)):
-        raise ValueError(f"Occurrence did not match pattern: {value}")
-    (name, offset) = match.group("name", "offset")
-    if not offset:
-        offset = ""
-    return {"name": name, "offset": offset}
-
-
-def _parse_rule_date(value: str) -> dict[str, Any]:
-    """Rule for parsing a rule occurrence into input for RuleOcurrence."""
-    _LOGGER.debug("_parse_rule_date=%s", value)
-    if "/" in value:
-        (date, time) = value.split("/", maxsplit=2)
-    else:
-        date = value
-        time = "02:00:00"  # If omitted, the default is 02:00:00
-    parts = date.split(".")
-    if len(parts) != 3:
-        raise ValueError(f"Rule date had unexpected number of parts: {value}")
-    return {
-        "month": parts[0],
-        "week_of_month": parts[1],
-        "day_of_week": parts[2],
-        "time": time,
-    }
+def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
+    """Set a default time value when none is specified."""
+    if "time" not in values:
+        values["time"] = {"hour": "2"}
+    return values
 
 
 class Rule(BaseModel):
@@ -145,12 +124,12 @@ class Rule(BaseModel):
     dst_end: Optional[RuleDate] = None
     """Describes when dst ends."""
 
-    _parse_std = validator("std", pre=True, allow_reuse=True)(_parse_rule_occurrence)
-    _parse_dst = validator("dst", pre=True, allow_reuse=True)(_parse_rule_occurrence)
-    _parse_dst_start = validator("dst_start", pre=True, allow_reuse=True)(
-        _parse_rule_date
+    _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
+        _default_time_value
     )
-    _parse_dst_end = validator("dst_end", pre=True, allow_reuse=True)(_parse_rule_date)
+    _default_end_time = validator("dst_end", pre=True, allow_reuse=True)(
+        _default_time_value
+    )
 
     @root_validator
     def default_dst_offset(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -158,29 +137,58 @@ class Rule(BaseModel):
         if values.get("dst") and not values["dst"].offset:
             # If the dst offset is omitted, it defaults to one hour ahead of standard time.
             values["dst"].offset = values["std"].offset + datetime.timedelta(hours=1)
-            _LOGGER.info("std offset=%s", values["std"].offset)
-            _LOGGER.info("new dst offset=%s", values["dst"].offset)
         return values
 
 
 def parse_tz_rule(tz_str: str) -> Rule:
-    """Parse a Rule object from a string."""
-    parts = tz_str.split(",")
-    if len(parts) not in (1, 3):
-        raise ValueError(f"TZ rule had unexpected ',': {tz_str}")
-    match = _OCURRENCE_RE.match(parts[0])
-    if not match:
-        raise ValueError(f"Unable to parse TZ rule occurrence: {tz_str}")
-    result = {
-        "std": match.group("std"),
-    }
-    if dst := match.group("dst"):
-        result["dst"] = dst
-    if len(parts) == 3:
-        result.update(
-            {
-                "dst_start": parts[1],
-                "dst_end": parts[2],
-            }
+    """Parse the TZ string into a Rule object."""
+
+    hour = Combine(Opt(Word("+-")) + Word(nums))
+    tz_time = hour.set_results_name("hour") + Opt(
+        ":"
+        + Word(nums).set_results_name("minutes")
+        + Opt(":" + Word(nums).set_results_name("seconds"))
+    )
+
+    name: ParserElement
+    if tz_str.startswith("<"):
+        name = Combine(Char("<") + Opt(Word("+-")) + Word(nums) + Char(">"))
+    else:
+        name = Word(alphas)
+
+    onset = name.set_results_name("name") + Group(Opt(tz_time)).set_results_name(
+        "offset"
+    )
+    month_date = (
+        "M"
+        + Word(nums).set_results_name("month")
+        + "."
+        + Word(nums).set_results_name("week_of_month")
+        + "."
+        + Word(nums).set_results_name("day_of_week")
+    )
+    julian_date = "J" + Word(nums).set_results_name("day_of_year")
+    if ",J" in tz_str:
+        tz_days = julian_date
+    else:
+        tz_days = month_date
+    tz_date = tz_days + Opt("/" + Group(tz_time).set_results_name("time"))
+
+    tz_rule = (
+        Group(onset).set_results_name("std")
+        + Opt(Group(onset).set_results_name("dst"))
+        + Opt(
+            ","
+            + Group(tz_date).set_results_name("dst_start")
+            + ","
+            + Group(tz_date).set_results_name("dst_end")
         )
-    return Rule.parse_obj(result)
+    )
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        tz_rule.set_debug(flag=True)
+    try:
+        result = tz_rule.parse_string(tz_str, parse_all=True)
+    except ParseException as err:
+        raise ValueError(f"Unable to parse TZ string: {tz_str}") from err
+
+    return Rule.parse_obj(result.as_dict())
