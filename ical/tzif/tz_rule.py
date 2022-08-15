@@ -68,7 +68,7 @@ class RuleDate:
 
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
-    @validator("month", pre=True)
+    @validator("month", pre=True, allow_reuse=True)
     def parse_month(cls, value: str) -> str:
         """Convert a TZ month to an integer."""
         if not value.startswith("M"):
@@ -88,22 +88,23 @@ class RuleOccurrence:
 
     _parse_offset = validator("offset", pre=True, allow_reuse=True)(_parse_time)
 
-    @validator("offset")
+    @validator("offset", allow_reuse=True)
     def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
         return _ZERO - value
 
 
 # RE for matching: std offset dst [offset]
-_OCURRENCE_RE = re.compile(
+_OCCURRENCE_RE = re.compile(
     r"^(?P<std>[a-zA-Z]+[-+:0-9]*?)(?P<dst>[a-zA-Z]+[-+0-9]*?)?$"
 )
-_OCURRENCE_SPLIT_RE = re.compile(r"^(?P<name>[a-zA-Z]+)(?P<offset>[-+:0-9]+)?$")
+_OCCURRENCE_SPLIT_RE = re.compile(r"^(?P<name>[a-zA-Z]+)(?P<offset>[-+:0-9]+)?$")
+
 
 
 def _parse_rule_occurrence(value: str) -> dict[str, Any]:
     """Rule for parsing a rule occurrence into input for RuleOcurrence."""
-    if not (match := _OCURRENCE_SPLIT_RE.match(value)):
+    if not (match := _OCCURRENCE_SPLIT_RE.match(value)):
         raise ValueError(f"Occurrence did not match pattern: {value}")
     (name, offset) = match.group("name", "offset")
     if not offset:
@@ -168,7 +169,7 @@ def parse_tz_rule(tz_str: str) -> Rule:
     parts = tz_str.split(",")
     if len(parts) not in (1, 3):
         raise ValueError(f"TZ rule had unexpected ',': {tz_str}")
-    match = _OCURRENCE_RE.match(parts[0])
+    match = _OCCURRENCE_RE.match(parts[0])
     if not match:
         raise ValueError(f"Unable to parse TZ rule occurrence: {tz_str}")
     result = {

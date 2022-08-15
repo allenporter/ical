@@ -27,6 +27,7 @@ from functools import cache
 from typing import Sequence
 
 from .model import LeapSecond, TimezoneInfo, Transition
+from .tz_rule import parse_tz_rule
 
 # Records specifying the local time type
 _LOCAL_TIME_TYPE_STRUCT_FORMAT = "".join(
@@ -274,4 +275,4 @@ def read_tzif(content: bytes) -> TimezoneInfo:
     parts = footer.decode("UTF-8").split("\n")
     if len(parts) != 3:
         raise ValueError("Failed to read TZ footer")
-    return TimezoneInfo(transitions, leap_seconds, rule=parts[1])
+    return TimezoneInfo(transitions, leap_seconds, rule=parse_tz_rule(parts[1]))
