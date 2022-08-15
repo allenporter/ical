@@ -105,12 +105,12 @@ def test_dst_rules() -> None:
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
-    assert rule.dst_start.time == datetime.time(2, 0, 0)
+    assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
-    assert rule.dst_end.time == datetime.time(2, 0, 0)
+    assert rule.dst_end.time == datetime.timedelta(hours=2)
 
 
 def test_dst_implement_time_rules() -> None:
@@ -125,29 +125,29 @@ def test_dst_implement_time_rules() -> None:
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
-    assert rule.dst_start.time == datetime.time(2, 0, 0)
+    assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
-    assert rule.dst_end.time == datetime.time(2, 0, 0)
+    assert rule.dst_end.time == datetime.timedelta(hours=2)
 
 
 @pytest.mark.parametrize(
-    "tz_string,match",
+    "tz_string",
     [
-        ("", "Unable to parse TZ rule occurrence"),
-        ("1234", "Unable to parse TZ rule occurrence"),
-        ("EST+5EDT,M3.2.0/2", "TZ rule had unexpected ','"),
-        ("EST+5EDT,M3.2.0/2,M11.1.0/2,M3", "TZ rule had unexpected ','"),
-        ("EST+5EDT,3.2.0/2,M11.1.0/2", "missing M prefix"),
-        ("EST+5EDT,M3.2/2,M11.1.0/2", "Rule date had unexpected number of parts"),
-        ("EST+5EDT,M3.2.0.4/2,M11.1.0/2", "Rule date had unexpected number of parts"),
+        "",
+        "1234",
+        "EST+5EDT,M3.2.0/2",
+        "EST+5EDT,M3.2.0/2,M11.1.0/2,M3",
+        "EST+5EDT,3.2.0/2,M11.1.0/2",
+        "EST+5EDT,M3.2/2,M11.1.0/2",
+        "EST+5EDT,M3.2.0.4/2,M11.1.0/2",
     ],
 )
-def test_invalid(tz_string: str, match: str) -> None:
+def test_invalid(tz_string: str) -> None:
     """Test an invalid rule occurrence"""
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(ValueError, match="Unable to parse TZ string"):
         tz_rule.parse_tz_rule(tz_string)
 
 
@@ -163,9 +163,9 @@ def test_tz_offset() -> None:
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 5
     assert rule.dst_start.day_of_week == 0
-    assert rule.dst_start.time == datetime.time(22, 0, 0)
+    assert rule.dst_start.time == datetime.timedelta(hours=-2)
     assert rule.dst_end
     assert rule.dst_end.month == 10
     assert rule.dst_end.week_of_month == 5
     assert rule.dst_end.day_of_week == 0
-    assert rule.dst_end.time == datetime.time(23, 0, 0)
+    assert rule.dst_end.time == datetime.timedelta(hours=-1)

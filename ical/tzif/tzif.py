@@ -275,4 +275,7 @@ def read_tzif(content: bytes) -> TimezoneInfo:
     parts = footer.decode("UTF-8").split("\n")
     if len(parts) != 3:
         raise ValueError("Failed to read TZ footer")
-    return TimezoneInfo(transitions, leap_seconds, rule=parse_tz_rule(parts[1]))
+    rule = None
+    if parts[1]:
+        rule = parse_tz_rule(parts[1])
+    return TimezoneInfo(transitions, leap_seconds, rule=rule)
