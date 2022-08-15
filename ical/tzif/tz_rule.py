@@ -118,7 +118,7 @@ def _parse_rule_date(value: str) -> dict[str, Any]:
         (date, time) = value.split("/", maxsplit=2)
     else:
         date = value
-        time = None
+        time = "02:00:00"  # If omitted, the default is 02:00:00
     parts = date.split(".")
     if len(parts) != 3:
         raise ValueError(f"Rule date had unexpected number of parts: {value}")
