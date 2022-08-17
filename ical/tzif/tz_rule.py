@@ -62,7 +62,11 @@ def _parse_time(values: dict[str, Any]) -> str | int:
 
 
 class RuleDate(BaseModel):
-    """A date referenced in a timezone rule."""
+    """A date referenced in a timezone rule.
+
+    Will either have month, day_of_week, week_of_month populated or will have the
+    day_of_year populated.
+    """
 
     month: Optional[int]
     """A month between 1 and 12."""
@@ -96,9 +100,7 @@ class RuleOccurrence(BaseModel):
     @validator("offset", allow_reuse=True)
     def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        _LOGGER.debug("offset=%s", value)
         result = _ZERO - value
-        _LOGGER.debug("inverted offset=%s", result)
         return result
 
 
@@ -122,7 +124,7 @@ class Rule(BaseModel):
     """Describes when dst goes into effect."""
 
     dst_end: Optional[RuleDate] = None
-    """Describes when dst ends."""
+    """Describes when dst ends (std starts)."""
 
     _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
         _default_time_value
@@ -151,6 +153,7 @@ def parse_tz_rule(tz_str: str) -> Rule:
     )
 
     name: ParserElement
+    # Hack for inability to deal with both start word options
     if tz_str.startswith("<"):
         name = Combine(Char("<") + Opt(Word("+-")) + Word(nums) + Char(">"))
     else:
@@ -168,6 +171,7 @@ def parse_tz_rule(tz_str: str) -> Rule:
         + Word(nums).set_results_name("day_of_week")
     )
     julian_date = "J" + Word(nums).set_results_name("day_of_year")
+    # Hack for inabiliy to have a single rule with both date types
     if ",J" in tz_str:
         tz_days = julian_date
     else:
