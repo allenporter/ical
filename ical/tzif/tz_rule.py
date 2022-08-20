@@ -27,6 +27,7 @@ import datetime
 import logging
 from typing import Any, Optional
 
+from dateutil import rrule
 from pydantic import BaseModel, root_validator, validator
 from pyparsing import (
     Char,
@@ -84,6 +85,28 @@ class RuleDate(BaseModel):
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
+
+    def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
+        """Return a recurrence rule for this date."""
+        if self.day_of_year:
+            raise ValueError("Unable to create recurrence rule for julian day rule")
+        if not self.month:
+            raise ValueError("Timezone rule is missing month")
+        if (week_of_month := self.week_of_month) is None:
+            raise ValueError("Timezone rule is missing week_of_month")
+        if week_of_month == 5:
+            week_of_month = -1
+        if (day_of_week := self.day_of_week) is None:
+            raise ValueError("Timezone rule is missing day_of_week")
+        if dtstart:
+            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
+        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7](week_of_month)
+        return rrule.rrule(
+            freq=rrule.YEARLY,
+            bymonth=self.month,
+            byweekday=dst_start_weekday,
+            dtstart=dtstart,
+        )
 
 
 class RuleOccurrence(BaseModel):

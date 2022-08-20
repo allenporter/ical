@@ -24,7 +24,7 @@ class Transition:
     """Determines if the transition time is standard time (else, wall clock time)."""
 
     isutccnt: bool
-    """Determines if the transition time is UCT time, else is a local time."""
+    """Determines if the transition time is UTC time, else is a local time."""
 
     designation: str
     """A designation string."""

@@ -7,13 +7,19 @@ python package.
 
 from __future__ import annotations
 
+import datetime
+import logging
 import os
 import zoneinfo
+from dataclasses import dataclass
 from functools import cache
 from importlib import resources
 
 from .model import TimezoneInfo
+from .tz_rule import Rule
 from .tzif import read_tzif
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TimezoneInfoError(Exception):
@@ -81,3 +87,71 @@ def read(key: str) -> TimezoneInfo:
         raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
     except FileNotFoundError as err:
         raise TimezoneInfoError(f"Unable to read tzdata file: {key}") from err
+
+
+_ZERO = datetime.timedelta(0)
+_HOUR = datetime.timedelta(hours=1)
+
+
+@dataclass
+class TzInfoResult:
+    """Contains timezone information for a specific datetime."""
+
+    utcoffset: datetime.timedelta
+    tzname: str | None
+    dst: datetime.timedelta | None
+
+
+class TzInfo(datetime.tzinfo):
+    """An implementation of tzinfo based on a TimezoneInfo.
+
+    This class uses the default implementation of fromutc.
+    """
+
+    def __init__(self, rule: Rule) -> None:
+        """Initialize TzInfo."""
+        self._rule: Rule = rule
+
+    @classmethod
+    def from_timezoneinfo(cls, timezoneinfo: TimezoneInfo) -> TzInfo:
+        """Create a new instance of a TzInfo."""
+        if not timezoneinfo.rule or not timezoneinfo.rule.std:
+            raise ValueError("Unable to make TzInfo from TimezoneInfo, missing rule")
+        return cls(timezoneinfo.rule)
+
+    def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta:
+        """Return offset of local time from UTC, as a timedelta object."""
+        if not dt:
+            return _ZERO
+        result = self._rule.std.offset
+        if dst_offset := self.dst(dt):
+            result += dst_offset
+        return result
+
+    def tzname(self, dt: datetime.datetime | None) -> str | None:
+        """Return the time zone name for the datetime as a sorting."""
+        if dt is None:
+            return None
+        if self.dst(dt) and self._rule.dst:
+            return self._rule.dst.name
+        return self._rule.std.name
+
+    def dst(self, dt: datetime.datetime | None) -> datetime.timedelta | None:
+        """Return the daylight saving time (DST) adjustment, if applicable."""
+        if (
+            dt is None
+            or not self._rule.dst
+            or not self._rule.dst_start
+            or not self._rule.dst_end
+            or not self._rule.dst.offset
+        ):
+            return None
+
+        dt_year = datetime.datetime(dt.year, 1, 1)
+        dst_start = next(iter(self._rule.dst_start.as_rrule(dt_year)))
+        dst_end = next(iter(self._rule.dst_end.as_rrule(dt_year)))
+        if dst_start <= dt.replace(tzinfo=None) < dst_end:
+            dst_offset = self._rule.dst.offset - self._rule.std.offset
+            return dst_offset
+
+        return _ZERO

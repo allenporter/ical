@@ -112,6 +112,13 @@ def test_dst_rules() -> None:
     assert rule.dst_end.day_of_week == 0
     assert rule.dst_end.time == datetime.timedelta(hours=2)
 
+    assert next(
+        iter(rule.dst_start.as_rrule(datetime.datetime(2022, 1, 1)))
+    ) == datetime.datetime(2022, 3, 13, 2, 0, 0)
+    assert next(
+        iter(rule.dst_end.as_rrule(datetime.datetime(2022, 1, 1)))
+    ) == datetime.datetime(2022, 11, 6, 2, 0, 0)
+
 
 def test_dst_implement_time_rules() -> None:
     """Test daylight savings values rules with no explicit time."""
