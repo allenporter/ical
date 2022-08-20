@@ -1,10 +1,18 @@
 """Tests for the tzif library."""
 
 import datetime
+from typing import cast
 
 import pytest
 
 from ical.tzif import tz_rule
+
+TEST_DATETIME = datetime.datetime(2022, 1, 1)
+
+
+def expand_rule(test_rule: tz_rule.RuleDate) -> datetime.datetime:
+    """Test method to expand a rule to a single value."""
+    return cast(datetime.datetime, next(iter(test_rule.as_rrule(TEST_DATETIME))))
 
 
 def test_standard() -> None:
@@ -192,3 +200,29 @@ def test_iran_rule_offset() -> None:
     assert rule.dst_end
     assert rule.dst_end.day_of_year == 263
     assert rule.dst_end.time == datetime.timedelta(hours=24)
+
+
+def test_rrule_required_fields() -> None:
+    """Test validation fields required for rrule."""
+    t_time = datetime.timedelta(hours=4)
+
+    rule_date = tz_rule.RuleDate(month=3, week_of_month=1, day_of_week=0, time=t_time)
+    assert expand_rule(rule_date) == datetime.datetime(2022, 3, 6, 4, 0, 0)
+
+    rule_date = tz_rule.RuleDate(month=3, week_of_month=1, time=t_time)
+    with pytest.raises(ValueError, match="missing day_of_week"):
+        expand_rule(rule_date)
+
+    rule_date = tz_rule.RuleDate(week_of_month=1, day_of_week=0, time=t_time)
+    with pytest.raises(ValueError, match="missing month"):
+        expand_rule(rule_date)
+
+    rule_date = tz_rule.RuleDate(month=3, day_of_week=0, time=t_time)
+    with pytest.raises(ValueError, match="missing week_of_month"):
+        expand_rule(rule_date)
+
+    rule_date = tz_rule.RuleDate(day_of_year=10, time=t_time)
+    with pytest.raises(
+        ValueError, match="Unable to create recurrence rule for julian day rule"
+    ):
+        expand_rule(rule_date)

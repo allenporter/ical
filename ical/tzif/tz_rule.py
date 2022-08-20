@@ -46,10 +46,14 @@ _LOGGER = logging.getLogger(__name__)
 _ZERO = datetime.timedelta(seconds=0)
 
 
-def _parse_time(values: dict[str, Any]) -> str | int:
+def _parse_time(values: Any) -> int | str:
     """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format."""
     if not values:
         return 0
+    if not isinstance(values, dict):
+        if isinstance(values, (int, str)):
+            return values
+        raise ValueError("time was not dict, string, or int")
     hour = values["hour"]
     sign = 1
     if hour.startswith("+"):
