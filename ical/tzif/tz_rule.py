@@ -46,14 +46,17 @@ _LOGGER = logging.getLogger(__name__)
 _ZERO = datetime.timedelta(seconds=0)
 
 
-def _parse_time(values: Any) -> int | str:
-    """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format."""
+def _parse_time(values: Any) -> int | str | datetime.timedelta:
+    """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format.
+
+    The parse tree dict expects fields of hour, minutes, seconds (see tz_time rule in parser).
+    """
     if not values:
         return 0
+    if isinstance(values, (int, str, datetime.timedelta)):
+        return values
     if not isinstance(values, dict):
-        if isinstance(values, (int, str)):
-            return values
-        raise ValueError("time was not dict, string, or int")
+        raise ValueError("time was not parse tree dict, timedelta, string, or int")
     hour = values["hour"]
     sign = 1
     if hour.startswith("+"):
