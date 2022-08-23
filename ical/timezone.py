@@ -19,10 +19,17 @@ from typing import Any, Optional, Union
 from pydantic import Field, root_validator, validator
 
 from .parsing.property import ParsedProperty
-from .types import ComponentModel, Recur, Uri, UtcOffset
+from .types import ComponentModel, Recur, Uri, UtcOffset, parse_recur
+from .tzif import timezoneinfo, tz_rule
 from .util import dtstamp_factory
 
 _LOGGER = logging.getLogger(__name__)
+
+
+# Assume that all tzif timezone rules start at an arbitrary old date. This library
+# typically only works with "go forward" dates, so we don't need to be completely
+# accurate and use the historical database of times.
+TZ_START = datetime.datetime(2010, 1, 1, 0, 0, 0)
 
 
 class TimezoneInfo(ComponentModel):
@@ -100,6 +107,43 @@ class Timezone(ComponentModel):
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
+
+    @classmethod
+    def from_tzif(cls, key: str, start: datetime.datetime = TZ_START) -> Timezone:
+        """Create a new Timezone from a tzif data source."""
+        info = timezoneinfo.read(key)
+        rule = info.rule
+
+        if not rule or not rule.dst or not rule.dst.offset:
+            raise ValueError("Unsupported timezoneinfo had no dst rule")
+
+        if (
+            not rule.dst_start
+            or not isinstance(rule.dst_start, tz_rule.RuleDate)
+            or not rule.dst_end
+            or not isinstance(rule.dst_end, tz_rule.RuleDate)
+        ):
+            raise ValueError("Unsupported timezoneinfo had no dst start or end rule")
+
+        standard = [
+            TimezoneInfo(
+                tz_name=[rule.std.name],
+                tz_offset_to=UtcOffset(offset=rule.std.offset),
+                tz_offset_from=UtcOffset(offset=rule.dst.offset),
+                rrule=Recur.parse_obj(parse_recur(rule.dst_end.rrule_str)),
+                dtstart=rule.dst_end.rrule_dtstart(start),
+            )
+        ]
+        daylight = [
+            TimezoneInfo(
+                tz_name=[rule.dst.name],
+                tz_offset_to=UtcOffset(offset=rule.dst.offset),
+                tz_offset_from=UtcOffset(offset=rule.std.offset),
+                rrule=Recur.parse_obj(parse_recur(rule.dst_start.rrule_str)),
+                dtstart=rule.dst_start.rrule_dtstart(start),
+            )
+        ]
+        return Timezone(tz_id=key, standard=standard, daylight=daylight)
 
     @root_validator
     def parse_required_timezoneinfo(cls, values: dict[str, Any]) -> dict[str, Any]:

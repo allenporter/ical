@@ -218,6 +218,12 @@ output:
     isstdcnt: false
     isutccnt: false
     designation: HST
+  - transition_time: -712150200
+    utoff: -36000
+    dst: false
+    isstdcnt: false
+    isutccnt: false
+    designation: HST
   rule:
     std:
       name: HST
