@@ -1,10 +1,18 @@
 """Tests for the tzif library."""
 
 import datetime
+from typing import cast
 
 import pytest
 
 from ical.tzif import tz_rule
+
+TEST_DATETIME = datetime.datetime(2022, 1, 1)
+
+
+def expand_rule(test_rule: tz_rule.RuleDate) -> datetime.datetime:
+    """Test method to expand a rule to a single value."""
+    return cast(datetime.datetime, next(iter(test_rule.as_rrule(TEST_DATETIME))))
 
 
 def test_standard() -> None:
@@ -102,15 +110,27 @@ def test_dst_rules() -> None:
     assert rule.dst.name == "EDT"
     assert rule.dst.offset == datetime.timedelta(hours=-4)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
     assert rule.dst_end.time == datetime.timedelta(hours=2)
+
+    assert next(
+        iter(rule.dst_start.as_rrule(datetime.datetime(2022, 1, 1)))
+    ) == datetime.datetime(2022, 3, 13, 2, 0, 0)
+    assert next(
+        iter(rule.dst_end.as_rrule(datetime.datetime(2022, 1, 1)))
+    ) == datetime.datetime(2022, 11, 6, 2, 0, 0)
+
+    assert rule.dst_start.rrule_str == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    assert rule.dst_end.rrule_str == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
 
 
 def test_dst_implement_time_rules() -> None:
@@ -122,11 +142,13 @@ def test_dst_implement_time_rules() -> None:
     assert rule.dst.name == "EDT"
     assert rule.dst.offset == datetime.timedelta(hours=-4)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
@@ -160,11 +182,13 @@ def test_tz_offset() -> None:
     assert rule.dst.name == "<-02>"
     assert rule.dst.offset == datetime.timedelta(hours=-2)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 5
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=-2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 10
     assert rule.dst_end.week_of_month == 5
     assert rule.dst_end.day_of_week == 0
@@ -180,8 +204,23 @@ def test_iran_rule_offset() -> None:
     assert rule.dst.name == "<+0430>"
     assert rule.dst.offset == datetime.timedelta(hours=4, minutes=30)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDay)
     assert rule.dst_start.day_of_year == 79
     assert rule.dst_start.time == datetime.timedelta(hours=24)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDay)
     assert rule.dst_end.day_of_year == 263
     assert rule.dst_end.time == datetime.timedelta(hours=24)
+
+
+def test_invalid_time() -> None:
+    """Test validation of fields with an invalid time value."""
+    with pytest.raises(ValueError, match="time was not parse tree dict"):
+        tz_rule.RuleDate.parse_obj(
+            {
+                "month": 3,
+                "week_of_month": 1,
+                "day_of_week": 0,
+                "time": 0.12345,
+            }
+        )
