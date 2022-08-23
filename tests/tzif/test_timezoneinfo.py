@@ -74,6 +74,32 @@ def test_invalid_zoneinfo() -> None:
             "CEST",
             datetime.timedelta(hours=2),
         ),
+        (
+            "Asia/Tokyo",
+            [
+                # Fixed offset anytime of year
+                datetime.datetime(2021, 1, 1, 0, 0, 0),
+                datetime.datetime(2022, 3, 1, 0, 0, 0),
+                datetime.datetime(2022, 6, 1, 0, 0, 0),
+                datetime.datetime(2023, 7, 1, 0, 0, 0),
+                datetime.datetime(2023, 12, 1, 0, 0, 0),
+            ],
+            "JST",
+            datetime.timedelta(hours=9),
+        ),
+        (
+            "America/St_Thomas",
+            [
+                # Fixed offset anytime of year
+                datetime.datetime(2021, 1, 1, 0, 0, 0),
+                datetime.datetime(2022, 3, 1, 0, 0, 0),
+                datetime.datetime(2022, 6, 1, 0, 0, 0),
+                datetime.datetime(2023, 7, 1, 0, 0, 0),
+                datetime.datetime(2023, 12, 1, 0, 0, 0),
+            ],
+            "AST",
+            datetime.timedelta(hours=-4),
+        ),
     ],
 )
 def test_tzinfo(
@@ -89,6 +115,10 @@ def test_tzinfo(
         value = dtstart.replace(tzinfo=tz_info)
         assert tz_info.tzname(value) == expected_tzname, f"For {dtstart}"
         assert tz_info.utcoffset(value) == expected_offset, f"For {dtstart}"
+
+    assert not tz_info.utcoffset(None)
+    assert not tz_info.tzname(None)
+    assert not tz_info.dst(None)
 
 
 @pytest.mark.parametrize("key", zoneinfo.available_timezones())
@@ -116,3 +146,6 @@ def test_all_zoneinfo(key: str) -> None:
         assert result.rule.std
         assert result.rule.std.name
         assert not result.rule.dst
+
+    # Verify there is a paresable tz rule
+    timezoneinfo.TzInfo.from_timezoneinfo(result)
