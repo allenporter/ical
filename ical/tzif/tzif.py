@@ -219,23 +219,23 @@ def _read_datablock(
 
     # Standard/wall indicators determine if the transition times are standard time (1)
     # or wall clock time (0).
-    isstdcnt_types: list[bool]
+    isstdcnt_types: list[bool] = []
     if header.isstdcnt > 0:
-        isstdcnt_types = list(
+        isstdcnt_types.extend(
             struct.unpack(
                 f">{header.isstdcnt}?",
                 buf.read(header.isstdcnt),
             )
         )
-    isstdcnt_types += [False] * (header.timecnt - header.isstdcnt)
+    isstdcnt_types.extend([False] * (header.timecnt - header.isstdcnt))
 
     # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
-    isutccnt_types: list[bool]
+    isutccnt_types: list[bool] = []
     if header.isutccnt > 0:
-        isutccnt_types = list(
+        isutccnt_types.extend(
             struct.unpack(f">{header.isutccnt}?", buf.read(header.isutccnt))
         )
-    isutccnt_types += [False] * (header.timecnt - header.isutccnt)
+    isutccnt_types.extend([False] * (header.timecnt - header.isutccnt))
 
     transitions = [
         _new_transition(
