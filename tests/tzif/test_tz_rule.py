@@ -226,3 +226,16 @@ def test_rrule_required_fields() -> None:
         ValueError, match="Unable to create recurrence rule for julian day rule"
     ):
         expand_rule(rule_date)
+
+
+def test_invalid_time() -> None:
+    """Test validation of fields with an invalid time value."""
+    with pytest.raises(ValueError, match="time was not parse tree dict"):
+        tz_rule.RuleDate.parse_obj(
+            {
+                "month": 3,
+                "week_of_month": 1,
+                "day_of_week": 0,
+                "time": 0.12345,
+            }
+        )
