@@ -16,7 +16,7 @@ from functools import cache
 from importlib import resources
 
 from .model import TimezoneInfo
-from .tz_rule import Rule
+from .tz_rule import Rule, RuleDate
 from .tzif import read_tzif
 
 _LOGGER = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ class TzInfo(datetime.tzinfo):
     @classmethod
     def from_timezoneinfo(cls, timezoneinfo: TimezoneInfo) -> TzInfo:
         """Create a new instance of a TzInfo."""
-        if not timezoneinfo.rule or not timezoneinfo.rule.std:
+        if not timezoneinfo.rule:
             raise ValueError("Unable to make TzInfo from TimezoneInfo, missing rule")
         return cls(timezoneinfo.rule)
 
@@ -141,8 +141,8 @@ class TzInfo(datetime.tzinfo):
         if (
             dt is None
             or not self._rule.dst
-            or not self._rule.dst_start
-            or not self._rule.dst_end
+            or not isinstance(self._rule.dst_start, RuleDate)
+            or not isinstance(self._rule.dst_end, RuleDate)
             or not self._rule.dst.offset
         ):
             return None

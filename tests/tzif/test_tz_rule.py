@@ -110,11 +110,13 @@ def test_dst_rules() -> None:
     assert rule.dst.name == "EDT"
     assert rule.dst.offset == datetime.timedelta(hours=-4)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
@@ -127,8 +129,8 @@ def test_dst_rules() -> None:
         iter(rule.dst_end.as_rrule(datetime.datetime(2022, 1, 1)))
     ) == datetime.datetime(2022, 11, 6, 2, 0, 0)
 
-    assert rule.dst_start.rrule_str() == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
-    assert rule.dst_end.rrule_str() == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    assert rule.dst_start.rrule_str == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    assert rule.dst_end.rrule_str == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
 
 
 def test_dst_implement_time_rules() -> None:
@@ -140,11 +142,13 @@ def test_dst_implement_time_rules() -> None:
     assert rule.dst.name == "EDT"
     assert rule.dst.offset == datetime.timedelta(hours=-4)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 2
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 11
     assert rule.dst_end.week_of_month == 1
     assert rule.dst_end.day_of_week == 0
@@ -178,11 +182,13 @@ def test_tz_offset() -> None:
     assert rule.dst.name == "<-02>"
     assert rule.dst.offset == datetime.timedelta(hours=-2)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
     assert rule.dst_start.month == 3
     assert rule.dst_start.week_of_month == 5
     assert rule.dst_start.day_of_week == 0
     assert rule.dst_start.time == datetime.timedelta(hours=-2)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
     assert rule.dst_end.month == 10
     assert rule.dst_end.week_of_month == 5
     assert rule.dst_end.day_of_week == 0
@@ -198,37 +204,13 @@ def test_iran_rule_offset() -> None:
     assert rule.dst.name == "<+0430>"
     assert rule.dst.offset == datetime.timedelta(hours=4, minutes=30)
     assert rule.dst_start
+    assert isinstance(rule.dst_start, tz_rule.RuleDay)
     assert rule.dst_start.day_of_year == 79
     assert rule.dst_start.time == datetime.timedelta(hours=24)
     assert rule.dst_end
+    assert isinstance(rule.dst_end, tz_rule.RuleDay)
     assert rule.dst_end.day_of_year == 263
     assert rule.dst_end.time == datetime.timedelta(hours=24)
-
-
-def test_rrule_required_fields() -> None:
-    """Test validation fields required for rrule."""
-    t_time = datetime.timedelta(hours=4)
-
-    rule_date = tz_rule.RuleDate(month=3, week_of_month=1, day_of_week=0, time=t_time)
-    assert expand_rule(rule_date) == datetime.datetime(2022, 3, 6, 4, 0, 0)
-
-    rule_date = tz_rule.RuleDate(month=3, week_of_month=1, time=t_time)
-    with pytest.raises(ValueError, match="missing day_of_week"):
-        expand_rule(rule_date)
-
-    rule_date = tz_rule.RuleDate(week_of_month=1, day_of_week=0, time=t_time)
-    with pytest.raises(ValueError, match="missing month"):
-        expand_rule(rule_date)
-
-    rule_date = tz_rule.RuleDate(month=3, day_of_week=0, time=t_time)
-    with pytest.raises(ValueError, match="missing week_of_month"):
-        expand_rule(rule_date)
-
-    rule_date = tz_rule.RuleDate(day_of_year=10, time=t_time)
-    with pytest.raises(
-        ValueError, match="Unable to create recurrence rule for julian day rule"
-    ):
-        expand_rule(rule_date)
 
 
 def test_invalid_time() -> None:

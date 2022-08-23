@@ -5,7 +5,7 @@ import zoneinfo
 
 import pytest
 
-from ical.tzif import timezoneinfo
+from ical.tzif import timezoneinfo, tz_rule
 
 
 def test_invalid_zoneinfo() -> None:
@@ -126,9 +126,11 @@ def test_rrule_str() -> None:
     result = timezoneinfo.read("America/New_York")
     assert result.rule
     assert result.rule.dst_start
-    assert result.rule.dst_start.rrule_str() == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    assert isinstance(result.rule.dst_start, tz_rule.RuleDate)
+    assert result.rule.dst_start.rrule_str == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
     assert result.rule.dst_end
-    assert result.rule.dst_end.rrule_str() == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+    assert isinstance(result.rule.dst_end, tz_rule.RuleDate)
+    assert result.rule.dst_end.rrule_str == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
 
 
 @pytest.mark.parametrize("key", zoneinfo.available_timezones())
@@ -136,17 +138,21 @@ def test_all_zoneinfo(key: str) -> None:
     """Verify that all available timezones in the system have valid tzdata."""
     if key.startswith("System") or key == "localtime":
         return
+
     result = timezoneinfo.read(key)
-    assert result.rule or result.transitions or result.leap_seconds
+    assert result.rule
 
     # Iran uses julian dates, not yet supported. Iran TZ rules have changed
     # such that it no longer observes DST anyway
     if key in ("Asia/Tehran", "Iran"):
+        assert isinstance(result.rule.dst_start, tz_rule.RuleDay)
+        assert isinstance(result.rule.dst_end, tz_rule.RuleDay)
         return
 
-    assert result.rule
     if result.rule.dst_start:
         assert result.rule.dst_end
+        assert isinstance(result.rule.dst_start, tz_rule.RuleDate)
+        assert isinstance(result.rule.dst_end, tz_rule.RuleDate)
         # Verify a rule can be constructed
         assert next(iter(result.rule.dst_start.as_rrule()))
         assert next(iter(result.rule.dst_end.as_rrule()))

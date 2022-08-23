@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from dateutil import rrule
 from pydantic import BaseModel, root_validator, validator
@@ -69,24 +69,29 @@ def _parse_time(values: Any) -> int | str | datetime.timedelta:
     return sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
 
 
+class RuleDay(BaseModel):
+    """A date referenced in a timezone rule for a julian day."""
+
+    day_of_year: int
+    """A day of the year between 1 and 365, leap days never supported."""
+
+    time: datetime.timedelta
+    """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
+
+    _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
+
+
 class RuleDate(BaseModel):
-    """A date referenced in a timezone rule.
+    """A date referenced in a timezone rule."""
 
-    Will either have month, day_of_week, week_of_month populated or will have the
-    day_of_year populated.
-    """
-
-    month: Optional[int]
+    month: int
     """A month between 1 and 12."""
 
-    day_of_week: Optional[int]
+    day_of_week: int
     """A day of the week between 0 (Sunday) and 6 (Saturday)."""
 
-    week_of_month: Optional[int]
+    week_of_month: int
     """A week number of the month (1 to 5) based on the first occurrence of day_of_week."""
-
-    day_of_year: Optional[int]
-    """Julian day of the year between 1 and 365 ignoring leap days."""
 
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
@@ -94,37 +99,43 @@ class RuleDate(BaseModel):
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
     def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
-        """Return a recurrence rule for this timezone occurrence."""
-        (month, day_of_week, week_of_month) = self._rrule_params()
-        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7](week_of_month)
+        """Return a recurrence rule for this timezone occurrence (no start date)."""
+        dst_start_weekday = self._rrule_byday(self._rrule_week_of_month)
         if dtstart:
-            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
+            dtstart = self.rrule_dtstart(dtstart)
         return rrule.rrule(
             freq=rrule.YEARLY,
-            bymonth=month,
+            bymonth=self.month,
             byweekday=dst_start_weekday,
             dtstart=dtstart,
         )
 
+    @property
     def rrule_str(self) -> str:
         """Return a recurrence rule string for this timezone occurrence."""
-        (month, day_of_week, week_of_month) = self._rrule_params()
-        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7]
-        return f"FREQ=YEARLY;BYMONTH={month};BYDAY={week_of_month}{dst_start_weekday}"
+        return ";".join(
+            [
+                "FREQ=YEARLY",
+                f"BYMONTH={self.month}",
+                f"BYDAY={self._rrule_week_of_month}{self._rrule_byday}",
+            ]
+        )
 
-    def _rrule_params(self) -> tuple[int, int, int]:
-        """Prepare parameters for an rrule."""
-        if self.day_of_year:
-            raise ValueError("Unable to create recurrence rule for julian day rule")
-        if not self.month:
-            raise ValueError("Timezone rule is missing month")
-        if (week_of_month := self.week_of_month) is None:
-            raise ValueError("Timezone rule is missing week_of_month")
-        if week_of_month == 5:
-            week_of_month = -1
-        if (day_of_week := self.day_of_week) is None:
-            raise ValueError("Timezone rule is missing day_of_week")
-        return (self.month, day_of_week, week_of_month)
+    def rrule_dtstart(self, start: datetime.datetime) -> datetime.datetime:
+        """Return an rrule dtstart starting at the specified date with the time applied."""
+        return start.replace(hour=0, minute=0, second=0) + self.time
+
+    @property
+    def _rrule_byday(self) -> rrule.weekday:
+        """Return the dateutil weekday for this rule based on day_of_week."""
+        return rrule.weekdays[(self.day_of_week - 1) % 7]
+
+    @property
+    def _rrule_week_of_month(self) -> int:
+        """Return the byday modifier for the week of the month."""
+        if self.week_of_month == 5:
+            return -1
+        return self.week_of_month
 
 
 class RuleOccurrence(BaseModel):
@@ -147,6 +158,7 @@ class RuleOccurrence(BaseModel):
 
 def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
     """Set a default time value when none is specified."""
+    _LOGGER.debug("_default_time_value=%s", values)
     if "time" not in values:
         values["time"] = {"hour": "2"}
     return values
@@ -161,10 +173,10 @@ class Rule(BaseModel):
     dst: Optional[RuleOccurrence] = None
     """An occurrence of a timezone transition for standard time."""
 
-    dst_start: Optional[RuleDate] = None
+    dst_start: Union[RuleDate, RuleDay, None] = None
     """Describes when dst goes into effect."""
 
-    dst_end: Optional[RuleDate] = None
+    dst_end: Union[RuleDate, RuleDay, None] = None
     """Describes when dst ends (std starts)."""
 
     _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
@@ -174,7 +186,7 @@ class Rule(BaseModel):
         _default_time_value
     )
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def default_dst_offset(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Infer the default DST offset based on STD offset if not specified."""
         if values.get("dst") and not values["dst"].offset:
