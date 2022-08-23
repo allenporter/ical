@@ -94,7 +94,26 @@ class RuleDate(BaseModel):
     _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
     def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
-        """Return a recurrence rule for this date."""
+        """Return a recurrence rule for this timezone occurrence."""
+        (month, day_of_week, week_of_month) = self._rrule_params()
+        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7](week_of_month)
+        if dtstart:
+            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
+        return rrule.rrule(
+            freq=rrule.YEARLY,
+            bymonth=month,
+            byweekday=dst_start_weekday,
+            dtstart=dtstart,
+        )
+
+    def rrule_str(self) -> str:
+        """Return a recurrence rule string for this timezone occurrence."""
+        (month, day_of_week, week_of_month) = self._rrule_params()
+        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7]
+        return f"FREQ=YEARLY;BYMONTH={month};BYDAY={week_of_month}{dst_start_weekday}"
+
+    def _rrule_params(self) -> tuple[int, int, int]:
+        """Prepare parameters for an rrule."""
         if self.day_of_year:
             raise ValueError("Unable to create recurrence rule for julian day rule")
         if not self.month:
@@ -105,15 +124,7 @@ class RuleDate(BaseModel):
             week_of_month = -1
         if (day_of_week := self.day_of_week) is None:
             raise ValueError("Timezone rule is missing day_of_week")
-        if dtstart:
-            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
-        dst_start_weekday = rrule.weekdays[(day_of_week - 1) % 7](week_of_month)
-        return rrule.rrule(
-            freq=rrule.YEARLY,
-            bymonth=self.month,
-            byweekday=dst_start_weekday,
-            dtstart=dtstart,
-        )
+        return (self.month, day_of_week, week_of_month)
 
 
 class RuleOccurrence(BaseModel):

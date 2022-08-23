@@ -127,6 +127,9 @@ def test_dst_rules() -> None:
         iter(rule.dst_end.as_rrule(datetime.datetime(2022, 1, 1)))
     ) == datetime.datetime(2022, 11, 6, 2, 0, 0)
 
+    assert rule.dst_start.rrule_str() == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    assert rule.dst_end.rrule_str() == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+
 
 def test_dst_implement_time_rules() -> None:
     """Test daylight savings values rules with no explicit time."""

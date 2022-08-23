@@ -121,6 +121,16 @@ def test_tzinfo(
     assert not tz_info.dst(None)
 
 
+def test_rrule_str() -> None:
+    """Test rule implementations for std and dst."""
+    result = timezoneinfo.read("America/New_York")
+    assert result.rule
+    assert result.rule.dst_start
+    assert result.rule.dst_start.rrule_str() == "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU"
+    assert result.rule.dst_end
+    assert result.rule.dst_end.rrule_str() == "FREQ=YEARLY;BYMONTH=11;BYDAY=1SU"
+
+
 @pytest.mark.parametrize("key", zoneinfo.available_timezones())
 def test_all_zoneinfo(key: str) -> None:
     """Verify that all available timezones in the system have valid tzdata."""
