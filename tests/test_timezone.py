@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 
 import pytest
+from freezegun import freeze_time
 from pydantic import ValidationError
 
+from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.timezone import Timezone, TimezoneInfo
 from ical.types import Frequency, Recur, UtcOffset, Weekday, WeekdayValue
 
@@ -57,3 +61,67 @@ def test_timezone_observence_start_time_validation() -> None:
             tz_name=["est"],
             rrule=TEST_RECUR,
         )
+
+
+@freeze_time("2022-08-22 12:30:00")
+def test_from_tzif_timezoneinfo_with_dst() -> None:
+    """Verify a timezone created from a tzif timezone info with DST information."""
+
+    timezone = Timezone.from_tzif("America/New_York")
+
+    calendar = Calendar()
+    calendar.timezones.append(timezone)
+
+    stream = IcsCalendarStream(calendars=[calendar])
+    assert stream.ics() == inspect.cleandoc(
+        """
+       BEGIN:VCALENDAR
+       BEGIN:VTIMEZONE
+       DTSTAMP:20220822T123000
+       TZID:America/New_York
+       BEGIN:STANDARD
+       DTSTART:20101107T020000
+       TZOFFSETTO:-0500
+       TZOFFSETFROM:-0400
+       RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+       TZNAME:EST
+       END:STANDARD
+       BEGIN:DAYLIGHT
+       DTSTART:20100314T020000
+       TZOFFSETTO:-0400
+       TZOFFSETFROM:-0500
+       RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+       TZNAME:EDT
+       END:DAYLIGHT
+       END:VTIMEZONE
+       END:VCALENDAR
+    """
+    )
+
+
+@freeze_time("2022-08-22 12:30:00")
+def test_from_tzif_timezoneinfo_fixed_offset() -> None:
+    """Verify a timezone created from a tzif timezone info with a fixed offset"""
+
+    timezone = Timezone.from_tzif("Asia/Tokyo")
+
+    calendar = Calendar()
+    calendar.timezones.append(timezone)
+
+    stream = IcsCalendarStream(calendars=[calendar])
+    assert stream.ics() == inspect.cleandoc(
+        """
+       BEGIN:VCALENDAR
+       BEGIN:VTIMEZONE
+       DTSTAMP:20220822T123000
+       TZID:Asia/Tokyo
+       BEGIN:STANDARD
+       DTSTART:20100101T000000
+       TZOFFSETTO:0900
+       TZOFFSETFROM:0900
+       TZNAME:JST
+       END:STANDARD
+       END:VTIMEZONE
+       END:VCALENDAR
+    """
+    )

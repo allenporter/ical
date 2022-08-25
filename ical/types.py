@@ -737,11 +737,14 @@ def parse_recur(prop: Any) -> dict[str, Any]:
     An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
     into dictionary.
     """
-    _LOGGER.info("parse_recur=%s", prop)
-    if not isinstance(prop, ParsedProperty):
+    if isinstance(prop, str):
+        value = prop
+    elif not isinstance(prop, ParsedProperty):
         raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
+    else:
+        value = prop.value
     result: dict[str, datetime.datetime | str | list[str] | list[dict[str, str]]] = {}
-    for part in prop.value.split(";"):
+    for part in value.split(";"):
         if "=" not in part:
             raise ValueError(
                 f"Recurrence rule had unexpected format missing '=': {prop.value}"

@@ -19,6 +19,7 @@ as a resource for understanding the format. See rfc8536 for TZif file format.
 
 import enum
 import io
+import logging
 import struct
 from collections import namedtuple
 from collections.abc import Callable
@@ -28,6 +29,8 @@ from typing import Sequence
 
 from .model import LeapSecond, TimezoneInfo, Transition
 from .tz_rule import parse_tz_rule
+
+_LOGGER = logging.getLogger(__name__)
 
 # Records specifying the local time type
 _LOCAL_TIME_TYPE_STRUCT_FORMAT = "".join(
@@ -216,23 +219,23 @@ def _read_datablock(
 
     # Standard/wall indicators determine if the transition times are standard time (1)
     # or wall clock time (0).
-    isstdcnt_types: Sequence[bool]
+    isstdcnt_types: list[bool] = []
     if header.isstdcnt > 0:
-        isstdcnt_types = struct.unpack(
-            f">{header.isstdcnt}?",
-            buf.read(header.isstdcnt),
+        isstdcnt_types.extend(
+            struct.unpack(
+                f">{header.isstdcnt}?",
+                buf.read(header.isstdcnt),
+            )
         )
-    else:
-        isstdcnt_types = [False] * header.timecnt
+    isstdcnt_types.extend([False] * (header.timecnt - header.isstdcnt))
 
     # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
-    isutccnt_types: Sequence[bool]
+    isutccnt_types: list[bool] = []
     if header.isutccnt > 0:
-        isutccnt_types = struct.unpack(
-            f">{header.isutccnt}?", buf.read(header.isutccnt)
+        isutccnt_types.extend(
+            struct.unpack(f">{header.isutccnt}?", buf.read(header.isutccnt))
         )
-    else:
-        isutccnt_types = [False] * header.timecnt
+    isutccnt_types.extend([False] * (header.timecnt - header.isutccnt))
 
     transitions = [
         _new_transition(

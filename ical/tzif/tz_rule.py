@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from dateutil import rrule
 from pydantic import BaseModel, root_validator, validator
@@ -102,7 +102,7 @@ class RuleDate(BaseModel):
         """Return a recurrence rule for this timezone occurrence (no start date)."""
         dst_start_weekday = self._rrule_byday(self._rrule_week_of_month)
         if dtstart:
-            dtstart = self.rrule_dtstart(dtstart)
+            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
         return rrule.rrule(
             freq=rrule.YEARLY,
             bymonth=self.month,
@@ -123,7 +123,8 @@ class RuleDate(BaseModel):
 
     def rrule_dtstart(self, start: datetime.datetime) -> datetime.datetime:
         """Return an rrule dtstart starting at the specified date with the time applied."""
-        return start.replace(hour=0, minute=0, second=0) + self.time
+        dt_start = start.replace(hour=0, minute=0, second=0) + self.time
+        return cast(datetime.datetime, next(iter(self.as_rrule(dt_start))))
 
     @property
     def _rrule_byday(self) -> rrule.weekday:
@@ -158,7 +159,6 @@ class RuleOccurrence(BaseModel):
 
 def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
     """Set a default time value when none is specified."""
-    _LOGGER.debug("_default_time_value=%s", values)
     if "time" not in values:
         values["time"] = {"hour": "2"}
     return values
