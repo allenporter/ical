@@ -113,37 +113,41 @@ class Timezone(ComponentModel):
         """Create a new Timezone from a tzif data source."""
         info = timezoneinfo.read(key)
         rule = info.rule
+        if not rule:
+            raise ValueError("Unsupported timezoneinfo had no rule")
 
-        if not rule or not rule.dst or not rule.dst.offset:
-            raise ValueError("Unsupported timezoneinfo had no dst rule")
+        dst_offset = rule.std.offset
+        if rule.dst and rule.dst.offset:
+            dst_offset = rule.dst.offset
 
+        std_timezone_info = TimezoneInfo(
+            tz_name=[rule.std.name],
+            tz_offset_to=UtcOffset(offset=rule.std.offset),
+            tz_offset_from=UtcOffset(dst_offset),
+            dtstart=start,
+        )
+        daylight = []
         if (
-            not rule.dst_start
-            or not isinstance(rule.dst_start, tz_rule.RuleDate)
-            or not rule.dst_end
-            or not isinstance(rule.dst_end, tz_rule.RuleDate)
+            rule.dst
+            and rule.dst_start
+            and isinstance(rule.dst_start, tz_rule.RuleDate)
+            and rule.dst_end
+            and isinstance(rule.dst_end, tz_rule.RuleDate)
         ):
-            raise ValueError("Unsupported timezoneinfo had no dst start or end rule")
-
-        standard = [
-            TimezoneInfo(
-                tz_name=[rule.std.name],
-                tz_offset_to=UtcOffset(offset=rule.std.offset),
-                tz_offset_from=UtcOffset(offset=rule.dst.offset),
-                rrule=Recur.parse_obj(parse_recur(rule.dst_end.rrule_str)),
-                dtstart=rule.dst_end.rrule_dtstart(start),
+            std_timezone_info.rrule = Recur.parse_obj(
+                parse_recur(rule.dst_end.rrule_str)
             )
-        ]
-        daylight = [
-            TimezoneInfo(
-                tz_name=[rule.dst.name],
-                tz_offset_to=UtcOffset(offset=rule.dst.offset),
-                tz_offset_from=UtcOffset(offset=rule.std.offset),
-                rrule=Recur.parse_obj(parse_recur(rule.dst_start.rrule_str)),
-                dtstart=rule.dst_start.rrule_dtstart(start),
+            std_timezone_info.dtstart = rule.dst_end.rrule_dtstart(start)
+            daylight.append(
+                TimezoneInfo(
+                    tz_name=[rule.dst.name],
+                    tz_offset_to=UtcOffset(offset=rule.dst.offset),
+                    tz_offset_from=UtcOffset(offset=rule.std.offset),
+                    rrule=Recur.parse_obj(parse_recur(rule.dst_start.rrule_str)),
+                    dtstart=rule.dst_start.rrule_dtstart(start),
+                )
             )
-        ]
-        return Timezone(tz_id=key, standard=standard, daylight=daylight)
+        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)
 
     @root_validator
     def parse_required_timezoneinfo(cls, values: dict[str, Any]) -> dict[str, Any]:

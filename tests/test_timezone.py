@@ -64,8 +64,8 @@ def test_timezone_observence_start_time_validation() -> None:
 
 
 @freeze_time("2022-08-22 12:30:00")
-def test_from_tzif_timezoneinfo() -> None:
-    """Verify a timezone created from a tzif timezone info."""
+def test_from_tzif_timezoneinfo_with_dst() -> None:
+    """Verify a timezone created from a tzif timezone info with DST information."""
 
     timezone = Timezone.from_tzif("America/New_York")
 
@@ -93,6 +93,34 @@ def test_from_tzif_timezoneinfo() -> None:
        RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
        TZNAME:EDT
        END:DAYLIGHT
+       END:VTIMEZONE
+       END:VCALENDAR
+    """
+    )
+
+
+@freeze_time("2022-08-22 12:30:00")
+def test_from_tzif_timezoneinfo_fixed_offset() -> None:
+    """Verify a timezone created from a tzif timezone info with a fixed offset"""
+
+    timezone = Timezone.from_tzif("Asia/Tokyo")
+
+    calendar = Calendar()
+    calendar.timezones.append(timezone)
+
+    stream = IcsCalendarStream(calendars=[calendar])
+    assert stream.ics() == inspect.cleandoc(
+        """
+       BEGIN:VCALENDAR
+       BEGIN:VTIMEZONE
+       DTSTAMP:20220822T123000
+       TZID:Asia/Tokyo
+       BEGIN:STANDARD
+       DTSTART:20100101T000000
+       TZOFFSETTO:0900
+       TZOFFSETFROM:0900
+       TZNAME:JST
+       END:STANDARD
        END:VTIMEZONE
        END:VCALENDAR
     """
