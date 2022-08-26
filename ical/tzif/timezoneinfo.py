@@ -103,7 +103,11 @@ class TzInfoResult:
 
 
 class TzInfo(datetime.tzinfo):
-    """An implementation of tzinfo based on a TimezoneInfo.
+    """An implementation of tzinfo based on a TimezoneInfo for current TZ rules.
+
+    This class is not as complete of an implementation of pythons zoneinfo rules as
+    it currently ignores historical timezone information. Instead, it uses only the
+    posix TZ rules that apply going forward only, but applies them for all time.
 
     This class uses the default implementation of fromutc.
     """
@@ -155,3 +159,12 @@ class TzInfo(datetime.tzinfo):
             return dst_offset
 
         return _ZERO
+
+
+def read_tzinfo(key: str) -> TzInfo:
+    """Create a zoneinfo implementation from raw tzif data."""
+    timezoneinfo = read(key)
+    try:
+        return TzInfo.from_timezoneinfo(timezoneinfo)
+    except ValueError as err:
+        raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err

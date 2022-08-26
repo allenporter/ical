@@ -19,12 +19,12 @@ have a hierarchy (e.g. a calendar component has an event sub-component).
 The ical library uses [pyparsing](https://github.com/pyparsing/pyparsing) to
 create a very simple gammar for rfc5545, converting the individual lines of an
 ics file (called "contentlines") into a structured `ParseResult` object which
-has a dictionary of fields. The library then iterates through each line to
-build a stack to manage components and subcomponents, parses individual
-properties and parameters associated with the active component, then returns
-a `ParsedComponent` which contains other components and properties. At this
-point we have a tree of components and properties, but have not yet interpreted
-the meaning.
+has a dictionary of fields. The ical library then iterates through each
+contentline and builds a stack to manage components and subcomponents, parses
+individual properties and parameters associated with the active component, then
+returns a `ParsedComponent` which contains other components and properties. At
+this point we have a tree of components and properties, but have not yet
+interpreted the meaning.
 
 The data model is parsed using [pydantic](https://github.com/samuelcolvin/pydantic)
 and has parsing and validation rules for each type of data. That is, the library
@@ -34,6 +34,17 @@ built in pydantic encoding and decoding is used, however ical makes heavy use of
 custom root validators to perform a lot of the type mapping. Additionally, we want
 to be able to support parsing the calendar data model from the output of the parser
 as well as parsing values supplied by the user when creating objects manually.
+
+## Encoding
+
+Encoding is the opposite of parsing, converting the pydantic data model back
+into an rfc5545 text file. The `IcsCalendarStream` model uses both the
+internal json encoding as well as custom encoding built on top to handle
+everything. The custom logic is needed since a single field in a pydantic
+model may be a complex value in the ics output (e.g. containing property
+parameters). The json encoding using pydantic encoders could be removed
+in the future, relying on entirely custom components, but for now its kind
+of nice to reuse even if there are extera layers on top adding complexity.
 
 ## Recurrence
 

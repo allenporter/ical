@@ -193,7 +193,7 @@ class Event(ComponentModel):
         return values
 
     @root_validator
-    def validate_date_time_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values have the same timezone information."""
         if (
             not (dtstart := values.get("dtstart"))

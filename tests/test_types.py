@@ -17,6 +17,7 @@ from ical.types import (
     UtcOffset,
     encode_model,
 )
+from ical.tzif import timezoneinfo
 
 
 def test_text() -> None:
@@ -206,6 +207,51 @@ def test_datedatime_value_parser() -> None:
                 ],
             }
         )
+
+
+def test_datedatime_parameter_encoder() -> None:
+    """Test a datetime with a property parameter encoded in the output."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        dt: datetime.datetime
+
+        class Config:
+            """Pydantic model configuration."""
+
+            json_encoders = ICS_ENCODERS
+
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(
+                    name="dt",
+                    value="20220724T120000",
+                    params=[
+                        ParsedPropertyParameter(
+                            name="TZID", values=["America/New_York"]
+                        ),
+                    ],
+                )
+            ],
+        }
+    )
+    assert model.dt == datetime.datetime(
+        2022, 7, 24, 12, 0, 0, tzinfo=timezoneinfo.read_tzinfo("America/New_York")
+    )
+    assert encode_model("model", model) == ParsedComponent(
+        name="model",
+        properties=[
+            ParsedProperty(
+                name="dt",
+                value="20220724T120000",
+                params=[
+                    ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+                ],
+            )
+        ],
+    )
 
 
 def test_date_parser() -> None:

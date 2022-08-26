@@ -67,6 +67,7 @@ ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 # property parameters.
 TZID = "TZID"
 ATTR_VALUE = "VALUE"
+ATTR_PARAMS = "PARAMS"
 
 # Repeated values can either be specified as multiple separate values, but
 # also some values support repeated values within a single value with a
@@ -338,7 +339,7 @@ def encode_date_ics(value: datetime.date) -> str:
     return value.strftime("%Y%m%d")
 
 
-def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
+def parse_datetime(prop: ParsedProperty) -> datetime.datetime:
     """Parse a rfc5545 into a datetime.datetime."""
     if not (match := DATETIME_REGEX.fullmatch(prop.value)):
         raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
@@ -363,12 +364,19 @@ def parse_date_time(prop: ParsedProperty) -> datetime.datetime:
     return datetime.datetime(year, month, day, hour, minute, second, tzinfo=timezone)
 
 
-def encode_date_time_ics(value: datetime.datetime) -> str:
+def encode_datetime_ics(value: datetime.datetime) -> str | dict[str, Any]:
     """Serialize as an ICS value."""
     if value.tzinfo is None:
         return value.strftime("%Y%m%dT%H%M%S")
     # Does not yet handle timezones and encoding property parameters
-    return value.strftime("%Y%m%dT%H%M%SZ")
+    if not value.utcoffset():
+        return value.strftime("%Y%m%dT%H%M%SZ")
+    return {
+        ATTR_VALUE: value.strftime("%Y%m%dT%H%M%S"),
+        ATTR_PARAMS: {
+            TZID: str(value.tzinfo),  # Timezone key
+        },
+    }
 
 
 def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
@@ -395,7 +403,6 @@ def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
 
 def encode_duration_ics(value: Any) -> str:
     """Serialize a time delta as a DURATION ICS value."""
-    _LOGGER.info("encode_duration_ics=%s", value)
     if isinstance(value, str):
         return value  # Already encoded as ics
     duration: datetime.timedelta
@@ -545,13 +552,13 @@ class Period(BaseModel):
         if len(parts) != 2:
             raise ValueError(f"Period did not have two time values: {value}")
         try:
-            start = parse_date_time(ParsedProperty(name="ignored", value=parts[0]))
+            start = parse_datetime(ParsedProperty(name="ignored", value=parts[0]))
         except ValueError as err:
             _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
             raise err
         values["start"] = start
         try:
-            end = parse_date_time(ParsedProperty(name="ignored", value=parts[1]))
+            end = parse_datetime(ParsedProperty(name="ignored", value=parts[1]))
         except ValueError:
             pass
         else:
@@ -752,7 +759,7 @@ def parse_recur(prop: Any) -> dict[str, Any]:
         key, value = part.split("=")
         key = key.lower()
         if key == "until":
-            result[key] = parse_date_time(ParsedProperty(name="ignored", value=value))
+            result[key] = parse_datetime(ParsedProperty(name="ignored", value=value))
         elif key in ("bymonthday", "bymonth"):
             result[key] = value.split(",")
         elif key == "byday":
@@ -837,6 +844,22 @@ POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
 }
 
 
+def encode_property(key: str, value: str | dict[str, Any]) -> ParsedProperty:
+    """Create a ParsedProperty from an encoded value."""
+    params: list[ParsedPropertyParameter] | None = None
+    if isinstance(value, dict):
+        # Properties that are encoded as dictionaries are marshaling parameters and
+        # require an extra parsing to encode in the final form.
+        if ATTR_PARAMS not in value or ATTR_VALUE not in value:
+            raise ValueError("Unexpected encoded property did not have params or value")
+        params = [
+            ParsedPropertyParameter(k, values=[v])
+            for k, v in value[ATTR_PARAMS].items()
+        ]
+        return ParsedProperty(name=key, value=value[ATTR_VALUE], params=params)
+    return ParsedProperty(name=key, value=value, params=params)
+
+
 def encode_component(
     name: str, model: BaseModel, model_data: dict[str, Any]
 ) -> ParsedComponent:
@@ -859,7 +882,7 @@ def encode_component(
                 continue
             if value_encoder := POST_JSON_ENCODERS.get(field.type_):
                 value = value_encoder(value)
-            parent.properties.append(ParsedProperty(name=key, value=value))
+            parent.properties.append(encode_property(key, value))
     return parent
 
 
@@ -881,7 +904,7 @@ class PropertyDataType(enum.Enum):
         dataclasses.asdict,
     )
     DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
-    DATE_TIME = ("DATE-TIME", datetime.datetime, parse_date_time, encode_date_time_ics)
+    DATE_TIME = ("DATE-TIME", datetime.datetime, parse_datetime, encode_datetime_ics)
     UTC_OFFSET = ("UTC-OFFSET", UtcOffset, parse_utc_offset, encode_utc_offset_ics)
     DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
     FLOAT = ("FLOAT", float, parse_float, str)
