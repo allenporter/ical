@@ -109,8 +109,7 @@ def test_tzinfo(
     expected_offset: datetime.timedelta,
 ) -> None:
     """Test TzInfo implementation for known date/times."""
-    result = timezoneinfo.read(key)
-    tz_info = timezoneinfo.TzInfo.from_timezoneinfo(result)
+    tz_info = timezoneinfo.read_tzinfo(key)
     for dtstart in dtstarts:
         value = dtstart.replace(tzinfo=tz_info)
         assert tz_info.tzname(value) == expected_tzname, f"For {dtstart}"

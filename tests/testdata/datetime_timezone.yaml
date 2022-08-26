@@ -20,15 +20,3 @@ output:
       dtstart: '1997-07-14T13:30:00-04:00'
       dtend: '1997-07-14T14:00:00-04:00'
       summary: Mid July check-in
-encoded: |-
-  BEGIN:VCALENDAR
-  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
-  VERSION:2.0
-  BEGIN:VEVENT
-  DTSTAMP:19970610T172345Z
-  UID:19970610T172345Z-AF23B2@example.com
-  DTSTART:19970714T133000Z
-  DTEND:19970714T140000Z
-  SUMMARY:Mid July check-in
-  END:VEVENT
-  END:VCALENDAR
