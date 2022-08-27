@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import datetime
+import zoneinfo
 
 import pytest
+from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.event import Event
@@ -251,7 +253,7 @@ def test_weekly_iteration(
             datetime.datetime(2022, 8, 2, 9, 30, 0),
             Recur(
                 freq=Frequency.MONTHLY,
-                until=datetime.date(2023, 1, 1),
+                until=datetime.datetime(2023, 1, 1, 0, 0, 0),
                 by_month_day=[2],
             ),
             [
@@ -526,3 +528,64 @@ def test_year_iteration() -> None:
         (datetime.datetime(2023, 1, 2, 6, 0, 0), "Bi-annual meeting"),
         (datetime.datetime(2023, 6, 2, 6, 0, 0), "Bi-annual meeting"),
     ]
+
+
+def test_until_time_mismatch() -> None:
+    """Test failure case where until has a different timezone than start."""
+
+    with pytest.raises(
+        ValidationError, match="DTSTART is date local but UNTIL was not"
+    ):
+        Event(
+            summary="Bi-annual meeting",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(
+                    2022, 8, 4, 1, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        ValidationError, match="DTSTART had UTC or local and UNTIL must be UTC"
+    ):
+        Event(
+            summary="Bi-annual meeting",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(
+                    2022, 8, 4, 1, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        ValidationError, match="DTSTART had UTC or local and UNTIL must be UTC"
+    ):
+        Event(
+            summary="Bi-annual meeting",
+            start=datetime.datetime(
+                2022, 1, 2, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(
+                    2022, 8, 4, 1, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        ValidationError, match="DTSTART and UNTIL must be the same value type"
+    ):
+        Event(
+            summary="Bi-annual meeting",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(freq=Frequency.DAILY, until=datetime.date(2022, 8, 4)),
+        )

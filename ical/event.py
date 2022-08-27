@@ -22,6 +22,7 @@ from .types import (
     Recur,
     RequestStatus,
     Uri,
+    validate_until_dtstart,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -181,7 +182,7 @@ class Event(ComponentModel):
             return NotImplemented
         return self._tuple() >= other._tuple()
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
         if (
@@ -192,7 +193,7 @@ class Event(ComponentModel):
             raise ValueError("Expected end value type to match start")
         return values
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values have the same timezone information."""
         if (
@@ -210,14 +211,14 @@ class Event(ComponentModel):
             raise ValueError(f"Expected end datetime with timezone but was {dtend}")
         return values
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that only one of duration or end date may be set."""
         if values.get("dtend") and values.get("duration"):
             raise ValueError("Only one of dtend or duration may be set." "")
         return values
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate the duration is the appropriate units."""
         if not (duration := values.get("duration")):
@@ -229,3 +230,5 @@ class Event(ComponentModel):
         if duration < datetime.timedelta(seconds=0):
             raise ValueError(f"Expected duration to be positive but was {duration}")
         return values
+
+    _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)

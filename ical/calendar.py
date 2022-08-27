@@ -28,7 +28,10 @@ class Calendar(ComponentModel):
     prodid: str = Field(default=_PRODID)
     version: str = Field(default=_VERSION)
 
+    #
     # Calendar components
+    #
+
     events: list[Event] = Field(alias="vevent", default_factory=list)
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)
     journal: list[Journal] = Field(alias="vjournal", default_factory=list)

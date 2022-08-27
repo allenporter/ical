@@ -36,6 +36,7 @@ from collections.abc import Callable
 from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
 from urllib.parse import urlparse
 
+from dateutil import rrule
 from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST, ModelField
@@ -619,7 +620,6 @@ def parse_utc_offset(prop: Any) -> UtcOffset:
     )
     if sign == "-":
         result = -result
-    _LOGGER.info("parse_utc_offset")
     return UtcOffset(result)
 
 
@@ -693,6 +693,23 @@ class Frequency(str, enum.Enum):
     """Repeating events based on an interval of a year or more."""
 
 
+RRULE_FREQ = {
+    Frequency.DAILY: rrule.DAILY,
+    Frequency.WEEKLY: rrule.WEEKLY,
+    Frequency.MONTHLY: rrule.MONTHLY,
+    Frequency.YEARLY: rrule.YEARLY,
+}
+RRULE_WEEKDAY = {
+    Weekday.MONDAY: rrule.MO,
+    Weekday.TUESDAY: rrule.TU,
+    Weekday.WEDNESDAY: rrule.WE,
+    Weekday.THURSDAY: rrule.TH,
+    Weekday.FRIDAY: rrule.FR,
+    Weekday.SATURDAY: rrule.SA,
+    Weekday.SUNDAY: rrule.SU,
+}
+
+
 class Recur(BaseModel):
     """A type used to identify properties that contain a recurrence rule specification.
 
@@ -726,6 +743,31 @@ class Recur(BaseModel):
 
     by_month: list[int] = Field(alias="bymonth", default_factory=list)
     """Month number between 1 and 12."""
+
+    def as_rrule(self, dtstart: datetime.datetime | datetime.date) -> rrule.rrule:
+        """Create a dateutil rrule for the specified event."""
+        if (freq := RRULE_FREQ.get(self.freq)) is None:
+            raise ValueError(f"Unsupported frequency in rrule: {self.freq}")
+
+        byweekday: list[rrule.weekday] | None = None
+        if self.by_weekday:
+            byweekday = [
+                RRULE_WEEKDAY[weekday.weekday](
+                    1 if weekday.occurrence is None else weekday.occurrence
+                )
+                for weekday in self.by_weekday
+            ]
+        return rrule.rrule(
+            freq=freq,
+            dtstart=dtstart,
+            interval=self.interval,
+            count=self.count,
+            until=self.until,
+            byweekday=byweekday,
+            bymonthday=self.by_month_day if self.by_month_day else None,
+            bymonth=self.by_month if self.by_month else None,
+            cache=True,
+        )
 
     class Config:
         """Pydantic model configuration."""
@@ -803,6 +845,29 @@ def encode_recur_ics(data: dict[str, Any]) -> str:
             continue
         result.append(f"{key.upper()}={value}")
     return ";".join(result)
+
+
+def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+    """Verify the until time and dtstart are the same."""
+    if (
+        (rule := values.get("rrule"))
+        and (until := rule.until)
+        and (dtstart := values.get("dtstart"))
+    ):
+        if isinstance(dtstart, datetime.datetime) and isinstance(
+            until, datetime.datetime
+        ):
+            if dtstart.tzinfo is None:
+                if until.tzinfo is not None:
+                    raise ValueError("DTSTART is date local but UNTIL was not")
+            else:
+                if until.utcoffset():
+                    raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
+        elif isinstance(dtstart, datetime.datetime) or isinstance(
+            until, datetime.datetime
+        ):
+            raise ValueError("DTSTART and UNTIL must be the same value type")
+    return values
 
 
 def parse_extra_fields(

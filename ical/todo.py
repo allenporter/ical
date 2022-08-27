@@ -19,6 +19,7 @@ from .types import (
     RequestStatus,
     TodoStatus,
     Uri,
+    validate_until_dtstart,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -102,3 +103,5 @@ class Todo(ComponentModel):
         if values.get("duration") and not values.get("dtstart"):
             raise ValueError("Duration requires that dtstart is specified")
         return values
+
+    _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
