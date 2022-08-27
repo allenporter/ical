@@ -16,8 +16,9 @@ direction.
 A custom class with the method `__encode_component__` is used to serialize
 the object as a ParsedComponent.
 
-A custom class with the method `__encode_property__` is used to serialize
-the object as a ParsedProperty.
+A custom class with the optional methods `__encode_property_value__` and
+`__encode_property_params__` are used to serialize the object as a
+ParsedProperty.
 """
 
 # pylint: disable=too-many-lines
@@ -33,7 +34,16 @@ import logging
 import re
 import zoneinfo
 from collections.abc import Callable
-from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Generator,
+    Iterable,
+    Optional,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 from urllib.parse import urlparse
 
 from dateutil import rrule
@@ -68,7 +78,6 @@ ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
 # property parameters.
 TZID = "TZID"
 ATTR_VALUE = "VALUE"
-ATTR_PARAMS = "PARAMS"
 
 # Repeated values can either be specified as multiple separate values, but
 # also some values support repeated values within a single value with a
@@ -126,7 +135,7 @@ class Priority(int):
     @classmethod
     def parse_priority(cls, value: Any) -> int:
         """Parse a rfc5545 into a text value."""
-        priority = parse_int(value)
+        priority = IntEncoder.parse_int(value)
         if priority < 0 or priority > 9:
             raise ValueError("Expected priority between 0-9")
         return priority
@@ -142,23 +151,29 @@ class Geo:
     @classmethod
     def parse_geo(cls, value: Any) -> Geo:
         """Parse a rfc5545 lat long geo values."""
-        parts = parse_text(value).split(";", 2)
+        parts = TextEncoder.parse_text(value).split(";", 2)
         if len(parts) != 2:
             raise ValueError(f"Value was not valid geo lat;long: {value}")
         return Geo(lat=float(parts[0]), lng=float(parts[1]))
 
+    @classmethod
+    def __encode_property_json__(cls, value: Geo) -> str:
+        """Serialize as an ICS value."""
+        return f"{value.lat};{value.lng}"
 
-def encode_geo_ics(value: Geo) -> str:
-    """Serialize as an ICS value."""
-    return f"{value.lat};{value.lng}"
+
+def _all_fields(cls: BaseModel) -> dict[str, ModelField]:
+    all_fields: dict[str, ModelField] = {}
+    for model_field in cls.__fields__.values():
+        all_fields[model_field.name] = model_field
+        all_fields[model_field.alias] = model_field
+    return all_fields
 
 
 def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Convert property parameters to member variables."""
     if params := values.get("params"):
-        all_fields: dict[str, ModelField] = {}
-        for model_field in cls.__fields__.values():
-            all_fields[model_field.alias] = model_field
+        all_fields = _all_fields(cls)
         for param in params:
             if not (field := all_fields.get(param["name"])):
                 continue
@@ -181,25 +196,23 @@ class Uri(str):
         return Uri(prop.value)
 
 
-def encode_property_with_params(
-    cls: BaseModel, name: str, model_data: dict[str, Any]
-) -> ParsedProperty:
-    """Encode a pydantic model as a property with parameters."""
-    _LOGGER.debug("Encoding property with params %s: %s", name, model_data)
-    prop = ParsedProperty(name=name, value=model_data.pop("value"))
+def encode_property_params(
+    fields: Iterable[ModelField], model_data: dict[str, Any]
+) -> list[ParsedPropertyParameter]:
+    """Encode a pydantic model's parameters."""
     params = []
-    for field in cls.__fields__.values():
+    for field in fields:
         key = field.alias
-        if (values := model_data.get(key)) is None:
+        if key == "value" or (values := model_data.get(key)) is None:
             continue
         if field.shape != SHAPE_LIST:
             values = [values]
         if field.type_ == bool:
-            values = [encode_boolean_ics(value) for value in values]
+            values = [
+                BooleanEncoder.__encode_property_value__(value) for value in values
+            ]
         params.append(ParsedPropertyParameter(name=key, values=values))
-    if params:
-        prop.params = params
-    return prop
+    return params
 
 
 class CalendarUserType(str, enum.Enum):
@@ -284,7 +297,15 @@ class CalAddress(BaseModel):
         parse_parameter_values
     )
 
-    __encode_property__ = encode_property_with_params
+    @classmethod
+    def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:
+        return model_data.pop("value")
+
+    @classmethod
+    def __encode_property_params__(
+        cls, model_data: dict[str, Any]
+    ) -> list[ParsedPropertyParameter]:
+        return encode_property_params(cls.__fields__.values(), model_data)
 
     class Config:
         """Pyandtic model configuration."""
@@ -303,7 +324,7 @@ class RequestStatus:
     @classmethod
     def parse_rstatus(cls, value: Any) -> RequestStatus:
         """Parse a rfc5545 request status value."""
-        parts = parse_text(value).split(";")
+        parts = TextEncoder.parse_text(value).split(";")
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(f"Value was not valid Request Status: {value}")
         exdata: str | None = None
@@ -315,141 +336,160 @@ class RequestStatus:
             exdata=exdata,
         )
 
-
-def encode_rstatus_ics(value: RequestStatus) -> str:
-    """Encoded RequestStatus as an ICS property."""
-    result = f"{value.statcode};{value.statdesc}"
-    if value.exdata:
-        result += f";{value.exdata}"
-    return result
-
-
-def parse_date(prop: ParsedProperty) -> datetime.date | None:
-    """Parse a rfc5545 into a datetime.date."""
-    if not (match := DATE_REGEX.fullmatch(prop.value)):
-        raise ValueError(f"Expected value to match {DATE_PARAM} pattern: {prop.value}")
-    date_value = match.group(1)
-    year = int(date_value[0:4])
-    month = int(date_value[4:6])
-    day = int(date_value[6:])
-    return datetime.date(year, month, day)
+    @classmethod
+    def __encode_property_json__(cls, value: RequestStatus) -> str:
+        """Encoded RequestStatus as an ICS property."""
+        result = f"{value.statcode};{value.statdesc}"
+        if value.exdata:
+            result += f";{value.exdata}"
+        return result
 
 
-def encode_date_ics(value: datetime.date) -> str:
-    """Serialize as an ICS value."""
-    return value.strftime("%Y%m%d")
+class DateEncoder:
+    """Encode and decode an rfc5545 DATE and datetime.date."""
+
+    @classmethod
+    def parse_date(cls, prop: ParsedProperty) -> datetime.date | None:
+        """Parse a rfc5545 into a datetime.date."""
+        if not (match := DATE_REGEX.fullmatch(prop.value)):
+            raise ValueError(
+                f"Expected value to match {DATE_PARAM} pattern: {prop.value}"
+            )
+        date_value = match.group(1)
+        year = int(date_value[0:4])
+        month = int(date_value[4:6])
+        day = int(date_value[6:])
+        return datetime.date(year, month, day)
+
+    @classmethod
+    def __encode_property_json__(cls, value: datetime.date) -> str:
+        """Serialize as an ICS value."""
+        return value.strftime("%Y%m%d")
 
 
-def parse_datetime(prop: ParsedProperty) -> datetime.datetime:
-    """Parse a rfc5545 into a datetime.datetime."""
-    if not (match := DATETIME_REGEX.fullmatch(prop.value)):
-        raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
+class DateTimeEncoder:
+    """Class to handle encoding for a datetime.datetime."""
 
-    # Example: TZID=America/New_York:19980119T020000
-    timezone: datetime.tzinfo | None = None
-    if tzid := prop.get_parameter_value(TZID):
-        timezone = zoneinfo.ZoneInfo(tzid)
-    elif match.group(3):  # Example: 19980119T070000Z
-        timezone = datetime.timezone.utc
+    @classmethod
+    def parse_datetime(cls, prop: ParsedProperty) -> datetime.datetime:
+        """Parse a rfc5545 into a datetime.datetime."""
+        if not (match := DATETIME_REGEX.fullmatch(prop.value)):
+            raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
 
-    # Example: 19980118T230000
-    date_value = match.group(1)
-    year = int(date_value[0:4])
-    month = int(date_value[4:6])
-    day = int(date_value[6:])
-    time_value = match.group(2)
-    hour = int(time_value[0:2])
-    minute = int(time_value[2:4])
-    second = int(time_value[4:6])
+        # Example: TZID=America/New_York:19980119T020000
+        timezone: datetime.tzinfo | None = None
+        if tzid := prop.get_parameter_value(TZID):
+            timezone = zoneinfo.ZoneInfo(tzid)
+        elif match.group(3):  # Example: 19980119T070000Z
+            timezone = datetime.timezone.utc
 
-    return datetime.datetime(year, month, day, hour, minute, second, tzinfo=timezone)
+        # Example: 19980118T230000
+        date_value = match.group(1)
+        year = int(date_value[0:4])
+        month = int(date_value[4:6])
+        day = int(date_value[6:])
+        time_value = match.group(2)
+        hour = int(time_value[0:2])
+        minute = int(time_value[2:4])
+        second = int(time_value[4:6])
 
-
-def encode_datetime_ics(value: datetime.datetime) -> str | dict[str, Any]:
-    """Serialize as an ICS value."""
-    if value.tzinfo is None:
-        return value.strftime("%Y%m%dT%H%M%S")
-    # Does not yet handle timezones and encoding property parameters
-    if not value.utcoffset():
-        return value.strftime("%Y%m%dT%H%M%SZ")
-    return {
-        ATTR_VALUE: value.strftime("%Y%m%dT%H%M%S"),
-        ATTR_PARAMS: {
-            TZID: str(value.tzinfo),  # Timezone key
-        },
-    }
-
-
-def parse_duration(prop: ParsedProperty) -> datetime.timedelta:
-    """Parse a rfc5545 into a datetime.date."""
-    if not isinstance(prop, ParsedProperty):
-        raise ValueError(f"Expected ParsedProperty but was {prop}")
-    if not (match := DURATION_REGEX.fullmatch(prop.value)):
-        raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
-    sign, weeks, days, hours, minutes, seconds = match.groups()
-    result: datetime.timedelta
-    if weeks:
-        result = datetime.timedelta(weeks=int(weeks))
-    else:
-        result = datetime.timedelta(
-            days=int(days or 0),
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-            seconds=int(seconds or 0),
+        return datetime.datetime(
+            year, month, day, hour, minute, second, tzinfo=timezone
         )
-    if sign == "-":
-        result = -result
-    return result
+
+    @classmethod
+    def __encode_property_json__(cls, value: datetime.datetime) -> str | dict[str, Any]:
+        """Encode an ICS value during json serializaton."""
+        if value.tzinfo is None:
+            return value.strftime("%Y%m%dT%H%M%S")
+        # Does not yet handle timezones and encoding property parameters
+        if not value.utcoffset():
+            return value.strftime("%Y%m%dT%H%M%SZ")
+        return {
+            ATTR_VALUE: value.strftime("%Y%m%dT%H%M%S"),
+            TZID: str(value.tzinfo),  # Timezone key
+        }
+
+    @classmethod
+    def __encode_property_value__(cls, value: str | dict[str, Any]) -> str | None:
+        """Encode the ParsedProperty value."""
+        if isinstance(value, str):
+            return value
+        return value.get(ATTR_VALUE)
+
+    @classmethod
+    def __encode_property_params__(
+        cls, value: str | dict[str, str]
+    ) -> list[ParsedPropertyParameter]:
+        """Encode parameters for the property value."""
+        _LOGGER.debug("__encode_property_params__=%s", value)
+        if isinstance(value, dict) and (tzid := value.get(TZID)):
+            return [ParsedPropertyParameter(name=TZID, values=[tzid])]
+        return []
 
 
-def encode_duration_ics(value: Any) -> str:
-    """Serialize a time delta as a DURATION ICS value."""
-    if isinstance(value, str):
-        return value  # Already encoded as ics
-    duration: datetime.timedelta
-    if isinstance(value, datetime.timedelta):
-        duration = value
-    elif isinstance(value, float):
-        duration = datetime.timedelta(seconds=value)
-    else:
-        raise ValueError(f"Unexpected value type: {value}")
-    parts = []
-    if duration < datetime.timedelta(days=0):
-        parts.append("-")
-        duration = -duration
-    parts.append("P")
-    days = duration.days
-    weeks = int(days / 7)
-    days %= 7
-    if weeks > 0:
-        parts.append(f"{weeks}W")
-    if days > 0:
-        parts.append(f"{days}D")
-    if duration.seconds != 0:
-        parts.append("T")
-        seconds = duration.seconds
-        hours = int(seconds / 3600)
-        seconds %= 3600
-        if hours != 0:
-            parts.append(f"{hours}H")
-        minutes = int(seconds / 60)
-        seconds %= 60
-        if minutes != 0:
-            parts.append(f"{minutes}M")
-        if seconds != 0:
-            parts.append(f"{seconds}S")
-    return "".join(parts)
+class DurationEncoder:
+    """Class that can encode DURATION values."""
 
+    @classmethod
+    def parse_duration(cls, prop: ParsedProperty) -> datetime.timedelta:
+        """Parse a rfc5545 into a datetime.date."""
+        if not isinstance(prop, ParsedProperty):
+            raise ValueError(f"Expected ParsedProperty but was {prop}")
+        if not (match := DURATION_REGEX.fullmatch(prop.value)):
+            raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
+        sign, weeks, days, hours, minutes, seconds = match.groups()
+        result: datetime.timedelta
+        if weeks:
+            result = datetime.timedelta(weeks=int(weeks))
+        else:
+            result = datetime.timedelta(
+                days=int(days or 0),
+                hours=int(hours or 0),
+                minutes=int(minutes or 0),
+                seconds=int(seconds or 0),
+            )
+        if sign == "-":
+            result = -result
+        return result
 
-def parse_text(prop: Any) -> str:
-    """Parse a rfc5545 into a text value."""
-    if not isinstance(prop, ParsedProperty):
-        return str(prop)
-    for key, vin in UNESCAPE_CHAR.items():
-        if key not in prop.value:
-            continue
-        prop.value = prop.value.replace(key, vin)
-    return prop.value
+    @classmethod
+    def __encode_property_json__(cls, value: Any) -> str:
+        """Serialize a time delta as a DURATION ICS value."""
+        duration: datetime.timedelta
+        if isinstance(value, datetime.timedelta):
+            duration = value
+        elif isinstance(value, float):
+            duration = datetime.timedelta(seconds=value)
+        else:
+            raise ValueError(f"Unexpected value type: {value}")
+        parts = []
+        if duration < datetime.timedelta(days=0):
+            parts.append("-")
+            duration = -duration
+        parts.append("P")
+        days = duration.days
+        weeks = int(days / 7)
+        days %= 7
+        if weeks > 0:
+            parts.append(f"{weeks}W")
+        if days > 0:
+            parts.append(f"{days}D")
+        if duration.seconds != 0:
+            parts.append("T")
+            seconds = duration.seconds
+            hours = int(seconds / 3600)
+            seconds %= 3600
+            if hours != 0:
+                parts.append(f"{hours}H")
+            minutes = int(seconds / 60)
+            seconds %= 60
+            if minutes != 0:
+                parts.append(f"{minutes}M")
+            if seconds != 0:
+                parts.append(f"{seconds}S")
+        _LOGGER.debug("__encode_property_json__=%s", parts)
+        return "".join(parts)
 
 
 def parse_enum(prop: ParsedProperty) -> str:
@@ -457,46 +497,73 @@ def parse_enum(prop: ParsedProperty) -> str:
     return prop.value
 
 
-def encode_text(value: str) -> str:
-    """Serialize text as an ICS value."""
-    for key, vin in ESCAPE_CHAR.items():
-        if key not in value:
-            continue
-        value = value.replace(key, vin)
-    return value
+class TextEncoder:
+    """Encode an rfc5545 TEXT value."""
+
+    @classmethod
+    def parse_text(cls, prop: Any) -> str:
+        """Parse a rfc5545 into a text value."""
+        if not isinstance(prop, ParsedProperty):
+            return str(prop)
+        for key, vin in UNESCAPE_CHAR.items():
+            if key not in prop.value:
+                continue
+            prop.value = prop.value.replace(key, vin)
+        return prop.value
+
+    @classmethod
+    def __encode_property_value__(cls, value: str) -> str:
+        """Serialize text as an ICS value."""
+        for key, vin in ESCAPE_CHAR.items():
+            if key not in value:
+                continue
+            value = value.replace(key, vin)
+        return value
 
 
-def parse_int(prop: Any) -> int:
-    """Parse a rfc5545 property into a text value."""
-    if isinstance(prop, ParsedProperty):
-        return int(prop.value)
-    return int(prop)
+class IntEncoder:
+    """Encode an int ICS value."""
+
+    @classmethod
+    def parse_int(cls, prop: Any) -> int:
+        """Parse a rfc5545 int value."""
+        if isinstance(prop, ParsedProperty):
+            return int(prop.value)
+        return int(prop)
 
 
-def parse_float(prop: Any) -> float:
-    """Parse a rfc5545 property into a text value."""
-    if isinstance(prop, ParsedProperty):
-        return float(prop.value)
-    return float(prop)
+class FloatEncoder:
+    """Encode a float ICS value."""
+
+    @classmethod
+    def parse_float(cls, prop: Any) -> float:
+        """Parse a rfc5545 property into a text value."""
+        if isinstance(prop, ParsedProperty):
+            return float(prop.value)
+        return float(prop)
 
 
-def parse_boolean(prop: Any) -> bool:
-    """Parse an rfc5545 property into a boolean."""
-    if isinstance(prop, bool):
-        return prop
-    value = prop
-    if isinstance(prop, ParsedProperty):
-        value = prop.value
-    if value == "TRUE":
-        return True
-    if value == "FALSE":
-        return False
-    raise ValueError(f"Unable to parse value as boolean: {prop}")
+class BooleanEncoder:
+    """Encode a boolean ICS value."""
 
+    @classmethod
+    def parse_boolean(cls, prop: Any) -> bool:
+        """Parse an rfc5545 property into a boolean."""
+        if isinstance(prop, bool):
+            return prop
+        value = prop
+        if isinstance(prop, ParsedProperty):
+            value = prop.value
+        if value == "TRUE":
+            return True
+        if value == "FALSE":
+            return False
+        raise ValueError(f"Unable to parse value as boolean: {prop}")
 
-def encode_boolean_ics(value: bool) -> str:
-    """Serialize boolean as an ICS value."""
-    return "TRUE" if value else "FALSE"
+    @classmethod
+    def __encode_property_value__(cls, value: bool) -> str:
+        """Serialize boolean as an ICS value."""
+        return "TRUE" if value else "FALSE"
 
 
 class FreeBusyType(str, enum.Enum):
@@ -553,28 +620,33 @@ class Period(BaseModel):
         if len(parts) != 2:
             raise ValueError(f"Period did not have two time values: {value}")
         try:
-            start = parse_datetime(ParsedProperty(name="ignored", value=parts[0]))
+            start = DateTimeEncoder.parse_datetime(
+                ParsedProperty(name="ignored", value=parts[0])
+            )
         except ValueError as err:
             _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
             raise err
         values["start"] = start
         try:
-            end = parse_datetime(ParsedProperty(name="ignored", value=parts[1]))
+            end = DateTimeEncoder.parse_datetime(
+                ParsedProperty(name="ignored", value=parts[1])
+            )
         except ValueError:
             pass
         else:
             values["end"] = end
             return values
         try:
-            duration = parse_duration(ParsedProperty(name="ignored", value=parts[1]))
+            duration = DurationEncoder.parse_duration(
+                ParsedProperty(name="ignored", value=parts[1])
+            )
         except ValueError as err:
             raise err
         values["duration"] = duration
         return values
 
-    def __encode_property__(
-        cls, name: str, model_data: dict[str, Any]
-    ) -> ParsedProperty:
+    @classmethod
+    def __encode_property_value__(cls, model_data: dict[str, Any]) -> str:
         """Encode property value."""
         if not (start := model_data.pop("start", None)):
             raise ValueError(f"Invalid period object missing start: {model_data}")
@@ -586,10 +658,21 @@ class Period(BaseModel):
             )
         # End and duration are already encoded values
         if end:
-            model_data["value"] = "/".join([start, end])
-        else:
-            model_data["value"] = "/".join([start, duration])
-        return encode_property_with_params(cls, name, model_data)
+            return "/".join([start, end])
+        return "/".join([start, duration])
+
+    @classmethod
+    def __encode_property_params__(
+        cls, model_data: dict[str, Any]
+    ) -> list[ParsedPropertyParameter]:
+        return encode_property_params(
+            cls.__fields__.values(),
+            {
+                k: v
+                for k, v in model_data.items()
+                if k not in ("end", "duration", "start")
+            },
+        )
 
     class Config:
         """Pyandtic model configuration."""
@@ -603,47 +686,47 @@ class UtcOffset:
 
     offset: datetime.timedelta
 
+    @classmethod
+    def parse_utc_offset(cls, prop: Any) -> UtcOffset:
+        """Parse a UTC Offset."""
+        if isinstance(prop, UtcOffset):
+            return prop
+        value = prop
+        if isinstance(prop, ParsedProperty):
+            value = prop.value
+        if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
+            raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
+        sign, hours, minutes = match.groups()
+        result = datetime.timedelta(
+            hours=int(hours or 0),
+            minutes=int(minutes or 0),
+        )
+        if sign == "-":
+            result = -result
+        return UtcOffset(result)
 
-def parse_utc_offset(prop: Any) -> UtcOffset:
-    """Parse a UTC Offset."""
-    if isinstance(prop, UtcOffset):
-        return prop
-    value = prop
-    if isinstance(prop, ParsedProperty):
-        value = prop.value
-    if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
-        raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
-    sign, hours, minutes = match.groups()
-    result = datetime.timedelta(
-        hours=int(hours or 0),
-        minutes=int(minutes or 0),
-    )
-    if sign == "-":
-        result = -result
-    return UtcOffset(result)
-
-
-def encode_utc_offset_ics(value: Any) -> str:
-    """Serialize a time delta as a UTC-OFFSET ICS value."""
-    if isinstance(value, str):
-        return value  # Already encoded as ics
-    duration: datetime.timedelta
-    if isinstance(value, UtcOffset):
-        duration = value.offset
-    else:
-        raise ValueError(f"Unexpected UTC OFFSET value type: {value}")
-    parts = []
-    if duration < datetime.timedelta(days=0):
-        parts.append("-")
-        duration = -duration
-    seconds = duration.seconds
-    hours = int(seconds / 3600)
-    seconds %= 3600
-    parts.append(f"{hours:02}")
-    minutes = int(seconds / 60)
-    seconds %= 60
-    parts.append(f"{minutes:02}")
-    return "".join(parts)
+    @classmethod
+    def __encode_property_json__(cls, value: Any) -> str:
+        """Serialize a time delta as a UTC-OFFSET ICS value."""
+        if isinstance(value, str):
+            return value  # Already encoded as ics
+        duration: datetime.timedelta
+        if isinstance(value, UtcOffset):
+            duration = value.offset
+        else:
+            raise ValueError(f"Unexpected UTC OFFSET value type: {value}")
+        parts = []
+        if duration < datetime.timedelta(days=0):
+            parts.append("-")
+            duration = -duration
+        seconds = duration.seconds
+        hours = int(seconds / 3600)
+        seconds %= 3600
+        parts.append(f"{hours:02}")
+        minutes = int(seconds / 60)
+        seconds %= 60
+        parts.append(f"{minutes:02}")
+        return "".join(parts)
 
 
 class Weekday(str, enum.Enum):
@@ -775,76 +858,76 @@ class Recur(BaseModel):
         validate_assignment = True
         allow_population_by_field_name = True
 
-    def __encode_property__(cls, name: str, values: dict[str, Any]) -> ParsedProperty:
-        """Encode this object as a property."""
-        return ParsedProperty(name, encode_recur_ics(values))
-
-
-def parse_recur(prop: Any) -> dict[str, Any]:
-    """Parse the recurrence rule text as a dictionary as Pydantic input.
-
-    An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
-    into dictionary.
-    """
-    if isinstance(prop, str):
-        value = prop
-    elif not isinstance(prop, ParsedProperty):
-        raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
-    else:
-        value = prop.value
-    result: dict[str, datetime.datetime | str | list[str] | list[dict[str, str]]] = {}
-    for part in value.split(";"):
-        if "=" not in part:
-            raise ValueError(
-                f"Recurrence rule had unexpected format missing '=': {prop.value}"
-            )
-        key, value = part.split("=")
-        key = key.lower()
-        if key == "until":
-            result[key] = parse_datetime(ParsedProperty(name="ignored", value=value))
-        elif key in ("bymonthday", "bymonth"):
-            result[key] = value.split(",")
-        elif key == "byday":
-            # Build inputs for WeekdayValue dataclass
-            results: list[dict[str, str]] = []
-            for value in value.split(","):
-                if not (match := WEEKDAY_REGEX.fullmatch(value)):
-                    raise ValueError(
-                        f"Expected value to match UTC-OFFSET pattern: {value}"
-                    )
-                occurrence, weekday = match.groups()
-                weekday_result = {"weekday": weekday}
-                if occurrence:
-                    weekday_result["occurrence"] = occurrence
-                results.append(weekday_result)
-            result[key] = results
-        else:
-            result[key] = value
-    return result
-
-
-def encode_recur_ics(data: dict[str, Any]) -> str:
-    """Encode the recurence rule in ICS format."""
-    result = []
-    for key, value in data.items():
-        # Need to encode based on field type also using json encoders
-        if key in ("bymonthday", "bymonth"):
+    @classmethod
+    def __encode_property_value__(cls, data: dict[str, Any]) -> str:
+        """Encode the recurence rule in ICS format."""
+        result = []
+        for key, value in data.items():
+            # Need to encode based on field type also using json encoders
+            if key in ("bymonthday", "bymonth"):
+                if not value:
+                    continue
+                value = ",".join([str(val) for val in value])
+            elif key == "byday":
+                values = []
+                for weekday_dict in value:
+                    weekday = weekday_dict["weekday"]
+                    occurrence = weekday_dict.get("occurrence")
+                    if occurrence is None:
+                        occurrence = ""
+                    values.append(f"{occurrence}{weekday}")
+                value = ",".join(values)
             if not value:
                 continue
-            value = ",".join([str(val) for val in value])
-        elif key == "byday":
-            values = []
-            for weekday_dict in value:
-                weekday = weekday_dict["weekday"]
-                occurrence = weekday_dict.get("occurrence")
-                if occurrence is None:
-                    occurrence = ""
-                values.append(f"{occurrence}{weekday}")
-            value = ",".join(values)
-        if not value:
-            continue
-        result.append(f"{key.upper()}={value}")
-    return ";".join(result)
+            result.append(f"{key.upper()}={value}")
+        return ";".join(result)
+
+    @classmethod
+    def parse_recur(cls, prop: Any) -> dict[str, Any]:
+        """Parse the recurrence rule text as a dictionary as Pydantic input.
+
+        An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
+        into dictionary.
+        """
+        if isinstance(prop, str):
+            value = prop
+        elif not isinstance(prop, ParsedProperty):
+            raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
+        else:
+            value = prop.value
+        result: dict[
+            str, datetime.datetime | str | list[str] | list[dict[str, str]]
+        ] = {}
+        for part in value.split(";"):
+            if "=" not in part:
+                raise ValueError(
+                    f"Recurrence rule had unexpected format missing '=': {prop.value}"
+                )
+            key, value = part.split("=")
+            key = key.lower()
+            if key == "until":
+                result[key] = DateTimeEncoder.parse_datetime(
+                    ParsedProperty(name="ignored", value=value)
+                )
+            elif key in ("bymonthday", "bymonth"):
+                result[key] = value.split(",")
+            elif key == "byday":
+                # Build inputs for WeekdayValue dataclass
+                results: list[dict[str, str]] = []
+                for value in value.split(","):
+                    if not (match := WEEKDAY_REGEX.fullmatch(value)):
+                        raise ValueError(
+                            f"Expected value to match UTC-OFFSET pattern: {value}"
+                        )
+                    occurrence, weekday = match.groups()
+                    weekday_result = {"weekday": weekday}
+                    if occurrence:
+                        weekday_result["occurrence"] = occurrence
+                    results.append(weekday_result)
+                result[key] = results
+            else:
+                result[key] = value
+        return result
 
 
 def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
@@ -870,85 +953,14 @@ def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str,
     return values
 
 
-def parse_extra_fields(
-    cls: BaseModel, values: dict[str, list[ParsedProperty | ParsedComponent]]
-) -> dict[str, Any]:
-    """Parse extra fields not in the model."""
-    all_fields = set()
-    for field in cls.__fields__.values():
-        if field.alias == "extras":
-            continue
-        all_fields |= {field.name, field.alias}
-    extras: list[ParsedProperty | ParsedComponent] = []
-    for (field_name, value) in values.items():
-        if field_name in all_fields:
-            continue
-        for prop in value:
-            if isinstance(prop, ParsedProperty):
-                extras.append(prop)
-    if extras:
-        values["extras"] = extras
-    return values
-
-
-def encode_model(name: str, model: ComponentModel) -> ParsedComponent:
-    """Encode a pydantic model for serialization as an iCalendar object."""
-    model_data = json.loads(
-        model.json(by_alias=True, exclude_none=True, exclude_defaults=True)
-    )
-    return encode_component(name, model, model_data)
-
-
 # For additional decoding of properties after they have already
 # been handled by the json encoder.
-POST_JSON_ENCODERS: dict[Any, Callable[[Any], str]] = {
-    UtcOffset: encode_utc_offset_ics,
-    datetime.timedelta: encode_duration_ics,
-    bool: encode_boolean_ics,
-    str: encode_text,
+ENCODERS = {
+    datetime.datetime: DateTimeEncoder,
+    datetime.timedelta: DurationEncoder,
+    bool: BooleanEncoder,
+    str: TextEncoder,
 }
-
-
-def encode_property(key: str, value: str | dict[str, Any]) -> ParsedProperty:
-    """Create a ParsedProperty from an encoded value."""
-    params: list[ParsedPropertyParameter] | None = None
-    if isinstance(value, dict):
-        # Properties that are encoded as dictionaries are marshaling parameters and
-        # require an extra parsing to encode in the final form.
-        if ATTR_PARAMS not in value or ATTR_VALUE not in value:
-            raise ValueError("Unexpected encoded property did not have params or value")
-        params = [
-            ParsedPropertyParameter(k, values=[v])
-            for k, v in value[ATTR_PARAMS].items()
-        ]
-        return ParsedProperty(name=key, value=value[ATTR_VALUE], params=params)
-    return ParsedProperty(name=key, value=value, params=params)
-
-
-def encode_component(
-    name: str, model: BaseModel, model_data: dict[str, Any]
-) -> ParsedComponent:
-    """Encode a pydantic model for serialization as an iCalendar object."""
-    _LOGGER.debug("Encoding component %s: %s", name, model_data)
-    parent = ParsedComponent(name=name)
-    for field in model.__fields__.values():
-        key = field.alias
-        values = model_data.get(key)
-        if values is None or key == "extras":
-            continue
-        if not isinstance(values, list):
-            values = [values]
-        for value in values:
-            if component_encoder := getattr(field.type_, "__encode_component__", None):
-                parent.components.append(component_encoder(field.type_, key, value))
-                continue
-            if property_encoder := getattr(field.type_, "__encode_property__", None):
-                parent.properties.append(property_encoder(field.type_, key, value))
-                continue
-            if value_encoder := POST_JSON_ENCODERS.get(field.type_):
-                value = value_encoder(value)
-            parent.properties.append(encode_property(key, value))
-    return parent
 
 
 _T = TypeVar("_T")
@@ -959,33 +971,67 @@ class PropertyDataType(enum.Enum):
 
     # Types to support
     #   BINARY
-    #   PERIOD
     #   TIME
-    BOOLEAN = ("BOOLEAN", bool, parse_boolean, encode_boolean_ics)
+    BOOLEAN = (
+        "BOOLEAN",
+        bool,
+        BooleanEncoder.parse_boolean,
+        BooleanEncoder.__encode_property_value__,
+    )
     CAL_ADDRESS = (
         "CAL-ADDRESS",
         CalAddress,
         dataclasses.asdict,
-        dataclasses.asdict,
+        None,  # Uses pydantic jason BaseModel encoder
     )
-    DATE = ("DATE", datetime.date, parse_date, encode_date_ics)
-    DATE_TIME = ("DATE-TIME", datetime.datetime, parse_datetime, encode_datetime_ics)
-    UTC_OFFSET = ("UTC-OFFSET", UtcOffset, parse_utc_offset, encode_utc_offset_ics)
-    DURATION = ("DURATION", datetime.timedelta, parse_duration, encode_duration_ics)
-    FLOAT = ("FLOAT", float, parse_float, str)
-    INTEGER = ("INTEGER", int, parse_int, str)
-    PERIOD = ("PERIOD", Period, dataclasses.asdict, dataclasses.asdict)
+    DATE = (
+        "DATE",
+        datetime.date,
+        DateEncoder.parse_date,
+        DateEncoder.__encode_property_json__,
+    )
+    DATE_TIME = (
+        "DATE-TIME",
+        datetime.datetime,
+        DateTimeEncoder.parse_datetime,
+        DateTimeEncoder.__encode_property_json__,
+    )
+    UTC_OFFSET = (
+        "UTC-OFFSET",
+        UtcOffset,
+        UtcOffset.parse_utc_offset,
+        UtcOffset.__encode_property_json__,
+    )
+    DURATION = (
+        "DURATION",
+        datetime.timedelta,
+        DurationEncoder.parse_duration,
+        DurationEncoder.__encode_property_json__,
+    )
+    FLOAT = ("FLOAT", float, FloatEncoder.parse_float, str)
+    INTEGER = ("INTEGER", int, IntEncoder.parse_int, str)
+    PERIOD = (
+        "PERIOD",
+        Period,
+        dataclasses.asdict,
+        None,
+    )  # Uses pydantic jason BaseModel encoder
     # Note: Has special handling, not json encoder
-    TEXT = ("TEXT", str, parse_text, encode_text)
+    TEXT = ("TEXT", str, TextEncoder.parse_text, None)  # Uses native encoder
     URI = ("URI", Uri, Uri.parse, str)
-    RECUR = ("RECUR", Recur, parse_recur, encode_recur_ics)
+    RECUR = (
+        "RECUR",
+        Recur,
+        Recur.parse_recur,
+        None,
+    )  # Uses pydantic json BaseModel encoder
 
     def __init__(
         self,
         name: str,
         data_type: Any,
         decode_fn: Callable[[_T], ParsedProperty],
-        encode_fn: Callable[[ParsedProperty], _T],
+        encode_fn: Callable[[ParsedProperty], _T] | None,
     ):
         self._name = name
         self._data_type = data_type
@@ -1004,6 +1050,10 @@ class PropertyDataType(enum.Enum):
 
     def encode(self, value: ParsedProperty) -> Any:
         """Encode a parsed object into a string value."""
+        if not self._encode_fn:
+            raise ValueError(
+                "Native type is never encoded using value-type json encoder"
+            )
         return self._encode_fn(value)
 
     def decode(self, value: _T) -> Any:
@@ -1022,8 +1072,8 @@ ICS_ENCODERS: dict[Any, Callable[[Any], str]] = {
         property_data_type.data_type: property_data_type.encode
         for property_data_type in PropertyDataType
     },
-    Geo: encode_geo_ics,
-    RequestStatus: encode_rstatus_ics,
+    Geo: Geo.__encode_property_json__,
+    RequestStatus: RequestStatus.__encode_property_json__,
 }
 ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
     **{
@@ -1039,22 +1089,28 @@ ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
 }
 
 
-def _parse_identity(value: Any) -> Any:
+def _identity(value: Any) -> Any:
     return value
 
 
-def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
-    """Return validators for the specified field."""
+def _get_field_types(field_type: type) -> list[type]:
+    """Return type to attempt for encoding/decoding based on the field type."""
     origin = get_origin(field_type)
     if origin is Union:
         if not (args := get_args(field_type)):
             raise ValueError(f"Unable to determine args of type: {field_type}")
         # Decoder for any type in the union
-        return list(filter(None, [ICS_DECODERS.get(arg) for arg in args]))
-    # Decoder for single value
-    if field_type in ICS_DECODERS:
-        return [ICS_DECODERS[field_type]]
-    return [_parse_identity]
+        return list(args)
+    return [field_type]
+
+
+def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
+    """Return validators for the specified field."""
+    field_types = _get_field_types(field_type)
+    decoder_types = list(filter(None, [ICS_DECODERS.get(arg) for arg in field_types]))
+    if not decoder_types:
+        return [_identity]
+    return decoder_types
 
 
 def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
@@ -1082,56 +1138,133 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
     raise ValueError(f"Failed to validate: {prop}, errors: ({errors})")
 
 
-def parse_property_value(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
-    """Parse individual property value fields."""
-    _LOGGER.debug("Parsing value data %s", values)
-
-    for field in cls.__fields__.values():
-        if field.alias == "extras":
-            continue
-        if not (value := values.get(field.alias)):
-            continue
-        if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
-            # The incoming value is not from the parse tree
-            continue
-        validators = _get_validators(field.type_)
-        validated = []
-        for prop in value:
-            # This property value may contain repeated values itself
-            if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
-                for sub_value in prop.value.split(","):
-                    sub_prop = copy.deepcopy(prop)
-                    sub_prop.value = sub_value
-                    validated.append(_validate_field(sub_prop, validators))
-            else:
-                validated.append(_validate_field(prop, validators))
-
-        if field.shape == SHAPE_LIST:
-            values[field.alias] = validated
-        elif len(validated) > 1:
-            raise ValueError(f"Expected one value for field: {field.alias}")
-        else:
-            # Collapse repeated value from the parse tree into a single value
-            values[field.alias] = validated[0]
-
-    return values
-
-
 class ComponentModel(BaseModel):
     """Abstract class for rfc5545 component model."""
 
-    _parse_extra_fields = root_validator(pre=True, allow_reuse=True)(parse_extra_fields)
-    _parse_property_value = root_validator(pre=True, allow_reuse=True)(
-        parse_property_value
-    )
+    @root_validator(pre=True, allow_reuse=True)
+    def parse_extra_fields(
+        cls, values: dict[str, list[ParsedProperty | ParsedComponent]]
+    ) -> dict[str, Any]:
+        """Parse extra fields not in the model."""
+        all_fields = _all_fields(cls).keys()
+        extras: list[ParsedProperty | ParsedComponent] = []
+        for (field_name, value) in values.items():
+            if field_name in all_fields:
+                continue
+            for prop in value:
+                if isinstance(prop, ParsedProperty):
+                    extras.append(prop)
+        if extras:
+            values["extras"] = extras
+        return values
 
-    def __encode_component__(cls, name: str, values: dict[str, Any]) -> ParsedComponent:
-        """Encode this object as a component."""
-        return encode_component(name, cls, values)
+    @root_validator(pre=True, allow_reuse=True)
+    def parse_property_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Parse individual ParsedProperty value fields."""
+        _LOGGER.debug("Parsing value data %s", values)
+
+        for field in cls.__fields__.values():
+            if field.alias == "extras":
+                continue
+            if not (value := values.get(field.alias)):
+                continue
+            if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
+                # The incoming value is not from the parse tree
+                continue
+            validators = _get_validators(field.type_)
+            validated = []
+            for prop in value:
+                # This property value may contain repeated values itself
+                if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
+                    for sub_value in prop.value.split(","):
+                        sub_prop = copy.deepcopy(prop)
+                        sub_prop.value = sub_value
+                        validated.append(_validate_field(sub_prop, validators))
+                else:
+                    validated.append(_validate_field(prop, validators))
+
+            if field.shape == SHAPE_LIST:
+                values[field.alias] = validated
+            elif len(validated) > 1:
+                raise ValueError(f"Expected one value for field: {field.alias}")
+            else:
+                # Collapse repeated value from the parse tree into a single value
+                values[field.alias] = validated[0]
+
+        return values
+
+    def __encode_component_root__(self) -> ParsedComponent:
+        """Encode the calendar stream as an rfc5545 iCalendar content."""
+        # The overall data model hierarchy is created by pydantic and properties
+        # are encoded by default with ICS_ENCODERS then loaded back into a dict
+        # with string values. Then there are additional passes to get the data in
+        # the right shape for ics encoding.
+        model_data = json.loads(
+            self.json(by_alias=True, exclude_none=True, exclude_defaults=True)
+        )
+        # The component name is ignored as we're really only encoding children components
+        return self.__encode_component__(self.__class__.__name__, model_data)
+
+    @classmethod
+    def __encode_component__(
+        cls, name: str, model_data: dict[str, Any]
+    ) -> ParsedComponent:
+        """Encode this object as a component to prepare for serialization.
+
+        The data passed in have already been encoded with one pass from the root json
+        encoder. This method takes additional passes to add more field specific encoding,
+        as well as overall component objects.
+        """
+        parent = ParsedComponent(name=name)
+        for field in cls.__fields__.values():
+            key = field.alias
+            values = model_data.get(key)
+            if values is None or key == "extras":
+                continue
+            if not isinstance(values, list):
+                values = [values]
+            for value in values:
+                if component_encoder := getattr(
+                    field.type_, "__encode_component__", None
+                ):
+                    parent.components.append(component_encoder(key, value))
+                    continue
+                if prop := cls._encode_property(key, field.type_, value):
+                    parent.properties.append(prop)
+        return parent
+
+    @classmethod
+    def _encode_property(
+        cls, key: str, field_type: type, value: Any
+    ) -> ParsedProperty | None:
+        """Encode an individual property for the specified field."""
+        # A property field may have multiple possible types, like for
+        # a Union. The field type itself may be responsible for
+        # encoding, or there may be a separate class that knows
+        # how to encode that type.
+        encoder: type | None = None
+        encoded_value: str | None = None
+        for sub_type in _get_field_types(field_type):
+            encoder = ENCODERS.get(sub_type, field_type)
+            value_encoder = getattr(encoder, "__encode_property_value__", _identity)
+            try:
+                encoded_value = value_encoder(value)
+            except ValueError as err:
+                _LOGGER.debug("Encoding failed for property: %s", err)
+                continue
+            break
+
+        if encoder and encoded_value is not None:
+            prop = ParsedProperty(name=key, value=encoded_value)
+            if params_encoder := getattr(encoder, "__encode_property_params__", None):
+                if params := params_encoder(value):
+                    prop.params = params
+            return prop
+
+        return None
 
     class Config:
         """Pyandtic model configuration."""
 
         validate_assignment = True
         allow_population_by_field_name = True
-        # arbitrary_types_allowed = True

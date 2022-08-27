@@ -8,22 +8,14 @@ from pydantic import ValidationError
 
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.types import (
-    ICS_ENCODERS,
-    ComponentModel,
-    Geo,
-    Period,
-    Priority,
-    UtcOffset,
-    encode_model,
-)
+from ical.types import ICS_ENCODERS, ComponentModel, Geo, Period, Priority, UtcOffset
 from ical.tzif import timezoneinfo
 
 
 def test_text() -> None:
     """Test for a text property value."""
 
-    class TextModel(ComponentModel):
+    class TestModel(ComponentModel):
         """Model with a Text value."""
 
         text_value: str
@@ -35,14 +27,14 @@ def test_text() -> None:
             value="Project XYZ Final Review\\nConference Room - 3B\\nCome Prepared.",
         )
     )
-    model = TextModel.parse_obj(component.as_dict())
+    model = TestModel.parse_obj(component.as_dict())
     assert model == {
         "text_value": "\n".join(
             ["Project XYZ Final Review", "Conference Room - 3B", "Come Prepared."]
         )
     }
-    assert encode_model("model", model) == ParsedComponent(
-        name="model",
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="TestModel",
         properties=[
             ParsedProperty(
                 name="text_value",
@@ -89,7 +81,7 @@ def test_encode_component() -> None:
             "dt": [ParsedProperty(name="dt", value="20220724T120000")],
         }
     )
-    component = encode_model("TestModel", model)
+    component = model.__encode_component_root__()
     assert component.name == "TestModel"
     assert component.properties == [
         ParsedProperty(name="text_value", value="Example text"),
@@ -240,8 +232,8 @@ def test_datedatime_parameter_encoder() -> None:
     assert model.dt == datetime.datetime(
         2022, 7, 24, 12, 0, 0, tzinfo=timezoneinfo.read_tzinfo("America/New_York")
     )
-    assert encode_model("model", model) == ParsedComponent(
-        name="model",
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="TestModel",
         properties=[
             ParsedProperty(
                 name="dt",
@@ -412,14 +404,14 @@ def test_bool() -> None:
     # Populate based on bool object
     model = TestModel(example=True)
     assert model.example
-    component = encode_model("model", model)
+    component = model.__encode_component_root__()
     assert component.properties == [
         ParsedProperty(name="example", value="TRUE"),
     ]
 
     model = TestModel(example=False)
     assert not model.example
-    component = encode_model("model", model)
+    component = model.__encode_component_root__()
     assert component.properties == [
         ParsedProperty(name="example", value="FALSE"),
     ]
@@ -445,11 +437,16 @@ def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) 
 
         duration: datetime.timedelta
 
+        class Config:
+            """Pydantic model configuration."""
+
+            json_encoders = ICS_ENCODERS
+
     model = TestModel.parse_obj(
         {"duration": [ParsedProperty(name="duration", value=value)]}
     )
     assert model.duration == duration
-    component = encode_model("TestModel", model)
+    component = model.__encode_component_root__()
     assert component.name == "TestModel"
     assert component.properties == [
         ParsedProperty(name="duration", value=encoded_value)
@@ -464,10 +461,15 @@ def test_duration_from_object() -> None:
 
         duration: datetime.timedelta
 
+        class Config:
+            """Pydantic model configuration."""
+
+            json_encoders = ICS_ENCODERS
+
     model = TestModel(duration=datetime.timedelta(hours=1))
     assert model.duration == datetime.timedelta(hours=1)
 
-    component = encode_model("TestModel", model)
+    component = model.__encode_component_root__()
     assert component.name == "TestModel"
     assert component.properties == [ParsedProperty(name="duration", value="PT1H")]
 
@@ -618,8 +620,8 @@ def test_encode_period() -> None:
             end=datetime.datetime(2022, 8, 7, 6, 30, 0),
         )
     )
-    assert encode_model("model", model) == ParsedComponent(
-        name="model",
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="TestModel",
         properties=[
             ParsedProperty(name="example", value="20220807T060000/20220807T063000")
         ],
@@ -631,8 +633,8 @@ def test_encode_period() -> None:
             duration=datetime.timedelta(hours=5, minutes=30),
         )
     )
-    assert encode_model("model", model) == ParsedComponent(
-        name="model",
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="TestModel",
         properties=[ParsedProperty(name="example", value="20220807T060000/PT5H30M")],
     )
 
