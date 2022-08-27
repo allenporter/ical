@@ -8,7 +8,7 @@ import datetime
 import logging
 from typing import Any, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, root_validator
 
 from .parsing.property import ParsedProperty
 from .types import (
@@ -19,6 +19,7 @@ from .types import (
     Recur,
     RequestStatus,
     Uri,
+    validate_until_dtstart,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -89,3 +90,5 @@ class Journal(ComponentModel):
     def start_datetime(self) -> datetime.datetime:
         """Return the events start as a datetime."""
         return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
+
+    _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)

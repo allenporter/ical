@@ -10,7 +10,7 @@ from collections.abc import Iterable, Iterator
 from dateutil import rrule
 
 from .event import Event
-from .types import Frequency, Recur, Weekday
+from .iter import MergedIterable, RecurIterable
 from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,24 +126,17 @@ class EventIterable(Iterable[Event]):
             yield event
 
 
-class RecurIterator(Iterator[Event]):
+class RecurAdapter:
     """An iterator for a recurrence rule."""
 
-    def __init__(
-        self, event: Event, recur: Iterator[datetime.datetime | datetime.date]
-    ):
-        """Initialize the RecurIterator."""
+    def __init__(self, event: Event):
+        """Initialize the RecurAdapter."""
         self._event = event
         self._event_duration = event.computed_duration
-        self._recur = recur
         self._is_all_day = not isinstance(self._event.dtstart, datetime.datetime)
 
-    def __iter__(self) -> Iterator[Event]:
-        return self
-
-    def __next__(self) -> Event:
+    def get(self, dtstart: datetime.datetime | datetime.date) -> Event:
         """Return the next event in the recurrence."""
-        dtstart: datetime.datetime | datetime.date = next(self._recur)
         if self._is_all_day and isinstance(dtstart, datetime.datetime):
             dtstart = dtstart.date()
         return self._event.copy(
@@ -155,124 +148,6 @@ class RecurIterator(Iterator[Event]):
         )
 
 
-class RecurIterable(Iterable[Event]):
-    """A series of events from a recurring event."""
-
-    def __init__(self, event: Event, recur: rrule.rrule | rrule.rruleset) -> None:
-        """Initialize timeline."""
-        self._event = event
-        self._recur = recur
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return an iterator as a traversal over events in chronological order."""
-        return RecurIterator(self._event, iter(self._recur))
-
-
-RRULE_FREQ = {
-    Frequency.DAILY: rrule.DAILY,
-    Frequency.WEEKLY: rrule.WEEKLY,
-    Frequency.MONTHLY: rrule.MONTHLY,
-    Frequency.YEARLY: rrule.YEARLY,
-}
-RRULE_WEEKDAY = {
-    Weekday.MONDAY: rrule.MO,
-    Weekday.TUESDAY: rrule.TU,
-    Weekday.WEDNESDAY: rrule.WE,
-    Weekday.THURSDAY: rrule.TH,
-    Weekday.FRIDAY: rrule.FR,
-    Weekday.SATURDAY: rrule.SA,
-    Weekday.SUNDAY: rrule.SU,
-}
-
-
-def _create_rrule(
-    dtstart: datetime.datetime | datetime.date, rule: Recur
-) -> rrule.rrule:
-    """Create a dateutil rrule for the specified event."""
-    if (freq := RRULE_FREQ.get(rule.freq)) is None:
-        raise ValueError(f"Unsupported frequency in rrule: {rule.freq}")
-
-    byweekday: list[rrule.weekday] | None = None
-    if rule.by_weekday:
-        byweekday = [
-            RRULE_WEEKDAY[weekday.weekday](
-                1 if weekday.occurrence is None else weekday.occurrence
-            )
-            for weekday in rule.by_weekday
-        ]
-    return rrule.rrule(
-        freq=freq,
-        dtstart=dtstart,
-        interval=rule.interval,
-        count=rule.count,
-        until=rule.until,
-        byweekday=byweekday,
-        bymonthday=rule.by_month_day if rule.by_month_day else None,
-        bymonth=rule.by_month if rule.by_month else None,
-        cache=True,
-    )
-
-
-class PeekingIterator(Iterator[Event]):
-    """An iterator with a preview of the next item."""
-
-    def __init__(self, iterator: Iterator[Event]):
-        """Initialize PeekingIterator."""
-        self._iterator = iterator
-        self._next = next(self._iterator, None)
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return this iterator."""
-        return self
-
-    def peek(self) -> Event | None:
-        """Peek at the next item without consuming."""
-        return self._next
-
-    def __next__(self) -> Event:
-        """Produce the next item from the merged set."""
-        result = self._next
-        self._next = next(self._iterator, None)
-        if result is None:
-            raise StopIteration()
-        return result
-
-
-class MergedIterator(Iterator[Event]):
-    """An iterator with a merged sorted view of the underlying sorted iterators."""
-
-    def __init__(self, iters: list[Iterator[Event]]):
-        """Initialize MergedIterator."""
-        self._iters = [PeekingIterator(iterator) for iterator in iters]
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return this iterator."""
-        return self
-
-    def __next__(self) -> Event:
-        """Produce the next item from the merged set."""
-        heap: list[tuple[datetime.datetime, PeekingIterator]] = []
-        for iterator in self._iters:
-            peekd = iterator.peek()
-            if peekd:
-                heapq.heappush(heap, (peekd.start_datetime, iterator))
-        if not heap:
-            raise StopIteration()
-        (_, iterator) = heapq.heappop(heap)
-        return next(iterator)
-
-
-class MergedIterable(Iterable[Event]):
-    """An iterator that merges results from underlying sorted iterables."""
-
-    def __init__(self, iters: list[Iterable[Event]]) -> None:
-        """Initialize MergedIterable."""
-        self._iters = iters
-
-    def __iter__(self) -> Iterator[Event]:
-        return MergedIterator([iter(it) for it in self._iters])
-
-
 def calendar_timeline(events: list[Event]) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
     iters: list[Iterable[Event]] = [EventIterable(events)]
@@ -281,10 +156,10 @@ def calendar_timeline(events: list[Event]) -> Timeline:
             continue
         ruleset = rrule.rruleset()
         if event.rrule:
-            ruleset.rrule(_create_rrule(event.start, event.rrule))
+            ruleset.rrule(event.rrule.as_rrule(event.start))
         for rdate in event.rdate:
             ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
         for exdate in event.exdate:
             ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
-        iters.append(RecurIterable(event, ruleset))
+        iters.append(RecurIterable(RecurAdapter(event).get, ruleset))
     return Timeline(MergedIterable(iters))

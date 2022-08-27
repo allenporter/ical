@@ -11,14 +11,14 @@ from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
-from ical.timezone import Timezone, TimezoneInfo
+from ical.timezone import IcsTimezoneInfo, Observance, Timezone
 from ical.types import Frequency, Recur, UtcOffset, Weekday, WeekdayValue
 
 TEST_RECUR = Recur(
     freq=Frequency.YEARLY,
     by_month=[10],
     by_day=[WeekdayValue(Weekday.SUNDAY, occurrence=-1)],
-    until=datetime.datetime(2006, 10, 29, 6, 0, 0, tzinfo=datetime.timezone.utc),
+    until=datetime.datetime(2006, 10, 29, 6, 0, 0),
 )
 
 
@@ -32,11 +32,9 @@ def test_daylight() -> None:
     """Test a Timezone object with a daylight observance."""
     timezone = Timezone(
         tz_id="America/New_York",
-        last_modified=datetime.datetime(
-            2005, 8, 9, 5, 0, 0, 0, tzinfo=datetime.timezone.utc
-        ),
+        last_modified=datetime.datetime(2005, 8, 9, 5),
         daylight=[
-            TimezoneInfo(
+            Observance(
                 start=datetime.datetime(1967, 10, 29, 2, 0, 0, 0),
                 tz_offset_to=UtcOffset(datetime.timedelta(hours=-5)),
                 tz_offset_from=UtcOffset(datetime.timedelta(hours=-4)),
@@ -48,14 +46,24 @@ def test_daylight() -> None:
     assert len(timezone.daylight) == 1
     assert timezone.daylight[0].tz_name == ["est"]
 
+    tz_info = IcsTimezoneInfo.from_timezone(timezone)
+
+    value = datetime.datetime(1967, 10, 29, 1, 59, 0, 0, tzinfo=tz_info)
+    assert not tz_info.tzname(value)
+    assert not tz_info.utcoffset(value)
+
+    value = datetime.datetime(1967, 10, 29, 2, 00, 0, 0, tzinfo=tz_info)
+    assert tz_info.tzname(value) == "est"
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=-5)
+
 
 def test_timezone_observence_start_time_validation() -> None:
     """Verify that a start time must be in local time."""
-    with pytest.raises(ValidationError, match=r".*must be in local time.*"):
-        TimezoneInfo(
-            start=datetime.datetime(
-                1967, 10, 29, 2, 0, 0, 0, tzinfo=datetime.timezone.utc
-            ),
+    with pytest.raises(
+        ValidationError, match=r".*Start time must be in local time format*"
+    ):
+        Observance(
+            start=datetime.datetime(1967, 10, 29, 2, tzinfo=datetime.timezone.utc),
             tz_offset_to=UtcOffset(datetime.timedelta(hours=-5)),
             tz_offset_from=UtcOffset(datetime.timedelta(hours=-4)),
             tz_name=["est"],
@@ -97,6 +105,24 @@ def test_from_tzif_timezoneinfo_with_dst() -> None:
        END:VCALENDAR
     """
     )
+
+    tz_info = IcsTimezoneInfo.from_timezone(timezone)
+
+    value = datetime.datetime(2010, 11, 7, 1, 59, 0)
+    assert tz_info.tzname(value) == "EDT"
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=-4)
+
+    value = datetime.datetime(2010, 11, 7, 2, 0, 0)
+    assert tz_info.tzname(value) == "EST"
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=-5)
+
+    value = datetime.datetime(2011, 3, 13, 1, 59, 0)
+    assert tz_info.tzname(value) == "EST"
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=-5)
+
+    value = datetime.datetime(2011, 3, 14, 2, 0, 0)
+    assert tz_info.tzname(value) == "EDT"
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=-4)
 
 
 @freeze_time("2022-08-22 12:30:00")
