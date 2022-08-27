@@ -267,27 +267,31 @@ class IcsTimezoneInfo(datetime.tzinfo):
 
     def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta:
         """Return offset of local time from UTC, as a timedelta object."""
-        if not dt:
-            return _ZERO
-        obs = self._timezone.get_observance(dt.replace(tzinfo=None))
-        if not obs:
+        if not dt or not (obs := self._get_observance(dt)):
             return _ZERO
         return obs.observance.tz_offset_to.offset
 
     def tzname(self, dt: datetime.datetime | None) -> str | None:
         """Return the time zone name for the datetime as a sorting."""
-        if dt is None:
+        if (
+            not dt
+            or not (obs := self._get_observance(dt))
+            or not obs.observance.tz_name
+        ):
             return None
-        obs = self._timezone.get_observance(dt.replace(tzinfo=None))
-        if obs and obs.observance.tz_name:
-            return obs.observance.tz_name[0]
-        return None
+        _LOGGER.debug("obs=%s", obs)
+        return obs.observance.tz_name[0]
 
     def dst(self, dt: datetime.datetime | None) -> datetime.timedelta | None:
         """Return the daylight saving time (DST) adjustment, if applicable."""
-        if dt is None:
-            return None
-        obs = self._timezone.get_observance(dt.replace(tzinfo=None))
-        if obs and obs.observance_type == _ObservanceType.DAYLIGHT:
-            return obs.observance.tz_offset_to.offset
-        return _ZERO
+        if (
+            not dt
+            or not (obs := self._get_observance(dt))
+            or obs.observance_type != _ObservanceType.DAYLIGHT
+        ):
+            return _ZERO
+        _LOGGER.debug("obs=%s", obs)
+        return obs.observance.tz_offset_to.offset - obs.observance.tz_offset_from.offset
+
+    def _get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:
+        return self._timezone.get_observance(value.replace(tzinfo=None))
