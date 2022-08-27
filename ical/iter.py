@@ -1,4 +1,10 @@
-"""Library for iterators used in ical.."""
+"""Library for iterators used in ical.
+
+These iterators are primarily used for implementing recurrence rules where an
+object should be returned for a series of date/time, with some modification
+based on that date/time. Additionally, it is often necessary to handle multiple
+recurrence rules together as a single view of recurring date/times.
+"""
 
 from __future__ import annotations
 
@@ -7,12 +13,14 @@ import heapq
 from collections.abc import Callable, Iterable, Iterator
 from typing import TypeVar, Union
 
-from dateutil import rrule
-
 T = TypeVar("T")
 
 ItemAdapter = Callable[[Union[datetime.datetime, datetime.date]], T]
-"""An adapter for an object in a sorted container (iterator)."""
+"""An adapter for an object in a sorted container (iterator).
+
+The adapter is invoked with the date/time of the current instance and
+the callback returns an object at that time (e.g. event with updated time)
+"""
 
 
 class RecurIterator(Iterator[T]):
@@ -37,10 +45,16 @@ class RecurIterator(Iterator[T]):
 
 
 class RecurIterable(Iterable[T]):
-    """A series of events from a recurring event."""
+    """A series of events from a recurring event.
+
+    The inputs are a callback that creates objects at a specific date/time, and an iterable
+    of all the relevant date/times (typically a dateutil.rrule or dateutil.rruleset).
+    """
 
     def __init__(
-        self, item_cb: ItemAdapter[T], recur: rrule.rrule | rrule.rruleset
+        self,
+        item_cb: ItemAdapter[T],
+        recur: Iterable[datetime.datetime | datetime.date],
     ) -> None:
         """Initialize timeline."""
         self._item_cb = item_cb
@@ -52,7 +66,12 @@ class RecurIterable(Iterable[T]):
 
 
 class PeekingIterator(Iterator[T]):
-    """An iterator with a preview of the next item."""
+    """An iterator with a preview of the next item.
+
+    The primary purpose is to implement a merged iterator where it is needed to
+    see the next item in the iterator in order to decide which child iterator
+    to pull from.
+    """
 
     def __init__(self, iterator: Iterator[T]):
         """Initialize PeekingIterator."""
