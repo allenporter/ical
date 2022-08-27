@@ -863,8 +863,8 @@ def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str,
             else:
                 if until.utcoffset():
                     raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
-        elif not (
-            isinstance(dtstart, datetime.date) and isinstance(dtstart, datetime.date)
+        elif isinstance(dtstart, datetime.datetime) or isinstance(
+            until, datetime.datetime
         ):
             raise ValueError("DTSTART and UNTIL must be the same value type")
     return values
