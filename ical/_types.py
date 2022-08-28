@@ -21,8 +21,6 @@ A custom class with the optional methods `__encode_property_value__` and
 ParsedProperty.
 """
 
-# pylint: disable=too-many-lines
-
 from __future__ import annotations
 
 import copy
@@ -31,7 +29,6 @@ import datetime
 import enum
 import json
 import logging
-import re
 from collections.abc import Callable
 from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
 from urllib.parse import urlparse
@@ -53,8 +50,6 @@ from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
 
-
-UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})$")
 
 ATTR_VALUE = "VALUE"
 
@@ -224,49 +219,6 @@ def parse_enum(prop: ParsedProperty) -> str:
     return prop.value
 
 
-@dataclass
-class UtcOffset:
-    """Contains an offset from UTC to local time."""
-
-    offset: datetime.timedelta
-
-    @classmethod
-    def parse_utc_offset(cls, prop: Any) -> UtcOffset:
-        """Parse a UTC Offset."""
-        if isinstance(prop, UtcOffset):
-            return prop
-        value = prop
-        if isinstance(prop, ParsedProperty):
-            value = prop.value
-        if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
-            raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
-        sign, hours, minutes = match.groups()
-        result = datetime.timedelta(
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-        )
-        if sign == "-":
-            result = -result
-        return UtcOffset(result)
-
-    @classmethod
-    def __encode_property_json__(cls, value: UtcOffset) -> str:
-        """Serialize a time delta as a UTC-OFFSET ICS value."""
-        duration = value.offset
-        parts = []
-        if duration < datetime.timedelta(days=0):
-            parts.append("-")
-            duration = -duration
-        seconds = duration.seconds
-        hours = int(seconds / 3600)
-        seconds %= 3600
-        parts.append(f"{hours:02}")
-        minutes = int(seconds / 60)
-        seconds %= 60
-        parts.append(f"{minutes:02}")
-        return "".join(parts)
-
-
 def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Verify the until time and dtstart are the same."""
     if (
@@ -314,12 +266,6 @@ class PropertyDataType(enum.Enum):
         CalAddress,
         dataclasses.asdict,
         None,  # Uses pydantic jason BaseModel encoder
-    )
-    UTC_OFFSET = (
-        "UTC-OFFSET",
-        UtcOffset,
-        UtcOffset.parse_utc_offset,
-        UtcOffset.__encode_property_json__,
     )
     URI = ("URI", Uri, Uri.parse, str)
     RECUR = (
