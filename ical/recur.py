@@ -193,7 +193,7 @@ class Recur(BaseModel):
             key, value = part.split("=")
             key = key.lower()
             if key == "until":
-                result[key] = DateTimeEncoder.parse_datetime(
+                result[key] = DateTimeEncoder.__parse_property_value__(
                     ParsedProperty(name="ignored", value=value)
                 )
             elif key in ("bymonthday", "bymonth"):

@@ -10,6 +10,8 @@ from typing import Any
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
+from .data_types import DATA_TYPE
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -18,11 +20,16 @@ TZID = "TZID"
 ATTR_VALUE = "VALUE"
 
 
+@DATA_TYPE.register("DATE-TIME")
 class DateTimeEncoder:
     """Class to handle encoding for a datetime.datetime."""
 
     @classmethod
-    def parse_datetime(cls, prop: ParsedProperty) -> datetime.datetime:
+    def __property_type__(cls) -> type:
+        return datetime.datetime
+
+    @classmethod
+    def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.datetime:
         """Parse a rfc5545 into a datetime.datetime."""
         if not (match := DATETIME_REGEX.fullmatch(prop.value)):
             raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
@@ -73,7 +80,6 @@ class DateTimeEncoder:
         cls, value: str | dict[str, str]
     ) -> list[ParsedPropertyParameter]:
         """Encode parameters for the property value."""
-        _LOGGER.debug("__encode_property_params__=%s", value)
         if isinstance(value, dict) and (tzid := value.get(TZID)):
             return [ParsedPropertyParameter(name=TZID, values=[tzid])]
         return []

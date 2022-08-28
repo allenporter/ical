@@ -7,14 +7,21 @@ import re
 
 from ical.parsing.property import ParsedProperty
 
+from .data_types import DATA_TYPE
+
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 
 
+@DATA_TYPE.register("DATE")
 class DateEncoder:
     """Encode and decode an rfc5545 DATE and datetime.date."""
 
     @classmethod
-    def parse_date(cls, prop: ParsedProperty) -> datetime.date | None:
+    def __property_type__(cls) -> type:
+        return datetime.date
+
+    @classmethod
+    def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.date | None:
         """Parse a rfc5545 into a datetime.date."""
         if not (match := DATE_REGEX.fullmatch(prop.value)):
             raise ValueError(f"Expected value to match DATE pattern: {prop.value}")

@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .data_types import DATA_TYPE
 from .text import TextEncoder
 
 
+@DATA_TYPE.register("GEO")
 @dataclass
 class Geo:
     """Information related tot he global position for an activity."""
@@ -16,9 +18,9 @@ class Geo:
     lng: float
 
     @classmethod
-    def parse_geo(cls, value: Any) -> Geo:
+    def __parse_property_value__(cls, value: Any) -> Geo:
         """Parse a rfc5545 lat long geo values."""
-        parts = TextEncoder.parse_text(value).split(";", 2)
+        parts = TextEncoder.__parse_property_value__(value).split(";", 2)
         if len(parts) != 2:
             raise ValueError(f"Value was not valid geo lat;long: {value}")
         return Geo(lat=float(parts[0]), lng=float(parts[1]))

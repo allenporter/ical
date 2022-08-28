@@ -59,9 +59,8 @@ from .types.const import (
     JournalStatus,
     TodoStatus,
 )
-from .types.date import DateEncoder
+from .types.data_types import DATA_TYPE
 from .types.date_time import DateTimeEncoder
-from .types.geo import Geo
 from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
@@ -235,7 +234,7 @@ class RequestStatus:
     @classmethod
     def parse_rstatus(cls, value: Any) -> RequestStatus:
         """Parse a rfc5545 request status value."""
-        parts = TextEncoder.parse_text(value).split(";")
+        parts = TextEncoder.__parse_property_value__(value).split(";")
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(f"Value was not valid Request Status: {value}")
         exdata: str | None = None
@@ -400,7 +399,7 @@ class Period(BaseModel):
         if len(parts) != 2:
             raise ValueError(f"Period did not have two time values: {value}")
         try:
-            start = DateTimeEncoder.parse_datetime(
+            start = DateTimeEncoder.__parse_property_value__(
                 ParsedProperty(name="ignored", value=parts[0])
             )
         except ValueError as err:
@@ -408,7 +407,7 @@ class Period(BaseModel):
             raise err
         values["start"] = start
         try:
-            end = DateTimeEncoder.parse_datetime(
+            end = DateTimeEncoder.__parse_property_value__(
                 ParsedProperty(name="ignored", value=parts[1])
             )
         except ValueError:
@@ -557,18 +556,6 @@ class PropertyDataType(enum.Enum):
         dataclasses.asdict,
         None,  # Uses pydantic jason BaseModel encoder
     )
-    DATE = (
-        "DATE",
-        datetime.date,
-        DateEncoder.parse_date,
-        DateEncoder.__encode_property_json__,
-    )
-    DATE_TIME = (
-        "DATE-TIME",
-        datetime.datetime,
-        DateTimeEncoder.parse_datetime,
-        DateTimeEncoder.__encode_property_json__,
-    )
     UTC_OFFSET = (
         "UTC-OFFSET",
         UtcOffset,
@@ -589,8 +576,6 @@ class PropertyDataType(enum.Enum):
         dataclasses.asdict,
         None,
     )  # Uses pydantic jason BaseModel encoder
-    # Note: Has special handling, not json encoder
-    TEXT = ("TEXT", str, TextEncoder.parse_text, None)  # Uses native encoder
     URI = ("URI", Uri, Uri.parse, str)
     RECUR = (
         "RECUR",
@@ -603,8 +588,8 @@ class PropertyDataType(enum.Enum):
         self,
         name: str,
         data_type: Any,
-        decode_fn: Callable[[_T], ParsedProperty],
-        encode_fn: Callable[[ParsedProperty], _T] | None,
+        decode_fn: Callable[[ParsedProperty], Any],
+        encode_fn: Callable[[_T], str | dict[str, str]] | None,
     ):
         self._name = name
         self._data_type = data_type
@@ -621,17 +606,17 @@ class PropertyDataType(enum.Enum):
         """Python type that this property can handle."""
         return self._data_type
 
-    def encode(self, value: ParsedProperty) -> Any:
+    def decode(self, value: ParsedProperty) -> Any:
+        """Decode a property value into a parsed object."""
+        return self._decode_fn(value)
+
+    def encode(self, value: _T) -> str | dict[str, str]:
         """Encode a parsed object into a string value."""
         if not self._encode_fn:
             raise ValueError(
                 "Native type is never encoded using value-type json encoder"
             )
         return self._encode_fn(value)
-
-    def decode(self, value: _T) -> Any:
-        """Decode a property value into a parsed object."""
-        return self._decode_fn(value)
 
 
 VALUE_TYPES = {
@@ -640,24 +625,24 @@ VALUE_TYPES = {
         for property_data_type in PropertyDataType
     },
 }
-ICS_ENCODERS: dict[Any, Callable[[Any], str]] = {
+ICS_ENCODERS: dict[type, Callable[[Any], str | dict[str, str]]] = {
     **{
         property_data_type.data_type: property_data_type.encode
         for property_data_type in PropertyDataType
     },
-    Geo: Geo.__encode_property_json__,
+    **DATA_TYPE.encode_property_json,
     RequestStatus: RequestStatus.__encode_property_json__,
 }
-ICS_DECODERS: dict[Any, Callable[[ParsedProperty], Any]] = {
+ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
     **{
         property_data_type.data_type: property_data_type.decode
         for property_data_type in PropertyDataType
     },
+    **DATA_TYPE.parse_property_value,
     Classification: parse_enum,
     EventStatus: parse_enum,
     TodoStatus: parse_enum,
     JournalStatus: parse_enum,
-    Geo: Geo.parse_geo,
     RequestStatus: RequestStatus.parse_rstatus,
 }
 
@@ -694,6 +679,8 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
 
     if value_type := prop.get_parameter_value(ATTR_VALUE):
         # Property parameter specified a very specific type
+        if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
+            return func(prop)
         if not (data_type := VALUE_TYPES.get(value_type)):
             # Consider graceful degradation instead in the future
             raise ValueError(
