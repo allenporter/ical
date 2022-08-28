@@ -28,10 +28,9 @@ import datetime
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
+from typing import Any, Generator, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
-from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
@@ -102,38 +101,6 @@ def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, 
     return values
 
 
-@dataclass
-class RequestStatus:
-    """Status code returned for a scheduling request."""
-
-    statcode: float
-    statdesc: str
-    exdata: Optional[str] = None
-
-    @classmethod
-    def parse_rstatus(cls, value: Any) -> RequestStatus:
-        """Parse a rfc5545 request status value."""
-        parts = TextEncoder.__parse_property_value__(value).split(";")
-        if len(parts) < 2 or len(parts) > 3:
-            raise ValueError(f"Value was not valid Request Status: {value}")
-        exdata: str | None = None
-        if len(parts) == 3:
-            exdata = parts[2]
-        return RequestStatus(
-            statcode=float(parts[0]),
-            statdesc=parts[1],
-            exdata=exdata,
-        )
-
-    @classmethod
-    def __encode_property_json__(cls, value: RequestStatus) -> str:
-        """Encoded RequestStatus as an ICS property."""
-        result = f"{value.statcode};{value.statdesc}"
-        if value.exdata:
-            result += f";{value.exdata}"
-        return result
-
-
 def parse_enum(prop: ParsedProperty) -> str:
     """Parse a rfc5545 into a text value."""
     return prop.value
@@ -177,7 +144,6 @@ _T = TypeVar("_T")
 
 ICS_ENCODERS: dict[type, Callable[[Any], str | dict[str, str]]] = {
     **DATA_TYPE.encode_property_json,
-    RequestStatus: RequestStatus.__encode_property_json__,
 }
 ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
     **DATA_TYPE.parse_property_value,
@@ -185,7 +151,6 @@ ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
     EventStatus: parse_enum,
     TodoStatus: parse_enum,
     JournalStatus: parse_enum,
-    RequestStatus: RequestStatus.parse_rstatus,
 }
 
 
@@ -220,7 +185,7 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
         raise ValueError(f"Expected ParsedProperty: {prop}")
 
     if value_type := prop.get_parameter_value(ATTR_VALUE):
-        # Property parameter specified a very specific type
+        # Property parameter specified a strong type
         if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
             return func(prop)
         # Consider graceful degradation instead in the future

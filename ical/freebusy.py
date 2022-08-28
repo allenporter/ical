@@ -10,9 +10,9 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, validator
 
-from ._types import ComponentModel, RequestStatus
+from ._types import ComponentModel
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Period, Uri
+from .types import CalAddress, Period, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ class FreeBusy(ComponentModel):
             return None
         return self.end - self.start
 
-    @validator("freebusy")
+    @validator("freebusy", allow_reuse=True)
     def verify_freebusy_utc(cls, values: list[Period]) -> list[Period]:
         """Validate that the free/busy periods must be in UTC."""
         _LOGGER.info("verify_freebusy_utc")
