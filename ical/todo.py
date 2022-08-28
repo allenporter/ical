@@ -12,14 +12,13 @@ from ._types import (
     ComponentModel,
     Priority,
     RequestStatus,
-    Uri,
     validate_until_dtstart,
 )
 from .alarm import Alarm
 from .parsing.property import ParsedProperty
 from .recur import Recur
+from .types import Geo, Uri
 from .types.const import Classification, TodoStatus
-from .types.geo import Geo
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 

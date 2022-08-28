@@ -10,9 +10,9 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, validator
 
-from ._types import CalAddress, ComponentModel, RequestStatus, Uri
+from ._types import CalAddress, ComponentModel, RequestStatus
 from .parsing.property import ParsedProperty
-from .types import Period
+from .types import Period, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)

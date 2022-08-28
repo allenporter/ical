@@ -31,7 +31,6 @@ import json
 import logging
 from collections.abc import Callable
 from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
-from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
@@ -40,6 +39,7 @@ from pydantic.fields import SHAPE_LIST, ModelField
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .recur import Recur
+from .types import Uri
 from .types.boolean import BooleanEncoder
 from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
 from .types.data_types import DATA_TYPE, encode_model_property_params
@@ -104,16 +104,6 @@ def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, 
                     raise ValueError("Unexpected repeated property parameter")
                 values[param["name"]] = param["values"][0]
     return values
-
-
-class Uri(str):
-    """A value type for a property that contains a uniform resource identifier."""
-
-    @classmethod
-    def parse(cls, prop: ParsedProperty) -> Uri:
-        """Parse a calendar user address."""
-        urlparse(prop.value)
-        return Uri(prop.value)
 
 
 class CalAddress(BaseModel):
@@ -267,7 +257,6 @@ class PropertyDataType(enum.Enum):
         dataclasses.asdict,
         None,  # Uses pydantic jason BaseModel encoder
     )
-    URI = ("URI", Uri, Uri.parse, str)
     RECUR = (
         "RECUR",
         Recur,
