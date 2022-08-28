@@ -4,9 +4,10 @@
 from . import integer  # noqa: F401
 from . import boolean, date, date_time, duration  # noqa: F401
 from . import float as float_pkg  # noqa: F401
+from .cal_address import CalAddress
 from .geo import Geo
 from .period import Period
 from .uri import Uri
 from .utc_offset import UtcOffset
 
-__all__ = ["const", "Period", "Geo", "UtcOffset", "Uri"]
+__all__ = ["const", "CalAddress", "Geo", "Period", "UtcOffset", "Uri"]
