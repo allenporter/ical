@@ -8,7 +8,7 @@ from pydantic import Field
 
 from .calendar import Calendar
 from .parsing.component import encode_content, parse_content
-from .types import ICS_ENCODERS, ComponentModel, encode_model
+from .types import ICS_ENCODERS, ComponentModel
 
 
 class CalendarStream(ComponentModel):
@@ -28,7 +28,7 @@ class CalendarStream(ComponentModel):
 
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
-        return encode_content(encode_model("stream", self).components)
+        return encode_content(self.__encode_component_root__().components)
 
 
 class IcsCalendarStream(CalendarStream):
