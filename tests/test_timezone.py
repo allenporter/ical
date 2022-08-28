@@ -11,9 +11,9 @@ from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
-from ical.recur import Frequency, Recur, Weekday, WeekdayValue
 from ical.timezone import IcsTimezoneInfo, Observance, Timezone
 from ical.types import UtcOffset
+from ical.types.recur import Frequency, Recur, Weekday, WeekdayValue
 
 TEST_RECUR = Recur(
     freq=Frequency.YEARLY,

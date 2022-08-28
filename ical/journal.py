@@ -12,8 +12,7 @@ from pydantic import Field, root_validator
 
 from ._types import ComponentModel, RequestStatus, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .recur import Recur
-from .types import CalAddress, Uri
+from .types import CalAddress, Recur, Uri
 from .types.const import Classification, JournalStatus
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 

@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import copy
 import datetime
-import enum
 import json
 import logging
 from collections.abc import Callable
@@ -37,7 +36,6 @@ from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
-from .recur import Recur
 from .types.boolean import BooleanEncoder
 from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
 from .types.data_types import DATA_TYPE
@@ -177,73 +175,11 @@ ENCODERS = {
 _T = TypeVar("_T")
 
 
-class PropertyDataType(enum.Enum):
-    """Strongly typed properties in rfc5545."""
-
-    # Types to support
-    #   BINARY
-    #   TIME
-    RECUR = (
-        "RECUR",
-        Recur,
-        Recur.parse_recur,
-        None,
-    )  # Uses pydantic json BaseModel encoder
-
-    def __init__(
-        self,
-        name: str,
-        data_type: Any,
-        decode_fn: Callable[[ParsedProperty], Any],
-        encode_fn: Callable[[_T], str | dict[str, str]] | None,
-    ):
-        self._name = name
-        self._data_type = data_type
-        self._decode_fn = decode_fn
-        self._encode_fn = encode_fn
-
-    @property
-    def data_type_name(self) -> str:
-        """Property value name from rfc5545."""
-        return self._name
-
-    @property
-    def data_type(self) -> Any:
-        """Python type that this property can handle."""
-        return self._data_type
-
-    def decode(self, value: ParsedProperty) -> Any:
-        """Decode a property value into a parsed object."""
-        return self._decode_fn(value)
-
-    def encode(self, value: _T) -> str | dict[str, str]:
-        """Encode a parsed object into a string value."""
-        if not self._encode_fn:
-            raise ValueError(
-                "Native type is never encoded using value-type json encoder"
-            )
-        return self._encode_fn(value)
-
-
-VALUE_TYPES = {
-    **{
-        property_data_type.data_type_name: property_data_type
-        for property_data_type in PropertyDataType
-    },
-}
 ICS_ENCODERS: dict[type, Callable[[Any], str | dict[str, str]]] = {
-    **{
-        property_data_type.data_type: property_data_type.encode
-        for property_data_type in PropertyDataType
-    },
     **DATA_TYPE.encode_property_json,
     RequestStatus: RequestStatus.__encode_property_json__,
 }
 ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
-    **{
-        property_data_type.data_type: property_data_type.decode
-        for property_data_type in PropertyDataType
-    },
     **DATA_TYPE.parse_property_value,
     Classification: parse_enum,
     EventStatus: parse_enum,
@@ -287,12 +223,8 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
         # Property parameter specified a very specific type
         if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
             return func(prop)
-        if not (data_type := VALUE_TYPES.get(value_type)):
-            # Consider graceful degradation instead in the future
-            raise ValueError(
-                f"Property parameter specified unsupported type: {value_type}"
-            )
-        return data_type.decode(prop)
+        # Consider graceful degradation instead in the future
+        raise ValueError(f"Property parameter specified unsupported type: {value_type}")
 
     errors: list[str] = []
     for validate in validators:
