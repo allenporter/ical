@@ -28,7 +28,7 @@ import datetime
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, Generator, TypeVar, Union, get_args, get_origin
+from typing import Any, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST, ModelField
@@ -40,7 +40,6 @@ from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
 from .types.data_types import DATA_TYPE
 from .types.date_time import DateTimeEncoder
 from .types.duration import DurationEncoder
-from .types.integer import IntEncoder
 from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,22 +58,6 @@ ALLOW_REPEATED_VALUES = {
     "resources",
     "freebusy",
 }
-
-
-class Priority(int):
-    """Defines relative priority for a calendar component."""
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:  # type: ignore[type-arg]
-        yield cls.parse_priority
-
-    @classmethod
-    def parse_priority(cls, value: ParsedProperty) -> int:
-        """Parse a rfc5545 into a text value."""
-        priority = IntEncoder.__parse_property_value__(value)
-        if priority < 0 or priority > 9:
-            raise ValueError("Expected priority between 0-9")
-        return priority
 
 
 def _all_fields(cls: BaseModel) -> dict[str, ModelField]:

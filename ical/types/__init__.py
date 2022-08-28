@@ -8,6 +8,7 @@ from . import float as float_pkg  # noqa: F401
 from .cal_address import CalAddress
 from .geo import Geo
 from .period import Period
+from .priority import Priority
 from .recur import Recur
 from .request_status import RequestStatus
 from .uri import Uri
@@ -18,6 +19,7 @@ __all__ = [
     "CalAddress",
     "Geo",
     "Period",
+    "Priority",
     "Recur",
     "RequestStatus",
     "UtcOffset",
