@@ -62,7 +62,10 @@ class Registry:
         ] = {}
 
     def register(self, name: str | None = None) -> Callable[[type], type]:
-        """Return decorator to register item with a specific name."""
+        """Return decorator to register a type.
+
+        The name when specified is the Property Data Type value name.
+        """
 
         def decorator(func: type) -> type:
             """Register decorated function."""
@@ -92,25 +95,21 @@ class Registry:
     @property
     def parse_property_value(self) -> dict[type, Callable[[ParsedProperty], Any]]:
         """Registry of python types to functions to parse into pydantic model."""
-        _LOGGER.debug("parse_property_value")
         return self._parse_property_value
 
     @property
     def parse_parameter_by_name(self) -> dict[str, Callable[[ParsedProperty], Any]]:
         """Registry based on data value type string name."""
-        _LOGGER.debug("parse_parameter_by_name=%s", self._parse_parameter_by_name)
         return self._parse_parameter_by_name
 
     @property
     def encode_property_json(self) -> dict[type, Callable[[Any], str | dict[str, str]]]:
         """Registry of encoders run during pydantic json serialization."""
-        _LOGGER.debug("encode_property_json=%s", self._encode_property_json)
         return self._encode_property_json
 
     @property
     def encode_property_value(self) -> dict[type, Callable[[Any], str | None]]:
         """Registry of encoders that run on the output data model to ics."""
-        _LOGGER.debug("encode_property_value=%s", self._encode_property_value)
         return self._encode_property_value
 
     @property

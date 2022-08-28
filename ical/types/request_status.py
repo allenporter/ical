@@ -10,7 +10,7 @@ from .text import TextEncoder
 
 
 @dataclass
-@DATA_TYPE.register(None)
+@DATA_TYPE.register()
 class RequestStatus:
     """Status code returned for a scheduling request."""
 
