@@ -42,14 +42,15 @@ class DataType(Protocol):
         """Encode the property parameters from the object model."""
 
 
-class Registry(dict[str, type]):
+class Registry:
     """Registry of data types."""
 
     def __init__(
         self,
     ) -> None:
         """Initialize Registry."""
-        super().__init__()
+        # super().__init__()
+        self._items: dict[str, type] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
         self._encode_property_json: dict[
@@ -60,18 +61,20 @@ class Registry(dict[str, type]):
             type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]
         ] = {}
 
-    def register(self, name: str) -> Callable[[type], type]:
+    def register(self, name: str | None = None) -> Callable[[type], type]:
         """Return decorator to register item with a specific name."""
 
         def decorator(func: type) -> type:
             """Register decorated function."""
-            self[name] = func
+            if name:
+                self._items[name] = func
             data_type = func
             if data_type_func := getattr(func, "__property_type__", None):
                 data_type = data_type_func()
             if parse_property_value := getattr(func, "__parse_property_value__", None):
                 self._parse_property_value[data_type] = parse_property_value
-                self._parse_parameter_by_name[name] = parse_property_value
+                if name:
+                    self._parse_parameter_by_name[name] = parse_property_value
             if encode_property_json := getattr(func, "__encode_property_json__", None):
                 self._encode_property_json[data_type] = encode_property_json
             if encode_property_value := getattr(

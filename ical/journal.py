@@ -10,9 +10,9 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from ._types import ComponentModel, RequestStatus, validate_until_dtstart
+from ._types import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Recur, Uri
+from .types import CalAddress, Recur, RequestStatus, Uri
 from .types.const import Classification, JournalStatus
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
