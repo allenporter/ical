@@ -1,7 +1,5 @@
 """Library for parsing TEXT values."""
 
-from typing import Any
-
 from ical.parsing.property import ParsedProperty
 
 UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
@@ -12,10 +10,8 @@ class TextEncoder:
     """Encode an rfc5545 TEXT value."""
 
     @classmethod
-    def parse_text(cls, prop: Any) -> str:
+    def parse_text(cls, prop: ParsedProperty) -> str:
         """Parse a rfc5545 into a text value."""
-        if not isinstance(prop, ParsedProperty):
-            return str(prop)
         for key, vin in UNESCAPE_CHAR.items():
             if key not in prop.value:
                 continue

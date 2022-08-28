@@ -36,3 +36,11 @@ def test_text() -> None:
             )
         ],
     )
+
+
+def test_text_from_obj() -> None:
+    """Test text when creating from an object."""
+    model = Model.parse_obj({"text_value": "some-value"})
+    assert model == {
+        "text_value": "some-value",
+    }
