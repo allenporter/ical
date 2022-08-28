@@ -33,16 +33,7 @@ import json
 import logging
 import re
 from collections.abc import Callable
-from typing import (
-    Any,
-    Generator,
-    Iterable,
-    Optional,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, root_validator
@@ -52,25 +43,17 @@ from pydantic.fields import SHAPE_LIST, ModelField
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .recur import Recur
-from .types.const import (
-    Classification,
-    EventStatus,
-    FreeBusyType,
-    JournalStatus,
-    TodoStatus,
-)
-from .types.data_types import DATA_TYPE
+from .types.boolean import BooleanEncoder
+from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
+from .types.data_types import DATA_TYPE, encode_model_property_params
 from .types.date_time import DateTimeEncoder
+from .types.duration import DurationEncoder
+from .types.integer import IntEncoder
 from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
 
 
-DATE_PART = r"(\d+)D"
-TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
-DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
-WEEKS_PART = r"(\d+)W"
-DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}|{DATETIME_PART})$")
 UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})$")
 
 ATTR_VALUE = "VALUE"
@@ -96,9 +79,9 @@ class Priority(int):
         yield cls.parse_priority
 
     @classmethod
-    def parse_priority(cls, value: Any) -> int:
+    def parse_priority(cls, value: ParsedProperty) -> int:
         """Parse a rfc5545 into a text value."""
-        priority = IntEncoder.parse_int(value)
+        priority = IntEncoder.__parse_property_value__(value)
         if priority < 0 or priority > 9:
             raise ValueError("Expected priority between 0-9")
         return priority
@@ -136,25 +119,6 @@ class Uri(str):
         """Parse a calendar user address."""
         urlparse(prop.value)
         return Uri(prop.value)
-
-
-def encode_property_params(
-    fields: Iterable[ModelField], model_data: dict[str, Any]
-) -> list[ParsedPropertyParameter]:
-    """Encode a pydantic model's parameters."""
-    params = []
-    for field in fields:
-        key = field.alias
-        if key == "value" or (values := model_data.get(key)) is None:
-            continue
-        if field.shape != SHAPE_LIST:
-            values = [values]
-        if field.type_ == bool:
-            values = [
-                BooleanEncoder.__encode_property_value__(value) for value in values
-            ]
-        params.append(ParsedPropertyParameter(name=key, values=values))
-    return params
 
 
 class CalAddress(BaseModel):
@@ -215,7 +179,7 @@ class CalAddress(BaseModel):
     def __encode_property_params__(
         cls, model_data: dict[str, Any]
     ) -> list[ParsedPropertyParameter]:
-        return encode_property_params(cls.__fields__.values(), model_data)
+        return encode_model_property_params(cls.__fields__.values(), model_data)
 
     class Config:
         """Pyandtic model configuration."""
@@ -255,208 +219,9 @@ class RequestStatus:
         return result
 
 
-class DurationEncoder:
-    """Class that can encode DURATION values."""
-
-    @classmethod
-    def parse_duration(cls, prop: ParsedProperty) -> datetime.timedelta:
-        """Parse a rfc5545 into a datetime.date."""
-        if not isinstance(prop, ParsedProperty):
-            raise ValueError(f"Expected ParsedProperty but was {prop}")
-        if not (match := DURATION_REGEX.fullmatch(prop.value)):
-            raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
-        sign, weeks, days, hours, minutes, seconds = match.groups()
-        result: datetime.timedelta
-        if weeks:
-            result = datetime.timedelta(weeks=int(weeks))
-        else:
-            result = datetime.timedelta(
-                days=int(days or 0),
-                hours=int(hours or 0),
-                minutes=int(minutes or 0),
-                seconds=int(seconds or 0),
-            )
-        if sign == "-":
-            result = -result
-        return result
-
-    @classmethod
-    def __encode_property_json__(cls, duration: datetime.timedelta) -> str:
-        """Serialize a time delta as a DURATION ICS value."""
-        parts = []
-        if duration < datetime.timedelta(days=0):
-            parts.append("-")
-            duration = -duration
-        parts.append("P")
-        days = duration.days
-        weeks = int(days / 7)
-        days %= 7
-        if weeks > 0:
-            parts.append(f"{weeks}W")
-        if days > 0:
-            parts.append(f"{days}D")
-        if duration.seconds != 0:
-            parts.append("T")
-            seconds = duration.seconds
-            hours = int(seconds / 3600)
-            seconds %= 3600
-            if hours != 0:
-                parts.append(f"{hours}H")
-            minutes = int(seconds / 60)
-            seconds %= 60
-            if minutes != 0:
-                parts.append(f"{minutes}M")
-            if seconds != 0:
-                parts.append(f"{seconds}S")
-        return "".join(parts)
-
-
 def parse_enum(prop: ParsedProperty) -> str:
     """Parse a rfc5545 into a text value."""
     return prop.value
-
-
-class IntEncoder:
-    """Encode an int ICS value."""
-
-    @classmethod
-    def parse_int(cls, prop: Any) -> int:
-        """Parse a rfc5545 int value."""
-        if isinstance(prop, ParsedProperty):
-            return int(prop.value)
-        return int(prop)
-
-
-class FloatEncoder:
-    """Encode a float ICS value."""
-
-    @classmethod
-    def parse_float(cls, prop: Any) -> float:
-        """Parse a rfc5545 property into a text value."""
-        if isinstance(prop, ParsedProperty):
-            return float(prop.value)
-        return float(prop)
-
-
-class BooleanEncoder:
-    """Encode a boolean ICS value."""
-
-    @classmethod
-    def parse_boolean(cls, prop: Any) -> bool:
-        """Parse an rfc5545 property into a boolean."""
-        if isinstance(prop, bool):
-            return prop
-        value = prop
-        if isinstance(prop, ParsedProperty):
-            value = prop.value
-        if value == "TRUE":
-            return True
-        if value == "FALSE":
-            return False
-        raise ValueError(f"Unable to parse value as boolean: {prop}")
-
-    @classmethod
-    def __encode_property_value__(cls, value: bool) -> str:
-        """Serialize boolean as an ICS value."""
-        return "TRUE" if value else "FALSE"
-
-
-class Period(BaseModel):
-    """A value with a precise period of time."""
-
-    start: datetime.datetime
-    """Start of the period of time."""
-
-    end: Optional[datetime.datetime] = None
-    """End of the period of the time (duration is implicit)."""
-
-    duration: Optional[datetime.timedelta] = None
-    """Duration of the period of time (end time is implicit)."""
-
-    # Context specific property parameters
-    free_busy_type: Optional[FreeBusyType] = Field(alias="FBTYPE", default=None)
-    """Specifies the free or busy time type."""
-
-    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
-        parse_parameter_values
-    )
-
-    @property
-    def end_value(self) -> datetime.datetime:
-        """A computed end value based on either or duration."""
-        if self.end:
-            return self.end
-        if not self.duration:
-            raise ValueError("Invalid period missing both end and duration")
-        return self.start + self.duration
-
-    @root_validator(pre=True, allow_reuse=True)
-    def parse_period_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse a rfc5545 prioriry value."""
-        if not (value := values.pop("value", None)):
-            return values
-        parts = value.split("/")
-        if len(parts) != 2:
-            raise ValueError(f"Period did not have two time values: {value}")
-        try:
-            start = DateTimeEncoder.__parse_property_value__(
-                ParsedProperty(name="ignored", value=parts[0])
-            )
-        except ValueError as err:
-            _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
-            raise err
-        values["start"] = start
-        try:
-            end = DateTimeEncoder.__parse_property_value__(
-                ParsedProperty(name="ignored", value=parts[1])
-            )
-        except ValueError:
-            pass
-        else:
-            values["end"] = end
-            return values
-        try:
-            duration = DurationEncoder.parse_duration(
-                ParsedProperty(name="ignored", value=parts[1])
-            )
-        except ValueError as err:
-            raise err
-        values["duration"] = duration
-        return values
-
-    @classmethod
-    def __encode_property_value__(cls, model_data: dict[str, Any]) -> str:
-        """Encode property value."""
-        if not (start := model_data.pop("start", None)):
-            raise ValueError(f"Invalid period object missing start: {model_data}")
-        end = model_data.pop("end", None)
-        duration = model_data.pop("duration", None)
-        if not end and not duration:
-            raise ValueError(
-                f"Invalid period missing both end and duration: {model_data}"
-            )
-        # End and duration are already encoded values
-        if end:
-            return "/".join([start, end])
-        return "/".join([start, duration])
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        return encode_property_params(
-            cls.__fields__.values(),
-            {
-                k: v
-                for k, v in model_data.items()
-                if k not in ("end", "duration", "start")
-            },
-        )
-
-    class Config:
-        """Pyandtic model configuration."""
-
-        allow_population_by_field_name = True
 
 
 @dataclass
@@ -544,12 +309,6 @@ class PropertyDataType(enum.Enum):
     # Types to support
     #   BINARY
     #   TIME
-    BOOLEAN = (
-        "BOOLEAN",
-        bool,
-        BooleanEncoder.parse_boolean,
-        BooleanEncoder.__encode_property_value__,
-    )
     CAL_ADDRESS = (
         "CAL-ADDRESS",
         CalAddress,
@@ -562,20 +321,6 @@ class PropertyDataType(enum.Enum):
         UtcOffset.parse_utc_offset,
         UtcOffset.__encode_property_json__,
     )
-    DURATION = (
-        "DURATION",
-        datetime.timedelta,
-        DurationEncoder.parse_duration,
-        DurationEncoder.__encode_property_json__,
-    )
-    FLOAT = ("FLOAT", float, FloatEncoder.parse_float, str)
-    INTEGER = ("INTEGER", int, IntEncoder.parse_int, str)
-    PERIOD = (
-        "PERIOD",
-        Period,
-        dataclasses.asdict,
-        None,
-    )  # Uses pydantic jason BaseModel encoder
     URI = ("URI", Uri, Uri.parse, str)
     RECUR = (
         "RECUR",
@@ -724,6 +469,7 @@ class ComponentModel(BaseModel):
         _LOGGER.debug("Parsing value data %s", values)
 
         for field in cls.__fields__.values():
+            _LOGGER.debug("field=%s", field)
             if field.alias == "extras":
                 continue
             if not (value := values.get(field.alias)):
@@ -732,6 +478,7 @@ class ComponentModel(BaseModel):
                 # The incoming value is not from the parse tree
                 continue
             validators = _get_validators(field.type_)
+            _LOGGER.debug("validators=%s", validators)
             validated = []
             for prop in value:
                 # This property value may contain repeated values itself

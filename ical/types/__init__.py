@@ -1,6 +1,9 @@
 """Library for parsing rfc5545 types."""
 
-# Import all types for registry
-from .date import DateEncoder  # noqa: F401
-from .date_time import DateTimeEncoder  # noqa: F401
-from .geo import Geo  # noqa: F401
+# Import all types for the registry
+from . import boolean, date, date_time, duration  # noqa: F401
+from . import float as float_pkg  # noqa: F401
+from . import geo, integer  # noqa: F401
+from .period import Period
+
+__all__ = ["Period"]

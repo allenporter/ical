@@ -1,10 +1,12 @@
-"""Library for parsing rfc5545 types."""
+"""Library for parsing and encoding rfc5545 types."""
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Any, Iterable, Protocol
+
+from pydantic.fields import SHAPE_LIST, ModelField
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
@@ -117,3 +119,21 @@ class Registry(dict[str, type]):
 
 
 DATA_TYPE: Registry = Registry()
+
+
+def encode_model_property_params(
+    fields: Iterable[ModelField], model_data: dict[str, Any]
+) -> list[ParsedPropertyParameter]:
+    """Encode a pydantic model's parameters as property params."""
+    params = []
+    for field in fields:
+        key = field.alias
+        if key == "value" or (values := model_data.get(key)) is None:
+            continue
+        if field.shape != SHAPE_LIST:
+            values = [values]
+        if field.type_ == bool:
+            encoder = DATA_TYPE.encode_property_value[bool]
+            values = [encoder(value) for value in values]
+        params.append(ParsedPropertyParameter(name=key, values=values))
+    return params

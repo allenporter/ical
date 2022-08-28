@@ -6,9 +6,10 @@ from typing import Optional, Union
 import pytest
 from pydantic import ValidationError
 
-from ical._types import ICS_ENCODERS, ComponentModel, Period, Priority, UtcOffset
+from ical._types import ICS_ENCODERS, ComponentModel, Priority, UtcOffset
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
+from ical.types import Period
 
 
 def test_encode_component() -> None:
