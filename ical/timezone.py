@@ -21,11 +21,10 @@ from typing import Any, Iterable, Optional, Union
 from dateutil.rrule import rruleset
 from pydantic import Field, root_validator, validator
 
-from ._types import ComponentModel, Uri
+from ._types import ComponentModel
 from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
-from .recur import Recur
-from .types import UtcOffset
+from .types import Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import dtstamp_factory
 
@@ -179,7 +178,7 @@ class Timezone(ComponentModel):
             and isinstance(rule.dst_end, tz_rule.RuleDate)
         ):
             std_timezone_info.rrule = Recur.parse_obj(
-                Recur.parse_recur(rule.dst_end.rrule_str)
+                Recur.__parse_property_value__(rule.dst_end.rrule_str)
             )
             std_timezone_info.dtstart = rule.dst_end.rrule_dtstart(start)
             daylight.append(
@@ -187,7 +186,9 @@ class Timezone(ComponentModel):
                     tz_name=[rule.dst.name],
                     tz_offset_to=UtcOffset(offset=rule.dst.offset),
                     tz_offset_from=UtcOffset(offset=rule.std.offset),
-                    rrule=Recur.parse_obj(Recur.parse_recur(rule.dst_start.rrule_str)),
+                    rrule=Recur.parse_obj(
+                        Recur.__parse_property_value__(rule.dst_start.rrule_str)
+                    ),
                     dtstart=rule.dst_start.rrule_dtstart(start),
                 )
             )

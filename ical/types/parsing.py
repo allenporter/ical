@@ -21,6 +21,7 @@ def _all_fields(cls: BaseModel) -> dict[str, ModelField]:
 
 def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Convert property parameters to pydantic fields."""
+    _LOGGER.debug("parse_parameter_values=%s", values)
     if params := values.get("params"):
         all_fields = _all_fields(cls)
         for param in params:

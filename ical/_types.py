@@ -24,25 +24,21 @@ ParsedProperty.
 from __future__ import annotations
 
 import copy
-import dataclasses
 import datetime
-import enum
 import json
 import logging
 from collections.abc import Callable
 from typing import Any, Generator, Optional, TypeVar, Union, get_args, get_origin
-from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, root_validator
 from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
-from .parsing.property import ParsedProperty, ParsedPropertyParameter
-from .recur import Recur
+from .parsing.property import ParsedProperty
 from .types.boolean import BooleanEncoder
 from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
-from .types.data_types import DATA_TYPE, encode_model_property_params
+from .types.data_types import DATA_TYPE
 from .types.date_time import DateTimeEncoder
 from .types.duration import DurationEncoder
 from .types.integer import IntEncoder
@@ -104,82 +100,6 @@ def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, 
                     raise ValueError("Unexpected repeated property parameter")
                 values[param["name"]] = param["values"][0]
     return values
-
-
-class Uri(str):
-    """A value type for a property that contains a uniform resource identifier."""
-
-    @classmethod
-    def parse(cls, prop: ParsedProperty) -> Uri:
-        """Parse a calendar user address."""
-        urlparse(prop.value)
-        return Uri(prop.value)
-
-
-class CalAddress(BaseModel):
-    """A value type for a property that contains a calendar user address.
-
-    This is a subclass of string so that it can be used in place of a string
-    to get the calendar address, but also supports additional properties.
-    """
-
-    uri: Uri = Field(alias="value")
-    """The calendar user address as a uri."""
-
-    common_name: Optional[str] = Field(alias="CN", default=None)
-    """The common name associated with the calendar user."""
-
-    user_type: Optional[str] = Field(alias="CUTYPE", default=None)
-    """The type of calendar user specified by the property.
-
-    Common values are defined in CalendarUserType, though also supports other
-    values not known by this library so it uses a string.
-    """
-
-    delegator: Optional[list[Uri]] = Field(alias="DELEGATED-FROM", default=None)
-    """The users that have delegated their participation to this user."""
-
-    delegate: Optional[list[Uri]] = Field(alias="DELEGATED-TO", default=None)
-    """The users to whom the user has delegated participation."""
-
-    directory_entry: Optional[Uri] = Field(alias="DIR", default=None)
-    """Reference to a directory entry associated with the calendar user."""
-
-    member: Optional[list[Uri]] = Field(alias="MEMBER", default=None)
-    """The group or list membership of the calendar user."""
-
-    status: Optional[str] = Field(alias="PARTSTAT", default=None)
-    """The participation status for the calendar user."""
-
-    role: Optional[str] = Field(alias="ROLE", default=None)
-    """The participation role for the calendar user."""
-
-    rsvp: Optional[bool] = Field(alias="RSVP", default=None)
-    """Whether there is an expectation of a favor of a reply from the calendar user."""
-
-    sent_by: Optional[Uri] = Field(alias="SENT-BY", default=None)
-    """Specifies the calendar user is acting on behalf of another user."""
-
-    language: Optional[str] = Field(alias="LANGUAGE", default=None)
-
-    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
-        parse_parameter_values
-    )
-
-    @classmethod
-    def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:
-        return model_data.pop("value")
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        return encode_model_property_params(cls.__fields__.values(), model_data)
-
-    class Config:
-        """Pyandtic model configuration."""
-
-        allow_population_by_field_name = True
 
 
 @dataclass
@@ -255,80 +175,11 @@ ENCODERS = {
 _T = TypeVar("_T")
 
 
-class PropertyDataType(enum.Enum):
-    """Strongly typed properties in rfc5545."""
-
-    # Types to support
-    #   BINARY
-    #   TIME
-    CAL_ADDRESS = (
-        "CAL-ADDRESS",
-        CalAddress,
-        dataclasses.asdict,
-        None,  # Uses pydantic jason BaseModel encoder
-    )
-    URI = ("URI", Uri, Uri.parse, str)
-    RECUR = (
-        "RECUR",
-        Recur,
-        Recur.parse_recur,
-        None,
-    )  # Uses pydantic json BaseModel encoder
-
-    def __init__(
-        self,
-        name: str,
-        data_type: Any,
-        decode_fn: Callable[[ParsedProperty], Any],
-        encode_fn: Callable[[_T], str | dict[str, str]] | None,
-    ):
-        self._name = name
-        self._data_type = data_type
-        self._decode_fn = decode_fn
-        self._encode_fn = encode_fn
-
-    @property
-    def data_type_name(self) -> str:
-        """Property value name from rfc5545."""
-        return self._name
-
-    @property
-    def data_type(self) -> Any:
-        """Python type that this property can handle."""
-        return self._data_type
-
-    def decode(self, value: ParsedProperty) -> Any:
-        """Decode a property value into a parsed object."""
-        return self._decode_fn(value)
-
-    def encode(self, value: _T) -> str | dict[str, str]:
-        """Encode a parsed object into a string value."""
-        if not self._encode_fn:
-            raise ValueError(
-                "Native type is never encoded using value-type json encoder"
-            )
-        return self._encode_fn(value)
-
-
-VALUE_TYPES = {
-    **{
-        property_data_type.data_type_name: property_data_type
-        for property_data_type in PropertyDataType
-    },
-}
 ICS_ENCODERS: dict[type, Callable[[Any], str | dict[str, str]]] = {
-    **{
-        property_data_type.data_type: property_data_type.encode
-        for property_data_type in PropertyDataType
-    },
     **DATA_TYPE.encode_property_json,
     RequestStatus: RequestStatus.__encode_property_json__,
 }
 ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
-    **{
-        property_data_type.data_type: property_data_type.decode
-        for property_data_type in PropertyDataType
-    },
     **DATA_TYPE.parse_property_value,
     Classification: parse_enum,
     EventStatus: parse_enum,
@@ -372,12 +223,8 @@ def _validate_field(prop: Any, validators: list[Callable[[Any], Any]]) -> Any:
         # Property parameter specified a very specific type
         if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
             return func(prop)
-        if not (data_type := VALUE_TYPES.get(value_type)):
-            # Consider graceful degradation instead in the future
-            raise ValueError(
-                f"Property parameter specified unsupported type: {value_type}"
-            )
-        return data_type.decode(prop)
+        # Consider graceful degradation instead in the future
+        raise ValueError(f"Property parameter specified unsupported type: {value_type}")
 
     errors: list[str] = []
     for validate in validators:
@@ -415,7 +262,6 @@ class ComponentModel(BaseModel):
         _LOGGER.debug("Parsing value data %s", values)
 
         for field in cls.__fields__.values():
-            _LOGGER.debug("field=%s", field)
             if field.alias == "extras":
                 continue
             if not (value := values.get(field.alias)):
@@ -424,7 +270,6 @@ class ComponentModel(BaseModel):
                 # The incoming value is not from the parse tree
                 continue
             validators = _get_validators(field.type_)
-            _LOGGER.debug("validators=%s", validators)
             validated = []
             for prop in value:
                 # This property value may contain repeated values itself

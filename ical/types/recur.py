@@ -16,8 +16,10 @@ from typing import Any, Optional, Union
 from dateutil import rrule
 from pydantic import BaseModel, Field
 
-from .parsing.property import ParsedProperty
-from .types.date_time import DateTimeEncoder
+from ical.parsing.property import ParsedProperty
+
+from .data_types import DATA_TYPE
+from .date_time import DateTimeEncoder
 
 
 class Weekday(str, enum.Enum):
@@ -83,6 +85,7 @@ RRULE_WEEKDAY = {
 WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
 
 
+@DATA_TYPE.register("RECUR")
 class Recur(BaseModel):
     """A type used to identify properties that contain a recurrence rule specification.
     The by properties reduce or limit the number of occurrences generated. Only by day
@@ -171,7 +174,7 @@ class Recur(BaseModel):
         return ";".join(result)
 
     @classmethod
-    def parse_recur(cls, prop: Any) -> dict[str, Any]:
+    def __parse_property_value__(cls, prop: Any) -> dict[str, Any]:
         """Parse the recurrence rule text as a dictionary as Pydantic input.
         An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
         into dictionary.

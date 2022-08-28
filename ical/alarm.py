@@ -6,8 +6,9 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from ._types import CalAddress, ComponentModel
+from ._types import ComponentModel
 from .parsing.property import ParsedProperty
+from .types import CalAddress
 
 
 class Action(str, enum.Enum):
