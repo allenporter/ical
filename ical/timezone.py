@@ -21,10 +21,11 @@ from typing import Any, Iterable, Optional, Union
 from dateutil.rrule import rruleset
 from pydantic import Field, root_validator, validator
 
-from ._types import ComponentModel, Uri, UtcOffset
+from ._types import ComponentModel, Uri
 from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
 from .recur import Recur
+from .types import UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import dtstamp_factory
 
@@ -89,7 +90,7 @@ class Observance(ComponentModel):
             ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
         return ruleset
 
-    @validator("dtstart")
+    @validator("dtstart", allow_reuse=True)
     def verify_dtstart_local_time(cls, value: datetime.datetime) -> datetime.datetime:
         """Validate that dtstart is specified in a local time."""
         if value.utcoffset() is not None:
