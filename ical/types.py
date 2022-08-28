@@ -454,15 +454,8 @@ class DurationEncoder:
         return result
 
     @classmethod
-    def __encode_property_json__(cls, value: Any) -> str:
+    def __encode_property_json__(cls, duration: datetime.timedelta) -> str:
         """Serialize a time delta as a DURATION ICS value."""
-        duration: datetime.timedelta
-        if isinstance(value, datetime.timedelta):
-            duration = value
-        elif isinstance(value, float):
-            duration = datetime.timedelta(seconds=value)
-        else:
-            raise ValueError(f"Unexpected value type: {value}")
         parts = []
         if duration < datetime.timedelta(days=0):
             parts.append("-")
@@ -488,7 +481,6 @@ class DurationEncoder:
                 parts.append(f"{minutes}M")
             if seconds != 0:
                 parts.append(f"{seconds}S")
-        _LOGGER.debug("__encode_property_json__=%s", parts)
         return "".join(parts)
 
 
@@ -706,15 +698,9 @@ class UtcOffset:
         return UtcOffset(result)
 
     @classmethod
-    def __encode_property_json__(cls, value: Any) -> str:
+    def __encode_property_json__(cls, value: UtcOffset) -> str:
         """Serialize a time delta as a UTC-OFFSET ICS value."""
-        if isinstance(value, str):
-            return value  # Already encoded as ics
-        duration: datetime.timedelta
-        if isinstance(value, UtcOffset):
-            duration = value.offset
-        else:
-            raise ValueError(f"Unexpected UTC OFFSET value type: {value}")
+        duration = value.offset
         parts = []
         if duration < datetime.timedelta(days=0):
             parts.append("-")
