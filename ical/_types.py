@@ -32,7 +32,6 @@ import enum
 import json
 import logging
 import re
-import zoneinfo
 from collections.abc import Callable
 from typing import (
     Any,
@@ -46,20 +45,27 @@ from typing import (
 )
 from urllib.parse import urlparse
 
-from dateutil import rrule
 from pydantic import BaseModel, Field, root_validator
 from pydantic.dataclasses import dataclass
 from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty, ParsedPropertyParameter
+from .recur import Recur
+from .types.const import (
+    Classification,
+    EventStatus,
+    FreeBusyType,
+    JournalStatus,
+    TodoStatus,
+)
+from .types.date import DateEncoder
+from .types.date_time import DateTimeEncoder
+from .types.geo import Geo
+from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
 
-
-DATETIME_REGEX = re.compile(r"^([0-9]{8})T([0-9]{6})(Z)?$")
-DATE_REGEX = re.compile(r"^([0-9]{8})$")
-DATE_PARAM = "DATE"
 
 DATE_PART = r"(\d+)D"
 TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
@@ -67,16 +73,7 @@ DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
 WEEKS_PART = r"(\d+)W"
 DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}|{DATETIME_PART})$")
 UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})$")
-WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
 
-UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
-ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
-
-
-# This is a property parameter, currently used by the DATE-TIME type. It
-# should probably be composed in the property or in a separate file of
-# property parameters.
-TZID = "TZID"
 ATTR_VALUE = "VALUE"
 
 # Repeated values can either be specified as multiple separate values, but
@@ -90,39 +87,6 @@ ALLOW_REPEATED_VALUES = {
     "resources",
     "freebusy",
 }
-
-
-class EventStatus(str, enum.Enum):
-    """Status or confirmation of the event."""
-
-    CONFIRMED = "CONFIRMED"
-    TENTATIVE = "TENTATIVE"
-    CANCELLED = "CANCELLED"
-
-
-class TodoStatus(str, enum.Enum):
-    """Status or confirmation of the to-do."""
-
-    NEEDS_ACTION = "NEEDS-ACTION"
-    COMPLETED = "COMPLETED"
-    IN_PROCESS = "IN-PROCESS"
-    CANCELLED = "CANCELLED"
-
-
-class JournalStatus(str, enum.Enum):
-    """Status or confirmation of the journal entry."""
-
-    DRAFT = "DRAFT"
-    FINAL = "FINAL"
-    CANCELLED = "CANCELLED"
-
-
-class Classification(str, enum.Enum):
-    """Defines the access classification for a calendar component."""
-
-    PUBLIC = "PUBLIC"
-    PRIVATE = "PRIVATE"
-    CONFIDENTIAL = "CONFIDENTIAL"
 
 
 class Priority(int):
@@ -139,27 +103,6 @@ class Priority(int):
         if priority < 0 or priority > 9:
             raise ValueError("Expected priority between 0-9")
         return priority
-
-
-@dataclass
-class Geo:
-    """Information related tot he global position for an activity."""
-
-    lat: float
-    lng: float
-
-    @classmethod
-    def parse_geo(cls, value: Any) -> Geo:
-        """Parse a rfc5545 lat long geo values."""
-        parts = TextEncoder.parse_text(value).split(";", 2)
-        if len(parts) != 2:
-            raise ValueError(f"Value was not valid geo lat;long: {value}")
-        return Geo(lat=float(parts[0]), lng=float(parts[1]))
-
-    @classmethod
-    def __encode_property_json__(cls, value: Geo) -> str:
-        """Serialize as an ICS value."""
-        return f"{value.lat};{value.lng}"
 
 
 def _all_fields(cls: BaseModel) -> dict[str, ModelField]:
@@ -213,38 +156,6 @@ def encode_property_params(
             ]
         params.append(ParsedPropertyParameter(name=key, values=values))
     return params
-
-
-class CalendarUserType(str, enum.Enum):
-    """The type of calendar user."""
-
-    INDIVIDUAL = "INDIVIDUAL"
-    GROUP = "GROUP"
-    RESOURCE = "GROUP"
-    ROOM = "ROOM"
-    UNKNOWN = "UNKNOWN"
-
-
-class ParticipationStatus(str, enum.Enum):
-    """Participation status for a calendar user."""
-
-    NEEDS_ACTION = "NEEDS-ACTION"
-    ACCEPTED = "ACCEPTED"
-    DECLINED = "DECLINED"
-    # Additional statuses for Events and Todos
-    TENTATIVE = "TENTATIVE"
-    DELEGATED = "DELEGATED"
-    # Additional status for TODOs
-    COMPLETED = "COMPLETED"
-
-
-class Role(str, enum.Enum):
-    """Role for the calendar user."""
-
-    CHAIR = "CHAIR"
-    REQUIRED = "REQ-PARTICIPANT"
-    OPTIONAL = "OPT-PARTICIPANT"
-    NON_PARTICIPANT = "NON-PARTICIPANT"
 
 
 class CalAddress(BaseModel):
@@ -345,89 +256,6 @@ class RequestStatus:
         return result
 
 
-class DateEncoder:
-    """Encode and decode an rfc5545 DATE and datetime.date."""
-
-    @classmethod
-    def parse_date(cls, prop: ParsedProperty) -> datetime.date | None:
-        """Parse a rfc5545 into a datetime.date."""
-        if not (match := DATE_REGEX.fullmatch(prop.value)):
-            raise ValueError(
-                f"Expected value to match {DATE_PARAM} pattern: {prop.value}"
-            )
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        return datetime.date(year, month, day)
-
-    @classmethod
-    def __encode_property_json__(cls, value: datetime.date) -> str:
-        """Serialize as an ICS value."""
-        return value.strftime("%Y%m%d")
-
-
-class DateTimeEncoder:
-    """Class to handle encoding for a datetime.datetime."""
-
-    @classmethod
-    def parse_datetime(cls, prop: ParsedProperty) -> datetime.datetime:
-        """Parse a rfc5545 into a datetime.datetime."""
-        if not (match := DATETIME_REGEX.fullmatch(prop.value)):
-            raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
-
-        # Example: TZID=America/New_York:19980119T020000
-        timezone: datetime.tzinfo | None = None
-        if tzid := prop.get_parameter_value(TZID):
-            timezone = zoneinfo.ZoneInfo(tzid)
-        elif match.group(3):  # Example: 19980119T070000Z
-            timezone = datetime.timezone.utc
-
-        # Example: 19980118T230000
-        date_value = match.group(1)
-        year = int(date_value[0:4])
-        month = int(date_value[4:6])
-        day = int(date_value[6:])
-        time_value = match.group(2)
-        hour = int(time_value[0:2])
-        minute = int(time_value[2:4])
-        second = int(time_value[4:6])
-
-        return datetime.datetime(
-            year, month, day, hour, minute, second, tzinfo=timezone
-        )
-
-    @classmethod
-    def __encode_property_json__(cls, value: datetime.datetime) -> str | dict[str, Any]:
-        """Encode an ICS value during json serializaton."""
-        if value.tzinfo is None:
-            return value.strftime("%Y%m%dT%H%M%S")
-        # Does not yet handle timezones and encoding property parameters
-        if not value.utcoffset():
-            return value.strftime("%Y%m%dT%H%M%SZ")
-        return {
-            ATTR_VALUE: value.strftime("%Y%m%dT%H%M%S"),
-            TZID: str(value.tzinfo),  # Timezone key
-        }
-
-    @classmethod
-    def __encode_property_value__(cls, value: str | dict[str, Any]) -> str | None:
-        """Encode the ParsedProperty value."""
-        if isinstance(value, str):
-            return value
-        return value.get(ATTR_VALUE)
-
-    @classmethod
-    def __encode_property_params__(
-        cls, value: str | dict[str, str]
-    ) -> list[ParsedPropertyParameter]:
-        """Encode parameters for the property value."""
-        _LOGGER.debug("__encode_property_params__=%s", value)
-        if isinstance(value, dict) and (tzid := value.get(TZID)):
-            return [ParsedPropertyParameter(name=TZID, values=[tzid])]
-        return []
-
-
 class DurationEncoder:
     """Class that can encode DURATION values."""
 
@@ -489,30 +317,6 @@ def parse_enum(prop: ParsedProperty) -> str:
     return prop.value
 
 
-class TextEncoder:
-    """Encode an rfc5545 TEXT value."""
-
-    @classmethod
-    def parse_text(cls, prop: Any) -> str:
-        """Parse a rfc5545 into a text value."""
-        if not isinstance(prop, ParsedProperty):
-            return str(prop)
-        for key, vin in UNESCAPE_CHAR.items():
-            if key not in prop.value:
-                continue
-            prop.value = prop.value.replace(key, vin)
-        return prop.value
-
-    @classmethod
-    def __encode_property_value__(cls, value: str) -> str:
-        """Serialize text as an ICS value."""
-        for key, vin in ESCAPE_CHAR.items():
-            if key not in value:
-                continue
-            value = value.replace(key, vin)
-        return value
-
-
 class IntEncoder:
     """Encode an int ICS value."""
 
@@ -556,22 +360,6 @@ class BooleanEncoder:
     def __encode_property_value__(cls, value: bool) -> str:
         """Serialize boolean as an ICS value."""
         return "TRUE" if value else "FALSE"
-
-
-class FreeBusyType(str, enum.Enum):
-    """Specifies the free/busy time type."""
-
-    FREE = "FREE"
-    """The time interval is free for scheduling."""
-
-    BUSY = "BUSY"
-    """One or more events have been scheduled for the interval."""
-
-    BUSY_UNAVAILABLE = "BUSY-UNAVAILABLE"
-    """The interval can not be scheduled."""
-
-    BUSY_TENTATIVE = "BUSY-TENTATIVE"
-    """One or more events have been tentatively scheduled for the interval."""
 
 
 class Period(BaseModel):
@@ -713,207 +501,6 @@ class UtcOffset:
         seconds %= 60
         parts.append(f"{minutes:02}")
         return "".join(parts)
-
-
-class Weekday(str, enum.Enum):
-    """Corresponds to a day of the week."""
-
-    SUNDAY = "SU"
-    MONDAY = "MO"
-    TUESDAY = "TU"
-    WEDNESDAY = "WE"
-    THURSDAY = "TH"
-    FRIDAY = "FR"
-    SATURDAY = "SA"
-
-
-@dataclass
-class WeekdayValue:
-    """Holds a weekday value and optional occurrence value."""
-
-    weekday: Weekday
-    """Day of the week value."""
-
-    occurrence: Optional[int] = None
-    """The occurrence value indicates the nth occurrence.
-
-    Indicates the nth occurrence of a specific day within the MONTHLY or
-    YEARLY "RRULE". For example +1 represents the first Monday of the
-    month, or -1 represents the last Monday of the month.
-    """
-
-
-class Frequency(str, enum.Enum):
-    """Type of recurrence rule.
-
-    Frequencies SECONDLY, MINUTELY, HOURLY, YEARLY are not supported.
-    """
-
-    DAILY = "DAILY"
-    """Repeating events based on an interval of a day or more."""
-
-    WEEKLY = "WEEKLY"
-    """Repeating events based on an interval of a week or more."""
-
-    MONTHLY = "MONTHLY"
-    """Repeating events based on an interval of a month or more."""
-
-    YEARLY = "YEARLY"
-    """Repeating events based on an interval of a year or more."""
-
-
-RRULE_FREQ = {
-    Frequency.DAILY: rrule.DAILY,
-    Frequency.WEEKLY: rrule.WEEKLY,
-    Frequency.MONTHLY: rrule.MONTHLY,
-    Frequency.YEARLY: rrule.YEARLY,
-}
-RRULE_WEEKDAY = {
-    Weekday.MONDAY: rrule.MO,
-    Weekday.TUESDAY: rrule.TU,
-    Weekday.WEDNESDAY: rrule.WE,
-    Weekday.THURSDAY: rrule.TH,
-    Weekday.FRIDAY: rrule.FR,
-    Weekday.SATURDAY: rrule.SA,
-    Weekday.SUNDAY: rrule.SU,
-}
-
-
-class Recur(BaseModel):
-    """A type used to identify properties that contain a recurrence rule specification.
-
-    The by properties reduce or limit the number of occurrences generated. Only by day
-    of the week and by month day are supported.
-
-    Parts of rfc5545 recurrence spec not supported:
-      By second, minute, hour
-      By yearday, weekno, month
-      Wkst rules are
-      Bysetpos rules
-      Negative "by" rules.
-    """
-
-    freq: Frequency
-
-    until: Union[datetime.datetime, datetime.date, None] = None
-    """The inclusive end date of the recurrence, or the last instance."""
-
-    count: Optional[int] = None
-    """The number of occurrences to bound the recurrence."""
-
-    interval: int = 1
-    """Interval at which the recurrence rule repeats."""
-
-    by_weekday: list[WeekdayValue] = Field(alias="byday", default_factory=list)
-    """Supported days of the week."""
-
-    by_month_day: list[int] = Field(alias="bymonthday", default_factory=list)
-    """Days of the month between 1 to 31."""
-
-    by_month: list[int] = Field(alias="bymonth", default_factory=list)
-    """Month number between 1 and 12."""
-
-    def as_rrule(self, dtstart: datetime.datetime | datetime.date) -> rrule.rrule:
-        """Create a dateutil rrule for the specified event."""
-        if (freq := RRULE_FREQ.get(self.freq)) is None:
-            raise ValueError(f"Unsupported frequency in rrule: {self.freq}")
-
-        byweekday: list[rrule.weekday] | None = None
-        if self.by_weekday:
-            byweekday = [
-                RRULE_WEEKDAY[weekday.weekday](
-                    1 if weekday.occurrence is None else weekday.occurrence
-                )
-                for weekday in self.by_weekday
-            ]
-        return rrule.rrule(
-            freq=freq,
-            dtstart=dtstart,
-            interval=self.interval,
-            count=self.count,
-            until=self.until,
-            byweekday=byweekday,
-            bymonthday=self.by_month_day if self.by_month_day else None,
-            bymonth=self.by_month if self.by_month else None,
-            cache=True,
-        )
-
-    class Config:
-        """Pydantic model configuration."""
-
-        validate_assignment = True
-        allow_population_by_field_name = True
-
-    @classmethod
-    def __encode_property_value__(cls, data: dict[str, Any]) -> str:
-        """Encode the recurence rule in ICS format."""
-        result = []
-        for key, value in data.items():
-            # Need to encode based on field type also using json encoders
-            if key in ("bymonthday", "bymonth"):
-                if not value:
-                    continue
-                value = ",".join([str(val) for val in value])
-            elif key == "byday":
-                values = []
-                for weekday_dict in value:
-                    weekday = weekday_dict["weekday"]
-                    occurrence = weekday_dict.get("occurrence")
-                    if occurrence is None:
-                        occurrence = ""
-                    values.append(f"{occurrence}{weekday}")
-                value = ",".join(values)
-            if not value:
-                continue
-            result.append(f"{key.upper()}={value}")
-        return ";".join(result)
-
-    @classmethod
-    def parse_recur(cls, prop: Any) -> dict[str, Any]:
-        """Parse the recurrence rule text as a dictionary as Pydantic input.
-
-        An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
-        into dictionary.
-        """
-        if isinstance(prop, str):
-            value = prop
-        elif not isinstance(prop, ParsedProperty):
-            raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
-        else:
-            value = prop.value
-        result: dict[
-            str, datetime.datetime | str | list[str] | list[dict[str, str]]
-        ] = {}
-        for part in value.split(";"):
-            if "=" not in part:
-                raise ValueError(
-                    f"Recurrence rule had unexpected format missing '=': {prop.value}"
-                )
-            key, value = part.split("=")
-            key = key.lower()
-            if key == "until":
-                result[key] = DateTimeEncoder.parse_datetime(
-                    ParsedProperty(name="ignored", value=value)
-                )
-            elif key in ("bymonthday", "bymonth"):
-                result[key] = value.split(",")
-            elif key == "byday":
-                # Build inputs for WeekdayValue dataclass
-                results: list[dict[str, str]] = []
-                for value in value.split(","):
-                    if not (match := WEEKDAY_REGEX.fullmatch(value)):
-                        raise ValueError(
-                            f"Expected value to match UTC-OFFSET pattern: {value}"
-                        )
-                    occurrence, weekday = match.groups()
-                    weekday_result = {"weekday": weekday}
-                    if occurrence:
-                        weekday_result["occurrence"] = occurrence
-                    results.append(weekday_result)
-                result[key] = results
-            else:
-                result[key] = value
-        return result
 
 
 def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:

@@ -9,10 +9,11 @@ import pytest
 from freezegun import freeze_time
 from pydantic import ValidationError
 
+from ical._types import UtcOffset
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
+from ical.recur import Frequency, Recur, Weekday, WeekdayValue
 from ical.timezone import IcsTimezoneInfo, Observance, Timezone
-from ical.types import Frequency, Recur, UtcOffset, Weekday, WeekdayValue
 
 TEST_RECUR = Recur(
     freq=Frequency.YEARLY,
