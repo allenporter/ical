@@ -7,20 +7,19 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from .alarm import Alarm
-from .parsing.property import ParsedProperty
-from .types import (
+from ._types import (
     CalAddress,
-    Classification,
     ComponentModel,
-    Geo,
     Priority,
-    Recur,
     RequestStatus,
-    TodoStatus,
     Uri,
     validate_until_dtstart,
 )
+from .alarm import Alarm
+from .parsing.property import ParsedProperty
+from .recur import Recur
+from .types.const import Classification, TodoStatus
+from .types.geo import Geo
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 

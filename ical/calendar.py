@@ -7,6 +7,7 @@ from typing import Optional
 
 from pydantic import Field
 
+from ._types import ComponentModel
 from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal
@@ -14,7 +15,6 @@ from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone
 from .todo import Todo
-from .types import ComponentModel
 
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]

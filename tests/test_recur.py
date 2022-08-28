@@ -9,8 +9,8 @@ from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.event import Event
+from ical.recur import Frequency, Recur, Weekday, WeekdayValue
 from ical.timeline import Timeline
-from ical.types import Frequency, Recur, Weekday, WeekdayValue
 
 
 def recur_timeline(event: Event) -> Timeline:

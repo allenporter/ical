@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from ._types import ICS_ENCODERS, ComponentModel
 from .calendar import Calendar
 from .parsing.component import encode_content, parse_content
-from .types import ICS_ENCODERS, ComponentModel
 
 
 class CalendarStream(ComponentModel):

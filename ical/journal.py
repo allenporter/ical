@@ -10,17 +10,16 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from .parsing.property import ParsedProperty
-from .types import (
+from ._types import (
     CalAddress,
-    Classification,
     ComponentModel,
-    JournalStatus,
-    Recur,
     RequestStatus,
     Uri,
     validate_until_dtstart,
 )
+from .parsing.property import ParsedProperty
+from .recur import Recur
+from .types.const import Classification, JournalStatus
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)

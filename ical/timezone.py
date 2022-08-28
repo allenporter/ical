@@ -21,9 +21,10 @@ from typing import Any, Iterable, Optional, Union
 from dateutil.rrule import rruleset
 from pydantic import Field, root_validator, validator
 
+from ._types import ComponentModel, Uri, UtcOffset
 from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
-from .types import ComponentModel, Recur, Uri, UtcOffset
+from .recur import Recur
 from .tzif import timezoneinfo, tz_rule
 from .util import dtstamp_factory
 

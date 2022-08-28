@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from ical.journal import Journal
-from ical.types import JournalStatus
+from ical.types.const import JournalStatus
 
 
 def test_empty() -> None:
