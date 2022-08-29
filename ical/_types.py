@@ -35,11 +35,7 @@ from pydantic.fields import SHAPE_LIST, ModelField
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
-from .types.boolean import BooleanEncoder
 from .types.data_types import DATA_TYPE
-from .types.date_time import DateTimeEncoder
-from .types.duration import DurationEncoder
-from .types.text import TextEncoder
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,16 +100,6 @@ def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str,
         ):
             raise ValueError("DTSTART and UNTIL must be the same value type")
     return values
-
-
-# For additional decoding of properties after they have already
-# been handled by the json encoder.
-ENCODERS = {
-    datetime.datetime: DateTimeEncoder,
-    datetime.timedelta: DurationEncoder,
-    bool: BooleanEncoder,
-    str: TextEncoder,
-}
 
 
 def _prop_identity(value: Any) -> Any:
@@ -227,9 +213,9 @@ class ComponentModel(BaseModel):
     def __encode_component_root__(self) -> ParsedComponent:
         """Encode the calendar stream as an rfc5545 iCalendar content."""
         # The overall data model hierarchy is created by pydantic and properties
-        # are encoded by default with ICS_ENCODERS then loaded back into a dict
-        # with string values. Then there are additional passes to get the data in
-        # the right shape for ics encoding.
+        # are encoded using the json encoders specific for each type. These are
+        # marshalled through as string values. There are then additional passes
+        # to ge the data in to the right final format for ics encoding.
         model_data = json.loads(
             self.json(by_alias=True, exclude_none=True, exclude_defaults=True)
         )
@@ -270,27 +256,22 @@ class ComponentModel(BaseModel):
     ) -> ParsedProperty | None:
         """Encode an individual property for the specified field."""
         # A property field may have multiple possible types, like for
-        # a Union. The field type itself may be responsible for
-        # encoding, or there may be a separate class that knows
-        # how to encode that type.
-        encoder: type | None = None
-        encoded_value: str | None = None
+        # a Union. Pick the first type that is able to encode the value.
         for sub_type in _get_field_types(field_type):
-            encoder = ENCODERS.get(sub_type, field_type)
-            value_encoder = getattr(encoder, "__encode_property_value__", _identity)
+            value_encoder = DATA_TYPE.encode_property_value.get(sub_type, _identity)
             try:
                 encoded_value = value_encoder(value)
             except ValueError as err:
                 _LOGGER.debug("Encoding failed for property: %s", err)
                 continue
-            break
-
-        if encoder and encoded_value is not None:
-            prop = ParsedProperty(name=key, value=encoded_value)
-            if params_encoder := getattr(encoder, "__encode_property_params__", None):
-                if params := params_encoder(value):
-                    prop.params = params
-            return prop
+            if encoded_value is not None:
+                prop = ParsedProperty(name=key, value=encoded_value)
+                if params_encoder := DATA_TYPE.encode_property_params.get(
+                    sub_type, None
+                ):
+                    if params := params_encoder(value):
+                        prop.params = params
+                return prop
 
         return None
 
