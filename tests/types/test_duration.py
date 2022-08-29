@@ -4,8 +4,9 @@ import datetime
 
 import pytest
 
-from ical._types import ICS_ENCODERS, ComponentModel
+from ical._types import ComponentModel
 from ical.parsing.property import ParsedProperty
+from ical.types.data_types import DATA_TYPE
 
 
 class FakeModel(ComponentModel):
@@ -16,7 +17,7 @@ class FakeModel(ComponentModel):
     class Config:
         """Pydantic model configuration."""
 
-        json_encoders = ICS_ENCODERS
+        json_encoders = DATA_TYPE.encode_property_json
 
 
 @pytest.mark.parametrize(

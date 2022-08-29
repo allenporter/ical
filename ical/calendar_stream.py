@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from ._types import ICS_ENCODERS, ComponentModel
+from ._types import ComponentModel
 from .calendar import Calendar
 from .parsing.component import encode_content, parse_content
+from .types.data_types import DATA_TYPE
 
 
 class CalendarStream(ComponentModel):
@@ -53,6 +54,6 @@ class IcsCalendarStream(CalendarStream):
     class Config:
         """Configuration for IcsCalendarStream pydantic model."""
 
-        json_encoders = ICS_ENCODERS
+        json_encoders = DATA_TYPE.encode_property_json
         validate_assignment = True
         allow_population_by_field_name = True

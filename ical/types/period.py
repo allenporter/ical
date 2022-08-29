@@ -2,6 +2,7 @@
 
 import dataclasses
 import datetime
+import enum
 import logging
 from typing import Any, Optional
 
@@ -9,13 +10,28 @@ from pydantic import BaseModel, Field, root_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .const import FreeBusyType
 from .data_types import DATA_TYPE, encode_model_property_params
 from .date_time import DateTimeEncoder
 from .duration import DurationEncoder
 from .parsing import parse_parameter_values
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class FreeBusyType(str, enum.Enum):
+    """Specifies the free/busy time type."""
+
+    FREE = "FREE"
+    """The time interval is free for scheduling."""
+
+    BUSY = "BUSY"
+    """One or more events have been scheduled for the interval."""
+
+    BUSY_UNAVAILABLE = "BUSY-UNAVAILABLE"
+    """The interval can not be scheduled."""
+
+    BUSY_TENTATIVE = "BUSY-TENTATIVE"
+    """One or more events have been tentatively scheduled for the interval."""
 
 
 @DATA_TYPE.register("PERIOD")

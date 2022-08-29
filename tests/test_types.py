@@ -3,12 +3,10 @@
 import datetime
 from typing import Optional, Union
 
-import pytest
-from pydantic import ValidationError
-
-from ical._types import ICS_ENCODERS, ComponentModel, Priority
+from ical._types import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
+from ical.types.data_types import DATA_TYPE
 
 
 def test_encode_component() -> None:
@@ -32,7 +30,7 @@ def test_encode_component() -> None:
         class Config:
             """Pydantic model configuration."""
 
-            json_encoders = ICS_ENCODERS
+            json_encoders = DATA_TYPE.encode_property_json
 
     model = TestModel.parse_obj(
         {
@@ -136,24 +134,3 @@ def test_optional_field_parser() -> None:
         {"dt": [ParsedProperty(name="dt", value="20220724T120000")]}
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
-
-
-def test_priority() -> None:
-    """Test for priority fields."""
-
-    class TestModel(ComponentModel):
-        """Model under test."""
-
-        pri: Priority
-
-    model = TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="1")]})
-    assert model.pri == 1
-
-    model = TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="9")]})
-    assert model.pri == 9
-
-    with pytest.raises(ValidationError):
-        TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="-1")]})
-
-    with pytest.raises(ValidationError):
-        TestModel.parse_obj({"pri": [ParsedProperty(name="dt", value="10")]})

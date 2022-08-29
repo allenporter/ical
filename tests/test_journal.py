@@ -9,8 +9,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from ical.journal import Journal
-from ical.types.const import JournalStatus
+from ical.journal import Journal, JournalStatus
 
 
 def test_empty() -> None:

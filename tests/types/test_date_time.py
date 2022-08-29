@@ -6,9 +6,10 @@ from typing import Union
 import pytest
 from pydantic import ValidationError
 
-from ical._types import ICS_ENCODERS, ComponentModel
+from ical._types import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.types.data_types import DATA_TYPE
 from ical.tzif import timezoneinfo
 
 
@@ -111,7 +112,7 @@ def test_datedatime_parameter_encoder() -> None:
         class Config:
             """Pydantic model configuration."""
 
-            json_encoders = ICS_ENCODERS
+            json_encoders = DATA_TYPE.encode_property_json
 
     model = TestModel.parse_obj(
         {

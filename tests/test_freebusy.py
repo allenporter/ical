@@ -11,8 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from ical.freebusy import FreeBusy
-from ical.types import Period
-from ical.types.const import FreeBusyType
+from ical.types import FreeBusyType, Period
 
 
 @pytest.fixture(autouse=True)
