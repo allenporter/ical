@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from ._types import ComponentModel
 from .calendar import Calendar
+from .component import ComponentModel
 from .parsing.component import encode_content, parse_content
 from .types.data_types import DATA_TYPE
 

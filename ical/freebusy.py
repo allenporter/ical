@@ -10,7 +10,7 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, validator
 
-from ._types import ComponentModel
+from .component import ComponentModel
 from .parsing.property import ParsedProperty
 from .types import CalAddress, Period, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory

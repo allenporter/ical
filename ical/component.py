@@ -1,4 +1,4 @@
-"""Libraries for translating between rfc5545 parsed objects and pydantic data.
+"""Library for parsing and encoding rfc5545 components with pydantic.
 
 The data model returned by the contentlines parsing is a bag of ParsedProperty
 objects that support all the flexibility of the rfc5545 spec. However in the
@@ -10,11 +10,8 @@ into the simpler pydantic data model, and handles custom field types and
 validators.
 
 Just as the pydantic model provides syntax glue for parsing data and
-associating necessary validators, this is the same for the opposite
-direction.
-
-A custom class with the method `__encode_component__` is used to serialize
-the object as a ParsedComponent.
+associating necessary validators, this is also doing the same thing
+in the opposite direction to encode back to ICS.
 """
 
 from __future__ import annotations
