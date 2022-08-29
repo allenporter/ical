@@ -5,7 +5,7 @@ import datetime
 import pytest
 from pydantic import ValidationError
 
-from ical._types import ComponentModel
+from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
 from ical.types import Period

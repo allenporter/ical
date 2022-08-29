@@ -21,7 +21,7 @@ from typing import Any, Iterable, Optional, Union
 from dateutil.rrule import rruleset
 from pydantic import Field, root_validator, validator
 
-from ._types import ComponentModel
+from .component import ComponentModel
 from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
 from .types import Recur, Uri, UtcOffset

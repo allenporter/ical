@@ -4,7 +4,7 @@ import datetime
 
 import pytest
 
-from ical._types import ComponentModel
+from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
 from ical.types.data_types import DATA_TYPE
 

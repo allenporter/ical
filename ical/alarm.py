@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from ._types import ComponentModel
+from .component import ComponentModel
 from .parsing.property import ParsedProperty
 from .types import CalAddress
 

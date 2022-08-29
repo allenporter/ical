@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from ._types import ComponentModel
+from .component import ComponentModel
 from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal

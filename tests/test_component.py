@@ -1,9 +1,9 @@
-"""Tests for property values."""
+"""Tests for component encoding and decoding."""
 
 import datetime
 from typing import Optional, Union
 
-from ical._types import ComponentModel
+from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
 from ical.types.data_types import DATA_TYPE

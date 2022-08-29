@@ -11,8 +11,8 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from ._types import ComponentModel, validate_until_dtstart
 from .alarm import Alarm
+from .component import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
 from .types import CalAddress, Classification, Geo, Priority, Recur, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
