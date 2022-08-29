@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import logging
 from typing import Any, Optional, Union
 
@@ -12,11 +13,18 @@ from pydantic import Field, root_validator
 
 from ._types import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Recur, RequestStatus, Uri
-from .types.const import Classification, JournalStatus
+from .types import CalAddress, Classification, Recur, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class JournalStatus(str, enum.Enum):
+    """Status or confirmation of the journal entry."""
+
+    DRAFT = "DRAFT"
+    FINAL = "FINAL"
+    CANCELLED = "CANCELLED"
 
 
 class Journal(ComponentModel):

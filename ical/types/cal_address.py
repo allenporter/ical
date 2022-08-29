@@ -3,18 +3,51 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import logging
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, root_validator
 
-from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.parsing.property import ParsedPropertyParameter
 
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class CalendarUserType(str, enum.Enum):
+    """The type of calendar user."""
+
+    INDIVIDUAL = "INDIVIDUAL"
+    GROUP = "GROUP"
+    RESOURCE = "GROUP"
+    ROOM = "ROOM"
+    UNKNOWN = "UNKNOWN"
+
+
+class ParticipationStatus(str, enum.Enum):
+    """Participation status for a calendar user."""
+
+    NEEDS_ACTION = "NEEDS-ACTION"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+    # Additional statuses for Events and Todos
+    TENTATIVE = "TENTATIVE"
+    DELEGATED = "DELEGATED"
+    # Additional status for TODOs
+    COMPLETED = "COMPLETED"
+
+
+class Role(str, enum.Enum):
+    """Role for the calendar user."""
+
+    CHAIR = "CHAIR"
+    REQUIRED = "REQ-PARTICIPANT"
+    OPTIONAL = "OPT-PARTICIPANT"
+    NON_PARTICIPANT = "NON-PARTICIPANT"
 
 
 @DATA_TYPE.register("CAL-ADDRESS")
@@ -66,11 +99,7 @@ class CalAddress(BaseModel):
         parse_parameter_values
     )
 
-    @classmethod
-    def __parse_property_value__(cls, prop: ParsedProperty) -> dict[str, str]:
-        """Convert the property into a dictionary for pydantic model."""
-        # XXX???
-        return dataclasses.asdict(prop)
+    __parse_property_value__ = dataclasses.asdict
 
     @classmethod
     def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:

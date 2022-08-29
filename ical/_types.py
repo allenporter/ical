@@ -28,7 +28,7 @@ import datetime
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, root_validator
 from pydantic.fields import SHAPE_LIST, ModelField
@@ -36,7 +36,6 @@ from pydantic.fields import SHAPE_LIST, ModelField
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 from .types.boolean import BooleanEncoder
-from .types.const import Classification, EventStatus, JournalStatus, TodoStatus
 from .types.data_types import DATA_TYPE
 from .types.date_time import DateTimeEncoder
 from .types.duration import DurationEncoder
@@ -84,11 +83,6 @@ def parse_parameter_values(cls: BaseModel, values: dict[str, Any]) -> dict[str, 
     return values
 
 
-def parse_enum(prop: ParsedProperty) -> str:
-    """Parse a rfc5545 into a text value."""
-    return prop.value
-
-
 def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Verify the until time and dtstart are the same."""
     if (
@@ -122,19 +116,8 @@ ENCODERS = {
 }
 
 
-_T = TypeVar("_T")
-
-
-ICS_ENCODERS: dict[type, Callable[[Any], str | dict[str, str]]] = {
-    **DATA_TYPE.encode_property_json,
-}
-ICS_DECODERS: dict[type, Callable[[ParsedProperty], Any]] = {
-    **DATA_TYPE.parse_property_value,
-    Classification: parse_enum,
-    EventStatus: parse_enum,
-    TodoStatus: parse_enum,
-    JournalStatus: parse_enum,
-}
+def _prop_identity(value: Any) -> Any:
+    return value.value
 
 
 def _identity(value: Any) -> Any:
@@ -155,9 +138,10 @@ def _get_field_types(field_type: type) -> list[type]:
 def _get_validators(field_type: type) -> list[Callable[[Any], Any]]:
     """Return validators for the specified field."""
     field_types = _get_field_types(field_type)
-    decoder_types = list(filter(None, [ICS_DECODERS.get(arg) for arg in field_types]))
+    decoders = DATA_TYPE.parse_property_value
+    decoder_types = list(filter(None, [decoders.get(arg) for arg in field_types]))
     if not decoder_types:
-        return [_identity]
+        return [_prop_identity]
     return decoder_types
 
 
@@ -220,6 +204,7 @@ class ComponentModel(BaseModel):
             validators = _get_validators(field.type_)
             validated = []
             for prop in value:
+
                 # This property value may contain repeated values itself
                 if field.alias in ALLOW_REPEATED_VALUES and "," in prop.value:
                     for sub_value in prop.value.split(","):

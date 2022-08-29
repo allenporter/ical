@@ -3,9 +3,10 @@
 import datetime
 from typing import Optional, Union
 
-from ical._types import ICS_ENCODERS, ComponentModel
+from ical._types import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
+from ical.types.data_types import DATA_TYPE
 
 
 def test_encode_component() -> None:
@@ -29,7 +30,7 @@ def test_encode_component() -> None:
         class Config:
             """Pydantic model configuration."""
 
-            json_encoders = ICS_ENCODERS
+            json_encoders = DATA_TYPE.encode_property_json
 
     model = TestModel.parse_obj(
         {
