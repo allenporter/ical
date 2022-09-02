@@ -11,6 +11,8 @@ easy to support as much as possible of rfc5545. It is not a goal to
 support everything exhaustively, however, the simplicity of the
 implementation makes it easy to do so.
 
+See [documentation](https://allenporter.github.io/ical/) for full quickstart and API reference.
+
 # Quickstart
 
 The example below creates a Calendar, then adds an all day event to
