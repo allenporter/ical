@@ -32,7 +32,7 @@ for event in calendar.timeline:
 
 # Reading ics files
 
-This example parses an .ics file from disk and creates a `Calendar` object, then
+This example parses an .ics file from disk and creates a `ical.calendar.Calendar` object, then
 prints out the events in order:
 
 ```python
@@ -62,9 +62,9 @@ with filename.open() as ics_file:
 # Recurring events
 
 A calendar event may be recurring (e.g. weekly, monthly, etc). Recurring events
-are represented in a `Calendar` with a single `Event` object, however when observed
-through a `Timeline` will be expanded based on the recurrence rule. See the
-`rrule`, `rdate`, and `exdate` fields on the `Event` for more details.
+are represented in a `ical.calendar.Calendar` with a single `ical.event.Event` object, however
+when observed through a `ical.timeline.Timeline` will be expanded based on the recurrence rule.
+See the `rrule`, `rdate`, and `exdate` fields on the `ical.event.Event` for more details.
 
 # Related Work
 
