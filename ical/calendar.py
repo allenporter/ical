@@ -33,10 +33,19 @@ class Calendar(ComponentModel):
     #
 
     events: list[Event] = Field(alias="vevent", default_factory=list)
+    """Events associated with this calendar."""
+
     todos: list[Todo] = Field(alias="vtodo", default_factory=list)
+    """Todos associated with this calendar."""
+
     journal: list[Journal] = Field(alias="vjournal", default_factory=list)
+    """Journals associated with this calendar."""
+
     freebusy: list[FreeBusy] = Field(alias="vfreebusy", default_factory=list)
+    """Free/busy objects associated with this calendar."""
+
     timezones: list[Timezone] = Field(alias="vtimezone", default_factory=list)
+    """Timezones associated with this calendar."""
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
