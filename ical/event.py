@@ -53,17 +53,17 @@ class Event(ComponentModel):
 
 
     Example:
-        ```python
-        import datetime
-        from ical.event import Event
+    ```python
+    import datetime
+    from ical.event import Event
 
-        event = Event(
-            dtstart=datetime.datetime(2022, 8, 31, 7, 00, 00),
-            dtend=datetime.datetime(2022, 8, 31, 7, 30, 00),
-            summary="Morning exercise",
-        )
-        print("The event duration is: ", event.computed_duration)
-        ```
+    event = Event(
+        dtstart=datetime.datetime(2022, 8, 31, 7, 00, 00),
+        dtend=datetime.datetime(2022, 8, 31, 7, 30, 00),
+        summary="Morning exercise",
+    )
+    print("The event duration is: ", event.computed_duration)
+    ```
 
     An Event is a pydantic model, so all properties of a pydantic model apply here to such as
     the constructor arguments, properties to return the model as a dictionary or json, as well
