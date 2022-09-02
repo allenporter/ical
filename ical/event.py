@@ -1,4 +1,14 @@
-"""A grouping of component properties that describe a calendar event."""
+"""A grouping of component properties that describe a calendar event.
+
+An event can be an activity (e.g. a meeting from 8am to 9am tomorrow)
+grouping of properties such as a summary or a description. An event will
+take up time on a calendar as an opaque time interval, but can alternatively
+have transparency set to transparent to prevent blocking of time as busy.
+
+An event start and end time may either be a date and time or just a day
+alone. Events may also span more than one day. Alternatively, an event
+can have a start and a duration.
+"""
 
 # pylint: disable=unnecessary-lambda
 
@@ -21,11 +31,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class EventStatus(str, enum.Enum):
-    """Status or confirmation of the event."""
+    """Status or confirmation of the event set by the organizer."""
 
     CONFIRMED = "CONFIRMED"
+    """Indicates event is definite."""
+
     TENTATIVE = "TENTATIVE"
+    """Indicates event is tentative."""
+
     CANCELLED = "CANCELLED"
+    """Indicates event was cancelled."""
 
 
 class Event(ComponentModel):
@@ -35,59 +50,188 @@ class Event(ComponentModel):
 
     The dtstamp and uid functions have factory methods invoked with a lambda to facilitate
     mocking in unit tests.
+
+
+    Example:
+        ```python
+        import datetime
+        from ical.event import Event
+
+        event = Event(
+            dtstart=datetime.datetime(2022, 8, 31, 7, 00, 00),
+            dtend=datetime.datetime(2022, 8, 31, 7, 30, 00),
+            summary="Morning exercise",
+        )
+        print("The event duration is: ", event.computed_duration)
+        ```
+
+    An Event is a pydantic model, so all properties of a pydantic model apply here to such as
+    the constructor arguments, properties to return the model as a dictionary or json, as well
+    as other parsing methods.
     """
 
     dtstamp: Union[datetime.datetime, datetime.date] = Field(
         default_factory=lambda: dtstamp_factory()
     )
+    """Specifies the date and time the event was created."""
+
     uid: str = Field(default_factory=lambda: uid_factory())
+    """A globally unique identifier for the event."""
+
     # Has an alias of 'start'
     dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
+    """The start time or start day of the event."""
+
     # Has an alias of 'end'
     dtend: Optional[Union[datetime.datetime, datetime.date]] = None
+    """The end time or end day of the event.
+
+    This may be specified as an explicit date. Alternatively, a duration
+    can be used instead.
+    """
+
     duration: Optional[datetime.timedelta] = None
+    """The duration of the event as an alternative to an explicit end date/time."""
+
     summary: str = ""
+    """Defines a short summary or subject for the event."""
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
+    """Specifies participants in a group-scheduled calendar."""
+
     categories: list[str] = Field(default_factory=list)
+    """Defines the categories for an event.
+
+    Specifies a category or subtype. Can be useful for searching for a particular
+    type of event.
+    """
+
     classification: Optional[Classification] = Field(alias="class", default=None)
+    """An access classification for a calendar event.
+
+    This provides a method of capturing the scope of access of a calendar, in
+    conjunction with an access control system.
+    """
+
     comment: list[str] = Field(default_factory=list)
+    """Specifies a comment to the calendar user."""
+
     contacts: list[str] = Field(alias="contact", default_factory=list)
+    """Contact information associated with the event."""
+
     created: Optional[datetime.datetime] = None
+    """The date and time the event information was created."""
+
     description: str = ""
-    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    """A more complete description of the event than provided by the summary."""
+
     geo: Optional[Geo] = None
+    """Specifies a latitude and longitude global position for the event activity."""
+
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
     )
+
     location: str = ""
-    organization: str = ""
+    """Defines the intended venue for the activity defined by this event."""
+
     organizer: Optional[CalAddress] = None
+    """The organizer of a group-scheduled calendar entity."""
+
     priority: Optional[Priority] = None
+    """Defines the relative priorirty of the calendar event."""
+
     recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
         alias="recurrence-id"
     )
+    """Defines a specific instance of a recurring event.
+
+    The full range of calendar events specified by a recurrence set is referenced
+    by referring to just the uid. The `recurrence_id` allows reference of an individual
+    instance within the recurrence set.
+    """
+
     related: list[str] = Field(default_factory=list)
+    """Used to represent a relationship or reference between events."""
+
     resources: list[str] = Field(default_factory=list)
+    """Defines the equipment or resources anticipated for the calendar event."""
+
     rrule: Optional[Recur] = None
+    """A recurrence rule specification.
+
+    Defines a rule for specifying a repeated event. The recurrence set is the complete
+    set of recurrence instances for a calendar component (based on rrule, rdate, exdate).
+    The recurrence set is generated by gathering the rrule and rdate properties then
+    excluding any times specified by exdate. The recurrence is generated with the dtstart
+    property defining the first instance of the recurrence set.
+
+    Typically a dtstart should be specified with a date local time and timezone to make
+    sure all instances have the same start time regardless of time zone changing.
+    """
+
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    """Defines the list of date/time values for recurring events.
+
+    Can appear along with the rrule property to define a set of repeating occurrences of the
+    event. The recurrence set is the complete set of recurrence instances for a calendar component
+    (based on rrule, rdate, exdate). The recurrence set is generated by gathering the rrule
+    and rdate properties then excluding any times specified by exdate.
+    """
+
+    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+
+    """Defines the list of exceptions for recurring events.
+
+    The exception dates are used in computing the recurrence set. The recurrence set is
+    the complete set of recurrence instances for a calendar component (based on rrule, rdate,
+    exdate). The recurrence set is generated by gathering the rrule and rdate properties
+    then excluding any times specified by exdate.
+    """
+
     request_status: Optional[RequestStatus] = Field(
         alias="request-status", default_value=None
     )
+
     sequence: Optional[int] = None
+    """The revision sequence number in the calendar component.
+
+    When an event is created, its sequence number is 0. It is monotonically incremented
+    by the organizers calendar user agent every time a significant revision is made to
+    the calendar event.
+    """
+
     status: Optional[EventStatus] = None
+    """Defines the overall status or confirmation of the event.
+
+    In a group-scheduled calendar, used by the organizer to provide a confirmation
+    of the event to attendees.
+    """
+
     transparency: Optional[str] = Field(alias="transp", default=None)
+    """Defines whether or not an event is transparenty to busy time searches."""
+
     url: Optional[Uri] = None
+    """Defines a url associated with the event.
+
+    May convey a location where a more dynamic rednition of the calendar event
+    information associated with the event can be found.
+    """
 
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
 
     alarm: list[Alarm] = Field(alias="valarm", default_factory=list)
+    """A grouping of reminder alarms for the event."""
 
     def __init__(self, **data: dict[str, Any]) -> None:
-        """Initialize Event."""
+        """Initialize a Calendar Event.
+
+        This method accepts keyword args with field names on the Calendar such as `summary`,
+        `start`, `end`, `description`, etc.
+        """
         if "start" in data:
             data["dtstart"] = data.pop("start")
         if "end" in data:
@@ -182,7 +326,7 @@ class Event(ComponentModel):
         return self._tuple() >= other._tuple()
 
     @root_validator(allow_reuse=True)
-    def validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
         if (
             (dtstart := values.get("dtstart"))
@@ -193,7 +337,7 @@ class Event(ComponentModel):
         return values
 
     @root_validator(allow_reuse=True)
-    def validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values have the same timezone information."""
         if (
             not (dtstart := values.get("dtstart"))
@@ -211,14 +355,14 @@ class Event(ComponentModel):
         return values
 
     @root_validator(allow_reuse=True)
-    def validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that only one of duration or end date may be set."""
         if values.get("dtend") and values.get("duration"):
             raise ValueError("Only one of dtend or duration may be set." "")
         return values
 
     @root_validator(allow_reuse=True)
-    def validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate the duration is the appropriate units."""
         if not (duration := values.get("duration")):
             return values
