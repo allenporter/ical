@@ -1,4 +1,9 @@
-"""A Timeline is a set of events on a calendar."""
+"""A Timeline is a set of events on a calendar.
+
+A timeline can be used to iterate over all events, including expanded
+recurring events. A timeline also supports methods to scan ranges of events
+like returning all events happening today or after a specific date.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +26,8 @@ __all__ = [ "Timeline" ]
 class Timeline(Iterable[Event]):
     """A set of events on a calendar.
 
-    A timeline is typically created from a `Calendar`.
+    A timeline is typically created from a `ics.calendar.Calendar` and is
+    typically not instantiated directly.
     """
 
     def __init__(self, iterable: Iterable[Event]) -> None:
