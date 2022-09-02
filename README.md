@@ -1,5 +1,3 @@
-# ical
-
 This is an iCalendar rfc 5545 implementation in python. The goal of this
 project is to offer a calendar library with the relevant and practical
 features needed for building a calendar application (e.g. recurring
