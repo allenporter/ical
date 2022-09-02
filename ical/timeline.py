@@ -15,12 +15,16 @@ from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = [ "Timeline" ]
+
 
 class Timeline(Iterable[Event]):
-    """A set of events on a calendar."""
+    """A set of events on a calendar.
+
+    A timeline is typically created from a `Calendar`.
+    """
 
     def __init__(self, iterable: Iterable[Event]) -> None:
-        """Initialize timeline."""
         self._iterable = iterable
 
     def __iter__(self) -> Iterator[Event]:

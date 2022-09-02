@@ -1,4 +1,28 @@
-"""The core, a collection of Calendar and Scheduling objects."""
+"""The core, a collection of Calendar and Scheduling objects.
+
+This is an example of parsing an ics file as a stream of calendar objects:
+```python
+from pathlib import Path
+from ical.calendar_stream import IcsCalendarStream
+
+filename = Path("example/calendar.ics")
+with filename.open() as ics_file:
+    stream = IcsCalendarStream.from_ics(ics_file.read())
+    print("File contains %s calendar(s)", len(stream.calendars))
+```
+
+You can encode a calendar stream as ics content calling the `ics()` method on
+the `IcsCalendarStream`:
+
+```python
+from pathlib import Path
+
+filename = Path("/tmp/output.ics")
+with filename.open(mode="w") as ics_file:
+    ics_file.write(stream.ics())
+```
+
+"""
 
 # mypy: allow-any-generics
 
@@ -13,7 +37,11 @@ from .types.data_types import DATA_TYPE
 
 
 class CalendarStream(ComponentModel):
-    """A container that is a collection of calendaring information."""
+    """A container that is a collection of calendaring information.
+
+    This object supports parsing an rfc5545 calendar file, but does not
+    support encoding. See `IcsCalendarStream` instead for encoding ics files.
+    """
 
     calendars: list[Calendar] = Field(alias="vcalendar", defaut_factory=[])
 
@@ -33,7 +61,7 @@ class CalendarStream(ComponentModel):
 
 
 class IcsCalendarStream(CalendarStream):
-    """A calendar stream that supports re-encoding ICS."""
+    """A calendar stream that supports parsing and encoding ICS."""
 
     @classmethod
     def calendar_from_ics(cls, content: str) -> Calendar:

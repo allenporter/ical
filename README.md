@@ -1,20 +1,20 @@
 # ical
 
 This is an iCalendar rfc 5545 implementation in python. The goal of this
-project is to offer a calendar library with the most relevant and
-practically needed features when building a calendar application (e.g.
-recurring events).
+project is to offer a calendar library with the relevant and practical
+features needed for building a calendar application (e.g. recurring
+events).
 
-In support of that goal, the development principles include robust and
-simple parsing using existing parsing libraries where possible, use of
-modern python, and high test coverage. It is not a goal to exhaustively
-support all rfc5545 features directly, fully support the grammar and
-handle anything unsupported gracefully.
+ical's main focus is on simplicity, and the internal implementation
+is based on existing parsing libraries, where possible, making it
+easy to support as much as possible of rfc5545. It is not a goal to
+support everything exhaustively, however, the simplicity of the
+implementation makes it easy to do so.
 
-This library is still in early development and as a result, every release
-before 1.0 will likely contain breaking changes.
+# Quickstart
 
-## Example Usage
+The example below creates a Calendar, then adds an all day event to
+the calendar, then iterates over all events on the calendar.
 
 ```python
 from datetime import date
@@ -30,7 +30,43 @@ for event in calendar.timeline:
     print(e.summary)
 ```
 
-## Related Work
+# Reading ics files
+
+This example parses an .ics file from disk and creates a `Calendar` object, then
+prints out the events in order:
+
+```python
+from pathlib import Path
+from ical.calendar_stream import IcsCalendarStream
+
+filename = Path("example/calendar.ics")
+with filename.open() as ics_file:
+    calendar = IcsCalendarStream.calendar_from_ics(ics_file.read())
+
+print([event.summary for event in calendar.timeline])
+```
+
+# Writing ics files
+
+This example writes a calendar object to an ics output file:
+
+```python
+from pathlib import Path
+from ical.calendar_stream import IcsCalendarStream
+
+filename = Path("example/output.ics")
+with filename.open() as ics_file:
+    ics_file.write(IcsCalendarStream.calendar_to_ics(calendar))
+```
+
+# Recurring events
+
+A calendar event may be recurring (e.g. weekly, monthly, etc). Recurring events
+are represented in a `Calendar` with a single `Event` object, however when observed
+through a `Timeline` will be expanded based on the recurrence rule. See the
+`rrule`, `rdate`, and `exdate` fields on the `Event` for more details.
+
+# Related Work
 
 There are other python rfc5545 implementations that are more mature, and having
 been around for many years, are still active, and served as reference
