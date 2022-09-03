@@ -141,13 +141,6 @@ def test_all_zoneinfo(key: str) -> None:
     result = timezoneinfo.read(key)
     assert result.rule
 
-    # Iran uses julian dates, not yet supported. Iran TZ rules have changed
-    # such that it no longer observes DST anyway
-    if key in ("Asia/Tehran", "Iran"):
-        assert isinstance(result.rule.dst_start, tz_rule.RuleDay)
-        assert isinstance(result.rule.dst_end, tz_rule.RuleDay)
-        return
-
     if result.rule.dst_start:
         assert result.rule.dst_end
         assert isinstance(result.rule.dst_start, tz_rule.RuleDate)
