@@ -85,7 +85,8 @@ def read(key: str) -> TimezoneInfo:
         with open(tzfile, "rb") as tzfile_file:
             return read_tzif(tzfile_file.read())
 
-    raise TimezoneInfoError(f"Unable to find timezone data for {key}") from err
+    raise TimezoneInfoError(f"Unable to find timezone data for {key}")
+
 
 _ZERO = datetime.timedelta(0)
 _HOUR = datetime.timedelta(hours=1)
