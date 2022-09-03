@@ -308,6 +308,16 @@ def test_weekly_iteration(
                 (datetime.date(2022, 10, 30), datetime.date(2022, 10, 31)),
             ],
         ),
+        (
+            datetime.date(2022, 8, 1),
+            datetime.date(2022, 8, 2),
+            Recur.from_rrule("FREQ=MONTHLY;INTERVAL=2;COUNT=3;BYMONTHDAY=1"),
+            [
+                (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
+                (datetime.date(2022, 10, 1), datetime.date(2022, 10, 2)),
+                (datetime.date(2022, 12, 1), datetime.date(2022, 12, 2)),
+            ],
+        ),
     ],
 )
 def test_monthly_iteration(

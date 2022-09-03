@@ -20,7 +20,7 @@ from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = [ "Timeline" ]
+__all__ = ["Timeline"]
 
 
 class Timeline(Iterable[Event]):
@@ -115,7 +115,10 @@ class Timeline(Iterable[Event]):
 
 
 class EventIterable(Iterable[Event]):
-    """Iterable that returns events in sorted order."""
+    """Iterable that returns events in sorted order.
+
+    This iterable will ignore recurring events entirely.
+    """
 
     def __init__(self, iterable: Iterable[Event]) -> None:
         """Initialize timeline."""
@@ -137,7 +140,12 @@ class EventIterable(Iterable[Event]):
 
 
 class RecurAdapter:
-    """An iterator for a recurrence rule."""
+    """An adapter that expands an Event instance for a recurrence rule.
+
+    This adapter is given an event, then invoked with a specific date/time instance
+    that the event occurs on due to a recurrence rule. The event is copied with
+    necessary updated fields to act as a flattened instance of the event.
+    """
 
     def __init__(self, event: Event):
         """Initialize the RecurAdapter."""

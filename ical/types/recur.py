@@ -1,8 +1,35 @@
-"""Implementation of recurrence rules.
+"""Implementation of recurrence rules for calendar components.
 
 This library handles the parsing of the rules from a pydantic model and
 relies on the `dateutil.rrule` implementation for the actual implementation
 of the date and time repetition.
+
+Many existing libraries, such as UI components, support directly creating or
+modifying recurrence rule strings. This is an example of creating a recurring
+weekly event using a string RRULE, then printing out all of the start dates
+of the expanded event timeline:
+
+```python
+from ical.calendar import Calendar
+from ical.event import Event
+from ical.types.recur import Recur
+
+event = Event(
+    summary='Monday meeting',
+    start="2022-08-29T09:00:00",
+    end="2022-08-29T09:30:00",
+    recur=Recur.from_rrule("FREQ=WEEKLY;COUNT=3")
+)
+calendar = Calendar(events=[event])
+print([ev.dtstart for ev in list(calendar.timeline)])
+```
+
+The above example will output something like this:
+```
+[datetime.datetime(2022, 8, 29, 9, 0),
+ datetime.datetime(2022, 9, 5, 9, 0),
+ datetime.datetime(2022, 9, 12, 9, 0)]
+```
 """
 
 from __future__ import annotations
@@ -84,10 +111,15 @@ RRULE_WEEKDAY = {
 }
 WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
 
+RecurInputDict = dict[
+    str, Union[datetime.datetime, str, list[str], list[dict[str, str]]]
+]
+
 
 @DATA_TYPE.register("RECUR")
 class Recur(BaseModel):
     """A type used to identify properties that contain a recurrence rule specification.
+
     The by properties reduce or limit the number of occurrences generated. Only by day
     of the week and by month day are supported.
     Parts of rfc5545 recurrence spec not supported:
@@ -143,6 +175,11 @@ class Recur(BaseModel):
             cache=True,
         )
 
+    @classmethod
+    def from_rrule(cls, rrule_str: str) -> Recur:
+        """Create a Recur object from an RRULE string."""
+        return Recur.parse_obj(cls.__parse_property_value__(rrule_str))
+
     class Config:
         """Pydantic model configuration."""
 
@@ -174,7 +211,7 @@ class Recur(BaseModel):
         return ";".join(result)
 
     @classmethod
-    def __parse_property_value__(cls, prop: Any) -> dict[str, Any]:
+    def __parse_property_value__(cls, prop: Any) -> RecurInputDict:
         """Parse the recurrence rule text as a dictionary as Pydantic input.
         An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
         into dictionary.
@@ -185,9 +222,7 @@ class Recur(BaseModel):
             raise ValueError(f"Expected recurrence rule as ParsedProperty: {prop}")
         else:
             value = prop.value
-        result: dict[
-            str, datetime.datetime | str | list[str] | list[dict[str, str]]
-        ] = {}
+        result: RecurInputDict = {}
         for part in value.split(";"):
             if "=" not in part:
                 raise ValueError(
