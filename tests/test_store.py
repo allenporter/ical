@@ -532,3 +532,14 @@ def test_cancel_event_date_recurring(
             "recurrence_id": "20220912",
         },
     ]
+
+
+def test_invalid_uid(
+    store: EventStore,
+) -> None:
+    """Test iteration over an empty calendar."""
+    with pytest.raises(ValueError):
+        store.edit("invalid", Event(summary="invalid"))
+
+    with pytest.raises(ValueError):
+        store.cancel("invalid")
