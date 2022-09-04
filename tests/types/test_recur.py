@@ -8,9 +8,11 @@ import pytest
 from pydantic import ValidationError
 
 from ical.calendar import Calendar
+from ical.component import ComponentModel
 from ical.event import Event
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.timeline import Timeline
-from ical.types.recur import Frequency, Recur, Weekday, WeekdayValue
+from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
 
 
 def recur_timeline(event: Event) -> Timeline:
@@ -18,6 +20,61 @@ def recur_timeline(event: Event) -> Timeline:
     calendar = Calendar()
     calendar.events.append(event)
     return calendar.timeline
+
+
+class FakeModel(ComponentModel):
+    """Model under test."""
+
+    recurrence_id: RecurrenceId
+
+
+def test_recurrence_id_datetime() -> None:
+    """Test a recurrence id datetime field."""
+
+    model = FakeModel.parse_obj(
+        {
+            "recurrence_id": [
+                ParsedProperty(name="recurrence_id", value="20220724T120000")
+            ]
+        }
+    )
+    assert model.recurrence_id == "20220724T120000"
+
+
+def test_recurrence_id_date() -> None:
+    """Test a recurrence id date field."""
+
+    model = FakeModel.parse_obj(
+        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="20220724")]}
+    )
+    assert model.recurrence_id == "20220724"
+
+
+def test_recurrence_range() -> None:
+    """Test property parameter values are ignored."""
+
+    model = FakeModel.parse_obj(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="20220724T120000",
+                    params=[
+                        ParsedPropertyParameter(name="RANGE", values=["THISANDFUTURE"]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert model.recurrence_id == "20220724T120000"
+
+
+def test_invalid_recurrence_id() -> None:
+    """Test for a recurrence id that is not a valid DATE or DATE-TIME string."""
+    model = FakeModel.parse_obj(
+        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="invalid")]}
+    )
+    assert model.recurrence_id == "invalid"
 
 
 @pytest.mark.parametrize(

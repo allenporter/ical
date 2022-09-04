@@ -9,7 +9,7 @@ from .const import Classification
 from .geo import Geo
 from .period import FreeBusyType, Period
 from .priority import Priority
-from .recur import Frequency, Recur, Weekday, WeekdayValue
+from .recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
 from .request_status import RequestStatus
 from .uri import Uri
 from .utc_offset import UtcOffset
@@ -22,7 +22,9 @@ __all__ = [
     "Geo",
     "Period",
     "Priority",
+    "Range",
     "Recur",
+    "RecurrenceId",
     "RequestStatus",
     "UtcOffset",
     "Uri",

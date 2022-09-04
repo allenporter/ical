@@ -13,7 +13,7 @@ from pydantic import Field, root_validator
 
 from .component import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Classification, Recur, RequestStatus, Uri
+from .types import CalAddress, Classification, Recur, RecurrenceId, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,9 +59,7 @@ class Journal(ComponentModel):
         alias="last-modified", default=None
     )
     organizer: Optional[CalAddress] = None
-    recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
-        alias="recurrence-id"
-    )
+    recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
     related: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)

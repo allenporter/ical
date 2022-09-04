@@ -49,7 +49,6 @@ class Registry:
         self,
     ) -> None:
         """Initialize Registry."""
-        # super().__init__()
         self._items: dict[str, type] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
@@ -60,8 +59,11 @@ class Registry:
         self._encode_property_params: dict[
             type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]
         ] = {}
+        self._disable_value_param: set[type] = set()
 
-    def register(self, name: str | None = None) -> Callable[[type], type]:
+    def register(
+        self, name: str | None = None, disable_value_param: bool = False
+    ) -> Callable[[type], type]:
         """Return decorator to register a type.
 
         The name when specified is the Property Data Type value name.
@@ -88,6 +90,8 @@ class Registry:
                 func, "__encode_property_params__", None
             ):
                 self._encode_property_params[data_type] = encode_property_params
+            if disable_value_param:
+                self._disable_value_param |= set({data_type})
             return func
 
         return decorator
@@ -118,6 +122,11 @@ class Registry:
     ) -> dict[type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]]:
         """Registry of property parameter encoders run on output data model."""
         return self._encode_property_params
+
+    @property
+    def disable_value_param(self) -> set[type]:
+        """Return set of types that do not allow VALUE overrides by component parsing."""
+        return self._disable_value_param
 
 
 DATA_TYPE: Registry = Registry()

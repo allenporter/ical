@@ -135,7 +135,9 @@ class ComponentModel(BaseModel):
     @classmethod
     def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
         """Parse an individual field as a single type."""
-        if value_type := prop.get_parameter_value(ATTR_VALUE):
+        if (
+            value_type := prop.get_parameter_value(ATTR_VALUE)
+        ) and field_type not in DATA_TYPE.disable_value_param:
             # Property parameter specified a strong type
             if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
                 return func(prop)
