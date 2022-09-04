@@ -29,7 +29,7 @@ class FakeModel(ComponentModel):
 
 
 def test_recurrence_id_datetime() -> None:
-    """Test for RecurrenceId fields."""
+    """Test a recurrence id datetime field."""
 
     model = FakeModel.parse_obj(
         {
@@ -42,7 +42,7 @@ def test_recurrence_id_datetime() -> None:
 
 
 def test_recurrence_id_date() -> None:
-    """Test for RecurrenceId fields."""
+    """Test a recurrence id date field."""
 
     model = FakeModel.parse_obj(
         {"recurrence_id": [ParsedProperty(name="recurrence_id", value="20220724")]}
@@ -51,7 +51,7 @@ def test_recurrence_id_date() -> None:
 
 
 def test_recurrence_range() -> None:
-    """Test for RecurrenceId fields."""
+    """Test property parameter values are ignored."""
 
     model = FakeModel.parse_obj(
         {
@@ -67,6 +67,14 @@ def test_recurrence_range() -> None:
         }
     )
     assert model.recurrence_id == "20220724T120000"
+
+
+def test_invalid_recurrence_id() -> None:
+    """Test for a recurrence id that is not a valid DATE or DATE-TIME string."""
+    model = FakeModel.parse_obj(
+        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="invalid")]}
+    )
+    assert model.recurrence_id == "invalid"
 
 
 @pytest.mark.parametrize(
