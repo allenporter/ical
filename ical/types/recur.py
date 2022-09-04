@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Optional, Union
@@ -46,7 +47,10 @@ from pydantic import BaseModel, Field
 from ical.parsing.property import ParsedProperty
 
 from .data_types import DATA_TYPE
+from .date import DateEncoder
 from .date_time import DateTimeEncoder
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Weekday(str, enum.Enum):
@@ -92,6 +96,79 @@ class Frequency(str, enum.Enum):
 
     YEARLY = "YEARLY"
     """Repeating events based on an interval of a year or more."""
+
+
+class Range(str, enum.Enum):
+    """Specifies an effective range of recurrence instances for a recurrence id.
+
+    This is used when modifying a recurrence rule and specifying that the action
+    applies to all events following the specified event.
+    """
+
+    NONE = "NONE"
+    """No range is specified, just a single instance."""
+
+    THIS_AND_FUTURE = "THISANDFUTURE"
+    """The range of the recurrence identifier and all subsequent values."""
+
+
+@DATA_TYPE.register(disable_value_param=True)
+class RecurrenceId(str):
+    """Identifies a specific instance of a recurring calendar component.
+
+    A property type used in conjunction with the "UID" and "SEQUENCE" properties
+    to specify a specific instance of a recurrent calendar component.
+
+    The full range of a recurrence set is referenced by the "UID". The
+    recurrence id can reference a specific instance within the set.
+    """
+
+    @classmethod
+    def to_value(cls, recurrence_id: str) -> datetime.datetime | datetime.date:
+        """Convert a string RecurrenceId into a date or time value."""
+        errors = []
+        try:
+            date_value = DateEncoder.__parse_property_value__(
+                ParsedProperty(name="", value=recurrence_id)
+            )
+            if date_value:
+                return date_value
+        except ValueError as err:
+            errors.append(err)
+
+        try:
+            date_time_value = DateTimeEncoder.__parse_property_value__(
+                ParsedProperty(name="", value=recurrence_id)
+            )
+            if date_time_value:
+                return date_time_value
+        except ValueError as err:
+            errors.append(err)
+
+        raise ValueError(f"Unable to parse date/time value: {errors}")
+
+    @classmethod
+    def __parse_property_value__(cls, value: Any) -> RecurrenceId:
+        """Parse a calendar user address."""
+        if isinstance(value, ParsedProperty):
+            value = cls._parse_value(value.value)
+        if isinstance(value, str):
+            value = cls._parse_value(value)
+        elif isinstance(value, datetime.datetime):
+            value = DateTimeEncoder.__encode_property_json__(value)
+        elif isinstance(value, datetime.date):
+            value = DateEncoder.__encode_property_json__(value)
+        else:
+            value = str(value)
+        return RecurrenceId(value)
+
+    @classmethod
+    def _parse_value(cls, value: str) -> datetime.datetime | datetime.date | str:
+        try:
+            return cls.to_value(value)
+        except ValueError:
+            pass
+        return str(value)
 
 
 RRULE_FREQ = {

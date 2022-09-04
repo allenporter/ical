@@ -24,7 +24,7 @@ class DateEncoder:
     def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.date | None:
         """Parse a rfc5545 into a datetime.date."""
         if not (match := DATE_REGEX.fullmatch(prop.value)):
-            raise ValueError(f"Expected value to match DATE pattern: {prop.value}")
+            raise ValueError(f"Expected value to match DATE pattern: '{prop.value}'")
         date_value = match.group(1)
         year = int(date_value[0:4])
         month = int(date_value[4:6])

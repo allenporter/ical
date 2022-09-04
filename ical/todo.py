@@ -11,7 +11,16 @@ from pydantic import Field, root_validator
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Classification, Geo, Priority, Recur, RequestStatus, Uri
+from .types import (
+    CalAddress,
+    Classification,
+    Geo,
+    Priority,
+    Recur,
+    RecurrenceId,
+    RequestStatus,
+    Uri,
+)
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 
@@ -55,9 +64,7 @@ class Todo(ComponentModel):
     organizer: Optional[CalAddress] = None
     percent: Optional[int] = None
     priority: Optional[Priority] = None
-    recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
-        alias="recurrence-id"
-    )
+    recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
     request_status: Optional[RequestStatus] = Field(
         alias="request-status",
         default_value=None,

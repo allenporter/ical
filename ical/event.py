@@ -24,7 +24,16 @@ from pydantic import Field, root_validator
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Classification, Geo, Priority, Recur, RequestStatus, Uri
+from .types import (
+    CalAddress,
+    Classification,
+    Geo,
+    Priority,
+    Recur,
+    RecurrenceId,
+    RequestStatus,
+    Uri,
+)
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
@@ -124,7 +133,7 @@ class Event(ComponentModel):
     created: Optional[datetime.datetime] = None
     """The date and time the event information was created."""
 
-    description: str = ""
+    description: Optional[str] = None
     """A more complete description of the event than provided by the summary."""
 
     geo: Optional[Geo] = None
@@ -134,7 +143,7 @@ class Event(ComponentModel):
         alias="last-modified", default=None
     )
 
-    location: str = ""
+    location: Optional[str] = None
     """Defines the intended venue for the activity defined by this event."""
 
     organizer: Optional[CalAddress] = None
@@ -143,9 +152,7 @@ class Event(ComponentModel):
     priority: Optional[Priority] = None
     """Defines the relative priorirty of the calendar event."""
 
-    recurrence_id: Optional[Union[datetime.datetime, datetime.date]] = Field(
-        alias="recurrence-id"
-    )
+    recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id", default=None)
     """Defines a specific instance of a recurring event.
 
     The full range of calendar events specified by a recurrence set is referenced

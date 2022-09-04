@@ -16,6 +16,7 @@ from dateutil import rrule
 
 from .event import Event
 from .iter import MergedIterable, RecurIterable
+from .types.recur import RecurrenceId
 from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
@@ -162,6 +163,7 @@ class RecurAdapter:
             update={
                 "dtstart": dtstart,
                 "dtend": dtstart + self._event_duration,
+                "recurrence_id": RecurrenceId.__parse_property_value__(dtstart),
             },
         )
 
