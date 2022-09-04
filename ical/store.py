@@ -129,7 +129,7 @@ class EventStore:
         if cancellation of just a specific instance, or a range of instances.
         """
         if not (store_event := self._lookup_event(uid)):
-            raise ValueError(f"No existing event with uidentifier {uid}")
+            raise ValueError(f"No existing event with uid: {uid}")
 
         # Deleting all instances in the series
         if not recurrence_id:
@@ -182,7 +182,7 @@ class EventStore:
         just that individual instance is updated or all events following as well.
         """
         if not (store_event := self._lookup_event(uid)):
-            raise ValueError(f"No existing event with uidentifier {uid}")
+            raise ValueError(f"No existing event with uid: {uid}")
         partial_update = event.dict(exclude_unset=True)
         _LOGGER.debug("EV pdate=%s", event)
         update = {
@@ -194,7 +194,7 @@ class EventStore:
         }
         if recurrence_id:
             if not store_event.rrule:
-                raise ValueError("Cannot edit recurrence id for non-recurring event")
+                raise ValueError("Specified recurrence_id but event is not recurring")
             # Forking a new event off the old event
             update["uid"] = event.uid
             if recurrence_range == Range.NONE:
