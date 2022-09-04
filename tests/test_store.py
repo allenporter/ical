@@ -456,3 +456,79 @@ def test_edit_recurring_event_this_and_future(
             "summary": "Team meeting",
         },
     ]
+
+
+def test_add_and_cancel_event_date(
+    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29",
+            end="2022-08-29",
+        )
+    )
+    assert fetch_events() == [
+        {
+            "dtstamp": "2022-09-03T09:38:05",
+            "uid": "mock-uid-1",
+            "created": "2022-09-03T09:38:05",
+            "dtstart": "2022-08-29",
+            "dtend": "2022-08-29",
+            "summary": "Monday meeting",
+            "sequence": 0,
+        },
+    ]
+    store.cancel("mock-uid-1")
+    assert fetch_events() == []
+
+
+def test_cancel_event_date_recurring(
+    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29",
+            end="2022-08-29",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-08-29",
+            "summary": "Monday meeting",
+            "recurrence_id": "20220829",
+        },
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-09-05",
+            "summary": "Monday meeting",
+            "recurrence_id": "20220905",
+        },
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-09-12",
+            "summary": "Monday meeting",
+            "recurrence_id": "20220912",
+        },
+    ]
+
+    store.cancel("mock-uid-1", recurrence_id="20220905")
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-08-29",
+            "summary": "Monday meeting",
+            "recurrence_id": "20220829",
+        },
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-09-12",
+            "summary": "Monday meeting",
+            "recurrence_id": "20220912",
+        },
+    ]

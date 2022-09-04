@@ -24,7 +24,60 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class EventStore:
-    """An event store manages the lifecycle of events on a Calendar."""
+    """An event store manages the lifecycle of events on a Calendar.
+
+    An `ical.calendar.Calendar` is a lower level object that can be directly
+    manipulated to add/remove an `ical.event.Event`. That is, it does not
+    handle updating timestamps, incrementing sequence numbers, or managing
+    lifecycle of a recurring event during an update.
+
+
+    Here is an example for setting up an `EventStore`:
+
+    ```python
+    import datetime
+    from ical.calendar import Calendar
+    from ical.event import Event
+    from ical.store import EventStore
+    from ical.types import Recur
+
+    calendar = Calendar()
+    store = EventStore(calendar)
+
+    event = Event(
+        summary="Event summary",
+        start="2022-07-03",
+        end="2022-07-04",
+        rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+    )
+    store.add(event)
+    ```
+
+    This will add events to the calendar:
+    ```python3
+    for event in calendar.timeline:
+        print(event.summary, event.uid, event.recurrence_id, event.dtstart)
+    ```
+    With output like this:
+    ```
+    Event summary a521cf45-2c02-11ed-9e5c-066a07ffbaf5 20220703 2022-07-03
+    Event summary a521cf45-2c02-11ed-9e5c-066a07ffbaf5 20220710 2022-07-10
+    Event summary a521cf45-2c02-11ed-9e5c-066a07ffbaf5 20220717 2022-07-17
+    ```
+
+    You may also delete an event, or a specific instance of a recurring event:
+    ```python
+    # Cancel a single instance of the recurring event
+    store.cancel(uid=event.uid, recurrence_id="20220710")
+    ```
+
+    Then viewing the store using the `print` example removes the individual
+    instance in the event:
+    ```
+    Event summary a521cf45-2c02-11ed-9e5c-066a07ffbaf5 20220703 2022-07-03
+    Event summary a521cf45-2c02-11ed-9e5c-066a07ffbaf5 20220717 2022-07-17
+    ```
+    """
 
     def __init__(
         self,
@@ -112,13 +165,21 @@ class EventStore:
         """Update the event with the specified uid.
 
         The specified event should be created with minimal fields, just
-        including the fields that should be updated. Any default/unset fields
-        in the event are ignored (e.g. uid and dtstamp).
+        including the fields that should be updated. The default fields such
+        as `uid` and `dtstamp` may be used to set the uid for a new created event
+        when updating a recurring event, or for any modification times.
 
         Example usage:
         ```python
         store.edit("event-uid-1", Event(summary="New Summary"))
         ```
+
+        For a recurring event, either the whol eevent or individual instances
+        of the event may be edited. To edit the complete range of a recurring
+        event the `uid` property must be specified and the `recurrence_id` should
+        not be specified. To edit an individual instances of the event the
+        `recurrence_id` must be specified. The `recurrence_range` determines if
+        just that individual instance is updated or all events following as well.
         """
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uidentifier {uid}")

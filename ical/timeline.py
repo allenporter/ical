@@ -157,7 +157,8 @@ class RecurAdapter:
     def get(self, dtstart: datetime.datetime | datetime.date) -> Event:
         """Return the next event in the recurrence."""
         if self._is_all_day and isinstance(dtstart, datetime.datetime):
-            dtstart = dtstart.date()
+            # Convert back to datetime.date if needed for the original event
+            dtstart = datetime.date.fromordinal(dtstart.toordinal())
         return self._event.copy(
             deep=True,
             update={
@@ -180,6 +181,9 @@ def calendar_timeline(events: list[Event]) -> Timeline:
         for rdate in event.rdate:
             ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
         for exdate in event.exdate:
+            if not isinstance(exdate, datetime.datetime):
+                # Convert to datetime matching dateutil's logic
+                exdate = datetime.datetime.fromordinal(exdate.toordinal())
             ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
         iters.append(RecurIterable(RecurAdapter(event).get, ruleset))
     return Timeline(MergedIterable(iters))
