@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import zoneinfo
 from collections.abc import Callable, Generator
 from typing import Any
 from unittest.mock import patch
@@ -564,3 +565,85 @@ def test_invalid_recurrence_id(
         store.edit(
             "mock-uid-1", recurrence_id="invalid", event=Event(summary="invalid")
         )
+
+
+def test_no_timezone_for_floating(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start=datetime.datetime(2022, 8, 29, 9, 0, 0),
+            end=datetime.datetime(2022, 8, 29, 9, 30, 0),
+        )
+    )
+    assert len(calendar.events) == 1
+    assert not calendar.timezones
+
+
+def test_no_timezone_for_utc(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 8, 29, 9, 30, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    assert len(calendar.events) == 1
+    assert not calendar.timezones
+
+
+def test_timezone_for_datetime(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start=datetime.datetime(
+                2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            end=datetime.datetime(
+                2022, 8, 29, 9, 30, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+        )
+    )
+    assert len(calendar.events) == 1
+    assert len(calendar.timezones) == 1
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+
+    store.add(
+        Event(
+            summary="Tuesday meeting",
+            start=datetime.datetime(
+                2022, 8, 30, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            end=datetime.datetime(
+                2022, 8, 30, 9, 30, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+        )
+    )
+    # Timezone already exists
+    assert len(calendar.timezones) == 1
+
+    store.add(
+        Event(
+            summary="Wednesday meeting",
+            start=datetime.datetime(
+                2022, 8, 31, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+            end=datetime.datetime(
+                2022, 8, 31, 12, 30, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+        )
+    )
+    assert len(calendar.timezones) == 2
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+    assert calendar.timezones[1].tz_id == "America/New_York"

@@ -17,7 +17,9 @@ from typing import Any
 
 from .calendar import Calendar
 from .event import Event
+from .timezone import Timezone
 from .types import Range, RecurrenceId
+from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory
 
 _LOGGER = logging.getLogger(__name__)
@@ -100,6 +102,10 @@ class EventStore:
 
         This will handle assigning modification dates, sequence numbers, etc
         if those fields are unset.
+
+        The store will ensure the `ical.calendar.Calendar` has the necessary
+        `ical.timezone.Timezone` needed to fully specify the event time information
+        when encoded.
         """
         update: dict[str, Any] = {}
         if not event.created:
@@ -109,6 +115,8 @@ class EventStore:
         new_event = event.copy(update=update)
         _LOGGER.debug("Adding event: %s", new_event)
         self._calendar.events.append(new_event)
+
+        self._ensure_timezone(event)
 
     def cancel(
         self,
@@ -180,6 +188,10 @@ class EventStore:
         not be specified. To edit an individual instances of the event the
         `recurrence_id` must be specified. The `recurrence_range` determines if
         just that individual instance is updated or all events following as well.
+
+        The store will ensure the `ical.calendar.Calendar` has the necessary
+        `ical.timezone.Timezone` needed to fully specify the event time information
+        when encoded.
         """
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uid: {uid}")
@@ -241,3 +253,28 @@ class EventStore:
             self.add(new_event)
         else:
             self._calendar.events.append(new_event)
+        self._ensure_timezone(event)
+
+    def _ensure_timezone(self, event: Event) -> None:
+        """Create a timezone object for the specified date if it does not already exist."""
+        if (
+            not isinstance(event.dtstart, datetime.datetime)
+            or not event.dtstart.utcoffset()
+            or not event.dtstart.tzinfo
+        ):
+            return
+
+        # Verify this timezone does not already exist. The number of timezones
+        # in a calendar is typically very small so iterate over the whole thing
+        # to avoid any synchronization/cache issues.
+        key = str(event.dtstart.tzinfo)
+        for timezone in self._calendar.timezones:
+            if timezone.tz_id == key:
+                return
+
+        new_timezone: Timezone
+        try:
+            new_timezone = Timezone.from_tzif(key)
+        except TimezoneInfoError:
+            return
+        self._calendar.timezones.append(new_timezone)

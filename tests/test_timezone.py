@@ -14,6 +14,7 @@ from ical.calendar_stream import IcsCalendarStream
 from ical.timezone import IcsTimezoneInfo, Observance, Timezone
 from ical.types import UtcOffset
 from ical.types.recur import Frequency, Recur, Weekday, WeekdayValue
+from ical.tzif.timezoneinfo import TimezoneInfoError
 
 TEST_RECUR = Recur(
     freq=Frequency.YEARLY,
@@ -158,3 +159,10 @@ def test_from_tzif_timezoneinfo_fixed_offset() -> None:
        END:VCALENDAR
     """
     )
+
+
+def test_invalid_tzif_key() -> None:
+    """Test creating a timezone object from tzif data that does not exist."""
+
+    with pytest.raises(TimezoneInfoError, match=r"Unable to find timezone"):
+        Timezone.from_tzif("invalid")
