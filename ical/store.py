@@ -97,7 +97,7 @@ class EventStore:
                 return event
         return None
 
-    def add(self, event: Event) -> None:
+    def add(self, event: Event) -> Event:
         """Add the specified event to the calendar.
 
         This will handle assigning modification dates, sequence numbers, etc
@@ -115,8 +115,8 @@ class EventStore:
         new_event = event.copy(update=update)
         _LOGGER.debug("Adding event: %s", new_event)
         self._calendar.events.append(new_event)
-
         self._ensure_timezone(event)
+        return new_event
 
     def cancel(
         self,
