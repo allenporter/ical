@@ -27,7 +27,7 @@ calendar.events.append(
     Event(summary="Event summary", start=date(2022, 7, 3), end=date(2022, 7, 4)),
 )
 for event in calendar.timeline:
-    print(e.summary)
+    print(event.summary)
 ```
 
 # Reading ics files

@@ -16,7 +16,7 @@ $ pip3 install -r requirements_dev.txt
 From within your virtual environment:
 
 ```
-$ py.tests
+$ pytest
 ```
 
 ## Contributing
