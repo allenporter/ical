@@ -74,7 +74,7 @@ class Journal(ComponentModel):
     # Unknown or unsupported properties
     extras: list[ParsedProperty] = Field(default_factory=list)
 
-    def __init__(self, **data: dict[str, Any]) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize Event."""
         if "start" in data:
             data["dtstart"] = data.pop("start")

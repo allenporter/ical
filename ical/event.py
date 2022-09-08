@@ -233,7 +233,7 @@ class Event(ComponentModel):
     alarm: list[Alarm] = Field(alias="valarm", default_factory=list)
     """A grouping of reminder alarms for the event."""
 
-    def __init__(self, **data: dict[str, Any]) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize a Calendar Event.
 
         This method accepts keyword args with field names on the Calendar such as `summary`,

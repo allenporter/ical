@@ -79,7 +79,7 @@ class Todo(ComponentModel):
 
     extras: list[ParsedProperty] = Field(default_factory=list)
 
-    def __init__(self, **data: dict[str, Any]) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize Todo."""
         if "start" in data:
             data["dtstart"] = data.pop("start")
