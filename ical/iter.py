@@ -70,11 +70,16 @@ class MergedIterator(Iterator[T]):
 
     def __init__(self, iters: list[Iterator[T]]):
         """Initialize MergedIterator."""
-        self._heap: list[tuple[T, Iterator[T]]] = []
-        for iterator in iters:
-            next_item: T | None = next(iterator, None)
-            if next_item:
-                heapq.heappush(self._heap, (next_item, iterator))
+        self._iters = iters
+        self._heap: list[tuple[T, int]] = []
+        for iter_index, iterator in enumerate(iters):
+            try:
+                next_item = next(iterator)
+            except StopIteration:
+                # Iterator has been exhausted, don't add to heap
+                pass
+            else:
+                heapq.heappush(self._heap, (next_item, iter_index))
 
     def __iter__(self) -> Iterator[T]:
         """Return this iterator."""
@@ -84,10 +89,15 @@ class MergedIterator(Iterator[T]):
         """Produce the next item from the merged set."""
         if not self._heap:
             raise StopIteration()
-        (item, iterator) = heapq.heappop(self._heap)
-        next_item = next(iterator, None)
-        if next_item:
-            heapq.heappush(self._heap, (next_item, iterator))
+        (item, iter_index) = heapq.heappop(self._heap)
+        iterator = self._iters[iter_index]
+        try:
+            next_item = next(iterator)
+        except StopIteration:
+            # Iterator will not be added back to the heap
+            pass
+        else:
+            heapq.heappush(self._heap, (next_item, iter_index))
         return item
 
 

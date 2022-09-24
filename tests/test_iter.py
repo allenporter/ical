@@ -1,5 +1,7 @@
 """Tests for the iter library."""
 
+from __future__ import annotations
+
 import datetime
 from typing import Iterable, Iterator
 
@@ -24,6 +26,9 @@ def test_merged_empty() -> None:
     with pytest.raises(StopIteration):
         next(MergedIterator(EMPTY_ITERATOR_LIST))
 
+    with pytest.raises(StopIteration):
+        next(MergedIterator([iter(EMPTY_LIST), iter(EMPTY_LIST)]))
+
 
 def test_merge_is_sorted() -> None:
     """Test that the merge result of two sorted inputs is sorted."""
@@ -46,3 +51,15 @@ def test_recur_empty() -> None:
     assert list(recur_it) == [True, False, True]
     # an iterator is an iterable
     assert list(iter(iter(recur_it))) == [True, False, True]
+
+
+def test_merge_false_values() -> None:
+    """Test the merged iterator can handle Falsy values."""
+    merged_it: Iterable[float | int] = MergedIterable([[0, 1], [-2, 0, 0.5, 2]])
+    assert list(merged_it) == [-2, 0, 0, 0.5, 1, 2]
+
+
+def test_merge_none_values() -> None:
+    """Test the merged iterator can handle None values."""
+    merged_it = MergedIterable([[None, None], [None]])
+    assert list(merged_it) == [None, None, None]
