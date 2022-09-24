@@ -50,7 +50,7 @@ def test_recurrence_id_date() -> None:
     assert model.recurrence_id == "20220724"
 
 
-def test_recurrence_range() -> None:
+def test_recurrence_id_ignore_params() -> None:
     """Test property parameter values are ignored."""
 
     model = FakeModel.parse_obj(
@@ -656,3 +656,16 @@ def test_until_time_mismatch() -> None:
             end=datetime.datetime(2022, 1, 2, 7, 0, 0),
             rrule=Recur(freq=Frequency.DAILY, until=datetime.date(2022, 8, 4)),
         )
+
+
+def test_recur_as_string() -> None:
+    """Test converting a recurrence rule back to a string."""
+
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 8, 1),
+        end=datetime.date(2022, 8, 2),
+        rrule=Recur(freq=Frequency.DAILY, interval=2),
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=DAILY;INTERVAL=2"

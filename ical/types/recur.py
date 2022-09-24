@@ -252,6 +252,10 @@ class Recur(BaseModel):
             cache=True,
         )
 
+    def as_rrule_str(self) -> str:
+        """Return the Recur instance as an RRULE string."""
+        return self.__encode_property_value__(self.dict())
+
     @classmethod
     def from_rrule(cls, rrule_str: str) -> Recur:
         """Create a Recur object from an RRULE string."""
