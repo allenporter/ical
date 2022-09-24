@@ -65,42 +65,16 @@ class RecurIterable(Iterable[T]):
         return RecurIterator(self._item_cb, iter(self._recur))
 
 
-class PeekingIterator(Iterator[T]):
-    """An iterator with a preview of the next item.
-
-    The primary purpose is to implement a merged iterator where it is needed to
-    see the next item in the iterator in order to decide which child iterator
-    to pull from.
-    """
-
-    def __init__(self, iterator: Iterator[T]):
-        """Initialize PeekingIterator."""
-        self._iterator = iterator
-        self._next = next(self._iterator, None)
-
-    def __iter__(self) -> Iterator[T]:
-        """Return this iterator."""
-        return self
-
-    def peek(self) -> T | None:
-        """Peek at the next item without consuming."""
-        return self._next
-
-    def __next__(self) -> T:
-        """Produce the next item from the merged set."""
-        result = self._next
-        self._next = next(self._iterator, None)
-        if result is None:
-            raise StopIteration()
-        return result
-
-
 class MergedIterator(Iterator[T]):
     """An iterator with a merged sorted view of the underlying sorted iterators."""
 
     def __init__(self, iters: list[Iterator[T]]):
         """Initialize MergedIterator."""
-        self._iters = [PeekingIterator(iterator) for iterator in iters]
+        self._heap: list[tuple[T, Iterator[T]]] = []
+        for iterator in iters:
+            next_item: T | None = next(iterator, None)
+            if next_item:
+                heapq.heappush(self._heap, (next_item, iterator))
 
     def __iter__(self) -> Iterator[T]:
         """Return this iterator."""
@@ -108,15 +82,13 @@ class MergedIterator(Iterator[T]):
 
     def __next__(self) -> T:
         """Produce the next item from the merged set."""
-        heap: list[tuple[T, PeekingIterator[T]]] = []
-        for iterator in self._iters:
-            peekd: T | None = iterator.peek()
-            if peekd:
-                heapq.heappush(heap, (peekd, iterator))
-        if not heap:
+        if not self._heap:
             raise StopIteration()
-        (_, iterator) = heapq.heappop(heap)
-        return next(iterator)
+        (item, iterator) = heapq.heappop(self._heap)
+        next_item = next(iterator, None)
+        if next_item:
+            heapq.heappush(self._heap, (next_item, iterator))
+        return item
 
 
 class MergedIterable(Iterable[T]):
