@@ -54,7 +54,7 @@ def test_recur_empty() -> None:
 
 
 def test_merge_false_values() -> None:
-    """Test the merged iterator can handle Falsy values."""
+    """Test the merged iterator can handle values evaluating to False."""
     merged_it: Iterable[float | int] = MergedIterable([[0, 1], [-2, 0, 0.5, 2]])
     assert list(merged_it) == [-2, 0, 0, 0.5, 1, 2]
 
