@@ -82,7 +82,7 @@ def test_empty_store(fetch_events: Callable[..., list[dict[str, Any]]]) -> None:
     assert fetch_events() == []
 
 
-def test_add_and_cancel_event(
+def test_add_and_delete_event(
     store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
 ) -> None:
     """Test adding an event to the store and retrieval."""
@@ -104,7 +104,7 @@ def test_add_and_cancel_event(
             "sequence": 0,
         },
     ]
-    store.cancel("mock-uid-1")
+    store.delete("mock-uid-1")
     assert fetch_events() == []
 
 
@@ -172,7 +172,7 @@ def test_recurring_event(
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
 ) -> None:
-    """Test adding a recurring event and canceling the entire series."""
+    """Test adding a recurring event and deleting the entire series."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -213,7 +213,7 @@ def test_recurring_event(
             "summary": "Monday meeting",
         },
     ]
-    store.cancel("mock-uid-1")
+    store.delete("mock-uid-1")
     assert fetch_events(None) == []
 
 
@@ -224,12 +224,12 @@ def test_recurring_event(
         Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
     ],
 )
-def test_cancel_partial_recurring_event(
+def test_deletel_partial_recurring_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
 ) -> None:
-    """Test adding a recurring event and cancelling part of the series."""
+    """Test adding a recurring event and deleting part of the series."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -238,8 +238,8 @@ def test_cancel_partial_recurring_event(
             rrule=recur,
         )
     )
-    store.cancel(uid="mock-uid-1", recurrence_id="20220905T090000")
-    store.cancel(uid="mock-uid-1", recurrence_id="20220919T090000")
+    store.delete(uid="mock-uid-1", recurrence_id="20220905T090000")
+    store.delete(uid="mock-uid-1", recurrence_id="20220919T090000")
     assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
         {
             "uid": "mock-uid-1",
@@ -269,12 +269,12 @@ def test_cancel_partial_recurring_event(
         Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
     ],
 )
-def test_cancel_this_and_future_event(
+def test_delete_this_and_future_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
 ) -> None:
-    """Test adding a recurring event and cancelling events after one event."""
+    """Test adding a recurring event and deleting events after one event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -283,7 +283,7 @@ def test_cancel_this_and_future_event(
             rrule=recur,
         )
     )
-    store.cancel(
+    store.delete(
         uid="mock-uid-1",
         recurrence_id="20220919T090000",
         recurrence_range=Range.THIS_AND_FUTURE,
@@ -459,7 +459,7 @@ def test_edit_recurring_event_this_and_future(
     ]
 
 
-def test_add_and_cancel_event_date(
+def test_add_and_delete_event_date(
     store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
 ) -> None:
     """Test adding an event to the store and retrieval."""
@@ -481,11 +481,11 @@ def test_add_and_cancel_event_date(
             "sequence": 0,
         },
     ]
-    store.cancel("mock-uid-1")
+    store.delete("mock-uid-1")
     assert fetch_events() == []
 
 
-def test_cancel_event_date_recurring(
+def test_delete_event_date_recurring(
     store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
 ) -> None:
     """Test adding an event to the store and retrieval."""
@@ -518,7 +518,7 @@ def test_cancel_event_date_recurring(
         },
     ]
 
-    store.cancel("mock-uid-1", recurrence_id="20220905")
+    store.delete("mock-uid-1", recurrence_id="20220905")
     assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
         {
             "uid": "mock-uid-1",
@@ -543,7 +543,7 @@ def test_invalid_uid(
         store.edit("invalid", Event(summary="example summary"))
 
     with pytest.raises(ValueError, match=r"No existing event with uid"):
-        store.cancel("invalid")
+        store.delete("invalid")
 
 
 def test_invalid_recurrence_id(
@@ -559,7 +559,7 @@ def test_invalid_recurrence_id(
     )
 
     with pytest.raises(ValueError, match=r"event is not recurring"):
-        store.cancel("mock-uid-1", recurrence_id="invalid")
+        store.delete("mock-uid-1", recurrence_id="invalid")
 
     with pytest.raises(ValueError, match=r"event is not recurring"):
         store.edit(
