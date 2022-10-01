@@ -69,8 +69,8 @@ class EventStore:
 
     You may also delete an event, or a specific instance of a recurring event:
     ```python
-    # Cancel a single instance of the recurring event
-    store.cancel(uid=event.uid, recurrence_id="20220710")
+    # Delete a single instance of the recurring event
+    store.delete(uid=event.uid, recurrence_id="20220710")
     ```
 
     Then viewing the store using the `print` example removes the individual
@@ -118,7 +118,7 @@ class EventStore:
         self._ensure_timezone(event)
         return new_event
 
-    def cancel(
+    def delete(
         self,
         uid: str,
         recurrence_id: str | None = None,
@@ -126,15 +126,15 @@ class EventStore:
     ) -> None:
         """Delete the event from the calendar.
 
-        This method is used to cancel an existing event. For a recurring event
-        either the whole event or instances of an event may be cancelled. To
-        cancel the complete range of a recurring event, the `uid` property
+        This method is used to delete an existing event. For a recurring event
+        either the whole event or instances of an event may be deleted. To
+        delete the complete range of a recurring event, the `uid` property
         for the event must be specified and the `recurrence_id` should not
-        be specified. To cancel an individual instances of the event the
+        be specified. To delete an individual instances of the event the
         `recurrence_id` must be specified.
 
         When deleting individual instances, the range property may specify
-        if cancellation of just a specific instance, or a range of instances.
+        if deletion of just a specific instance, or a range of instances.
         """
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uid: {uid}")
@@ -155,7 +155,7 @@ class EventStore:
             store_event.exdate.append(exdate)
             return
 
-        # Assumes any recurrence cancellation is valid, and that overwriting
+        # Assumes any recurrence deletion is valid, and that overwriting
         # the "until" value will not produce more instances.
         store_event.rrule.count = None
         store_event.rrule.until = exdate - datetime.timedelta(seconds=1)
@@ -235,7 +235,7 @@ class EventStore:
                 if store_event.dtend:
                     update["dtend"] = dtstart + store_event.computed_duration
 
-        # Make a deep copy since cancellation may update this objects recurrence rules
+        # Make a deep copy since deletion may update this objects recurrence rules
         new_event = store_event.copy(update=update, deep=True)
         if recurrence_id and new_event.rrule and new_event.rrule.count:
             # The recurring event count needs to skip any events that
@@ -245,10 +245,10 @@ class EventStore:
                     break
                 new_event.rrule.count = new_event.rrule.count - 1
 
-        # Editing a single instance of a recurring event is like canceling that instance
+        # Editing a single instance of a recurring event is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
         # specified then the entire event is replaced.
-        self.cancel(uid, recurrence_id=recurrence_id, recurrence_range=recurrence_range)
+        self.delete(uid, recurrence_id=recurrence_id, recurrence_range=recurrence_range)
         if recurrence_id:
             self.add(new_event)
         else:
