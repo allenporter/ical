@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 __all__ = [
-    "set_local_timezone",
+    "use_local_timezone",
     "dtstamp_factory",
     "uid_factory",
 ]
@@ -30,11 +30,12 @@ def uid_factory() -> str:
 
 
 @contextmanager
-def set_local_timezone(local_tz: datetime.tzinfo) -> Generator[None, None, None]:
+def use_local_timezone(local_tz: datetime.tzinfo) -> Generator[None, None, None]:
     """Set the local timezone to use when converting a date to datetime.
 
     This is expected to be used as a context manager when the default timezone
-    used by python is not the timezone to be used for calendar operations.
+    used by python is not the timezone to be used for calendar operations (the
+    attendees local timezone).
 
     Example:
     ```
@@ -42,7 +43,7 @@ def set_local_timezone(local_tz: datetime.tzinfo) -> Generator[None, None, None]
     import zoneinfo
     from ical.calendar import Calendar
     from ical.event import Event
-    from ical.util import set_local_timezone
+    from ical.util import use_local_timezone
 
     cal = Calendar()
     cal.events.append(
@@ -52,8 +53,8 @@ def set_local_timezone(local_tz: datetime.tzinfo) -> Generator[None, None, None]
             end=datetime.date(2022, 2, 2)
         )
     )
-    # Use UTC-8 as timezone
-    with set_local_timezone(zoneinfo.ZoneInfo("America/Los_Angeles")):
+    # Use UTC-8 as local timezone
+    with use_local_timezone(zoneinfo.ZoneInfo("America/Los_Angeles")):
         # Returns event above
         events = cal.timeline.start_after(
             datetime.datetime(2022, 2, 1, 7, 59, 59, tzinfo=datetime.timezone.utc))

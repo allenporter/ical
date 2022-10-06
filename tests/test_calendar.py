@@ -14,7 +14,7 @@ from freezegun import freeze_time
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
-from ical.util import set_local_timezone
+from ical.util import use_local_timezone
 
 
 @pytest.fixture(name="calendar")
@@ -318,6 +318,6 @@ def test_all_day_with_local_timezone(
         nonlocal cal
         return [e.summary for e in cal.timeline.start_after(dtstart)]
 
-    with set_local_timezone(zoneinfo.ZoneInfo(tzname)):
+    with use_local_timezone(zoneinfo.ZoneInfo(tzname)):
         assert start_after(dt_before) == ["event"]
         assert not start_after(dt_after)
