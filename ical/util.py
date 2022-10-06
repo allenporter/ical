@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 __all__ = [
-  "dtstamp_factory",
-  "uid_factory",
-  "local_timezone",
+    "set_local_timezone",
+    "dtstamp_factory",
+    "uid_factory",
 ]
 
 
 MIDNIGHT = datetime.time()
+LOCAL_TZ = ContextVar[datetime.tzinfo]("_local_tz")
 
 
 def dtstamp_factory() -> datetime.datetime:
@@ -25,12 +29,54 @@ def uid_factory() -> str:
     return str(uuid.uuid1())
 
 
+@contextmanager
+def set_local_timezone(local_tz: datetime.tzinfo) -> Generator[None, None, None]:
+    """Set the local timezone to use when converting a date to datetime.
+
+    This is expected to be used as a context manager when the default timezone
+    used by python is not the timezone to be used for calendar operations.
+
+    Example:
+    ```
+    import datetime
+    import zoneinfo
+    from ical.calendar import Calendar
+    from ical.event import Event
+    from ical.util import set_local_timezone
+
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Example",
+            start=datetime.date(2022, 2, 1),
+            end=datetime.date(2022, 2, 2)
+        )
+    )
+    # Use UTC-8 as timezone
+    with set_local_timezone(zoneinfo.ZoneInfo("America/Los_Angeles")):
+        # Returns event above
+        events = cal.timeline.start_after(
+            datetime.datetime(2022, 2, 1, 7, 59, 59, tzinfo=datetime.timezone.utc))
+
+        # Does not return event above
+        events = cal.timeline.start_after(
+            datetime.datetime(2022, 2, 1, 8, 00, 00, tzinfo=datetime.timezone.utc))
+    ```
+    """
+    orig_tz = LOCAL_TZ.set(local_tz)
+    try:
+        yield
+    finally:
+        LOCAL_TZ.reset(orig_tz)
+
+
 def local_timezone() -> datetime.tzinfo:
     """Get the local timezone to use when converting date to datetime."""
-    local_tz = datetime.datetime.now().astimezone().tzinfo
-    if not local_tz:
-        return datetime.timezone.utc
-    return local_tz
+    if local_tz := LOCAL_TZ.get(None):
+        return local_tz
+    if local_tz := datetime.datetime.now().astimezone().tzinfo:
+        return local_tz
+    return datetime.timezone.utc
 
 
 def normalize_datetime(value: datetime.date | datetime.datetime) -> datetime.datetime:

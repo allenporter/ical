@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime
 import re
 import uuid
+import zoneinfo
 from typing import Generator
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from freezegun import freeze_time
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
+from ical.util import set_local_timezone
 
 
 @pytest.fixture(name="calendar")
@@ -275,3 +277,47 @@ def test_create_and_serialize_calendar(
         "END:VEVENT",
         "END:VCALENDAR",
     ]
+
+
+@pytest.mark.parametrize(
+    "tzname,dt_before,dt_after",
+    [
+        (
+            "America/Los_Angeles",  # UTC-8 in Feb
+            datetime.datetime(2000, 2, 1, 7, 59, 59, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 2, 1, 8, 0, 0, tzinfo=datetime.timezone.utc),
+        ),
+        (
+            "America/Regina",  # UTC-6 all year round
+            datetime.datetime(2000, 2, 1, 5, 59, 59, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 2, 1, 6, 0, 0, tzinfo=datetime.timezone.utc),
+        ),
+        (
+            "CET",  # UTC-1 in Feb
+            datetime.datetime(2000, 1, 31, 22, 59, 59, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 1, 31, 23, 0, 0, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_all_day_with_local_timezone(
+    tzname: str, dt_before: datetime.datetime, dt_after: datetime.datetime
+) -> None:
+    """Test iteration of all day events using local timezone override."""
+    cal = Calendar()
+    cal.events.extend(
+        [
+            Event(
+                summary="event",
+                start=datetime.date(2000, 2, 1),
+                end=datetime.date(2000, 2, 2),
+            ),
+        ]
+    )
+
+    def start_after(dtstart: datetime.datetime) -> list[str]:
+        nonlocal cal
+        return [e.summary for e in cal.timeline.start_after(dtstart)]
+
+    with set_local_timezone(zoneinfo.ZoneInfo(tzname)):
+        assert start_after(dt_before) == ["event"]
+        assert not start_after(dt_after)
