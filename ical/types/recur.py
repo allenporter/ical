@@ -286,6 +286,8 @@ class Recur(BaseModel):
                         occurrence = ""
                     values.append(f"{occurrence}{weekday}")
                 value = ",".join(values)
+            elif isinstance(value, datetime.datetime):
+                value = DateTimeEncoder.__encode_property_json__(value)
             if not value:
                 continue
             result.append(f"{key.upper()}={value}")
