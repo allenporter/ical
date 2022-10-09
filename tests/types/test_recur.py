@@ -669,3 +669,18 @@ def test_recur_as_string() -> None:
     )
     assert event.rrule
     assert event.rrule.as_rrule_str() == "FREQ=DAILY;INTERVAL=2"
+
+
+def test_recur_until_as_string() -> None:
+    """Test converting a recurrence rule with a date into a string."""
+
+    event = Event(
+        summary="summary",
+        start=datetime.datetime(2022, 8, 1, 6, 0, 0),
+        end=datetime.datetime(2022, 8, 2, 6, 30, 0),
+        rrule=Recur(
+            freq=Frequency.DAILY, until=datetime.datetime(2022, 8, 10, 6, 0, 0)
+        ),
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=DAILY;UNTIL=20220810T060000;INTERVAL=1"
