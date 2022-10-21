@@ -88,7 +88,7 @@ class Event(ComponentModel):
     """A globally unique identifier for the event."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(
+    dtstart: Union[datetime.datetime, datetime.date] = Field(  # type: ignore
         default=None,
     )
     """The start time or start day of the event."""

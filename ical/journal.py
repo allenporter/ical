@@ -51,7 +51,7 @@ class Journal(ComponentModel):
     created: Optional[datetime.datetime] = None
     description: Optional[str] = None
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(
+    dtstart: Union[datetime.datetime, datetime.date] = Field(  # type: ignore
         default=None,
     )
     exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
