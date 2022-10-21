@@ -63,7 +63,7 @@ class Calendar(ComponentModel):
         """Return a timeline view of events on the calendar.
 
         All events are returned as if the attendee is viewing from the
-        specified timezone. For examlpe, this affects the order that All Day
+        specified timezone. For example, this affects the order that All Day
         events are returned.
         """
         return calendar_timeline(self.events, tzinfo=tzinfo)
