@@ -76,7 +76,7 @@ class IcsCalendarStream(CalendarStream):
     @classmethod
     def calendar_to_ics(cls, calendar: Calendar) -> str:
         """Serialize a calendar as an ICS stream."""
-        stream = cls(vcalendar=[calendar])
+        stream = cls(vcalendar=[calendar])  # type: ignore
         return stream.ics()
 
     class Config:
