@@ -16,6 +16,8 @@ from typing import Any
 
 from .util import normalize_datetime
 
+__all__ = ["Timespan"]
+
 
 class Timespan:
     """An unambiguous definition of a start and end time.
