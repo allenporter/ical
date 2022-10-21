@@ -14,7 +14,6 @@ from freezegun import freeze_time
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
-from ical.util import use_local_timezone
 
 
 @pytest.fixture(name="calendar")
@@ -68,6 +67,40 @@ def mock_calendar_times() -> Calendar:
                 summary="third",
                 start=datetime.datetime(2000, 1, 2, 12, 0),
                 end=datetime.datetime(2000, 1, 2, 13, 0),
+            ),
+        ]
+    )
+    return cal
+
+
+@pytest.fixture(name="calendar_mixed")
+def mock_calendar_mixed() -> Calendar:
+    """Fixture with a mix of all day and datetime based events."""
+    cal = Calendar()
+    cal.events.extend(
+        [
+            Event(
+                summary="All Day",
+                start=datetime.date(2000, 2, 1),
+                end=datetime.date(2000, 2, 2),
+            ),
+            Event(
+                summary="Event @ 7 UTC",
+                start=datetime.datetime(
+                    2000, 2, 1, 7, 00, 0, tzinfo=datetime.timezone.utc
+                ),
+                end=datetime.datetime(
+                    2000, 2, 2, 7, 00, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+            Event(
+                summary="Event @ 5UTC",
+                start=datetime.datetime(
+                    2000, 2, 1, 5, 00, 0, tzinfo=datetime.timezone.utc
+                ),
+                end=datetime.datetime(
+                    2000, 2, 2, 5, 00, 0, tzinfo=datetime.timezone.utc
+                ),
             ),
         ]
     )
@@ -279,6 +312,29 @@ def test_create_and_serialize_calendar(
     ]
 
 
+def test_mixed_iteration_order(calendar_mixed: Calendar) -> None:
+    """Test iteration order of all day events based on the attendee timezone."""
+
+    # UTC order
+    assert [e.summary for e in calendar_mixed.timeline] == [
+        "All Day",
+        "Event @ 5UTC",
+        "Event @ 7 UTC",
+    ]
+
+    # Attendee is in -6
+    assert [
+        e.summary
+        for e in calendar_mixed.timeline_tz(zoneinfo.ZoneInfo("America/Regina"))
+    ] == ["Event @ 5UTC", "All Day", "Event @ 7 UTC"]
+
+    # Attendee is in -8
+    assert [
+        e.summary
+        for e in calendar_mixed.timeline_tz(zoneinfo.ZoneInfo("America/Los_Angeles"))
+    ] == ["Event @ 5UTC", "Event @ 7 UTC", "All Day"]
+
+
 @pytest.mark.parametrize(
     "tzname,dt_before,dt_after",
     [
@@ -318,6 +374,10 @@ def test_all_day_with_local_timezone(
         nonlocal cal
         return [e.summary for e in cal.timeline.start_after(dtstart)]
 
-    with use_local_timezone(zoneinfo.ZoneInfo(tzname)):
-        assert start_after(dt_before) == ["event"]
-        assert not start_after(dt_after)
+    local_tz = zoneinfo.ZoneInfo(tzname)
+
+    local_before = dt_before.astimezone(local_tz)
+    assert start_after(local_before) == ["event"]
+
+    local_after = dt_after.astimezone(local_tz)
+    assert not start_after(local_after)

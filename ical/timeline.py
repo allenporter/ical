@@ -16,6 +16,7 @@ from dateutil import rrule
 
 from .event import Event
 from .iter import MergedIterable, RecurIterable
+from .timespan import Timespan
 from .types.recur import RecurrenceId
 from .util import normalize_datetime
 
@@ -47,11 +48,12 @@ class Timeline(Iterable[Event]):
 
         The end date is exclusive.
         """
-        timespan = Event(summary="", start=start, end=end)
+        timespan = Timespan.of(start, end)
         for event in self:
-            if event.is_included_in(timespan):
+            timesp = event.timespan_of(timespan.tzinfo)
+            if timesp.is_included_in(timespan):
                 yield event
-            elif event > timespan:
+            elif timesp > timespan:
                 break
 
     def overlapping(
@@ -63,11 +65,12 @@ class Timeline(Iterable[Event]):
 
         The end date is exclusive.
         """
-        timespan = Event(summary="", start=start, end=end)
+        timespan = Timespan.of(start, end)
         for event in self:
-            if event.intersects(timespan):
+            timesp = event.timespan_of(timespan.tzinfo)
+            if timesp.intersects(timespan):
                 yield event
-            elif event > timespan:
+            elif timesp > timespan:
                 break
 
     def start_after(
@@ -76,8 +79,10 @@ class Timeline(Iterable[Event]):
     ) -> Iterator[Event]:
         """Return an iterator containing events starting after the specified time."""
         instant_value = normalize_datetime(instant)
+        if not instant_value.tzinfo:
+            raise ValueError("Expected tzinfo to be set on normalized datetime")
         for event in self:
-            if event.start_datetime > instant_value:
+            if event.timespan_of(instant_value.tzinfo).start > instant_value:
                 yield event
 
     def active_after(
@@ -86,8 +91,11 @@ class Timeline(Iterable[Event]):
     ) -> Iterator[Event]:
         """Return an iterator containing events active after the specified time."""
         instant_value = normalize_datetime(instant)
+        if not instant_value.tzinfo:
+            raise ValueError("Expected tzinfo to be set on normalized datetime")
         for event in self:
-            if event.start_datetime > instant or event.end_datetime > instant_value:
+            timesp = event.timespan_of(instant_value.tzinfo)
+            if timesp.start > instant_value or event.end > instant_value:
                 yield event
 
     def at_instant(
@@ -95,11 +103,12 @@ class Timeline(Iterable[Event]):
         instant: datetime.date | datetime.datetime,
     ) -> Iterator[Event]:  # pylint: disable
         """Return an iterator containing events starting after the specified time."""
-        timespan = Event(summary="", start=instant, end=instant)
+        timespan = Timespan.of(instant, instant)
         for event in self:
-            if event.includes(timespan):
+            timesp = event.timespan_of(timespan.tzinfo)
+            if timesp.includes(timespan):
                 yield event
-            elif event > timespan:
+            elif timesp > timespan:
                 break
 
     def on_date(self, day: datetime.date) -> Iterator[Event]:  # pylint: disable
@@ -121,9 +130,10 @@ class EventIterable(Iterable[Event]):
     This iterable will ignore recurring events entirely.
     """
 
-    def __init__(self, iterable: Iterable[Event]) -> None:
+    def __init__(self, iterable: Iterable[Event], tzinfo: datetime.tzinfo) -> None:
         """Initialize timeline."""
         self._iterable = iterable
+        self._tzinfo = tzinfo
 
     def __iter__(self) -> Iterator[Event]:
         """Return an iterator as a traversal over events in chronological order."""
@@ -134,7 +144,7 @@ class EventIterable(Iterable[Event]):
         for event in iter(self._iterable):
             if event.rrule or event.rdate:
                 continue
-            heapq.heappush(heap, (event.start_datetime, event))
+            heapq.heappush(heap, (event.timespan_of(self._tzinfo).start, event))
         while heap:
             (_, event) = heapq.heappop(heap)
             yield event
@@ -169,9 +179,9 @@ class RecurAdapter:
         )
 
 
-def calendar_timeline(events: list[Event]) -> Timeline:
+def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
-    iters: list[Iterable[Event]] = [EventIterable(events)]
+    iters: list[Iterable[Event]] = [EventIterable(events, tzinfo=tzinfo)]
     for event in events:
         if not event.rrule and not event.rdate:
             continue

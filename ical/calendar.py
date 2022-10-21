@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from importlib import metadata
 from typing import Optional
 
@@ -52,5 +53,17 @@ class Calendar(ComponentModel):
 
     @property
     def timeline(self) -> Timeline:
-        """Return a timeline view of events on the calendar."""
-        return calendar_timeline(self.events)
+        """Return a timeline view of events on the calendar.
+
+        All day events are returned as if the attendee is viewing from UTC time.
+        """
+        return self.timeline_tz()
+
+    def timeline_tz(self, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> Timeline:
+        """Return a timeline view of events on the calendar.
+
+        All events are returned as if the attendee is viewing from the
+        specified timezone. For examlpe, this affects the order that All Day
+        events are returned.
+        """
+        return calendar_timeline(self.events, tzinfo=tzinfo)

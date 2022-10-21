@@ -356,7 +356,7 @@ def test_parse_event_timezones(
     assert event.end == end
 
 
-def test_all_day_timezones() -> None:
+def test_all_day_timezones_default() -> None:
     """Test behavior of all day events interacting with timezones."""
     with patch(
         "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
@@ -366,6 +366,32 @@ def test_all_day_timezones() -> None:
             2022, 8, 1, 6, 0, 0, tzinfo=timezone.utc
         )
         assert event.end_datetime == datetime(2022, 8, 2, 6, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    "dtstart,dtend",
+    [
+        (
+            datetime(2022, 8, 1, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+            datetime(2022, 8, 2, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+        ),
+        (
+            datetime(
+                2022, 8, 1, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            datetime(
+                2022, 8, 2, 0, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+        ),
+    ],
+)
+def test_all_day_timespan_timezone_explicit(dtstart: datetime, dtend: datetime) -> None:
+    """Test behavior of all day events interacting with timezones specified explicitly."""
+    event = Event(summary=SUMMARY, start=date(2022, 8, 1), end=date(2022, 8, 2))
+    assert dtstart.tzinfo
+    timespan = event.timespan_of(dtstart.tzinfo)
+    assert timespan.start == dtstart
+    assert timespan.end == dtend
 
 
 def test_validate_assignment() -> None:

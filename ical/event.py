@@ -24,6 +24,7 @@ from pydantic import Field, root_validator
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart
 from .parsing.property import ParsedProperty
+from .timespan import Timespan
 from .types import (
     CalAddress,
     Classification,
@@ -261,13 +262,13 @@ class Event(ComponentModel):
 
     @property
     def start_datetime(self) -> datetime.datetime:
-        """Return the events start as a datetime."""
-        return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
+        """Return the events start as a datetime in UTC"""
+        return normalize_datetime(self.start).astimezone(datetime.timezone.utc)
 
     @property
     def end_datetime(self) -> datetime.datetime:
-        """Return the events end as a datetime."""
-        return normalize_datetime(self.end).astimezone(tz=datetime.timezone.utc)
+        """Return the events end as a datetime in UTC."""
+        return normalize_datetime(self.end).astimezone(datetime.timezone.utc)
 
     @property
     def computed_duration(self) -> datetime.timedelta:
@@ -278,59 +279,56 @@ class Event(ComponentModel):
             raise ValueError("Invalid state, expected end or duration")
         return self.duration
 
+    @property
+    def timespan(self) -> Timespan:
+        """Return a timespan representing the event start and end."""
+        return Timespan.of(self.start, self.end)
+
+    def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
+        """Return a timespan representing the event start and end."""
+        return Timespan.of(
+            normalize_datetime(self.start, tzinfo), normalize_datetime(self.end, tzinfo)
+        )
+
     def starts_within(self, other: "Event") -> bool:
         """Return True if this event starts while the other event is active."""
-        return other.start_datetime <= self.start_datetime < other.end_datetime
+        return self.timespan.starts_within(other.timespan)
 
     def ends_within(self, other: "Event") -> bool:
         """Return True if this event ends while the other event is active."""
-        return other.start_datetime <= self.end_datetime < other.end_datetime
+        return self.timespan.ends_within(other.timespan)
 
     def intersects(self, other: "Event") -> bool:
         """Return True if this event overlaps with the other event."""
-        return (
-            other.start_datetime <= self.start_datetime < other.end_datetime
-            or other.start_datetime < self.end_datetime <= other.end_datetime
-            or self.start_datetime <= other.start_datetime < self.end_datetime
-            or self.start_datetime < other.end_datetime <= self.end_datetime
-        )
+        return self.timespan.intersects(other.timespan)
 
     def includes(self, other: "Event") -> bool:
         """Return True if the other event starts and ends within this event."""
-        return (
-            self.start_datetime <= other.start_datetime < self.end_datetime
-            and self.start_datetime <= other.end_datetime < self.end_datetime
-        )
+        return self.timespan.includes(other.timespan)
 
     def is_included_in(self, other: "Event") -> bool:
         """Return True if this event starts and ends within the other event."""
-        return (
-            other.start_datetime <= self.start_datetime
-            and self.end_datetime < other.end_datetime
-        )
-
-    def _tuple(self) -> tuple[datetime.datetime, datetime.datetime]:
-        return (self.start_datetime, self.end_datetime)
+        return self.timespan.is_included_in(other.timespan)
 
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Event):
             return NotImplemented
-        return self._tuple() < other._tuple()
+        return self.timespan < other.timespan
 
     def __gt__(self, other: Any) -> bool:
         if not isinstance(other, Event):
             return NotImplemented
-        return self._tuple() > other._tuple()
+        return self.timespan > other.timespan
 
     def __le__(self, other: Any) -> bool:
         if not isinstance(other, Event):
             return NotImplemented
-        return self._tuple() <= other._tuple()
+        return self.timespan <= other.timespan
 
     def __ge__(self, other: Any) -> bool:
         if not isinstance(other, Event):
             return NotImplemented
-        return self._tuple() >= other._tuple()
+        return self.timespan >= other.timespan
 
     @root_validator(allow_reuse=True)
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
