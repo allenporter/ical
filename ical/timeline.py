@@ -95,7 +95,7 @@ class Timeline(Iterable[Event]):
             raise ValueError("Expected tzinfo to be set on normalized datetime")
         for event in self:
             timesp = event.timespan_of(instant_value.tzinfo)
-            if timesp.start > instant_value or event.end > instant_value:
+            if timesp.start > instant_value or timesp.end > instant_value:
                 yield event
 
     def at_instant(

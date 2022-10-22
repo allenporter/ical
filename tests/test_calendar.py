@@ -137,6 +137,28 @@ def test_start_after(calendar: Calendar) -> None:
     assert [
         e.summary for e in calendar.timeline.start_after(datetime.date(2000, 1, 1))
     ] == ["second", "third", "fourth"]
+    assert [
+        e.summary
+        for e in calendar.timeline.start_after(datetime.datetime(2000, 1, 1, 6, 0, 0))
+    ] == ["second", "third", "fourth"]
+    assert [
+        e.summary
+        for e in calendar.timeline.start_after(datetime.datetime(2000, 1, 15, 0, 0, 0))
+    ] == ["second", "third", "fourth"]
+
+
+def test_start_after_times(calendar_times: Calendar) -> None:
+    """Test chronological iteration starting at a specific time."""
+    assert [
+        e.summary
+        for e in calendar_times.timeline.start_after(datetime.date(2000, 1, 1))
+    ] == ["first", "second", "third"]
+    assert [
+        e.summary
+        for e in calendar_times.timeline.start_after(
+            datetime.datetime(2000, 1, 1, 6, 0, 0)
+        )
+    ] == ["first", "second", "third"]
 
 
 def test_active_after(calendar: Calendar) -> None:
@@ -145,6 +167,23 @@ def test_active_after(calendar: Calendar) -> None:
         e.summary
         for e in calendar.timeline.start_after(datetime.datetime(2000, 1, 1, 12, 0, 0))
     ] == ["second", "third", "fourth"]
+    assert [
+        e.summary for e in calendar.timeline.start_after(datetime.date(2000, 1, 1))
+    ] == ["second", "third", "fourth"]
+
+
+def test_active_after_times(calendar_times: Calendar) -> None:
+    """Test chronological iteration starting at a specific time."""
+    assert [
+        e.summary
+        for e in calendar_times.timeline.start_after(
+            datetime.datetime(2000, 1, 1, 12, 0, 0)
+        )
+    ] == ["third"]
+    assert [
+        e.summary
+        for e in calendar_times.timeline.start_after(datetime.date(2000, 1, 1))
+    ] == ["first", "second", "third"]
 
 
 @pytest.mark.parametrize(
