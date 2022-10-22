@@ -11,6 +11,7 @@ __all__ = [
     "journal",
     "store",
     "timeline",
+    "timespan",
     "timezone",
     "todo",
     "types",
