@@ -8,7 +8,6 @@ like returning all events happening today or after a specific date.
 from __future__ import annotations
 
 import datetime
-import logging
 from collections.abc import Generator, Iterable
 
 from dateutil import rrule
@@ -25,8 +24,6 @@ from .iter import (
 )
 from .timespan import Timespan
 from .types.recur import RecurrenceId
-
-_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["Timeline"]
 
@@ -49,7 +46,6 @@ def _event_iterable(
 
     def sortable_items() -> Generator[SortableItem[Timespan, Event], None, None]:
         for event in iterable:
-            _LOGGER.debug("event: %s", event)
             if event.rrule or event.rdate:
                 continue
             yield SortableItemValue(event.timespan_of(tzinfo), event)
