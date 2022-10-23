@@ -16,6 +16,7 @@ from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone
 from .todo import Todo
+from .util import local_timezone
 
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]
@@ -59,11 +60,11 @@ class Calendar(ComponentModel):
         """
         return self.timeline_tz()
 
-    def timeline_tz(self, tzinfo: datetime.tzinfo = datetime.timezone.utc) -> Timeline:
+    def timeline_tz(self, tzinfo: datetime.tzinfo | None = None) -> Timeline:
         """Return a timeline view of events on the calendar.
 
         All events are returned as if the attendee is viewing from the
         specified timezone. For example, this affects the order that All Day
         events are returned.
         """
-        return calendar_timeline(self.events, tzinfo=tzinfo)
+        return calendar_timeline(self.events, tzinfo=tzinfo or local_timezone())

@@ -90,25 +90,22 @@ class Timespan:
         """Return True if this timespan starts and ends within the other event."""
         return other.start <= self.start and self.end < other.end
 
-    def _tuple(self) -> tuple[datetime.datetime, datetime.datetime]:
-        return (self.start, self.end)
-
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return self._tuple() < other._tuple()
+        return (self._start, self._end) < (other.start, other.end)
 
     def __gt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return self._tuple() > other._tuple()
+        return (self._start, self._end) > (other.start, other.end)
 
     def __le__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return self._tuple() <= other._tuple()
+        return (self._start, self._end) <= (other.start, other.end)
 
     def __ge__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return self._tuple() >= other._tuple()
+        return (self._start, self._end) >= (other.start, other.end)
