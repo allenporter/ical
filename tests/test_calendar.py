@@ -355,7 +355,7 @@ def test_mixed_iteration_order(calendar_mixed: Calendar) -> None:
     """Test iteration order of all day events based on the attendee timezone."""
 
     # UTC order
-    assert [e.summary for e in calendar_mixed.timeline] == [
+    assert [e.summary for e in calendar_mixed.timeline_tz(datetime.timezone.utc)] == [
         "All Day",
         "Event @ 5UTC",
         "Event @ 7 UTC",
@@ -409,11 +409,11 @@ def test_all_day_with_local_timezone(
         ]
     )
 
-    def start_after(dtstart: datetime.datetime) -> list[str]:
-        nonlocal cal
-        return [e.summary for e in cal.timeline.start_after(dtstart)]
-
     local_tz = zoneinfo.ZoneInfo(tzname)
+
+    def start_after(dtstart: datetime.datetime) -> list[str]:
+        nonlocal cal, local_tz
+        return [e.summary for e in cal.timeline_tz(local_tz).start_after(dtstart)]
 
     local_before = dt_before.astimezone(local_tz)
     assert start_after(local_before) == ["event"]

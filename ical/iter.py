@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import datetime
 import heapq
+from abc import abstractmethod
 from collections.abc import Callable, Iterable, Iterator
-from typing import TypeVar, Union
+from typing import Any, Generic, TypeVar, Union, cast
 
 T = TypeVar("T")
+K = TypeVar("K")
 
 ItemAdapter = Callable[[Union[datetime.datetime, datetime.date]], T]
 """An adapter for an object in a sorted container (iterator).
@@ -23,25 +25,65 @@ the callback returns an object at that time (e.g. event with updated time)
 """
 
 
-class RecurIterator(Iterator[T]):
-    """An iterator for a recurrence rule."""
+class SortableItem(Generic[K, T]):
+    """A SortableItem is used to sort an item by an arbitrary key.
+
+    This object is used as a holder of the actual event or recurring event
+    such that the sort key used is independent of the event to avoid extra
+    copies and comparisons of a large event object.
+    """
+
+    def __init__(self, key: K) -> None:
+        """Initialize SortableItem."""
+        self._key = key
+
+    @property
+    def key(self) -> K:
+        """Return the sort key."""
+        return self._key
+
+    @property
+    @abstractmethod
+    def item(self) -> T:
+        """Return the underlying item."""
+
+    def __lt__(self, other: Any) -> bool:
+        """Compare sortable items together."""
+        if not isinstance(other, SortableItem):
+            return NotImplemented
+        return cast(bool, self._key < other.key)
+
+
+class SortableItemValue(SortableItem[K, T]):
+    """Concrete value implementation of SortableItem."""
+
+    def __init__(self, key: K, value: T) -> None:
+        """Initialize SortableItemValue."""
+        super().__init__(key)
+        self._value = value
+
+    @property
+    def item(self) -> T:
+        """Return the underlying item."""
+        return self._value
+
+
+class LazySortableItem(SortableItem[K, T]):
+    """A SortableItem that has its value built lazily."""
 
     def __init__(
         self,
-        item_cb: ItemAdapter[T],
-        recur: Iterator[datetime.datetime | datetime.date],
-    ):
-        """Initialize the RecurIterator."""
+        key: K,
+        item_cb: Callable[[], T],
+    ) -> None:
+        """Initialize SortableItemValue."""
+        super().__init__(key)
         self._item_cb = item_cb
-        self._recur = recur
 
-    def __iter__(self) -> Iterator[T]:
-        return self
-
-    def __next__(self) -> T:
-        """Return the next event in the recurrence."""
-        dtstart: datetime.datetime | datetime.date = next(self._recur)
-        return self._item_cb(dtstart)
+    @property
+    def item(self) -> T:
+        """Return the underlying item."""
+        return self._item_cb()
 
 
 class RecurIterable(Iterable[T]):
@@ -62,7 +104,8 @@ class RecurIterable(Iterable[T]):
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator as a traversal over events in chronological order."""
-        return RecurIterator(self._item_cb, iter(self._recur))
+        for dtvalue in self._recur:
+            yield self._item_cb(dtvalue)
 
 
 class MergedIterator(Iterator[T]):

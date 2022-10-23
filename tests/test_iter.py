@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import datetime
-from typing import Iterable, Iterator
+import random
+from collections.abc import Generator
+from typing import Any, Iterable, Iterator
 
 import pytest
 
@@ -63,3 +65,32 @@ def test_merge_none_values() -> None:
     """Test the merged iterator can handle None values."""
     merged_it = MergedIterable([[None, None], [None]])
     assert list(merged_it) == [None, None, None]
+
+
+@pytest.mark.parametrize(
+    "num_iters,num_objects",
+    [
+        (10, 10),
+        (10, 100),
+        (10, 1000),
+        (100, 10),
+        (100, 100),
+    ],
+)
+def test_benchmark_merged_iter(
+    num_iters: int, num_objects: int, benchmark: Any
+) -> None:
+    """Add a benchmark for the merged iterator."""
+
+    def gen_items() -> Generator[float, None, None]:
+        nonlocal num_objects
+        for _ in range(num_objects):
+            yield random.random()
+
+    def exhaust() -> int:
+        nonlocal num_iters
+        merged_it = MergedIterable([gen_items() for _ in range(num_iters)])
+        return sum(1 for _ in merged_it)
+
+    result = benchmark(exhaust)
+    assert result == num_iters * num_objects
