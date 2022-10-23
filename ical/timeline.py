@@ -8,9 +8,8 @@ like returning all events happening today or after a specific date.
 from __future__ import annotations
 
 import datetime
-import heapq
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 
 from dateutil import rrule
 
@@ -20,18 +19,19 @@ from .iter import (
     MergedIterable,
     RecurIterable,
     SortableItem,
+    SortableItemTimeline,
     SortableItemValue,
+    SortedItemIterable,
 )
 from .timespan import Timespan
 from .types.recur import RecurrenceId
-from .util import normalize_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["Timeline"]
 
 
-class Timeline(Iterable[Event]):
+class Timeline(SortableItemTimeline[Event]):
     """A set of events on a calendar.
 
     A timeline is typically created from a `ics.calendar.Calendar` and is
@@ -39,121 +39,22 @@ class Timeline(Iterable[Event]):
     """
 
     def __init__(self, iterable: Iterable[SortableItem[Timespan, Event]]) -> None:
-        self._iterable = iterable
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return an iterator as a traversal over events in chronological order."""
-        for item in self._iterable:
-            yield item.item
-
-    def included(
-        self,
-        start: datetime.date | datetime.datetime,
-        end: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:
-        """Return an iterator for all events active during the timespan.
-
-        The end date is exclusive.
-        """
-        timespan = Timespan.of(start, end)
-        for item in self._iterable:
-            if item.key.is_included_in(timespan):
-                yield item.item
-            elif item.key > timespan:
-                break
-
-    def overlapping(
-        self,
-        start: datetime.date | datetime.datetime,
-        end: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events active during the timespan.
-
-        The end date is exclusive.
-        """
-        timespan = Timespan.of(start, end)
-        for item in self._iterable:
-            if item.key.intersects(timespan):
-                yield item.item
-            elif item.key > timespan:
-                break
-
-    def start_after(
-        self,
-        instant: datetime.datetime | datetime.date,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events starting after the specified time."""
-        instant_value = normalize_datetime(instant)
-        if not instant_value.tzinfo:
-            raise ValueError("Expected tzinfo to be set on normalized datetime")
-        for item in self._iterable:
-            if item.key.start > instant_value:
-                yield item.item
-
-    def active_after(
-        self,
-        instant: datetime.datetime | datetime.date,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events active after the specified time."""
-        instant_value = normalize_datetime(instant)
-        if not instant_value.tzinfo:
-            raise ValueError("Expected tzinfo to be set on normalized datetime")
-        for item in self._iterable:
-            if item.key.start > instant_value or item.key.end > instant_value:
-                yield item.item
-
-    def at_instant(
-        self,
-        instant: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:  # pylint: disable
-        """Return an iterator containing events starting after the specified time."""
-        timespan = Timespan.of(instant, instant)
-        for item in self._iterable:
-            _LOGGER.debug("Checking item: s=%s, %s", item.key.start, timespan.start)
-            _LOGGER.debug("Checking item: e=%s, %s", item.key.end, timespan.end)
-            if item.key.includes(timespan):
-                yield item.item
-            elif item.key > timespan:
-                break
-
-    def on_date(self, day: datetime.date) -> Iterator[Event]:  # pylint: disable
-        """Return an iterator containing all events active on the specified day."""
-        return self.overlapping(day, day + datetime.timedelta(days=1))
-
-    def today(self) -> Iterator[Event]:
-        """Return an iterator containing all events active on the specified day."""
-        return self.on_date(datetime.date.today())
-
-    def now(self) -> Iterator[Event]:
-        """Return an iterator containing all events active on the specified day."""
-        return self.at_instant(datetime.datetime.now())
+        super().__init__(iterable)
 
 
-class EventIterable(Iterable[SortableItem[Timespan, Event]]):
-    """Iterable that returns events in sorted order.
+def _event_iterable(
+    iterable: list[Event], tzinfo: datetime.tzinfo
+) -> Iterable[SortableItem[Timespan, Event]]:
+    """Create a sorted iterable from the list of events."""
 
-    This iterable will ignore recurring events entirely.
-    """
-
-    def __init__(self, iterable: Iterable[Event], tzinfo: datetime.tzinfo) -> None:
-        """Initialize timeline."""
-        self._iterable = iterable
-        self._tzinfo = tzinfo
-
-    def __iter__(self) -> Iterator[SortableItem[Timespan, Event]]:
-        """Return an iterator as a traversal over events in chronological order."""
-        # Using a heap is faster than sorting if the number of events (n) is
-        # much bigger than the number of events we extract from the iterator (k).
-        # Complexity: O(n + k log n).
-        heap: list[SortableItem[Timespan, Event]] = []
-        for event in iter(self._iterable):
+    def sortable_items() -> Generator[SortableItem[Timespan, Event], None, None]:
+        for event in iterable:
+            _LOGGER.debug("event: %s", event)
             if event.rrule or event.rdate:
                 continue
-            heapq.heappush(
-                heap, SortableItemValue(event.timespan_of(self._tzinfo), event)
-            )
-        while heap:
-            yield heapq.heappop(heap)
+            yield SortableItemValue(event.timespan_of(tzinfo), event)
+
+    return SortedItemIterable(sortable_items, tzinfo)
 
 
 class RecurAdapter:
@@ -195,7 +96,7 @@ class RecurAdapter:
 def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
     iters: list[Iterable[SortableItem[Timespan, Event]]] = [
-        EventIterable(events, tzinfo=tzinfo)
+        _event_iterable(events, tzinfo=tzinfo)
     ]
     for event in events:
         if not event.rrule and not event.rdate:
