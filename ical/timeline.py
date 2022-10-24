@@ -8,7 +8,7 @@ like returning all events happening today or after a specific date.
 from __future__ import annotations
 
 import datetime
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Iterator
 
 from dateutil import rrule
 
@@ -37,6 +37,65 @@ class Timeline(SortableItemTimeline[Event]):
 
     def __init__(self, iterable: Iterable[SortableItem[Timespan, Event]]) -> None:
         super().__init__(iterable)
+
+    def __iter__(self) -> Iterator[Event]:
+        """Return an iterator as a traversal over events in chronological order."""
+        return super().__iter__()
+
+    def included(
+        self,
+        start: datetime.date | datetime.datetime,
+        end: datetime.date | datetime.datetime,
+    ) -> Iterator[Event]:
+        """Return an iterator for all events active during the timespan.
+
+        The end date is exclusive.
+        """
+        return super().included(start, end)
+
+    def overlapping(
+        self,
+        start: datetime.date | datetime.datetime,
+        end: datetime.date | datetime.datetime,
+    ) -> Iterator[Event]:
+        """Return an iterator containing events active during the timespan.
+
+        The end date is exclusive.
+        """
+        return super().overlapping(start, end)
+
+    def start_after(
+        self,
+        instant: datetime.datetime | datetime.date,
+    ) -> Iterator[Event]:
+        """Return an iterator containing events starting after the specified time."""
+        return super().start_after(instant)
+
+    def active_after(
+        self,
+        instant: datetime.datetime | datetime.date,
+    ) -> Iterator[Event]:
+        """Return an iterator containing events active after the specified time."""
+        return super().active_after(instant)
+
+    def at_instant(
+        self,
+        instant: datetime.date | datetime.datetime,
+    ) -> Iterator[Event]:  # pylint: disable
+        """Return an iterator containing events starting after the specified time."""
+        return super().at_instant(instant)
+
+    def on_date(self, day: datetime.date) -> Iterator[Event]:  # pylint: disable
+        """Return an iterator containing all events active on the specified day."""
+        return super().on_date(day)
+
+    def today(self) -> Iterator[Event]:
+        """Return an iterator containing all events active on the specified day."""
+        return super().today()
+
+    def now(self) -> Iterator[Event]:
+        """Return an iterator containing all events active on the specified day."""
+        return super().now()
 
 
 def _event_iterable(
