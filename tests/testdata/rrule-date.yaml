@@ -1,0 +1,60 @@
+input: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTART:20220802
+  DTEND:20220803
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  RRULE:FREQ=DAILY;UNTIL=20220904
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  SUMMARY:Daily Event
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR
+output:
+  calendars:
+  - prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    version: '2.0'
+    events:
+    - dtstamp: '2022-07-31T19:04:08+00:00'
+      uid: 5gog4qp8rohrj69q63ddvbnbt5@google.com
+      dtstart: '2022-08-02'
+      dtend: '2022-08-03'
+      summary: Daily Event
+      created: '2022-07-31T19:02:07+00:00'
+      description: ''
+      last_modified: '2022-07-31T19:02:07+00:00'
+      location: ''
+      rrule:
+        freq: DAILY
+        until: '2022-09-04'
+      sequence: 0
+      status: CONFIRMED
+      transparency: OPAQUE
+encoded: |-
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  DTSTART:20220802
+  DTEND:20220803
+  SUMMARY:Daily Event
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  RRULE:FREQ=DAILY;UNTIL=20220904
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR

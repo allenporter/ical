@@ -189,7 +189,8 @@ RRULE_WEEKDAY = {
 WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
 
 RecurInputDict = dict[
-    str, Union[datetime.datetime, str, list[str], list[dict[str, str]]]
+    str,
+    Union[datetime.datetime, datetime.date, str, list[str], list[dict[str, str]], None],
 ]
 
 
@@ -294,7 +295,9 @@ class Recur(BaseModel):
         return ";".join(result)
 
     @classmethod
-    def __parse_property_value__(cls, prop: Any) -> RecurInputDict:
+    def __parse_property_value__(  # pylint: disable=too-many-branches
+        cls, prop: Any
+    ) -> RecurInputDict:
         """Parse the recurrence rule text as a dictionary as Pydantic input.
         An input rule like 'FREQ=YEARLY;BYMONTH=4' is converted
         into dictionary.
@@ -314,9 +317,16 @@ class Recur(BaseModel):
             key, value = part.split("=")
             key = key.lower()
             if key == "until":
-                result[key] = DateTimeEncoder.__parse_property_value__(
-                    ParsedProperty(name="ignored", value=value)
-                )
+                new_value: datetime.datetime | datetime.date | None
+                try:
+                    new_value = DateTimeEncoder.__parse_property_value__(
+                        ParsedProperty(name="ignored", value=value)
+                    )
+                except ValueError:
+                    new_value = DateEncoder.__parse_property_value__(
+                        ParsedProperty(name="ignored", value=value)
+                    )
+                result[key] = new_value
             elif key in ("bymonthday", "bymonth"):
                 result[key] = value.split(",")
             elif key == "byday":
