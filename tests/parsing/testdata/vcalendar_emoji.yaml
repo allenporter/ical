@@ -1,0 +1,34 @@
+input: |-
+  BEGIN:VEVENT
+  DTSTAMP:20221202T075310
+  UID:5deea302-7216-11ed-b1b6-48d2240d04ae
+  DTSTART:20221202T085500
+  DTEND:20221202T090000
+  SUMMARY:🎄emojis!
+  CREATED:20221202T075310
+  SEQUENCE:0
+  END:VEVENT
+output:
+- name: vevent
+  properties:
+  - name: dtstamp
+    value: 20221202T075310
+    params:
+  - name: uid
+    value: "5deea302-7216-11ed-b1b6-48d2240d04ae"
+    params:
+  - name: dtstart
+    value: 20221202T085500
+    params:
+  - name: dtend
+    value: 20221202T090000
+    params:
+  - name: summary
+    value: 🎄emojis!
+    params:
+  - name: created
+    value: 20221202T075310
+    params:
+  - name: sequence
+    value: '0'
+    params:

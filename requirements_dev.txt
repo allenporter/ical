@@ -1,5 +1,6 @@
 -e .
 coverage==6.4.2
+emoji==2.2.0
 python-dateutil==2.8.2
 freezegun==1.2.1
 pdoc==12.1.0

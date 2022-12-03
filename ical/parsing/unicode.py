@@ -10,6 +10,7 @@ import logging
 import re
 from typing import cast
 
+import emoji
 from pyparsing import unicode_set
 from pyparsing.unicode import UnicodeRangeList
 
@@ -61,7 +62,17 @@ class NonUsAscii(CharRange):
     ]
 
 
-NON_US_ASCII = NonUsAscii.all()
+class BasicMultilingualPlane(CharRange):
+    """Unicode set for the Basic Multilingual Plane."""
+
+    _ranges: UnicodeRangeList = [
+        (0x0020, 0xFFFF),
+    ]
+
+
+EMOJI = list(emoji.EMOJI_DATA.keys())
+
+NON_US_ASCII = NonUsAscii.all() + EMOJI
 
 # Characters that should be encoded in quotes
 UNSAFE_CHAR_RE = re.compile(r"[,:;]")
