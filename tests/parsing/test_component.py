@@ -1,4 +1,4 @@
-"""Tests for timeline related calendar eents."""
+"""Tests for parsing raw components."""
 
 import json
 
