@@ -81,7 +81,7 @@ def test_start_end_duration(
         (
             date(2022, 9, 6),
             date(2022, 9, 7),
-            datetime(2022, 9, 6, 8, 0, 0, tzinfo=timezone.utc),
+            datetime(2022, 9, 6, 8, 0, 1, tzinfo=timezone.utc),
             datetime(2022, 9, 6, 8, 30, 0, tzinfo=timezone.utc),
         ),
     ],
