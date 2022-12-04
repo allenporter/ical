@@ -79,6 +79,10 @@ class WeekdayValue:
     month, or -1 represents the last Monday of the month.
     """
 
+    def __str__(self) -> str:
+        """Return the WeekdayValue as an encoded string."""
+        return f"{self.occurrence or ''}{self.weekday}"
+
 
 class Frequency(str, enum.Enum):
     """Type of recurrence rule.
@@ -255,7 +259,9 @@ class Recur(BaseModel):
 
     def as_rrule_str(self) -> str:
         """Return the Recur instance as an RRULE string."""
-        return self.__encode_property_value__(self.dict())
+        return self.__encode_property_value__(
+            self.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+        )
 
     @classmethod
     def from_rrule(cls, rrule_str: str) -> Recur:
@@ -280,15 +286,15 @@ class Recur(BaseModel):
                 value = ",".join([str(val) for val in value])
             elif key == "byday":
                 values = []
-                for weekday_dict in value:
-                    weekday = weekday_dict["weekday"]
-                    occurrence = weekday_dict.get("occurrence")
-                    if occurrence is None:
-                        occurrence = ""
-                    values.append(f"{occurrence}{weekday}")
+                for weekday_value in value:
+                    if isinstance(weekday_value, dict):
+                        weekday_value = WeekdayValue(**weekday_value)
+                    values.append(str(weekday_value))
                 value = ",".join(values)
             elif isinstance(value, datetime.datetime):
                 value = DateTimeEncoder.__encode_property_json__(value)
+            elif isinstance(value, datetime.date):
+                value = DateEncoder.__encode_property_json__(value)
             if not value:
                 continue
             result.append(f"{key.upper()}={value}")

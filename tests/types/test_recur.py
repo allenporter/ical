@@ -658,32 +658,106 @@ def test_until_time_mismatch() -> None:
         )
 
 
-def test_recur_as_string() -> None:
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(freq=Frequency.DAILY, interval=2),
+        Recur.from_rrule("FREQ=DAILY;INTERVAL=2"),
+    ],
+)
+def test_recur_as_string(recur: Recur) -> None:
     """Test converting a recurrence rule back to a string."""
 
     event = Event(
         summary="summary",
         start=datetime.date(2022, 8, 1),
         end=datetime.date(2022, 8, 2),
-        rrule=Recur(freq=Frequency.DAILY, interval=2),
+        rrule=recur,
     )
     assert event.rrule
     assert event.rrule.as_rrule_str() == "FREQ=DAILY;INTERVAL=2"
 
 
-def test_recur_until_as_string() -> None:
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(freq=Frequency.DAILY, until=datetime.datetime(2022, 8, 10, 6, 0, 0)),
+        Recur.from_rrule("FREQ=DAILY;UNTIL=20220810T060000"),
+    ],
+)
+def test_recur_until_as_string(recur: Recur) -> None:
     """Test converting a recurrence rule with a date into a string."""
 
     event = Event(
         summary="summary",
         start=datetime.datetime(2022, 8, 1, 6, 0, 0),
         end=datetime.datetime(2022, 8, 2, 6, 30, 0),
-        rrule=Recur(
-            freq=Frequency.DAILY, until=datetime.datetime(2022, 8, 10, 6, 0, 0)
-        ),
+        rrule=recur,
     )
     assert event.rrule
-    assert event.rrule.as_rrule_str() == "FREQ=DAILY;UNTIL=20220810T060000;INTERVAL=1"
+    assert event.rrule.as_rrule_str() == "FREQ=DAILY;UNTIL=20220810T060000"
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(freq=Frequency.WEEKLY, by_weekday=[WeekdayValue(Weekday.TUESDAY)]),
+        Recur.from_rrule("FREQ=WEEKLY;BYDAY=TU"),
+    ],
+)
+def test_recur_by_weekday_as_string(recur: Recur) -> None:
+    """Test converting a recurrence rule with a weekday repeat into a string."""
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 9, 6),
+        end=datetime.date(2022, 9, 7),
+        rrule=recur,
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=WEEKLY;BYDAY=TU"
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(
+            freq=Frequency.MONTHLY, until=datetime.date(2023, 1, 1), by_month_day=[1]
+        ),
+        Recur.from_rrule("FREQ=MONTHLY;UNTIL=20230101;BYMONTHDAY=1"),
+    ],
+)
+def test_recur_by_monthday_as_string(recur: Recur) -> None:
+    """Test converting a recurrence rule with a weekday reepat into a string."""
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 9, 6),
+        end=datetime.date(2022, 9, 7),
+        rrule=recur,
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=MONTHLY;UNTIL=20230101;BYMONTHDAY=1"
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(
+            freq=Frequency.MONTHLY,
+            by_weekday=[WeekdayValue(weekday=Weekday.TUESDAY, occurrence=-1)],
+        ),
+        Recur.from_rrule("FREQ=MONTHLY;BYDAY=-1TU"),
+    ],
+)
+def test_recur_by_last_day_as_string(recur: Recur) -> None:
+    """Test converting a recurrence rule with a weekday reepat into a string."""
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 9, 6),
+        end=datetime.date(2022, 9, 7),
+        rrule=recur,
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=MONTHLY;BYDAY=-1TU"
 
 
 def test_rdate_all_day() -> None:
