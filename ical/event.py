@@ -17,8 +17,10 @@ from __future__ import annotations
 import datetime
 import enum
 import logging
+from collections.abc import Iterable
 from typing import Any, Optional, Union
 
+from dateutil import rrule
 from pydantic import Field, root_validator
 
 from .alarm import Alarm
@@ -329,6 +331,42 @@ class Event(ComponentModel):
         if not isinstance(other, Event):
             return NotImplemented
         return self.timespan >= other.timespan
+
+    @property
+    def recurring(self) -> bool:
+        """Return true if this event is recurring.
+
+        A recurring event is typically evaluated specially on the timeline. The
+        data model has a single event, but the timeline evaluates the recurrence
+        to expand and copy the the event to multiple places on the timeline
+        using `as_rrule`.
+        """
+        if self.rrule or self.rdate:
+            return True
+        return False
+
+    def as_rrule(self) -> Iterable[datetime.datetime | datetime.date] | None:
+        """Return an iterable containing the occurrences of a recurring event.
+
+        A recurring event is typically evaluated specially on the timeline. The
+        data model has a single event, but the timeline evaluates the recurrence
+        to expand and copy the the event to multiple places on the timeline.
+
+        This is only valid for events where `recurring` is True.
+        """
+        if not self.rrule and not self.rdate:
+            return None
+        ruleset = rrule.rruleset()
+        if self.rrule:
+            ruleset.rrule(self.rrule.as_rrule(self.start))
+        for rdate in self.rdate:
+            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
+        for exdate in self.exdate:
+            if not isinstance(exdate, datetime.datetime):
+                # Convert to datetime matching dateutil's logic
+                exdate = datetime.datetime.fromordinal(exdate.toordinal())
+            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
+        return ruleset
 
     @root_validator(allow_reuse=True)
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
