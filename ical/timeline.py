@@ -10,8 +10,6 @@ from __future__ import annotations
 import datetime
 from collections.abc import Generator, Iterable, Iterator
 
-from dateutil import rrule
-
 from .event import Event
 from .iter import (
     LazySortableItem,
@@ -105,7 +103,7 @@ def _event_iterable(
 
     def sortable_items() -> Generator[SortableItem[Timespan, Event], None, None]:
         for event in iterable:
-            if event.rrule or event.rdate:
+            if event.recurring:
                 continue
             yield SortableItemValue(event.timespan_of(tzinfo), event)
 
@@ -154,17 +152,7 @@ def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
         _event_iterable(events, tzinfo=tzinfo)
     ]
     for event in events:
-        if not event.rrule and not event.rdate:
+        if not (recur := event.as_rrule()):
             continue
-        ruleset = rrule.rruleset()
-        if event.rrule:
-            ruleset.rrule(event.rrule.as_rrule(event.start))
-        for rdate in event.rdate:
-            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
-        for exdate in event.exdate:
-            if not isinstance(exdate, datetime.datetime):
-                # Convert to datetime matching dateutil's logic
-                exdate = datetime.datetime.fromordinal(exdate.toordinal())
-            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
-        iters.append(RecurIterable(RecurAdapter(event).get, ruleset))
+        iters.append(RecurIterable(RecurAdapter(event).get, recur))
     return Timeline(MergedIterable(iters))
