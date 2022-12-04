@@ -4,6 +4,15 @@ These iterators are primarily used for implementing recurrence rules where an
 object should be returned for a series of date/time, with some modification
 based on that date/time. Additionally, it is often necessary to handle multiple
 recurrence rules together as a single view of recurring date/times.
+
+Some of the iterators here are primarily used to extend functionality of `dateutil.rrule`
+and work around some of the limitations when building real world calendar applications
+such as the ability to make recurrint all day events.
+
+Most of the things in this library should not be consumed directly by calendar users,
+but instead for implementing another calendar library as they support behind the
+scenes tings like timelines. These internals may be subject to a higher degree of
+backwards incompatibility due to the internal nature.
 """
 
 from __future__ import annotations
@@ -15,8 +24,23 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, Generic, TypeVar, Union, cast
 
+from dateutil import rrule
+
 from .timespan import Timespan
 from .util import normalize_datetime
+
+__all__ = [
+    "RecurrenceError",
+    "RulesetIterable",
+    "SortableItemTimeline",
+    "SortableItem",
+    "SortableItemValue",
+    "SortedItemIterable",
+    "MergedIterable",
+    "RecurIterable",
+    "ItemAdapter",
+    "LazySortableItem",
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +53,17 @@ ItemAdapter = Callable[[Union[datetime.datetime, datetime.date]], T]
 The adapter is invoked with the date/time of the current instance and
 the callback returns an object at that time (e.g. event with updated time)
 """
+
+
+class RecurrenceError(Exception):
+    """Exception raised when evaluating a recurrence rule.
+
+    Recurrence rules have complex logic and it is common for there to be
+    invalid date or bugs, so this special exception exists to help
+    provide additional debug data to find the source of the issue. Often
+    `dateutil.rrule` has limitataions and ical has to work around them
+    by providing special wrapping libraries.
+    """
 
 
 class SortableItem(Generic[K, T], ABC):
@@ -90,6 +125,80 @@ class LazySortableItem(SortableItem[K, T]):
     def item(self) -> T:
         """Return the underlying item."""
         return self._item_cb()
+
+
+class AllDayConverter(Iterable[Union[datetime.date, datetime.datetime]]):
+    """An iterable that converts datetimes to all days events."""
+
+    def __init__(self, dt_iter: Iterable[datetime.date | datetime.datetime]):
+        """Initialize AllDayConverter."""
+        self._dt_iter = dt_iter
+
+    def __iter__(self) -> Iterator[datetime.date | datetime.datetime]:
+        """Return an iterator with all day events converted."""
+        for value in self._dt_iter:
+            # Convert back to datetime.date if needed for the original event
+            yield datetime.date.fromordinal(value.toordinal())
+
+
+class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
+    """A wrapper around the dateutil ruleset library to workaround limitations.
+
+    The `dateutil.rrule` library does not allow iteration in terms of dates and requires
+    additional wrokarounds to support them properly: namely converting back and forth
+    between a datetime and a date. It is also very common to have the library throw
+    errors that it can't compare properly between dates and times, which are difficult to
+    debug. This wrapper is meant to assist with that.
+    """
+
+    def __init__(
+        self,
+        dtstart: datetime.datetime | datetime.date,
+        recur: list[Iterable[datetime.datetime | datetime.date]],
+        rdate: list[datetime.datetime | datetime.date],
+        exdate: list[datetime.datetime | datetime.date],
+    ) -> None:
+        """Create the RulesetIterable."""
+        self._dtstart = dtstart
+        self._rrule = recur
+        self._rdate = rdate
+        self._exdate = exdate
+
+    def _ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
+        """Create a dateutil.rruleset."""
+        is_date: bool = not isinstance(self._dtstart, datetime.datetime)
+
+        ruleset = rrule.rruleset()
+        for rule in self._rrule:
+            # dateutil.rrule will convert all input values to datetime even if the
+            # input value is a date. If needed, convert back to a date so that
+            # comparisons between exdate/rdate as a date in the rruleset will
+            # be in the right format.
+            value_iter: Iterable[datetime.date | datetime.datetime] = rule
+            if is_date:
+                value_iter = AllDayConverter(value_iter)
+            ruleset.rrule(value_iter)  # type: ignore[arg-type]
+        for rdate in self._rdate:
+            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
+        for exdate in self._exdate:
+            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
+        return ruleset
+
+    def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:
+        """Return an iterator as a traversal over events in chronological order."""
+        try:
+            for value in self._ruleset():
+                yield value
+        except TypeError as err:
+            raise RecurrenceError(
+                f"Error evaluating recurrence rule ({self}): {str(err)}"
+            ) from err
+
+    def __repr__(self) -> str:
+        return (
+            f"RulesetIterable(dtstart={self._dtstart}, rrule={self._rrule}, "
+            "rdate={self._rdate}, exdate={self._exdate})"
+        )
 
 
 class RecurIterable(Iterable[T]):

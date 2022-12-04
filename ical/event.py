@@ -20,11 +20,11 @@ import logging
 from collections.abc import Iterable
 from typing import Any, Optional, Union
 
-from dateutil import rrule
 from pydantic import Field, root_validator
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart
+from .iter import RulesetIterable
 from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
@@ -356,17 +356,12 @@ class Event(ComponentModel):
         """
         if not self.rrule and not self.rdate:
             return None
-        ruleset = rrule.rruleset()
-        if self.rrule:
-            ruleset.rrule(self.rrule.as_rrule(self.start))
-        for rdate in self.rdate:
-            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
-        for exdate in self.exdate:
-            if not isinstance(exdate, datetime.datetime):
-                # Convert to datetime matching dateutil's logic
-                exdate = datetime.datetime.fromordinal(exdate.toordinal())
-            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
-        return ruleset
+        return RulesetIterable(
+            self.start,
+            [self.rrule.as_rrule(self.start)] if self.rrule else [],
+            self.rdate,
+            self.exdate,
+        )
 
     @root_validator(allow_reuse=True)
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
