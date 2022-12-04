@@ -122,15 +122,11 @@ class RecurAdapter:
         """Initialize the RecurAdapter."""
         self._event = event
         self._event_duration = event.computed_duration
-        self._is_all_day = not isinstance(self._event.dtstart, datetime.datetime)
 
     def get(
         self, dtstart: datetime.datetime | datetime.date
     ) -> SortableItem[Timespan, Event]:
         """Return a lazy sortable item."""
-        if self._is_all_day and isinstance(dtstart, datetime.datetime):
-            # Convert back to datetime.date if needed for the original event
-            dtstart = datetime.date.fromordinal(dtstart.toordinal())
 
         def build() -> Event:
             return self._event.copy(
