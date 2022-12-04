@@ -684,3 +684,33 @@ def test_recur_until_as_string() -> None:
     )
     assert event.rrule
     assert event.rrule.as_rrule_str() == "FREQ=DAILY;UNTIL=20220810T060000;INTERVAL=1"
+
+
+def test_rdate_all_day() -> None:
+    """Test how all day events are handled with RDATE."""
+
+    calendar = Calendar()
+    calendar.events.extend(
+        [
+            Event(
+                summary="Monthly Event",
+                start=datetime.date(2022, 8, 2),
+                end=datetime.date(2022, 8, 2),
+                rdate=[
+                    datetime.date(2022, 8, 3),
+                    datetime.date(2022, 8, 4),
+                    datetime.date(2022, 10, 3),
+                ],
+                rrule=Recur.from_rrule("FREQ=MONTHLY;COUNT=3"),
+            ),
+        ]
+    )
+    events = list(calendar.timeline)
+    assert [(event.start, event.summary) for event in events] == [
+        (datetime.date(2022, 8, 2), "Monthly Event"),
+        (datetime.date(2022, 8, 3), "Monthly Event"),
+        (datetime.date(2022, 8, 4), "Monthly Event"),
+        (datetime.date(2022, 9, 2), "Monthly Event"),
+        (datetime.date(2022, 10, 2), "Monthly Event"),
+        (datetime.date(2022, 10, 3), "Monthly Event"),
+    ]
