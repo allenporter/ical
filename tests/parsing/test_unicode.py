@@ -1,5 +1,7 @@
 """Tests for unicode specific handling."""
 
+import pytest
+
 from ical.parsing.unicode import SAFE_CHAR, VALUE_CHAR
 
 
@@ -27,3 +29,23 @@ def test_value_char() -> None:
     assert ";" in VALUE_CHAR
     assert "," in VALUE_CHAR
     assert "🎄" in VALUE_CHAR
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "žmogus",
+        "中文",
+        "кириллица",
+        "Ελληνικά",
+        "עִברִית",
+        "日本語",
+        "한국어",
+        "ไทย",
+        "देवनागरी",
+    ],
+)
+def test_languages(word: str) -> None:
+    """Test basic values in non-english character sets are valid."""
+    for char in word:
+        assert char in VALUE_CHAR

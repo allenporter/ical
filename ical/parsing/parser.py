@@ -25,6 +25,8 @@ Note: This specific example may be a bit confusing because one of the property p
 """
 
 import logging
+import threading
+from functools import cache
 from typing import cast
 
 from pyparsing import (
@@ -53,6 +55,7 @@ from .unicode import SAFE_CHAR, VALUE_CHAR
 _LOGGER = logging.getLogger(__name__)
 
 
+@cache
 def _create_parser() -> ParserElement:
     """Create rfc5545 parser."""
     iana_token = Word(alphanums + "-")
@@ -89,12 +92,19 @@ def _create_parser() -> ParserElement:
         + Word(VALUE_CHAR)[0, 1].set_results_name(PARSE_VALUE)
     )
     contentline.set_whitespace_chars("")
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        contentline.set_debug(flag=True)
     return cast(ParserElement, contentline)
 
 
+_parser_lock = threading.Lock()
+
+
 def parse_contentlines(lines: list[str]) -> list[ParseResults]:
-    """Parse a set of unfolded lines into parse results."""
-    parser = _create_parser()
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        parser.set_debug(flag=True)
-    return [parser.parse_string(line, parse_all=True) for line in lines if line]
+    """Parse a set of unfolded lines into parse results.
+
+    Note, this method is not threadsafe and may be called from only one method at a time.
+    """
+    with _parser_lock:
+        parser = _create_parser()
+        return [parser.parse_string(line, parse_all=True) for line in lines if line]
