@@ -100,4 +100,6 @@ class ValueChar(CharRange):
     ]
 
 
-VALUE_CHAR = "".join(WSP + ValueChar.all() + NON_US_ASCII)
+VALUE_CHAR = "".join(
+    WSP + ValueChar.all() + NON_US_ASCII + BasicMultilingualPlane.all()
+)

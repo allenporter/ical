@@ -25,6 +25,7 @@ Note: This specific example may be a bit confusing because one of the property p
 """
 
 import logging
+from functools import cache
 from typing import cast
 
 from pyparsing import (
@@ -53,6 +54,7 @@ from .unicode import SAFE_CHAR, VALUE_CHAR
 _LOGGER = logging.getLogger(__name__)
 
 
+@cache
 def _create_parser() -> ParserElement:
     """Create rfc5545 parser."""
     iana_token = Word(alphanums + "-")
