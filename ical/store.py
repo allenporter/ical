@@ -198,6 +198,15 @@ class EventStore:
         update = self._prepare_update(
             store_event, event, recurrence_id, recurrence_range
         )
+        if recurrence_range == Range.NONE:
+            if event.rrule and (
+                not store_event.rrule
+                or event.rrule.as_rrule_str() != store_event.rrule.as_rrule_str()
+            ):
+                raise ValueError(
+                    f"Can't update single instance with rrule (rrule={event.rrule})"
+                )
+            event.rrule = None
 
         # Make a deep copy since deletion may update this objects recurrence rules
         new_event = store_event.copy(update=update, deep=True)
@@ -248,7 +257,6 @@ class EventStore:
                 # The new event copied from the original is a single instance,
                 # not recurrin
                 update["rrule"] = None
-                update["rdate"] = []
             else:
                 # Overwriting with a new recurring event
                 update.update(

@@ -408,6 +408,33 @@ def test_edit_recurring_event_instance(
     ]
 
 
+def test_cant_change_recurrence_for_event_instance(
+    store: EventStore,
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing all instances of a recurring event."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    with pytest.raises(ValueError, match="single instance with rrule"):
+        store.edit(
+            "mock-uid-1",
+            Event(
+                start="2022-09-06T09:00:00",
+                summary="Tuesday meeting",
+                rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+            ),
+            recurrence_id="20220905T090000",
+        )
+
+
 @pytest.mark.parametrize(
     "recur",
     [
