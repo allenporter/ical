@@ -236,7 +236,7 @@ class EventStore:
         recurrence_id: str | None = None,
         recurrence_range: Range = Range.NONE,
     ) -> dict[str, Any]:
-        """Prepare an update to an existin gevent."""
+        """Prepare an update to an existing event."""
         partial_update = event.dict(exclude_unset=True)
         _LOGGER.debug("EV update=%s", event)
         update = {
