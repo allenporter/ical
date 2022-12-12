@@ -408,6 +408,33 @@ def test_edit_recurring_event_instance(
     ]
 
 
+def test_cant_change_recurrence_for_event_instance(
+    store: EventStore,
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing all instances of a recurring event."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    with pytest.raises(ValueError, match="single instance with rrule"):
+        store.edit(
+            "mock-uid-1",
+            Event(
+                start="2022-09-06T09:00:00",
+                summary="Tuesday meeting",
+                rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+            ),
+            recurrence_id="20220905T090000",
+        )
+
+
 @pytest.mark.parametrize(
     "recur",
     [
@@ -531,6 +558,52 @@ def test_delete_event_date_recurring(
             "dtstart": "2022-09-12",
             "summary": "Monday meeting",
             "recurrence_id": "20220912",
+        },
+    ]
+
+
+def test_edit_recurrence_rule_this_and_future(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing all instances of a recurring event."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(
+            summary="Team meeting",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3;INTERVAL=2"),
+        ),
+        recurrence_id="20220905T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220829T090000",
+            "dtstart": "2022-08-29T09:00:00",
+            "summary": "Monday meeting",
+        },
+        {
+            "uid": "mock-uid-2",
+            "dtstart": "2022-09-05T09:00:00",
+            "recurrence_id": "20220905T090000",
+            "summary": "Team meeting",
+        },
+        {
+            "uid": "mock-uid-2",
+            "recurrence_id": "20220919T090000",
+            "dtstart": "2022-09-19T09:00:00",
+            "summary": "Team meeting",
         },
     ]
 
