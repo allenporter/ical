@@ -18,7 +18,7 @@ from typing import Any
 from .calendar import Calendar
 from .event import Event
 from .timezone import Timezone
-from .types import Range, RecurrenceId
+from .types import Range, Recur, RecurrenceId
 from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory
 
@@ -195,8 +195,41 @@ class EventStore:
         """
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uid: {uid}")
+        update = self._prepare_update(
+            store_event, event, recurrence_id, recurrence_range
+        )
+
+        # Make a deep copy since deletion may update this objects recurrence rules
+        new_event = store_event.copy(update=update, deep=True)
+        if recurrence_id and new_event.rrule and new_event.rrule.count:
+            # The recurring event count needs to skip any events that
+            # come before the start of the new event.
+            dtstart: datetime.date | datetime.datetime = update["dtstart"]
+            for dtvalue in iter(new_event.rrule.as_rrule(store_event.dtstart)):
+                if dtvalue >= dtstart:
+                    break
+                new_event.rrule.count = new_event.rrule.count - 1
+
+        # Editing a single instance of a recurring event is like deleting that instance
+        # then adding a new instance on the specified date. If recurrence id is not
+        # specified then the entire event is replaced.
+        self.delete(uid, recurrence_id=recurrence_id, recurrence_range=recurrence_range)
+        if recurrence_id:
+            self.add(new_event)
+        else:
+            self._calendar.events.append(new_event)
+        self._ensure_timezone(event)
+
+    def _prepare_update(
+        self,
+        store_event: Event,
+        event: Event,
+        recurrence_id: str | None = None,
+        recurrence_range: Range = Range.NONE,
+    ) -> dict[str, Any]:
+        """Prepare an update to an existin gevent."""
         partial_update = event.dict(exclude_unset=True)
-        _LOGGER.debug("EV pdate=%s", event)
+        _LOGGER.debug("EV update=%s", event)
         update = {
             "created": store_event.dtstamp,
             "sequence": (store_event.sequence + 1) if store_event.sequence else 1,
@@ -204,6 +237,8 @@ class EventStore:
             **partial_update,
             "dtstamp": event.dtstamp,
         }
+        if "rrule" in update:
+            update["rrule"] = Recur.parse_obj(update["rrule"])
         if recurrence_id:
             if not store_event.rrule:
                 raise ValueError("Specified recurrence_id but event is not recurring")
@@ -234,26 +269,7 @@ class EventStore:
                 # an explicit end which needs to be realigned to new start time.
                 if store_event.dtend:
                     update["dtend"] = dtstart + store_event.computed_duration
-
-        # Make a deep copy since deletion may update this objects recurrence rules
-        new_event = store_event.copy(update=update, deep=True)
-        if recurrence_id and new_event.rrule and new_event.rrule.count:
-            # The recurring event count needs to skip any events that
-            # come before the start of the new event.
-            for dtvalue in iter(new_event.rrule.as_rrule(store_event.dtstart)):
-                if dtvalue >= dtstart:
-                    break
-                new_event.rrule.count = new_event.rrule.count - 1
-
-        # Editing a single instance of a recurring event is like deleting that instance
-        # then adding a new instance on the specified date. If recurrence id is not
-        # specified then the entire event is replaced.
-        self.delete(uid, recurrence_id=recurrence_id, recurrence_range=recurrence_range)
-        if recurrence_id:
-            self.add(new_event)
-        else:
-            self._calendar.events.append(new_event)
-        self._ensure_timezone(event)
+        return update
 
     def _ensure_timezone(self, event: Event) -> None:
         """Create a timezone object for the specified date if it does not already exist."""
