@@ -366,12 +366,23 @@ class Event(ComponentModel):
     @root_validator(allow_reuse=True)
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
-        if (
-            (dtstart := values.get("dtstart"))
-            and (dtend := values.get("dtend"))
-            and type(dtstart) != type(dtend)  # pylint: disable=unidiomatic-typecheck
-        ):
-            raise ValueError("Expected end value type to match start")
+        dtstart = values.get("dtstart")
+        dtend = values.get("dtend")
+
+        if not dtstart or not dtend:
+            return values
+        if isinstance(dtstart, datetime.datetime):
+            if not isinstance(dtend, datetime.datetime):
+                raise ValueError(
+                    f"Unexpected dtstart value '{dtstart}' was datetime but "
+                    f"dtend value '{dtend}' was not datetime"
+                )
+        elif isinstance(dtstart, datetime.date):
+            if isinstance(dtend, datetime.datetime):
+                raise ValueError(
+                    f"Unexpected dtstart value '{dtstart}' was date but "
+                    f"dtend value '{dtend}' was datetime"
+                )
         return values
 
     @root_validator(allow_reuse=True)
