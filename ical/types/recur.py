@@ -53,6 +53,7 @@ from .date_time import DateTimeEncoder
 _LOGGER = logging.getLogger(__name__)
 
 
+# Note: This can be StrEnum in python 3.11 and higher
 class Weekday(str, enum.Enum):
     """Corresponds to a day of the week."""
 
@@ -63,6 +64,10 @@ class Weekday(str, enum.Enum):
     THURSDAY = "TH"
     FRIDAY = "FR"
     SATURDAY = "SA"
+
+    def __str__(self) -> str:
+        """Return string representation."""
+        return self.value
 
 
 @dataclass
@@ -295,6 +300,8 @@ class Recur(BaseModel):
                 value = DateTimeEncoder.__encode_property_json__(value)
             elif isinstance(value, datetime.date):
                 value = DateEncoder.__encode_property_json__(value)
+            elif isinstance(value, enum.Enum):
+                value = value.name
             if not value:
                 continue
             result.append(f"{key.upper()}={value}")
