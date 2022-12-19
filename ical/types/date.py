@@ -12,7 +12,7 @@ from .data_types import DATA_TYPE
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 
 
-@DATA_TYPE.register("DATE")
+@DATA_TYPE.register("DATE", parse_order=1)
 class DateEncoder:
     """Encode and decode an rfc5545 DATE and datetime.date."""
 

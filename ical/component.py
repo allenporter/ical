@@ -174,8 +174,16 @@ class ComponentModel(BaseModel):
         if origin is Union:
             if not (args := get_args(field_type)):
                 raise ValueError(f"Unable to determine args of type: {field_type}")
-            # Decoder for any type in the union
-            return list(args)
+
+            # get_args does not have a deterministic order, so use the order supplied
+            # in the registry. Ignore None as its not a parseable type.
+            sortable_args = [
+                (DATA_TYPE.parse_order.get(arg, 0), arg)
+                for arg in args
+                if arg is not type(None)  # noqa: E721
+            ]
+            sortable_args.sort(reverse=True)
+            return [arg for (order, arg) in sortable_args]
         return [field_type]
 
     def __encode_component_root__(self) -> ParsedComponent:
@@ -225,6 +233,7 @@ class ComponentModel(BaseModel):
         # a Union. Pick the first type that is able to encode the value.
         errors = []
         for sub_type in cls._get_field_types(field_type):
+            encoded_value: Any | None = None
             if value_encoder := DATA_TYPE.encode_property_value.get(sub_type):
                 try:
                     encoded_value = value_encoder(value)
