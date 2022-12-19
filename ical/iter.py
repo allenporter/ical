@@ -196,8 +196,8 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
 
     def __repr__(self) -> str:
         return (
-            f"RulesetIterable(dtstart={self._dtstart}, rrule={self._rrule}, "
-            "rdate={self._rdate}, exdate={self._exdate})"
+            f"RulesetIterable(dtstart={self._dtstart}, rrule={[ str(r) for r in self._rrule ]}, "
+            f"rdate={self._rdate}, exdate={self._exdate})"
         )
 
 

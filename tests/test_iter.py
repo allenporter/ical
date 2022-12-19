@@ -8,8 +8,15 @@ from collections.abc import Generator
 from typing import Any, Iterable, Iterator
 
 import pytest
+from dateutil import rrule
 
-from ical.iter import MergedIterable, MergedIterator, RecurIterable
+from ical.iter import (
+    MergedIterable,
+    MergedIterator,
+    RecurIterable,
+    RecurrenceError,
+    RulesetIterable,
+)
 
 EMPTY_LIST: list[bool] = []
 EMPTY_ITERATOR_LIST: list[Iterator[bool]] = []
@@ -94,3 +101,49 @@ def test_benchmark_merged_iter(
 
     result = benchmark(exhaust)
     assert result == num_iters * num_objects
+
+
+def test_debug_invalid_rules() -> None:
+    """Exercise debug information by creating rules not supported by dateutil."""
+    recur_iter = RulesetIterable(
+        datetime.datetime(2022, 12, 19, 5, 0, 0),
+        [
+            rrule.rrule(
+                freq=rrule.DAILY,
+                dtstart=datetime.datetime(2022, 12, 19, 5, 0, 0),
+                count=3,
+            )
+        ],
+        [datetime.date(2022, 12, 22)],
+        [datetime.date(2022, 12, 23)],
+    )
+    with pytest.raises(RecurrenceError) as exc_info:
+        list(recur_iter)
+
+    assert exc_info.value.args[0] == (
+        "Error evaluating recurrence rule (RulesetIterable(dtstart=2022-12-19 05:00:00, "
+        "rrule=['DTSTART:20221219T050000\\nRRULE:FREQ=DAILY;COUNT=3'], "
+        "rdate=[datetime.date(2022, 12, 22)], "
+        "exdate=[datetime.date(2022, 12, 23)]))"
+        ": can't compare datetime.datetime to datetime.date"
+    )
+
+
+def test_debug_invalid_rule_without_recur() -> None:
+    """Test debugging information for another variation of unsupported ruleset."""
+    recur_iter = RulesetIterable(
+        datetime.datetime(2022, 12, 19, 5, 0, 0),
+        [],
+        [datetime.date(2022, 12, 22)],
+        [datetime.datetime(2022, 12, 23, 5, 0, 0)],
+    )
+    with pytest.raises(RecurrenceError) as exc_info:
+        list(recur_iter)
+
+    assert exc_info.value.args[0] == (
+        "Error evaluating recurrence rule (RulesetIterable(dtstart=2022-12-19 05:00:00, "
+        "rrule=[], "
+        "rdate=[datetime.date(2022, 12, 22)], "
+        "exdate=[datetime.datetime(2022, 12, 23, 5, 0)]))"
+        ": can't compare datetime.datetime to datetime.date"
+    )
