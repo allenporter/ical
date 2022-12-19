@@ -60,9 +60,13 @@ class Registry:
             type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]
         ] = {}
         self._disable_value_param: set[type] = set()
+        self._parse_order: dict[type, int] = {}
 
     def register(
-        self, name: str | None = None, disable_value_param: bool = False
+        self,
+        name: str | None = None,
+        disable_value_param: bool = False,
+        parse_order: int | None = None,
     ) -> Callable[[type], type]:
         """Return decorator to register a type.
 
@@ -92,6 +96,8 @@ class Registry:
                 self._encode_property_params[data_type] = encode_property_params
             if disable_value_param:
                 self._disable_value_param |= set({data_type})
+            if parse_order:
+                self._parse_order[data_type] = parse_order
             return func
 
         return decorator
@@ -127,6 +133,11 @@ class Registry:
     def disable_value_param(self) -> set[type]:
         """Return set of types that do not allow VALUE overrides by component parsing."""
         return self._disable_value_param
+
+    @property
+    def parse_order(self) -> dict[type, int]:
+        """Return the parse ordering of the specified type."""
+        return self._parse_order
 
 
 DATA_TYPE: Registry = Registry()

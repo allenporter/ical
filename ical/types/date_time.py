@@ -20,7 +20,7 @@ TZID = "TZID"
 ATTR_VALUE = "VALUE"
 
 
-@DATA_TYPE.register("DATE-TIME")
+@DATA_TYPE.register("DATE-TIME", parse_order=2)
 class DateTimeEncoder:
     """Class to handle encoding for a datetime.datetime."""
 
