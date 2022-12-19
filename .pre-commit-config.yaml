@@ -26,7 +26,6 @@ repos:
     name: mypy
     entry: "./run-mypy"
     language: python
-    language_version: python3.9
     additional_dependencies: ["mypy==0.930"]
     types: [python]
     # use require_serial so that script
