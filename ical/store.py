@@ -17,6 +17,7 @@ from typing import Any
 
 from .calendar import Calendar
 from .event import Event
+from .iter import RulesetIterable
 from .timezone import Timezone
 from .types import Range, Recur, RecurrenceId
 from .tzif.timezoneinfo import TimezoneInfoError
@@ -139,6 +140,15 @@ class EventStore:
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uid: {uid}")
 
+        if (
+            recurrence_id
+            and recurrence_range == Range.THIS_AND_FUTURE
+            and RecurrenceId.to_value(recurrence_id) == store_event.dtstart
+        ):
+            # Editing the first instance and all forward is the same as editing the
+            # entire series so don't bother forking a new event
+            recurrence_id = None
+
         # Deleting all instances in the series
         if not recurrence_id:
             self._calendar.events.remove(store_event)
@@ -156,9 +166,12 @@ class EventStore:
             return
 
         # Assumes any recurrence deletion is valid, and that overwriting
-        # the "until" value will not produce more instances.
+        # the "until" value will not produce more instances. UNTIL is
+        # inclusive so it can't include the specified exdate. FREQ=DAILY
+        # is the lowest frequency supported so subtracting one day is
+        # safe and works for both dates and datetimes.
         store_event.rrule.count = None
-        store_event.rrule.until = exdate - datetime.timedelta(seconds=1)
+        store_event.rrule.until = exdate - datetime.timedelta(days=1)
         now = self._dtstamp_fn()
         store_event.dtstamp = now
         store_event.last_modified = now
@@ -182,7 +195,7 @@ class EventStore:
         store.edit("event-uid-1", Event(summary="New Summary"))
         ```
 
-        For a recurring event, either the whol eevent or individual instances
+        For a recurring event, either the whole event or individual instances
         of the event may be edited. To edit the complete range of a recurring
         event the `uid` property must be specified and the `recurrence_id` should
         not be specified. To edit an individual instances of the event the
@@ -195,6 +208,16 @@ class EventStore:
         """
         if not (store_event := self._lookup_event(uid)):
             raise ValueError(f"No existing event with uid: {uid}")
+
+        if (
+            recurrence_id
+            and recurrence_range == Range.THIS_AND_FUTURE
+            and RecurrenceId.to_value(recurrence_id) == store_event.dtstart
+        ):
+            # Editing the first instance and all forward is the same as editing the
+            # entire series so don't bother forking a new event
+            recurrence_id = None
+
         update = self._prepare_update(
             store_event, event, recurrence_id, recurrence_range
         )
@@ -212,9 +235,16 @@ class EventStore:
         new_event = store_event.copy(update=update, deep=True)
         if recurrence_id and new_event.rrule and new_event.rrule.count:
             # The recurring event count needs to skip any events that
-            # come before the start of the new event.
+            # come before the start of the new event. Use a RulesetIterable
+            # to handle workarounds for dateutil.rrule limitations.
             dtstart: datetime.date | datetime.datetime = update["dtstart"]
-            for dtvalue in iter(new_event.rrule.as_rrule(store_event.dtstart)):
+            ruleset = RulesetIterable(
+                store_event.dtstart,
+                [new_event.rrule.as_rrule(store_event.dtstart)],
+                [],
+                [],
+            )
+            for dtvalue in ruleset:
                 if dtvalue >= dtstart:
                     break
                 new_event.rrule.count = new_event.rrule.count - 1

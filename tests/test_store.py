@@ -313,6 +313,118 @@ def test_delete_this_and_future_event(
 @pytest.mark.parametrize(
     "recur",
     [
+        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926"),
+        Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+    ],
+)
+def test_delete_this_and_future_all_day_event(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    recur: Recur,
+) -> None:
+    """Test adding a recurring event and deleting events after one event."""
+    store.add(
+        Event(
+            summary="Mondays",
+            start="2022-08-29",
+            end="2022-08-30",
+            rrule=recur,
+        )
+    )
+    store.delete(
+        uid="mock-uid-1",
+        recurrence_id="20220919",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220829",
+            "dtstart": "2022-08-29",
+            "summary": "Mondays",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220905",
+            "dtstart": "2022-09-05",
+            "summary": "Mondays",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220912",
+            "dtstart": "2022-09-12",
+            "summary": "Mondays",
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926T090000"),
+        Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+    ],
+)
+def test_delete_this_and_future_event_with_first_instance(
+    calendar: Calendar,
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    recur: Recur,
+) -> None:
+    """Test deleting this and future for the first instance."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=recur,
+        )
+    )
+    assert len(calendar.events) == 1
+    store.delete(
+        uid="mock-uid-1",
+        recurrence_id="20220829T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == []
+    assert len(calendar.events) == 0
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926"),
+        Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+    ],
+)
+def test_delete_this_and_future_all_day_event_with_first_instance(
+    calendar: Calendar,
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    recur: Recur,
+) -> None:
+    """Test deleting this and future for the first instance."""
+    store.add(
+        Event(
+            summary="Mondays",
+            start="2022-08-29",
+            end="2022-08-29",
+            rrule=recur,
+        )
+    )
+    assert len(calendar.events) == 1
+    store.delete(
+        uid="mock-uid-1",
+        recurrence_id="20220829",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == []
+    assert len(calendar.events) == 0
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
         Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220913T090000"),
         Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
     ],
@@ -448,7 +560,7 @@ def test_edit_recurring_event_this_and_future(
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
 ) -> None:
-    """Test editing all instances of a recurring event."""
+    """Test editing future instance of a recurring event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -482,6 +594,57 @@ def test_edit_recurring_event_this_and_future(
             "recurrence_id": "20220912T090000",
             "dtstart": "2022-09-12T09:00:00",
             "summary": "Team meeting",
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220912"),
+        Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+    ],
+)
+def test_edit_recurring_all_day_event_this_and_future(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    recur: Recur,
+) -> None:
+    """Test editing future instance of a recurring event."""
+    store.add(
+        Event(
+            summary="Monday",
+            start="2022-08-29",
+            end="2022-08-30",
+            rrule=recur,
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(summary="Mondays [edit]"),
+        recurrence_id="20220905",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220829",
+            "dtstart": "2022-08-29",
+            "summary": "Monday",
+        },
+        {
+            "uid": "mock-uid-2",
+            "dtstart": "2022-09-05",
+            "recurrence_id": "20220905",
+            "summary": "Mondays [edit]",
+        },
+        {
+            "uid": "mock-uid-2",
+            "recurrence_id": "20220912",
+            "dtstart": "2022-09-12",
+            "summary": "Mondays [edit]",
         },
     ]
 
@@ -567,7 +730,7 @@ def test_edit_recurrence_rule_this_and_future(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
 ) -> None:
-    """Test editing all instances of a recurring event."""
+    """Test editing future instances of a recurring event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -603,6 +766,98 @@ def test_edit_recurrence_rule_this_and_future(
             "uid": "mock-uid-2",
             "recurrence_id": "20220919T090000",
             "dtstart": "2022-09-19T09:00:00",
+            "summary": "Team meeting",
+        },
+    ]
+
+
+def test_edit_recurrence_rule_this_and_future_all_day_first_instance(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing future instances starting at the first instance."""
+    store.add(
+        Event(
+            summary="Monday",
+            start="2022-08-29",
+            end="2022-08-30",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(
+            summary="Mondays [edit]",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3;INTERVAL=2"),
+        ),
+        recurrence_id="20220829",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-08-29",
+            "recurrence_id": "20220829",
+            "summary": "Mondays [edit]",
+        },
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-09-12",
+            "recurrence_id": "20220912",
+            "summary": "Mondays [edit]",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220926",
+            "dtstart": "2022-09-26",
+            "summary": "Mondays [edit]",
+        },
+    ]
+
+
+def test_edit_recurrence_rule_this_and_future_first_instance(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing future instances starting at the first instance."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(
+            summary="Team meeting",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3;INTERVAL=2"),
+        ),
+        recurrence_id="20220829T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-08-29T09:00:00",
+            "recurrence_id": "20220829T090000",
+            "summary": "Team meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-09-12T09:00:00",
+            "recurrence_id": "20220912T090000",
+            "summary": "Team meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220926T090000",
+            "dtstart": "2022-09-26T09:00:00",
             "summary": "Team meeting",
         },
     ]
