@@ -155,10 +155,19 @@ class EventStore:
             store_event.exdate.append(exdate)
             return
 
+        # Deleting forward from the first instance is the same as deleting
+        # the entire series. This avoids iterating over empty events unnecessarily.
+        if exdate == store_event.dtstart:
+            self._calendar.events.remove(store_event)
+            return
+
         # Assumes any recurrence deletion is valid, and that overwriting
-        # the "until" value will not produce more instances.
+        # the "until" value will not produce more instances. UNTIL is
+        # inclusive so it can't include the specified exdate. FREQ=DAILY
+        # is the lowest frequency supported so subtracting one day is
+        # safe and works for both dates and datetimes.
         store_event.rrule.count = None
-        store_event.rrule.until = exdate - datetime.timedelta(seconds=1)
+        store_event.rrule.until = exdate - datetime.timedelta(days=1)
         now = self._dtstamp_fn()
         store_event.dtstamp = now
         store_event.last_modified = now
