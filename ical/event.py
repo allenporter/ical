@@ -363,7 +363,17 @@ class Event(ComponentModel):
             self.exdate,
         )
 
-    @root_validator(allow_reuse=True)
+    @root_validator(pre=True)
+    def _inspect_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Debug the date and date/time values of the event."""
+        dtstart = values.get("dtstart")
+        dtend = values.get("dtend")
+        if not dtstart or not dtend:
+            return values
+        _LOGGER.debug("Found initial values dtstart=%s, dtend=%s", dtstart, dtend)
+        return values
+
+    @root_validator
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values are the same date or datetime type."""
         dtstart = values.get("dtstart")
@@ -373,6 +383,7 @@ class Event(ComponentModel):
             return values
         if isinstance(dtstart, datetime.datetime):
             if not isinstance(dtend, datetime.datetime):
+                _LOGGER.debug("Unexpected data types for values: %s", values)
                 raise ValueError(
                     f"Unexpected dtstart value '{dtstart}' was datetime but "
                     f"dtend value '{dtend}' was not datetime"
@@ -385,7 +396,7 @@ class Event(ComponentModel):
                 )
         return values
 
-    @root_validator(allow_reuse=True)
+    @root_validator
     def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and end values have the same timezone information."""
         if (
@@ -403,14 +414,14 @@ class Event(ComponentModel):
             raise ValueError(f"Expected end datetime with timezone but was {dtend}")
         return values
 
-    @root_validator(allow_reuse=True)
+    @root_validator
     def _validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that only one of duration or end date may be set."""
         if values.get("dtend") and values.get("duration"):
             raise ValueError("Only one of dtend or duration may be set." "")
         return values
 
-    @root_validator(allow_reuse=True)
+    @root_validator
     def _validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate the duration is the appropriate units."""
         if not (duration := values.get("duration")):

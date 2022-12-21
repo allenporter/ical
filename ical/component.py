@@ -117,6 +117,8 @@ class ComponentModel(BaseModel):
             validated = [cls._parse_property(field_types, prop) for prop in value]
             values[field.alias] = validated if allow_repeated else validated[0]
 
+        _LOGGER.debug("Completed parsing value data %s", values)
+
         return values
 
     @classmethod
