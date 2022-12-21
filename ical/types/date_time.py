@@ -51,9 +51,11 @@ class DateTimeEncoder:
         minute = int(time_value[2:4])
         second = int(time_value[4:6])
 
-        return datetime.datetime(
+        result = datetime.datetime(
             year, month, day, hour, minute, second, tzinfo=timezone
         )
+        _LOGGER.debug("DateTimeEncoder returned %s", result)
+        return result
 
     @classmethod
     def __encode_property_json__(cls, value: datetime.datetime) -> str | dict[str, str]:

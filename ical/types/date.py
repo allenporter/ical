@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import re
 
 from ical.parsing.property import ParsedProperty
 
 from .data_types import DATA_TYPE
+
+_LOGGER = logging.getLogger(__name__)
 
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
 
@@ -29,7 +32,10 @@ class DateEncoder:
         year = int(date_value[0:4])
         month = int(date_value[4:6])
         day = int(date_value[6:])
-        return datetime.date(year, month, day)
+
+        result = datetime.date(year, month, day)
+        _LOGGER.debug("DateEncoder returned %s", result)
+        return result
 
     @classmethod
     def __encode_property_json__(cls, value: datetime.date) -> str:

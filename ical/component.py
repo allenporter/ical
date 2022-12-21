@@ -122,12 +122,20 @@ class ComponentModel(BaseModel):
     @classmethod
     def _parse_property(cls, field_types: list[type], prop: ParsedProperty) -> Any:
         """Parse an individual field value from a ParsedProperty as the specified types."""
+        _LOGGER.debug(
+            "Parsing field '%s' with value '%s' as types %s",
+            prop.name,
+            prop.value,
+            field_types,
+        )
         errors = []
         for sub_type in field_types:
             try:
                 return cls._parse_single_property(sub_type, prop)
             except ValueError as err:
-                _LOGGER.debug("Unable to parse property value: %s", err)
+                _LOGGER.debug(
+                    "Unable to parse property value as type %s: %s", sub_type, err
+                )
                 errors.append(str(err))
                 continue
         raise ValueError(f"Failed to validate: {prop.value}, errors: ({errors})")
@@ -140,6 +148,7 @@ class ComponentModel(BaseModel):
         ) and field_type not in DATA_TYPE.disable_value_param:
             # Property parameter specified a strong type
             if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
+                _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
                 return func(prop)
             # Consider graceful degradation instead in the future
             raise ValueError(
@@ -147,8 +156,10 @@ class ComponentModel(BaseModel):
             )
 
         if decoder := DATA_TYPE.parse_property_value.get(field_type):
+            _LOGGER.debug("Decoding '%s' as type '%s'", prop.name, field_type)
             return decoder(prop)
 
+        _LOGGER.debug("Using '%s' bare property value '%s'", prop.name, prop.value)
         return prop.value
 
     @classmethod
