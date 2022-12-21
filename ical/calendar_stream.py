@@ -28,12 +28,16 @@ with filename.open(mode="w") as ics_file:
 
 from __future__ import annotations
 
+import logging
+
 from pydantic import Field
 
 from .calendar import Calendar
 from .component import ComponentModel
 from .parsing.component import encode_content, parse_content
 from .types.data_types import DATA_TYPE
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class CalendarStream(ComponentModel):
@@ -53,6 +57,7 @@ class CalendarStream(ComponentModel):
         for component in components:
             result.setdefault(component.name, [])
             result[component.name].append(component.as_dict())
+        _LOGGER.debug("Parsing object %s", result)
         return cls.parse_obj(result)
 
     def ics(self) -> str:
