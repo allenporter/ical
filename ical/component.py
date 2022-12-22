@@ -273,3 +273,4 @@ class ComponentModel(BaseModel):
 
         validate_assignment = True
         allow_population_by_field_name = True
+        smart_union = True
