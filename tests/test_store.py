@@ -1,5 +1,7 @@
 """Tests for the event store."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import datetime
@@ -545,6 +547,60 @@ def test_cant_change_recurrence_for_event_instance(
             ),
             recurrence_id="20220905T090000",
         )
+
+
+def test_convert_single_instance_to_recurring(
+    store: EventStore,
+    frozen_time: FrozenDateTimeFactory,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+) -> None:
+    """Test editing all instances of a recurring event."""
+    store.add(
+        Event(
+            summary="Daily meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+        )
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "dtstart": "2022-08-29T09:00:00",
+            "summary": "Daily meeting",
+        },
+    ]
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            summary="Daily meeting",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        ),
+    )
+
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220829T090000",
+            "dtstart": "2022-08-29T09:00:00",
+            "summary": "Daily meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220830T090000",
+            "dtstart": "2022-08-30T09:00:00",
+            "summary": "Daily meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220831T090000",
+            "dtstart": "2022-08-31T09:00:00",
+            "summary": "Daily meeting",
+        },
+    ]
 
 
 @pytest.mark.parametrize(
