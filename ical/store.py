@@ -222,14 +222,14 @@ class EventStore:
             store_event, event, recurrence_id, recurrence_range
         )
         if recurrence_range == Range.NONE:
-            if event.rrule and (
-                not store_event.rrule
-                or event.rrule.as_rrule_str() != store_event.rrule.as_rrule_str()
-            ):
-                raise ValueError(
-                    f"Can't update single instance with rrule (rrule={event.rrule})"
-                )
-            event.rrule = None
+            # Changing the recurrence rule of a single event in the middle of the series
+            # is not allowed. It is allowed to convert a single instance event to recurring.
+            if event.rrule and store_event.rrule:
+                if event.rrule.as_rrule_str() != store_event.rrule.as_rrule_str():
+                    raise ValueError(
+                        f"Can't update single instance with rrule (rrule={event.rrule})"
+                    )
+                event.rrule = None
 
         # Make a deep copy since deletion may update this objects recurrence rules
         new_event = store_event.copy(update=update, deep=True)
