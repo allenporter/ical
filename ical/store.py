@@ -26,6 +26,16 @@ from .util import dtstamp_factory
 _LOGGER = logging.getLogger(__name__)
 
 
+__all__ = [
+    "EventStore",
+    "EventStoreError",
+]
+
+
+class EventStoreError(Exception):
+    """Exception thrown by the EventStore."""
+
+
 class EventStore:
     """An event store manages the lifecycle of events on a Calendar.
 
@@ -115,8 +125,8 @@ class EventStore:
             update["sequence"] = 0
         new_event = event.copy(update=update)
         _LOGGER.debug("Adding event: %s", new_event)
-        self._calendar.events.append(new_event)
         self._ensure_timezone(event)
+        self._calendar.events.append(new_event)
         return new_event
 
     def delete(
@@ -138,7 +148,7 @@ class EventStore:
         if deletion of just a specific instance, or a range of instances.
         """
         if not (store_event := self._lookup_event(uid)):
-            raise ValueError(f"No existing event with uid: {uid}")
+            raise EventStoreError(f"No existing event with uid: {uid}")
 
         if (
             recurrence_id
@@ -156,7 +166,7 @@ class EventStore:
 
         # Deleting one or more instances in the recurrence
         if not store_event.rrule:
-            raise ValueError("Specified recurrence_id but event is not recurring")
+            raise EventStoreError("Specified recurrence_id but event is not recurring")
 
         exdate = RecurrenceId.to_value(recurrence_id)
         if recurrence_range == Range.NONE:
@@ -207,7 +217,7 @@ class EventStore:
         when encoded.
         """
         if not (store_event := self._lookup_event(uid)):
-            raise ValueError(f"No existing event with uid: {uid}")
+            raise EventStoreError(f"No existing event with uid: {uid}")
 
         if (
             recurrence_id
@@ -226,7 +236,7 @@ class EventStore:
             # is not allowed. It is allowed to convert a single instance event to recurring.
             if event.rrule and store_event.rrule:
                 if event.rrule.as_rrule_str() != store_event.rrule.as_rrule_str():
-                    raise ValueError(
+                    raise EventStoreError(
                         f"Can't update single instance with rrule (rrule={event.rrule})"
                     )
                 event.rrule = None
@@ -249,6 +259,8 @@ class EventStore:
                     break
                 new_event.rrule.count = new_event.rrule.count - 1
 
+        self._ensure_timezone(event)
+
         # Editing a single instance of a recurring event is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
         # specified then the entire event is replaced.
@@ -257,7 +269,6 @@ class EventStore:
             self.add(new_event)
         else:
             self._calendar.events.append(new_event)
-        self._ensure_timezone(event)
 
     def _prepare_update(
         self,
@@ -280,7 +291,9 @@ class EventStore:
             update["rrule"] = Recur.parse_obj(update["rrule"])
         if recurrence_id:
             if not store_event.rrule:
-                raise ValueError("Specified recurrence_id but event is not recurring")
+                raise EventStoreError(
+                    "Specified recurrence_id but event is not recurring"
+                )
             # Forking a new event off the old event
             update["uid"] = event.uid
             if recurrence_range == Range.NONE:
@@ -329,6 +342,8 @@ class EventStore:
         new_timezone: Timezone
         try:
             new_timezone = Timezone.from_tzif(key)
-        except TimezoneInfoError:
-            return
+        except TimezoneInfoError as err:
+            raise EventStoreError(
+                "No timezone information available for event: {key}"
+            ) from err
         self._calendar.timezones.append(new_timezone)
