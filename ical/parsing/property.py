@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from .const import PARSE_PARAM_NAME, PARSE_PARAM_VALUE, PARSE_PARAMS
 from .unicode import UNSAFE_CHAR_RE
@@ -26,7 +26,7 @@ class ParsedPropertyParameter:
 
     name: str
 
-    values: list[str | datetime.tzinfo]
+    values: list[Union[str, datetime.tzinfo]]
     """Values are typically strings, with a hack for TZID.
 
     The values may be overridden in the parse tree so that we can directly
