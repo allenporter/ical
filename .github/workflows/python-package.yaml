@@ -46,3 +46,4 @@ jobs:
     - uses: codespell-project/actions-codespell@v1.0
       with:
         exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
+        check_hidden: false
