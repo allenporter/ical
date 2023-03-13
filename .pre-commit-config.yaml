@@ -7,16 +7,11 @@ repos:
   - id: end-of-file-fixer
   - id: check-yaml
   - id: check-added-large-files
-- repo: https://github.com/pycqa/isort
-  rev: 5.9.3
-  hooks:
-    - id: isort
-      args: ["--profile", "black"]
 - repo: https://github.com/psf/black
   rev: 22.3.0
   hooks:
   - id: black
-- repo: https://gitlab.com/pycqa/flake8
+- repo: https://github.com/pycqa/flake8
   rev: 4.0.1
   hooks:
   - id: flake8
@@ -31,20 +26,6 @@ repos:
     # use require_serial so that script
     # is only called once per commit
     require_serial: true
-- repo: local
-  hooks:
-  - id: pylint
-    name: pylint
-    entry: pylint
-    language: system
-    types: [python]
-    args:
-      [
-        "-rn", # Only display messages
-        "-sn", # Don't display the score
-        "--disable=too-few-public-methods",
-        "--disable=duplicate-code",
-      ]
 - repo: https://github.com/codespell-project/codespell
   rev: v2.1.0
   hooks:
@@ -53,3 +34,7 @@ repos:
           (?x)^(
               tests/tzif/testdata/rfc8536-v3.yaml
           )$
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  rev: 'v0.0.253'
+  hooks:
+  - id: ruff

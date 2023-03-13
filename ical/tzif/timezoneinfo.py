@@ -73,7 +73,7 @@ def read(key: str) -> TimezoneInfo:
     try:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
-    except ModuleNotFoundError as err:
+    except ModuleNotFoundError:
         # Unexpected given we previously read the list of timezones
         pass
     except FileNotFoundError as err:
