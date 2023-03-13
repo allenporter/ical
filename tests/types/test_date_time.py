@@ -144,3 +144,21 @@ def test_datedatime_parameter_encoder() -> None:
             )
         ],
     )
+
+    with pytest.raises(ValueError, match="valid timezone"):
+        TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724T120000",
+                        params=[
+                            ParsedPropertyParameter(
+                                name="TZID",
+                                values=["Example"],
+                            ),
+                        ],
+                    )
+                ],
+            }
+        )

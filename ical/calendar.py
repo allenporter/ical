@@ -4,22 +4,33 @@ from __future__ import annotations
 
 import datetime
 from importlib import metadata
-from typing import Optional
+import itertools
+import logging
+from typing import Optional, Any
+import zoneinfo
 
-from pydantic import Field
+from pydantic import Field, root_validator
 
 from .component import ComponentModel
 from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal
+from .types.date_time import TZID
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
-from .timezone import Timezone
+from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
 from .util import local_timezone
 
+
+_LOGGER = logging.getLogger(__name__)
+
+
 _VERSION = metadata.version("ical")
 _PRODID = metadata.metadata("ical")["prodid"]
+
+# Components that may contain TZID objects
+_TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
 
 
 class Calendar(ComponentModel):
@@ -68,3 +79,51 @@ class Calendar(ComponentModel):
         events are returned.
         """
         return calendar_timeline(self.events, tzinfo=tzinfo or local_timezone())
+
+    @root_validator(pre=True)
+    def _propagate_timezones(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Propagate timezone information down to date-time objects.
+
+        This results in parsing the timezones twice: Once here, then once again
+        in the calendar itself. This does imply that if a vtimezone object is
+        changed live, the DATE-TIME objects are not updated.
+
+        We first update the timezone objects using another pydantic model just
+        for parsing and propagaint here (TimezoneModel). We then walk through
+        all DATE-TIME objects referenced by components and lookup any TZID
+        property parameters, converting them to a datetime.tzinfo object. The
+        DATE-TIME parser will use this instead of the TZID string. We prefer
+        to use any python timezones when present.
+        """
+
+        # First parse the timezones out of the calendar, ignoring everything else
+        timezone_model = TimezoneModel.parse_obj(values)
+        system_tzids = zoneinfo.available_timezones()
+        tzinfos: dict[str, datetime.tzinfo] = {
+            timezone.tz_id: IcsTimezoneInfo.from_timezone(timezone)
+            for timezone in timezone_model.timezones
+            if timezone.tz_id not in system_tzids
+        }
+        if not timezone_model.timezones:
+            return values
+        # Replace any TZID objects with a reference to tzinfo from this calendar. The
+        # DATE-TIME parser will use that if present.
+        _LOGGER.debug("Replacing timezone (num %d) references in events", len(tzinfos))
+        components = itertools.chain.from_iterable(
+            [values.get(component, []) for component in _TZID_COMPONENTS]
+        )
+        for event in components:
+            for field_values in event.values():
+                for value in field_values or []:
+                    if not isinstance(value, ParsedProperty):
+                        continue
+                    if (
+                        not (tzid_param := value.get_parameter(TZID))
+                        or not tzid_param.values
+                    ):
+                        continue
+                    if isinstance(tzid_param.values[0], str) and (
+                        tzinfo := tzinfos.get(tzid_param.values[0])
+                    ):
+                        tzid_param.values = [tzinfo]
+        return values

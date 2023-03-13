@@ -12,8 +12,9 @@ or sub component).
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from .const import PARSE_PARAM_NAME, PARSE_PARAM_VALUE, PARSE_PARAMS
 from .unicode import UNSAFE_CHAR_RE
@@ -24,7 +25,15 @@ class ParsedPropertyParameter:
     """An rfc5545 property parameter."""
 
     name: str
-    values: list[str]
+
+    values: list[Union[str, datetime.tzinfo]]
+    """Values are typically strings, with a hack for TZID.
+
+    The values may be overridden in the parse tree so that we can directly
+    set the timezone information when parsing a date-time rather than
+    combining with the calendar at runtime. That is, we update the tree
+    with timezone infrmation replacing a string TZID with the zoneinfo.
+    """
 
 
 @dataclass
@@ -35,24 +44,25 @@ class ParsedProperty:
     value: str
     params: Optional[list[ParsedPropertyParameter]] = None
 
-    def get_parameter_values(self, name: str) -> list[str]:
-        """Return the list of property parameter values."""
+    def get_parameter(self, name: str) -> ParsedPropertyParameter | None:
+        """Return a single ParsedPropertyParameter with the specified name."""
         if not self.params:
-            return []
+            return None
         for param in self.params:
             if param.name.lower() != name.lower():
                 continue
-            return param.values
-        return []
+            return param
+        return None
 
     def get_parameter_value(self, name: str) -> str | None:
         """Return the property parameter value."""
-        values = self.get_parameter_values(name)
-        if not values:
+        if not (param := self.get_parameter(name)):
             return None
-        if len(values) > 1:
-            raise ValueError(f"Expected only a single parameter value, got {values}")
-        return values[0]
+        if len(param.values) > 1:
+            raise ValueError(
+                f"Expected only a single parameter string value, got {param.values}"
+            )
+        return param.values[0] if isinstance(param.values[0], str) else None
 
     def ics(self) -> str:
         """Encode a ParsedProperty into the serialized format."""
@@ -63,6 +73,8 @@ class ParsedProperty:
             for parameter in self.params:
                 result_param_values = []
                 for value in parameter.values:
+                    if not isinstance(value, str):
+                        continue  # Shouldn't happen; only strings are set by parsing
                     # Property parameters with values contain a colon, simicolon,
                     # or a comma character must be placed in quoted text
                     if UNSAFE_CHAR_RE.search(value):

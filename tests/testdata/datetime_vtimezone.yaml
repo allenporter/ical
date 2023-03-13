@@ -1,0 +1,73 @@
+input: |-
+  BEGIN:VCALENDAR
+  BEGIN:VEVENT
+  DTSTAMP:20230313T011226
+  UID:1e19f31b-c13c-11ed-8431-066a07ffbaf5
+  DTSTART;TZID=America/Example:20230312T181210
+  DTEND;TZID=America/Example:20230312T191210
+  SUMMARY:Event 1
+  CREATED:20230313T011226
+  SEQUENCE:0
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  DTSTAMP:20230313T011229
+  TZID:America/Example
+  BEGIN:STANDARD
+  DTSTART:20101107T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:20100314T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:PDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR
+output:
+  calendars:
+  - events:
+    - dtstamp: '2023-03-13T01:12:26'
+      uid: 1e19f31b-c13c-11ed-8431-066a07ffbaf5
+      dtstart: '2023-03-12T18:12:10-07:00'
+      dtend: '2023-03-12T19:12:10-07:00'
+      summary: Event 1
+      created: '2023-03-13T01:12:26'
+      sequence: 0
+    timezones:
+    - dtstamp: '2023-03-13T01:12:29'
+      tz_id: America/Example
+      standard:
+      - dtstart: '2010-11-07T02:00:00'
+        tz_offset_to:
+          offset: -28800.0
+        tz_offset_from:
+          offset: -25200.0
+        rrule:
+          freq: YEARLY
+          by_weekday:
+          - weekday: SU
+            occurrence: 1
+          by_month:
+          - 11
+        tz_name:
+        - PST
+      daylight:
+      - dtstart: '2010-03-14T02:00:00'
+        tz_offset_to:
+          offset: -25200.0
+        tz_offset_from:
+          offset: -28800.0
+        rrule:
+          freq: YEARLY
+          by_weekday:
+          - weekday: SU
+            occurrence: 2
+          by_month:
+          - 3
+        tz_name:
+        - PDT

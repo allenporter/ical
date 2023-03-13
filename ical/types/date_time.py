@@ -36,8 +36,17 @@ class DateTimeEncoder:
 
         # Example: TZID=America/New_York:19980119T020000
         timezone: datetime.tzinfo | None = None
-        if tzid := prop.get_parameter_value(TZID):
-            timezone = zoneinfo.ZoneInfo(tzid)
+        if param := prop.get_parameter(TZID):
+            if param.values and (value := param.values[0]):
+                if isinstance(value, datetime.tzinfo):
+                    timezone = value
+                else:
+                    try:
+                        timezone = zoneinfo.ZoneInfo(value)
+                    except zoneinfo.ZoneInfoNotFoundError:
+                        raise ValueError(
+                            f"Expected DATE-TIME TZID value '{value}' to be valid timezone"
+                        )
         elif match.group(3):  # Example: 19980119T070000Z
             timezone = datetime.timezone.utc
 
@@ -83,5 +92,5 @@ class DateTimeEncoder:
     ) -> list[ParsedPropertyParameter]:
         """Encode parameters for the property value."""
         if isinstance(value, dict) and (tzid := value.get(TZID)):
-            return [ParsedPropertyParameter(name=TZID, values=[tzid])]
+            return [ParsedPropertyParameter(name=TZID, values=[str(tzid)])]
         return []
