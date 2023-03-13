@@ -28,6 +28,11 @@ from .types import Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import dtstamp_factory
 
+__all__ = [
+    "Timezone",
+    "Observance",
+]
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -298,3 +303,20 @@ class IcsTimezoneInfo(datetime.tzinfo):
 
     def _get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:
         return self._timezone.get_observance(value.replace(tzinfo=None))
+
+    def __str__(self) -> str:
+        """A string representation of the timezone object."""
+        return self._timezone.tz_id
+
+
+class TimezoneModel(ComponentModel):
+    """A parser of a calendar that just parses timezone data.
+
+    This exists so that we can parse timezone information in a first pass then propagate
+    that information down to child objects when parsing the rest of the calendar. This is
+    so we can do one pass on parsing events and timezone information at once, rather than
+    deferring to later.
+    """
+
+    timezones: list[Timezone] = Field(alias="vtimezone", default_factory=list)
+    """Timezones associated with this calendar."""
