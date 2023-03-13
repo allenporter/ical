@@ -34,6 +34,10 @@ jobs:
     - name: Lint with ruff
       run: |
         ruff check --format=github .
+    - uses: codespell-project/actions-codespell@v1.0
+      with:
+        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
+        check_hidden: false
     - name: Test with pytest
       run: |
         pytest --cov=ical --cov-report=term-missing
@@ -43,7 +47,3 @@ jobs:
         env_vars: OS,PYTHON
         fail_ci_if_error: true
         verbose: true
-    - uses: codespell-project/actions-codespell@v1.0
-      with:
-        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
-        check_hidden: false
