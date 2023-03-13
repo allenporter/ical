@@ -65,7 +65,7 @@ def _iana_key_to_resource(key: str) -> tuple[str, str]:
 
 def read(key: str) -> TimezoneInfo:
     """Read the TZif file from the tzdata package and return timezone records."""
-    if key not in _read_system_timezones() or key not in _read_tzdata_timezones():
+    if key not in _read_system_timezones() and key not in _read_tzdata_timezones():
         raise TimezoneInfoError(f"Unable to find timezone in system timezones: {key}")
 
     # Prefer tzdata package
