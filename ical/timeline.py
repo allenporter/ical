@@ -128,12 +128,20 @@ class RecurAdapter:
     ) -> SortableItem[Timespan, Event]:
         """Return a lazy sortable item."""
 
+        recur_id_dt = dtstart
+        # Make recurrence_id floating time to avoid dealing with serializing
+        # TZID. This value will still be unique within the series and is in
+        # the context of dtstart which may have a timezone.
+        if isinstance(recur_id_dt, datetime.datetime) and recur_id_dt.tzinfo:
+            recur_id_dt = recur_id_dt.replace(tzinfo=None)
+        recurrence_id = RecurrenceId.__parse_property_value__(recur_id_dt)
+
         def build() -> Event:
             return self._event.copy(
                 update={
                     "dtstart": dtstart,
                     "dtend": dtstart + self._event_duration,
-                    "recurrence_id": RecurrenceId.__parse_property_value__(dtstart),
+                    "recurrence_id": recurrence_id,
                 },
             )
 
