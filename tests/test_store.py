@@ -163,23 +163,64 @@ def test_edit_event_invalid_uid(store: EventStore) -> None:
 
 
 @pytest.mark.parametrize(
-    "recur",
+    ("start", "end", "recur", "results"),
     [
-        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926T090000"),
-        Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+        (
+            datetime.datetime(2022, 8, 29, 9, 0),
+            datetime.datetime(2022, 8, 29, 9, 30),
+            Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926T090000"),
+            [
+                "2022-08-29T09:00:00",
+                "2022-09-05T09:00:00",
+                "2022-09-12T09:00:00",
+                "2022-09-19T09:00:00",
+                "2022-09-26T09:00:00",
+            ],
+        ),
+        (
+            datetime.datetime(2022, 8, 29, 9, 0),
+            datetime.datetime(2022, 8, 29, 9, 30),
+            Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+            [
+                "2022-08-29T09:00:00",
+                "2022-09-05T09:00:00",
+                "2022-09-12T09:00:00",
+                "2022-09-19T09:00:00",
+                "2022-09-26T09:00:00",
+            ],
+        ),
+        (
+            datetime.datetime(
+                2022, 8, 29, 9, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            datetime.datetime(
+                2022, 8, 29, 9, 30, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+            [
+                "2022-08-29T09:00:00-07:00",
+                "2022-09-05T09:00:00-07:00",
+                "2022-09-12T09:00:00-07:00",
+                "2022-09-19T09:00:00-07:00",
+                "2022-09-26T09:00:00-07:00",
+            ],
+        ),
     ],
 )
 def test_recurring_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
+    start: datetime.datetime,
+    end: datetime.datetime,
     recur: Recur,
+    results: list[str],
 ) -> None:
     """Test adding a recurring event and deleting the entire series."""
     store.add(
         Event(
             summary="Monday meeting",
-            start="2022-08-29T09:00:00",
-            end="2022-08-29T09:30:00",
+            start=start,
+            end=end,
             rrule=recur,
         )
     )
@@ -187,31 +228,31 @@ def test_recurring_event(
         {
             "uid": "mock-uid-1",
             "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
+            "dtstart": results[0],
             "summary": "Monday meeting",
         },
         {
             "uid": "mock-uid-1",
             "recurrence_id": "20220905T090000",
-            "dtstart": "2022-09-05T09:00:00",
+            "dtstart": results[1],
             "summary": "Monday meeting",
         },
         {
             "uid": "mock-uid-1",
             "recurrence_id": "20220912T090000",
-            "dtstart": "2022-09-12T09:00:00",
+            "dtstart": results[2],
             "summary": "Monday meeting",
         },
         {
             "uid": "mock-uid-1",
             "recurrence_id": "20220919T090000",
-            "dtstart": "2022-09-19T09:00:00",
+            "dtstart": results[3],
             "summary": "Monday meeting",
         },
         {
             "uid": "mock-uid-1",
             "recurrence_id": "20220926T090000",
-            "dtstart": "2022-09-26T09:00:00",
+            "dtstart": results[4],
             "summary": "Monday meeting",
         },
     ]
