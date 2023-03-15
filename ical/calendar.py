@@ -19,12 +19,12 @@ from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
-from .util import local_timezone, version_factory
+from .util import local_timezone, prodid_factory
 
 
 _LOGGER = logging.getLogger(__name__)
 
-_PRODID = "github.com/allenporter/ical"
+_VERSION = "2.0"
 
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
@@ -35,8 +35,8 @@ class Calendar(ComponentModel):
 
     calscale: Optional[str] = None
     method: Optional[str] = None
-    prodid: str = Field(default_factory=lambda: _PRODID)
-    version: str = Field(default_factory=lambda: version_factory())
+    prodid: str = Field(default_factory=lambda: prodid_factory())
+    version: str = Field(default_factory=lambda: _VERSION)
 
     #
     # Calendar components

@@ -10,7 +10,7 @@ import pytest
 from pydantic.json import pydantic_encoder
 
 
-FAKE_VERSION = "1.2.3"
+PRODID = "-//example//1.2.3"
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -31,8 +31,8 @@ def json_encoder() -> json.JSONEncoder:
     return DataclassEncoder()
 
 
-@pytest.fixture(autouse=True)
-def mock_version() -> Generator[None, None, None]:
-    """Mock out the version used in tests."""
-    with patch("ical.calendar.version_factory", return_value=FAKE_VERSION):
+@pytest.fixture
+def mock_prodid() -> Generator[None, None, None]:
+    """Mock out the prodid used in tests."""
+    with patch("ical.calendar.prodid_factory", return_value=PRODID):
         yield
