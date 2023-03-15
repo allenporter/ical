@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import datetime
+from importlib import metadata
 import uuid
 
 __all__ = [
     "dtstamp_factory",
     "uid_factory",
+    "prodid_factory",
 ]
 
 
 MIDNIGHT = datetime.time()
-_PRODID = "github.com/allenporter/ical"
+PRODID = "github.com/allenporter/ical"
 
 
 def dtstamp_factory() -> datetime.datetime:
@@ -27,7 +29,7 @@ def uid_factory() -> str:
 
 def prodid_factory() -> str:
     """Return the ical version to facilitate mocking."""
-    return "-//{PRODID}//{metadata.version('ical')}"
+    return f"-//{PRODID}//{metadata.version('ical')}//EN"
 
 
 def local_timezone() -> datetime.tzinfo:
