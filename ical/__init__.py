@@ -17,4 +17,5 @@ __all__ = [
     "types",
     "tzif",
     "util",
+    "diagnostics",
 ]
