@@ -1,11 +1,16 @@
 """Test fixtures."""
 
+from collections.abc import Generator
 import dataclasses
 import json
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pydantic.json import pydantic_encoder
+
+
+FAKE_VERSION = "1.2.3"
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -24,3 +29,10 @@ class DataclassEncoder(json.JSONEncoder):
 def json_encoder() -> json.JSONEncoder:
     """Fixture that creates a json encoder."""
     return DataclassEncoder()
+
+
+@pytest.fixture(autouse=True)
+def mock_version() -> Generator[None, None, None]:
+    """Mock out the version used in tests."""
+    with patch("ical.calendar.version_factory", return_value=FAKE_VERSION):
+        yield

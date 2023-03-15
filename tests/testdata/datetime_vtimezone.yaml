@@ -1,5 +1,7 @@
 input: |-
   BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:1.2.3
   BEGIN:VEVENT
   DTSTAMP:20230313T011226
   UID:1e19f31b-c13c-11ed-8431-066a07ffbaf5
@@ -30,7 +32,9 @@ input: |-
   END:VCALENDAR
 output:
   calendars:
-  - events:
+  - version: 1.2.3
+    prodid: -//hacksw/handcal//NONSGML v1.0//EN
+    events:
     - dtstamp: '2023-03-13T01:12:26'
       uid: 1e19f31b-c13c-11ed-8431-066a07ffbaf5
       dtstart: '2023-03-12T18:12:10-07:00'

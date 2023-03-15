@@ -88,6 +88,8 @@ def test_from_tzif_timezoneinfo_with_dst() -> None:
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR
+       PRODID:github.com/allenporter/ical
+       VERSION:1.2.3
        BEGIN:VTIMEZONE
        DTSTAMP:20220822T123000
        TZID:America/New_York
@@ -146,6 +148,8 @@ def test_from_tzif_timezoneinfo_fixed_offset() -> None:
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR
+       PRODID:github.com/allenporter/ical
+       VERSION:1.2.3
        BEGIN:VTIMEZONE
        DTSTAMP:20220822T123000
        TZID:Asia/Tokyo

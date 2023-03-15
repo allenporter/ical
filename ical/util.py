@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from importlib import metadata
 
 __all__ = [
     "dtstamp_factory",
@@ -22,6 +23,11 @@ def dtstamp_factory() -> datetime.datetime:
 def uid_factory() -> str:
     """Factory method for new uids to facilitate mocking."""
     return str(uuid.uuid1())
+
+
+def version_factory() -> str:
+    """Return the ical version to facilitate mocking."""
+    return metadata.version("ical")
 
 
 def local_timezone() -> datetime.tzinfo:

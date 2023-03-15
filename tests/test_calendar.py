@@ -1,11 +1,11 @@
 """Tests for timeline related calendar eents."""
 from __future__ import annotations
 
+from collections.abc import Generator
 import datetime
 import re
 import uuid
 import zoneinfo
-from typing import Generator
 from unittest.mock import patch
 
 import pytest
@@ -340,6 +340,8 @@ def test_create_and_serialize_calendar(
     ics = IcsCalendarStream.calendar_to_ics(cal)
     assert re.split("\r?\n", ics) == [
         "BEGIN:VCALENDAR",
+        "PRODID:github.com/allenporter/ical",
+        "VERSION:1.2.3",
         "BEGIN:VEVENT",
         "DTSTAMP:20000101T123000",
         "UID:68e9e07c-7557-36e2-91c1-8febe7527841",
