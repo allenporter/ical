@@ -1,5 +1,7 @@
 """Library for diagnostics or debugging information about calendars."""
 
+from __future__ import annotations
+
 from collections.abc import Generator
 import itertools
 
