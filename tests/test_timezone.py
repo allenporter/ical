@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 import datetime
 import inspect
 
@@ -76,7 +77,9 @@ def test_timezone_observence_start_time_validation() -> None:
 
 
 @freeze_time("2022-08-22 12:30:00")
-def test_from_tzif_timezoneinfo_with_dst() -> None:
+def test_from_tzif_timezoneinfo_with_dst(
+    mock_prodid: Generator[None, None, None]
+) -> None:
     """Verify a timezone created from a tzif timezone info with DST information."""
 
     timezone = Timezone.from_tzif("America/New_York")
@@ -88,6 +91,8 @@ def test_from_tzif_timezoneinfo_with_dst() -> None:
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR
+       PRODID:-//example//1.2.3
+       VERSION:2.0
        BEGIN:VTIMEZONE
        DTSTAMP:20220822T123000
        TZID:America/New_York
@@ -134,7 +139,9 @@ def test_from_tzif_timezoneinfo_with_dst() -> None:
 
 
 @freeze_time("2022-08-22 12:30:00")
-def test_from_tzif_timezoneinfo_fixed_offset() -> None:
+def test_from_tzif_timezoneinfo_fixed_offset(
+    mock_prodid: Generator[None, None, None]
+) -> None:
     """Verify a timezone created from a tzif timezone info with a fixed offset"""
 
     timezone = Timezone.from_tzif("Asia/Tokyo")
@@ -146,6 +153,8 @@ def test_from_tzif_timezoneinfo_fixed_offset() -> None:
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR
+       PRODID:-//example//1.2.3
+       VERSION:2.0
        BEGIN:VTIMEZONE
        DTSTAMP:20220822T123000
        TZID:Asia/Tokyo

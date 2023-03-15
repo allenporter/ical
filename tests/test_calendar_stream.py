@@ -1,11 +1,25 @@
-"""Tests for timeline related calendar eents."""
+"""Tests for timeline related calendar events."""
 
+from collections.abc import Generator
 import json
 
 import pytest
 from pytest_golden.plugin import GoldenTestFixture
 
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
+
+
+def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
+    """Test serialization of an empty ics file."""
+    calendar = IcsCalendarStream.calendar_from_ics("")
+    ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert (
+        ics
+        == """BEGIN:VCALENDAR
+PRODID:-//example//1.2.3
+VERSION:2.0
+END:VCALENDAR"""
+    )
 
 
 @pytest.mark.golden_test("testdata/*.yaml")

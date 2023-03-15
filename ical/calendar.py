@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime
-from importlib import metadata
 import itertools
 import logging
 from typing import Optional, Any
@@ -20,14 +19,12 @@ from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
-from .util import local_timezone
+from .util import local_timezone, prodid_factory
 
 
 _LOGGER = logging.getLogger(__name__)
 
-
-_VERSION = metadata.version("ical")
-_PRODID = metadata.metadata("ical")["prodid"]
+_VERSION = "2.0"
 
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
@@ -38,8 +35,8 @@ class Calendar(ComponentModel):
 
     calscale: Optional[str] = None
     method: Optional[str] = None
-    prodid: str = Field(default=_PRODID)
-    version: str = Field(default=_VERSION)
+    prodid: str = Field(default_factory=lambda: prodid_factory())
+    version: str = Field(default_factory=lambda: _VERSION)
 
     #
     # Calendar components
