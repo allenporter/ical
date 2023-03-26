@@ -21,6 +21,16 @@ VERSION:2.0
 END:VCALENDAR"""
     )
 
+    calendar.prodid = "-//example//1.2.4"
+    ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert (
+        ics
+        == """BEGIN:VCALENDAR
+PRODID:-//example//1.2.4
+VERSION:2.0
+END:VCALENDAR"""
+    )
+
 
 @pytest.mark.golden_test("testdata/*.yaml")
 def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> None:
