@@ -92,6 +92,9 @@ class Calendar(ComponentModel):
         DATE-TIME parser will use this instead of the TZID string. We prefer
         to use any python timezones when present.
         """
+        # Run only when initially parsing a VTIMEZONE
+        if "vtimezone" not in values:
+            return values
 
         # First parse the timezones out of the calendar, ignoring everything else
         timezone_model = TimezoneModel.parse_obj(values)
