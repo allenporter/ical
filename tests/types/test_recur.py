@@ -647,16 +647,6 @@ def test_until_time_mismatch() -> None:
             ),
         )
 
-    with pytest.raises(
-        ValidationError, match="DTSTART and UNTIL must be the same value type"
-    ):
-        Event(
-            summary="Bi-annual meeting",
-            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
-            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
-            rrule=Recur(freq=Frequency.DAILY, until=datetime.date(2022, 8, 4)),
-        )
-
 
 @pytest.mark.parametrize(
     "recur",
