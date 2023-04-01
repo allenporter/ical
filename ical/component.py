@@ -47,26 +47,43 @@ EXPAND_REPEATED_VALUES = {
 }
 
 
+def _adjust_recurrence_date(
+    date_value: datetime.datetime | datetime.date,
+    dtstart: datetime.datetime | datetime.date,
+) -> datetime.datetime | datetime.date:
+    """Apply fixes to the recurrence rule date."""
+    if isinstance(dtstart, datetime.datetime):
+        if not isinstance(date_value, datetime.datetime):
+            raise ValueError(
+                "DTSTART was DATE-TIME but UNTIL was DATE: "
+                "must be the same value type"
+            )
+        if dtstart.tzinfo is None:
+            if date_value.tzinfo is not None:
+                raise ValueError("DTSTART is date local but UNTIL was not")
+            return date_value
+
+        if date_value.utcoffset():
+            raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
+
+        return date_value
+
+    if isinstance(date_value, datetime.datetime):
+        # Fix invalid rules where UNTIL value is DATE-TIME but DTSTART is DATE
+        return date_value.date()
+
+    return date_value
+
+
 def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
     """Verify the until time and dtstart are the same."""
     if (
-        (rule := values.get("rrule"))
-        and (until := rule.until)
-        and (dtstart := values.get("dtstart"))
+        not (rule := values.get("rrule"))
+        or not rule.until
+        or not (dtstart := values.get("dtstart"))
     ):
-        if isinstance(dtstart, datetime.datetime) and isinstance(
-            until, datetime.datetime
-        ):
-            if dtstart.tzinfo is None:
-                if until.tzinfo is not None:
-                    raise ValueError("DTSTART is date local but UNTIL was not")
-            else:
-                if until.utcoffset():
-                    raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
-        elif isinstance(dtstart, datetime.datetime) or isinstance(
-            until, datetime.datetime
-        ):
-            raise ValueError("DTSTART and UNTIL must be the same value type")
+        return values
+    rule.until = _adjust_recurrence_date(rule.until, dtstart)
     return values
 
 
@@ -83,7 +100,7 @@ class ComponentModel(BaseModel):
             all_fields |= {field.alias, field.name}
 
         extras: list[ParsedProperty | ParsedComponent] = []
-        for (field_name, value) in values.items():
+        for field_name, value in values.items():
             if field_name in all_fields:
                 continue
             for prop in value:

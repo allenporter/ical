@@ -597,8 +597,45 @@ def test_year_iteration() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    ("tzinfo", "until_tzinfo"),
+    [
+        (None, None),
+        (zoneinfo.ZoneInfo("America/New_York"), datetime.timezone.utc),
+    ],
+)
+def test_until_time_valid(
+    tzinfo: zoneinfo.ZoneInfo | None, until_tzinfo: zoneinfo.ZoneInfo | None
+) -> None:
+    """Test success cases where until has a valid date or time compared to dtstart."""
+
+    Event(
+        summary="Bi-annual meeting",
+        start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=tzinfo),
+        end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=tzinfo),
+        rrule=Recur(
+            freq=Frequency.DAILY,
+            until=datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=until_tzinfo),
+        ),
+    )
+
+
 def test_until_time_mismatch() -> None:
     """Test failure case where until has a different timezone than start."""
+
+    with pytest.raises(
+        ValidationError,
+        match="DTSTART was DATE-TIME but UNTIL was DATE",
+    ):
+        Event(
+            summary="Bi-annual meeting",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.date(2022, 8, 4),
+            ),
+        )
 
     with pytest.raises(
         ValidationError, match="DTSTART is date local but UNTIL was not"
@@ -645,16 +682,6 @@ def test_until_time_mismatch() -> None:
                     2022, 8, 4, 1, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
                 ),
             ),
-        )
-
-    with pytest.raises(
-        ValidationError, match="DTSTART and UNTIL must be the same value type"
-    ):
-        Event(
-            summary="Bi-annual meeting",
-            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
-            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
-            rrule=Recur(freq=Frequency.DAILY, until=datetime.date(2022, 8, 4)),
         )
 
 
