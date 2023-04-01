@@ -597,16 +597,25 @@ def test_year_iteration() -> None:
     ]
 
 
-def test_until_time_valid() -> None:
+@pytest.mark.parametrize(
+    ("tzinfo", "until_tzinfo"),
+    [
+        (None, None),
+        (zoneinfo.ZoneInfo("America/New_York"), datetime.timezone.utc),
+    ],
+)
+def test_until_time_valid(
+    tzinfo: zoneinfo.ZoneInfo | None, until_tzinfo: zoneinfo.ZoneInfo | None
+) -> None:
     """Test success cases where until has a valid date or time compared to dtstart."""
 
     Event(
         summary="Bi-annual meeting",
-        start=datetime.datetime(2022, 1, 2, 6, 0, 0),
-        end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+        start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=tzinfo),
+        end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=tzinfo),
         rrule=Recur(
             freq=Frequency.DAILY,
-            until=datetime.datetime(2022, 8, 4, 6, 0, 0),
+            until=datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=until_tzinfo),
         ),
     )
 
