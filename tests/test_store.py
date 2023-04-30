@@ -115,7 +115,7 @@ def test_edit_event(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
 ) -> None:
-    """Test adding an event to the store and retrieval."""
+    """Test editing an event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -521,13 +521,62 @@ def test_edit_recurring_event(
         Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
     ],
 )
+def test_edit_recurring_all_day_event_instance(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    recur: Recur,
+) -> None:
+    """Test editing a single instance of a recurring all day event."""
+    store.add(
+        Event(
+            summary="Monday event",
+            start="2022-08-29",
+            end="2022-08-30",
+            rrule=recur,
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(start="2022-09-06", summary="Tuesday event"),
+        recurrence_id="20220905",
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220829",
+            "dtstart": "2022-08-29",
+            "summary": "Monday event",
+        },
+        {
+            "uid": "mock-uid-2",
+            "dtstart": "2022-09-06",
+            "summary": "Tuesday event",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220912",
+            "dtstart": "2022-09-12",
+            "summary": "Monday event",
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220912T090000"),
+        Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
+    ],
+)
 def test_edit_recurring_event_instance(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
 ) -> None:
-    """Test editing all instances of a recurring event."""
+    """Test editing a single instance of a recurring event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -746,10 +795,10 @@ def test_edit_recurring_all_day_event_this_and_future(
     ]
 
 
-def test_add_and_delete_event_date(
+def test_delete_all_day_event(
     store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
 ) -> None:
-    """Test adding an event to the store and retrieval."""
+    """Test deleting a single all day event."""
     store.add(
         Event(
             summary="Monday meeting",
@@ -772,10 +821,10 @@ def test_add_and_delete_event_date(
     assert fetch_events() == []
 
 
-def test_delete_event_date_recurring(
+def test_delete_all_day_recurring(
     store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
 ) -> None:
-    """Test adding an event to the store and retrieval."""
+    """Test deleting all instances of a recurring all day event."""
     store.add(
         Event(
             summary="Monday meeting",
