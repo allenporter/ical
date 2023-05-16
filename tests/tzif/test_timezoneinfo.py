@@ -8,6 +8,11 @@ import pytest
 from ical.tzif import timezoneinfo, tz_rule
 
 
+IGNORED_TIMEZONES = {
+    "Asia/Hanoi",  # Not in tzdata
+}
+
+
 def test_invalid_zoneinfo() -> None:
     """Verify exception handling for an invalid timezone."""
 
@@ -135,7 +140,7 @@ def test_rrule_str() -> None:
 @pytest.mark.parametrize("key", zoneinfo.available_timezones())
 def test_all_zoneinfo(key: str) -> None:
     """Verify that all available timezones in the system have valid tzdata."""
-    if key.startswith("System") or key == "localtime":
+    if key.startswith("System") or key == "localtime" or key in IGNORED_TIMEZONES:
         return
 
     result = timezoneinfo.read(key)
