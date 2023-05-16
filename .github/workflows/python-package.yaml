@@ -34,7 +34,7 @@ jobs:
     - name: Lint with ruff
       run: |
         ruff check --format=github .
-    - uses: codespell-project/actions-codespell@v1.0
+    - uses: codespell-project/actions-codespell@v2.0
       with:
         exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
         check_hidden: false
