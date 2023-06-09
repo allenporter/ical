@@ -81,21 +81,23 @@ class Alarm(ComponentModel):
     @root_validator
     def parse_display_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for display actions."""
-        if values.get("action") != Action.DISPLAY:
+        action = values.get("action")
+        if action != Action.DISPLAY:
             return values
         if not values.get("description"):
-            raise ValueError("Description value is required for action AUDIO")
+            raise ValueError(f"Description value is required for action {action}")
         return values
 
     @root_validator
     def parse_email_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate required fields for email actions."""
-        if values.get("action") != Action.EMAIL:
+        action = values.get("action")
+        if action != Action.EMAIL:
             return values
         if not values.get("description"):
-            raise ValueError("Description value is required for action AUDIO")
+            raise ValueError(f"Description value is required for action {action}")
         if not values.get("summary"):
-            raise ValueError("Summary value is required for action AUDIO")
+            raise ValueError(f"Summary value is required for action {action}")
         return values
 
     @root_validator
