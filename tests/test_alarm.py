@@ -48,7 +48,7 @@ def test_duration_and_repeat() -> None:
 
 def test_display_required_fields() -> None:
     """Test required fields for action DISPLAY."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="Description value is required for action DISPLAY"):
         Alarm(action="DISPLAY", trigger=datetime.timedelta(minutes=-5))
 
     alarm = Alarm(
@@ -63,7 +63,7 @@ def test_display_required_fields() -> None:
 def test_email_required_fields() -> None:
     """Test required fields for action EMAIL."""
     # Missing multiple fields
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="Description value is required for action EMAIL"):
         Alarm(action="EMAIL", trigger=datetime.timedelta(minutes=-5))
 
     # Missing summary
