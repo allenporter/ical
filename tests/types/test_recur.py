@@ -776,7 +776,7 @@ def test_recur_by_monthday_as_string(recur: Recur) -> None:
     ],
 )
 def test_recur_by_last_day_as_string(recur: Recur) -> None:
-    """Test converting a recurrence rule with a weekday reepat into a string."""
+    """Test converting a recurrence rule with a weekday repeat into a string."""
     event = Event(
         summary="summary",
         start=datetime.date(2022, 9, 6),
@@ -814,4 +814,31 @@ def test_rdate_all_day() -> None:
         (datetime.date(2022, 9, 2), "Monthly Event"),
         (datetime.date(2022, 10, 2), "Monthly Event"),
         (datetime.date(2022, 10, 3), "Monthly Event"),
+    ]
+
+
+def test_rrule_exdate_mismatch() -> None:
+    """Test a recurrence rule with mixed datetime and exdate values."""
+    calendar = Calendar()
+    calendar.events.extend(
+        [
+            Event(
+                summary="Morning exercise",
+                start=datetime.datetime(2022, 8, 2, 6, 0, 0),
+                end=datetime.datetime(2022, 8, 2, 7, 0, 0),
+                rrule=Recur(
+                    freq=Frequency.WEEKLY, until=datetime.datetime(2022, 8, 10, 6, 0, 0)
+                ),
+                exdate=[
+                    datetime.date(2022, 8, 3),
+                    datetime.date(2022, 8, 4),
+                    datetime.date(2022, 8, 5),
+                ],
+            ),
+        ]
+    )
+    events = list(calendar.timeline)
+    assert [(event.start, event.summary) for event in events] == [
+        (datetime.datetime(2022, 8, 2, 6, 0, 0), "Morning exercise"),
+        (datetime.datetime(2022, 8, 9, 6, 0, 0), "Morning exercise"),
     ]

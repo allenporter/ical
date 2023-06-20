@@ -11,7 +11,7 @@ from typing import Any, Optional, Union
 
 from pydantic import Field, root_validator
 
-from .component import ComponentModel, validate_until_dtstart
+from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty
 from .types import CalAddress, Classification, Recur, RecurrenceId, RequestStatus, Uri
 from .util import dtstamp_factory, normalize_datetime, uid_factory
@@ -91,3 +91,4 @@ class Journal(ComponentModel):
         return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
+    _validate_recurrence_dates = root_validator(allow_reuse=True)(validate_recurrence_dates)

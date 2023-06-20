@@ -9,7 +9,7 @@ from typing import Any, Optional, Union
 from pydantic import Field, root_validator
 
 from .alarm import Alarm
-from .component import ComponentModel, validate_until_dtstart
+from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
@@ -112,3 +112,4 @@ class Todo(ComponentModel):
         return values
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
+    _validate_recurrence_dates = root_validator(allow_reuse=True)(validate_recurrence_dates)
