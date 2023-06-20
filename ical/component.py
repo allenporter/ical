@@ -87,6 +87,34 @@ def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str,
     return values
 
 
+def _as_datetime(
+    date_value: datetime.datetime | datetime.date,
+    dtstart: datetime.datetime,
+) -> datetime.datetime:
+    if not isinstance(date_value, datetime.datetime):
+        return datetime.datetime.combine(date_value, dtstart.time())
+    return date_value
+
+
+def validate_recurrence_dates(
+    _cls: BaseModel, values: dict[str, Any]
+) -> dict[str, Any]:
+    """Verify the recurrence dates have the correct types."""
+    if (
+        not values.get("rrule")
+        or not (dtstart := values.get("dtstart"))
+        or not isinstance(dtstart, datetime.datetime)
+    ):
+        return values
+    for field in ("exdate", "rdate"):
+        if not (date_values := values.get(field)):
+            continue
+        values[field] = [
+            _as_datetime(date_value, dtstart) for date_value in date_values
+        ]
+    return values
+
+
 class ComponentModel(BaseModel):
     """Abstract class for rfc5545 component model."""
 
