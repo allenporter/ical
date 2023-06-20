@@ -96,14 +96,22 @@ def _as_datetime(
     return date_value
 
 
-def validate_recurrence_dates(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+def validate_recurrence_dates(
+    _cls: BaseModel, values: dict[str, Any]
+) -> dict[str, Any]:
     """Verify the recurrence dates have the correct types."""
-    if not (rule := values.get("rrule")) or not (dtstart := values.get("dtstart")) or not isinstance(dtstart, datetime.datetime):
+    if (
+        not values.get("rrule")
+        or not (dtstart := values.get("dtstart"))
+        or not isinstance(dtstart, datetime.datetime)
+    ):
         return values
     for field in ("exdate", "rdate"):
         if not (date_values := values.get(field)):
             continue
-        values[field] = [ _as_datetime(date_value, dtstart) for date_value in date_values ]
+        values[field] = [
+            _as_datetime(date_value, dtstart) for date_value in date_values
+        ]
     return values
 
 
