@@ -6,7 +6,10 @@ import logging
 from collections.abc import Callable
 from typing import Any, Iterable, Protocol
 
-from pydantic.fields import SHAPE_LIST, ModelField
+try:
+    from pydantic.v1.fields import SHAPE_LIST, ModelField
+except ImportError:
+    from pydantic.fields import SHAPE_LIST, ModelField
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 

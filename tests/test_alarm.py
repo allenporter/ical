@@ -5,7 +5,11 @@ from __future__ import annotations
 import datetime
 
 import pytest
-from pydantic import ValidationError
+try:
+    from pydantic.v1 import ValidationError
+except ImportError:
+    from pydantic import ValidationError
+
 
 from ical.alarm import Alarm
 

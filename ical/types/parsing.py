@@ -5,8 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pydantic import BaseModel
-from pydantic.fields import SHAPE_LIST, ModelField
+try:
+    from pydantic.v1 import BaseModel
+    from pydantic.v1.fields import SHAPE_LIST, ModelField
+except ImportError:
+    from pydantic import BaseModel
+    from pydantic.fields import SHAPE_LIST, ModelField
 
 _LOGGER = logging.getLogger(__name__)
 

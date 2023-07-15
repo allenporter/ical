@@ -9,7 +9,10 @@ import enum
 import logging
 from typing import Any, Optional, Union
 
-from pydantic import Field, root_validator
+try:
+    from pydantic.v1 import Field, root_validator
+except ImportError:
+    from pydantic import Field, root_validator
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty

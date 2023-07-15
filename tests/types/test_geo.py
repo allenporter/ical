@@ -1,7 +1,10 @@
 """Library for GEO values."""
 
 import pytest
-from pydantic import ValidationError
+try:
+    from pydantic.v1 import ValidationError
+except ImportError:
+    from pydantic import ValidationError
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty

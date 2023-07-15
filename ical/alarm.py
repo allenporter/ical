@@ -4,7 +4,11 @@ import datetime
 import enum
 from typing import Any, Optional, Union
 
-from pydantic import Field, root_validator
+try:
+    from pydantic.v1 import Field, root_validator
+except ImportError:
+    from pydantic import Field, root_validator
+
 
 from .component import ComponentModel
 from .parsing.property import ParsedProperty
