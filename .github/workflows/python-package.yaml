@@ -43,7 +43,7 @@ jobs:
         pytest --cov=ical --cov-report=term-missing
     - name: Test with pytest (pydantic v1)
       run: |
-        pip3 install pydantic==1.9.1
+        pip3 install pydantic==1.10.3
         pytest --cov=ical --cov-report=term-missing
 
     - uses: codecov/codecov-action@v3
