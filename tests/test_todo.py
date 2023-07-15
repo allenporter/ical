@@ -7,7 +7,10 @@ import zoneinfo
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+try:
+    from pydantic.v1 import ValidationError
+except ImportError:
+    from pydantic import ValidationError
 
 from ical.todo import Todo
 

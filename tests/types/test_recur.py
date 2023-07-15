@@ -5,7 +5,10 @@ import datetime
 import zoneinfo
 
 import pytest
-from pydantic import ValidationError
+try:
+    from pydantic.v1 import ValidationError
+except ImportError:
+    from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.component import ComponentModel

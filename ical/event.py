@@ -20,7 +20,10 @@ import logging
 from collections.abc import Iterable
 from typing import Any, Optional, Union
 
-from pydantic import Field, root_validator
+try:
+    from pydantic.v1 import Field, root_validator
+except ImportError:
+    from pydantic import Field, root_validator
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
