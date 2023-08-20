@@ -344,7 +344,7 @@ def test_create_and_serialize_calendar(
         "PRODID:-//example//1.2.3",
         "VERSION:2.0",
         "BEGIN:VEVENT",
-        "DTSTAMP:20000101T123000",
+        "DTSTAMP:20000101T123000Z",
         "UID:68e9e07c-7557-36e2-91c1-8febe7527841",
         "DTSTART:20000201",
         "DTEND:20000202",

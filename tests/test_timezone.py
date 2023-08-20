@@ -97,7 +97,7 @@ def test_from_tzif_timezoneinfo_with_dst(
        PRODID:-//example//1.2.3
        VERSION:2.0
        BEGIN:VTIMEZONE
-       DTSTAMP:20220822T123000
+       DTSTAMP:20220822T123000Z
        TZID:America/New_York
        BEGIN:STANDARD
        DTSTART:20101107T020000
@@ -159,7 +159,7 @@ def test_from_tzif_timezoneinfo_fixed_offset(
        PRODID:-//example//1.2.3
        VERSION:2.0
        BEGIN:VTIMEZONE
-       DTSTAMP:20220822T123000
+       DTSTAMP:20220822T123000Z
        TZID:Asia/Tokyo
        BEGIN:STANDARD
        DTSTART:20100101T000000
