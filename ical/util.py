@@ -19,7 +19,7 @@ PRODID = "github.com/allenporter/ical"
 
 def dtstamp_factory() -> datetime.datetime:
     """Factory method for new event timestamps to facilitate mocking."""
-    return datetime.datetime.utcnow()
+    return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
 
 
 def uid_factory() -> str:
