@@ -346,7 +346,7 @@ def test_weekly_iteration(
                 freq=Frequency.MONTHLY,
                 interval=2,
                 count=3,
-                by_weekday=[WeekdayValue(weekday=Weekday.SUNDAY)],
+                by_weekday=[WeekdayValue(weekday=Weekday.SUNDAY, occurrence=1)],
             ),
             [
                 (datetime.date(2022, 8, 7), datetime.date(2022, 8, 8)),
@@ -844,4 +844,31 @@ def test_rrule_exdate_mismatch() -> None:
     assert [(event.start, event.summary) for event in events] == [
         (datetime.datetime(2022, 8, 2, 6, 0, 0), "Morning exercise"),
         (datetime.datetime(2022, 8, 9, 6, 0, 0), "Morning exercise"),
+    ]
+
+
+# BYSETPOS
+
+def test_bysetpos() -> None:
+    """Test how all day events are handled with RDATE."""
+
+    calendar = Calendar()
+    calendar.events.extend(
+        [
+            Event(
+                summary="Monthly Event",
+                start=datetime.date(2023, 1, 31),
+                end=datetime.date(2023, 2, 1),
+                # Last work day of the month
+                rrule=Recur.from_rrule("FREQ=MONTHLY;BYSETPOS=-1;BYDAY=MO,TU,WE,TH,FR;COUNT=5"),
+            ),
+        ]
+    )
+    events = list(calendar.timeline)
+    assert [(event.start, event.summary) for event in events] == [
+        (datetime.date(2023, 1, 31), "Monthly Event"),
+        (datetime.date(2023, 2, 28), "Monthly Event"),
+        (datetime.date(2023, 3, 31), "Monthly Event"),
+        (datetime.date(2023, 4, 28), "Monthly Event"),
+        (datetime.date(2023, 5, 31), "Monthly Event"),
     ]

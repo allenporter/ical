@@ -92,6 +92,14 @@ class WeekdayValue:
         return f"{self.occurrence or ''}{self.weekday}"
 
 
+    def as_rrule_weekday(self) -> weekday:
+        """Convert the ocurrence to a weekday value."""
+        wd = RRULE_WEEKDAY[self.weekday]
+        if self.occurrence is None:
+            return wd
+        return wd(self.occurrence)
+
+
 class Frequency(str, enum.Enum):
     """Type of recurrence rule.
     Frequencies SECONDLY, MINUTELY, HOURLY, YEARLY are not supported.
@@ -216,7 +224,6 @@ class Recur(BaseModel):
       By second, minute, hour
       By yearday, weekno, month
       Wkst rules are
-      Bysetpos rules
       Negative "by" rules.
     """
 
@@ -240,6 +247,9 @@ class Recur(BaseModel):
     by_month: list[int] = Field(alias="bymonth", default_factory=list)
     """Month number between 1 and 12."""
 
+    by_setpos: list[int] = Field(alias="bysetpos", default_factory=list)
+    """Values that corresponds to the nth occurrence within the set of instances."""
+
     def as_rrule(self, dtstart: datetime.datetime | datetime.date) -> rrule.rrule:
         """Create a dateutil rrule for the specified event."""
         if (freq := RRULE_FREQ.get(self.freq)) is None:
@@ -248,9 +258,7 @@ class Recur(BaseModel):
         byweekday: list[rrule.weekday] | None = None
         if self.by_weekday:
             byweekday = [
-                RRULE_WEEKDAY[weekday.weekday](
-                    1 if weekday.occurrence is None else weekday.occurrence
-                )
+                weekday.as_rrule_weekday()
                 for weekday in self.by_weekday
             ]
         return rrule.rrule(
@@ -262,6 +270,7 @@ class Recur(BaseModel):
             byweekday=byweekday,
             bymonthday=self.by_month_day if self.by_month_day else None,
             bymonth=self.by_month if self.by_month else None,
+            bysetpos=self.by_setpos,
             cache=True,
         )
 
@@ -288,7 +297,7 @@ class Recur(BaseModel):
         result = []
         for key, value in data.items():
             # Need to encode based on field type also using json encoders
-            if key in ("bymonthday", "bymonth"):
+            if key in ("bymonthday", "bymonth", "bysetpos"):
                 if not value:
                     continue
                 value = ",".join([str(val) for val in value])
@@ -343,7 +352,7 @@ class Recur(BaseModel):
                         ParsedProperty(name="ignored", value=value)
                     )
                 result[key] = new_value
-            elif key in ("bymonthday", "bymonth"):
+            elif key in ("bymonthday", "bymonth", "bysetpos"):
                 result[key] = value.split(",")
             elif key == "byday":
                 # Build inputs for WeekdayValue dataclass
