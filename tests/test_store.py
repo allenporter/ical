@@ -16,7 +16,8 @@ from freezegun.api import FrozenDateTimeFactory
 
 from ical.calendar import Calendar
 from ical.event import Event
-from ical.store import EventStore, EventStoreError
+from ical.todo import Todo
+from ical.store import EventStore, EventStoreError, TodoStore, TodoStoreError
 from ical.types.recur import Range, Recur
 
 
@@ -32,6 +33,12 @@ def mock_store(calendar: Calendar) -> EventStore:
     return EventStore(calendar)
 
 
+@pytest.fixture(name="todo_store")
+def mock_todo_store(calendar: Calendar) -> TodoStore:
+    """Fixture to create an event store."""
+    return TodoStore(calendar)
+
+
 @pytest.fixture(name="_uid", autouse=True)
 def mock_uid() -> Generator[None, None, None]:
     """Patch out uuid creation with a fixed value."""
@@ -42,8 +49,24 @@ def mock_uid() -> Generator[None, None, None]:
         counter += 1
         return f"mock-uid-{counter}"
 
-    with patch("ical.event.uid_factory", new=func):
+    with patch("ical.event.uid_factory", new=func), patch(
+        "ical.todo.uid_factory", new=func
+    ):
         yield
+
+
+def compact_dict(data: dict[str, Any], keys: set[str] | None = None) -> dict[str, Any]:
+    """Convert pydantic dict values to text."""
+    for key, value in list(data.items()):
+        if value is None or isinstance(value, list) and not value or value == "":
+            del data[key]
+        elif keys and key not in keys:
+            del data[key]
+        elif isinstance(value, datetime.datetime):
+            data[key] = value.isoformat()
+        elif isinstance(value, datetime.date):
+            data[key] = value.isoformat()
+    return data
 
 
 @pytest.fixture(name="fetch_events")
@@ -53,20 +76,19 @@ def mock_fetch_events(
     """Fixture to return events on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        result = []
-        for event in calendar.timeline:
-            data = event.dict()
-            for key, value in list(data.items()):
-                if value is None or isinstance(value, list) and not value:
-                    del data[key]
-                elif keys and key not in keys:
-                    del data[key]
-                elif isinstance(value, datetime.datetime):
-                    data[key] = value.isoformat()
-                elif isinstance(value, datetime.date):
-                    data[key] = value.isoformat()
-            result.append(data)
-        return result
+        return [compact_dict(event.dict(), keys) for event in calendar.timeline]
+
+    return _func
+
+
+@pytest.fixture(name="fetch_todos")
+def mock_fetch_todos(
+    calendar: Calendar,
+) -> Callable[..., list[dict[str, Any]]]:
+    """Fixture to return todos on the calendar."""
+
+    def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
+        return [compact_dict(todo.dict(), keys) for todo in calendar.todos]
 
     return _func
 
@@ -1139,3 +1161,99 @@ def test_timezone_offset_not_supported(
         store.add(event)
     assert not calendar.events
     assert not calendar.timezones
+
+
+def test_add_and_delete_todo(
+    todo_store: TodoStore, fetch_todos: Callable[..., list[dict[str, Any]]]
+) -> None:
+    """Test adding a todoto the store and retrieval."""
+    todo_store.add(
+        Todo(
+            summary="Monday meeting",
+            due="2022-08-29T09:00:00",
+        )
+    )
+    assert fetch_todos() == [
+        {
+            "dtstamp": "2022-09-03T09:38:05",
+            "uid": "mock-uid-1",
+            "created": "2022-09-03T09:38:05",
+            "due": "2022-08-29T09:00:00",
+            "summary": "Monday meeting",
+            "sequence": 0,
+        },
+    ]
+    todo_store.delete("mock-uid-1")
+    assert fetch_todos() == []
+
+
+def test_edit_todo(
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test editing an todo preserves order."""
+    todo_store.add(
+        Todo(
+            summary="Monday morning items",
+            due="2022-08-29T09:00:00",
+        )
+    )
+    todo_store.add(
+        Todo(
+            summary="Tuesday morning items",
+            due="2022-08-30T09:00:00",
+        )
+    )
+    assert fetch_todos() == [
+        {
+            "dtstamp": "2022-09-03T09:38:05",
+            "uid": "mock-uid-1",
+            "created": "2022-09-03T09:38:05",
+            "due": "2022-08-29T09:00:00",
+            "summary": "Monday morning items",
+            "sequence": 0,
+        },
+        {
+            "dtstamp": "2022-09-03T09:38:05",
+            "uid": "mock-uid-2",
+            "created": "2022-09-03T09:38:05",
+            "due": "2022-08-30T09:00:00",
+            "summary": "Tuesday morning items",
+            "sequence": 0,
+        },
+    ]
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+
+    # Set event start time 5 minutes later
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(due="2022-08-29T09:05:00", summary="Monday morning items (Delayed)"),
+    )
+    assert fetch_todos() == [
+        {
+            "dtstamp": "2022-09-03T09:38:15",
+            "uid": "mock-uid-1",
+            "created": "2022-09-03T09:38:05",
+            "due": "2022-08-29T09:05:00",
+            "summary": "Monday morning items (Delayed)",
+            "sequence": 1,
+            "last_modified": "2022-09-03T09:38:15",
+        },
+        {
+            "dtstamp": "2022-09-03T09:38:05",
+            "uid": "mock-uid-2",
+            "created": "2022-09-03T09:38:05",
+            "due": "2022-08-30T09:00:00",
+            "summary": "Tuesday morning items",
+            "sequence": 0,
+        },
+    ]
+
+
+
+def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
+    """Edit a todo that does not exist."""
+    with pytest.raises(TodoStoreError, match="No existing"):
+        todo_store.edit("mock-uid-1", Todo(due="2022-08-29T09:05:00", summary="Delayed"))

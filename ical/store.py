@@ -17,6 +17,7 @@ from typing import Any
 
 from .calendar import Calendar
 from .event import Event
+from .todo import Todo
 from .iter import RulesetIterable
 from .timezone import Timezone
 from .types import Range, Recur, RecurrenceId
@@ -29,11 +30,17 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = [
     "EventStore",
     "EventStoreError",
+    "TodoStore",
+    "TodoStoreError",
 ]
 
 
 class EventStoreError(Exception):
     """Exception thrown by the EventStore."""
+
+
+class TodoStoreError(Exception):
+    """Exception thrown by the TodoStore."""
 
 
 class EventStore:
@@ -345,5 +352,102 @@ class EventStore:
         except TimezoneInfoError as err:
             raise EventStoreError(
                 "No timezone information available for event: {key}"
+            ) from err
+        self._calendar.timezones.append(new_timezone)
+
+
+class TodoStore:
+    """A To-do store manages the lifecycle of to-dos on a Calendar."""
+
+    def __init__(
+        self,
+        calendar: Calendar,
+        dtstamp_fn: Callable[[], datetime.datetime] = lambda: dtstamp_factory(),
+    ):
+        """Initialize the TodoStore."""
+        self._calendar = calendar
+        self._dtstamp_fn = dtstamp_fn
+
+    def _lookup_todo(self, uid: str) -> (int | None, Todo | None):
+        """Find the specified todo by id returning the index."""
+        for i, todo in enumerate(self._calendar.todos):
+            if todo.uid == uid:
+                return i, todo
+        return None, None
+
+    def add(self, todo: Todo) -> Todo:
+        """Add the specified todo to the calendar."""
+        update: dict[str, Any] = {}
+        if not todo.created:
+            update["created"] = todo.dtstamp
+        if todo.sequence is None:
+            update["sequence"] = 0
+        new_todo = todo.copy(update=update)
+        _LOGGER.debug("Adding todo: %s", new_todo)
+        self._ensure_timezone(todo)
+        self._calendar.todos.append(new_todo)
+        return new_todo
+
+    def delete(
+        self,
+        uid: str,
+    ) -> None:
+        """Delete the todo from the calendar."""
+        store_index, store_todo = self._lookup_todo(uid)
+        if not store_todo:
+            raise TodoStoreError(f"No existing todo with uid: {uid}")
+        self._calendar.todos.remove(store_todo)
+
+    def edit(
+        self,
+        uid: str,
+        todo: Todo,
+    ) -> None:
+        """Update the todo with the specified uid."""
+        store_index, store_todo = self._lookup_todo(uid)
+        if not store_todo:
+            raise TodoStoreError(f"No existing todo with uid: {uid}")
+
+        partial_update = todo.dict(exclude_unset=True)
+        update = {
+            "created": store_todo.dtstamp,
+            "sequence": (store_todo.sequence + 1) if store_todo.sequence else 1,
+            "last_modified": todo.dtstamp,
+            **partial_update,
+            "dtstamp": todo.dtstamp,
+        }
+        if "rrule" in update:
+            update["rrule"] = Recur.parse_obj(update["rrule"])
+        # Make a deep copy since deletion may update this objects recurrence rules
+        new_todo = store_todo.copy(update=update, deep=True)
+
+        self._ensure_timezone(todo)
+
+        self._calendar.todos.pop(store_index)
+        self._calendar.todos.insert(store_index, new_todo)
+
+    def _ensure_timezone(self, todo: Todo) -> None:
+        """Create a timezone object for the specified date if it does not already exist."""
+        if (
+            not isinstance(todo.dtstart, datetime.datetime)
+            or not todo.dtstart.utcoffset()
+            or not todo.dtstart.tzinfo
+        ):
+            return
+
+        # Verify this timezone does not already exist. The number of timezones
+        # in a calendar is typically very small so iterate over the whole thing
+        # to avoid any synchronization/cache issues.
+        key = str(todo.dtstart.tzinfo)
+        for timezone in self._calendar.timezones:
+            if timezone.tz_id == key:
+                return
+
+        new_timezone: Timezone
+        try:
+            new_timezone = Timezone.from_tzif(key)
+        except TimezoneInfoError as err:
+            raise TodoStoreError(
+                "No timezone information available for todo: {key}"
             ) from err
         self._calendar.timezones.append(new_timezone)
