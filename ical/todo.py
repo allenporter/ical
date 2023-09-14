@@ -42,7 +42,7 @@ class Todo(ComponentModel):
     dtstamp: Union[datetime.datetime, datetime.date] = Field(
         default_factory=dtstamp_factory
     )
-    uid: str = Field(default_factory=uid_factory)
+    uid: str = Field(default_factory=lambda: uid_factory())
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
@@ -115,4 +115,6 @@ class Todo(ComponentModel):
         return values
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
-    _validate_recurrence_dates = root_validator(allow_reuse=True)(validate_recurrence_dates)
+    _validate_recurrence_dates = root_validator(allow_reuse=True)(
+        validate_recurrence_dates
+    )
