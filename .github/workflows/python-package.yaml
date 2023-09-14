@@ -42,7 +42,7 @@ jobs:
         pip3 install pydantic==1.10.3
         pytest --cov=ical --cov-report=term-missing
 
-    - uses: codecov/codecov-action@v3
+    - uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         env_vars: OS,PYTHON
