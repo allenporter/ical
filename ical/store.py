@@ -35,11 +35,15 @@ __all__ = [
 ]
 
 
-class EventStoreError(Exception):
+class StoreError(Exception):
+    """Exception thrown by a Store."""
+
+
+class EventStoreError(StoreError):
     """Exception thrown by the EventStore."""
 
 
-class TodoStoreError(Exception):
+class TodoStoreError(StoreError):
     """Exception thrown by the TodoStore."""
 
 
@@ -416,8 +420,6 @@ class TodoStore:
             **partial_update,
             "dtstamp": todo.dtstamp,
         }
-        if "rrule" in update:
-            update["rrule"] = Recur.parse_obj(update["rrule"])
         # Make a deep copy since deletion may update this objects recurrence rules
         new_todo = store_todo.copy(update=update, deep=True)
 
@@ -429,16 +431,16 @@ class TodoStore:
     def _ensure_timezone(self, todo: Todo) -> None:
         """Create a timezone object for the specified date if it does not already exist."""
         if (
-            not isinstance(todo.dtstart, datetime.datetime)
-            or not todo.dtstart.utcoffset()
-            or not todo.dtstart.tzinfo
+            not isinstance(todo.due, datetime.datetime)
+            or not todo.due.utcoffset()
+            or not todo.due.tzinfo
         ):
             return
 
         # Verify this timezone does not already exist. The number of timezones
         # in a calendar is typically very small so iterate over the whole thing
         # to avoid any synchronization/cache issues.
-        key = str(todo.dtstart.tzinfo)
+        key = str(todo.due.tzinfo)
         for timezone in self._calendar.timezones:
             if timezone.tz_id == key:
                 return

@@ -17,7 +17,7 @@ from freezegun.api import FrozenDateTimeFactory
 from ical.calendar import Calendar
 from ical.event import Event
 from ical.todo import Todo
-from ical.store import EventStore, EventStoreError, TodoStore, TodoStoreError
+from ical.store import EventStore, TodoStore, StoreError
 from ical.types.recur import Range, Recur
 
 
@@ -180,7 +180,7 @@ def test_edit_event(
 
 def test_edit_event_invalid_uid(store: EventStore) -> None:
     """Edit an event that does not exist."""
-    with pytest.raises(EventStoreError, match="No existing"):
+    with pytest.raises(StoreError, match="No existing"):
         store.edit("mock-uid-1", Event(start="2022-08-29T09:05:00", summary="Delayed"))
 
 
@@ -649,7 +649,7 @@ def test_cant_change_recurrence_for_event_instance(
     )
 
     frozen_time.tick(delta=datetime.timedelta(seconds=10))
-    with pytest.raises(EventStoreError, match="single instance with rrule"):
+    with pytest.raises(StoreError, match="single instance with rrule"):
         store.edit(
             "mock-uid-1",
             Event(
@@ -1035,10 +1035,10 @@ def test_invalid_uid(
     store: EventStore,
 ) -> None:
     """Test iteration over an empty calendar."""
-    with pytest.raises(EventStoreError, match=r"No existing event with uid"):
+    with pytest.raises(StoreError, match=r"No existing event with uid"):
         store.edit("invalid", Event(summary="example summary"))
 
-    with pytest.raises(EventStoreError, match=r"No existing event with uid"):
+    with pytest.raises(StoreError, match=r"No existing event with uid"):
         store.delete("invalid")
 
 
@@ -1054,10 +1054,10 @@ def test_invalid_recurrence_id(
         )
     )
 
-    with pytest.raises(EventStoreError, match=r"event is not recurring"):
+    with pytest.raises(StoreError, match=r"event is not recurring"):
         store.delete("mock-uid-1", recurrence_id="invalid")
 
-    with pytest.raises(EventStoreError, match=r"event is not recurring"):
+    with pytest.raises(StoreError, match=r"event is not recurring"):
         store.edit(
             "mock-uid-1", recurrence_id="invalid", event=Event(summary="invalid")
         )
@@ -1157,7 +1157,7 @@ def test_timezone_offset_not_supported(
         start=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
         end=datetime.datetime(2022, 8, 29, 9, 30, 0, tzinfo=tzinfo),
     )
-    with pytest.raises(EventStoreError, match=r"No timezone information"):
+    with pytest.raises(StoreError, match=r"No timezone information"):
         store.add(event)
     assert not calendar.events
     assert not calendar.timezones
@@ -1252,8 +1252,68 @@ def test_edit_todo(
     ]
 
 
-
 def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
     """Edit a todo that does not exist."""
-    with pytest.raises(TodoStoreError, match="No existing"):
+    with pytest.raises(StoreError, match="No existing"):
         todo_store.edit("mock-uid-1", Todo(due="2022-08-29T09:05:00", summary="Delayed"))
+    with pytest.raises(StoreError, match="No existing"):
+        todo_store.delete("mock-uid-1")
+
+
+def test_todo_timezone_for_datetime(
+    calendar: Calendar,
+    todo_store: TodoStore,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    todo_store.add(
+        Todo(
+            summary="Monday meeting",
+            due=datetime.datetime(
+                2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+        )
+    )
+    assert len(calendar.todos) == 1
+    assert len(calendar.timezones) == 1
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+
+    todo_store.add(
+        Todo(
+            summary="Tuesday meeting",
+            due=datetime.datetime(
+                2022, 8, 30, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+        )
+    )
+    # Timezone already exists
+    assert len(calendar.timezones) == 1
+
+    todo_store.add(
+        Todo(
+            summary="Wednesday meeting",
+            due=datetime.datetime(
+                2022, 8, 31, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+        )
+    )
+    assert len(calendar.timezones) == 2
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+    assert calendar.timezones[1].tz_id == "America/New_York"
+
+
+
+def test_todo_timezone_offset_not_supported(
+    calendar: Calendar,
+    todo_store: TodoStore,
+) -> None:
+    """Test adding a datetime for a timestamp that does not have a valid timezone."""
+    offset = datetime.timedelta(hours=-8)
+    tzinfo = datetime.timezone(offset=offset)
+    event = Todo(
+        summary="Monday meeting",
+        due=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
+    )
+    with pytest.raises(StoreError, match=r"No timezone information"):
+        todo_store.add(event)
+    assert not calendar.todos
+    assert not calendar.timezones
