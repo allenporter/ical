@@ -92,7 +92,7 @@ class WeekdayValue:
         return f"{self.occurrence or ''}{self.weekday}"
 
 
-    def as_rrule_weekday(self) -> weekday:
+    def as_rrule_weekday(self) -> rrule.weekday:
         """Convert the occurrence to a weekday value."""
         wd = RRULE_WEEKDAY[self.weekday]
         if self.occurrence is None:
