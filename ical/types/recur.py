@@ -92,7 +92,7 @@ class WeekdayValue:
         return f"{self.occurrence or ''}{self.weekday}"
 
 
-    def as_rrule_weekday(self) -> weekday:
+    def as_rrule_weekday(self) -> rrule.weekday:
         """Convert the occurrence to a weekday value."""
         wd = RRULE_WEEKDAY[self.weekday]
         if self.occurrence is None:
@@ -293,7 +293,7 @@ class Recur(BaseModel):
 
     @classmethod
     def __encode_property_value__(cls, data: dict[str, Any]) -> str:
-        """Encode the recurence rule in ICS format."""
+        """Encode the recurrence rule in ICS format."""
         result = []
         for key, value in data.items():
             # Need to encode based on field type also using json encoders
