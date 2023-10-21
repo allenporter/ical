@@ -1,0 +1,24 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: chartboost/ruff-action@v1.0.0
+    - uses: codespell-project/actions-codespell@v2.0
+      with:
+        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
+        check_hidden: false

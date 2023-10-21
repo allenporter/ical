@@ -27,13 +27,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         if [ -f requirements_dev.txt ]; then pip install -r requirements_dev.txt; fi
-    - name: Lint with ruff
-      run: |
-        ruff check --format=github .
-    - uses: codespell-project/actions-codespell@v2.0
-      with:
-        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
-        check_hidden: false
     - name: Test with pytest
       run: |
         pytest --cov=ical --cov-report=term-missing
