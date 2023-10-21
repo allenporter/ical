@@ -145,7 +145,7 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     """A wrapper around the dateutil ruleset library to workaround limitations.
 
     The `dateutil.rrule` library does not allow iteration in terms of dates and requires
-    additional wrokarounds to support them properly: namely converting back and forth
+    additional workarounds to support them properly: namely converting back and forth
     between a datetime and a date. It is also very common to have the library throw
     errors that it can't compare properly between dates and times, which are difficult to
     debug. This wrapper is meant to assist with that.
