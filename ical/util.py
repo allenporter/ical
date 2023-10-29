@@ -46,5 +46,7 @@ def normalize_datetime(
     if not isinstance(value, datetime.datetime):
         value = datetime.datetime.combine(value, MIDNIGHT)
     if value.tzinfo is None:
-        value = value.replace(tzinfo=tzinfo if tzinfo else local_timezone())
+        if tzinfo is None:
+            tzinfo = local_timezone()
+        value = value.replace(tzinfo=tzinfo)
     return value

@@ -118,10 +118,11 @@ class RecurAdapter:
     necessary updated fields to act as a flattened instance of the event.
     """
 
-    def __init__(self, event: Event):
+    def __init__(self, event: Event, tzinfo: datetime.tzinfo | None = None):
         """Initialize the RecurAdapter."""
         self._event = event
         self._event_duration = event.computed_duration
+        self._tzinfo = tzinfo
 
     def get(
         self, dtstart: datetime.datetime | datetime.date
@@ -146,7 +147,7 @@ class RecurAdapter:
             )
 
         return LazySortableItem(
-            Timespan.of(dtstart, dtstart + self._event_duration), build
+            Timespan.of(dtstart, dtstart + self._event_duration, self._tzinfo), build
         )
 
 
@@ -158,5 +159,5 @@ def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     for event in events:
         if not (recur := event.as_rrule()):
             continue
-        iters.append(RecurIterable(RecurAdapter(event).get, recur))
+        iters.append(RecurIterable(RecurAdapter(event, tzinfo=tzinfo).get, recur))
     return Timeline(MergedIterable(iters))
