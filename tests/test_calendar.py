@@ -14,6 +14,7 @@ from freezegun import freeze_time
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
+from ical.types.recur import Recur
 
 
 @pytest.fixture(name="calendar")
@@ -423,3 +424,37 @@ def test_all_day_with_local_timezone(
 
     local_after = dt_after.astimezone(local_tz)
     assert not start_after(local_after)
+
+
+@freeze_time(datetime.datetime(2023, 10, 25, 12, 0, 0, tzinfo=datetime.timezone.utc))
+def test_floating_time_with_timezone_propagation() -> None:
+    """Test iteration of floating time events ensuring timezones are respected."""
+    cal = Calendar()
+    cal.events.extend(
+        [
+            Event(
+                summary="Event 1",
+                start=datetime.datetime(2023, 10, 25, 6, 40),
+                end=datetime.datetime(2023, 10, 25, 6, 50),
+                rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=WE,MO,TU,TH,FR"),
+            ),
+            Event(
+                summary="Event 2",
+                start=datetime.datetime(2023, 10, 25, 8, 30),
+                end=datetime.datetime(2023, 10, 25, 8, 40),
+                rrule=Recur.from_rrule("FREQ=DAILY"),
+            ),
+            Event(
+                summary="Event 3",
+                start=datetime.datetime(2023, 10, 25, 18, 30),
+                end=datetime.datetime(2023, 10, 25, 18, 40),
+                rrule=Recur.from_rrule("FREQ=DAILY"),
+            ),
+        ]
+    )
+    # Ensure there are no calls to fetch the local timezone, only using the provided
+    # timezone information.
+    with patch("ical.util.local_timezone", side_effect=ValueError("do not invoke")):
+        it = iter(cal.timeline_tz(zoneinfo.ZoneInfo("Europe/Brussels")))
+        for i in range(0, 30):
+            next(it)

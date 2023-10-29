@@ -39,9 +39,12 @@ class Timespan:
         cls,
         start: datetime.date | datetime.datetime,
         end: datetime.date | datetime.datetime,
+        tzinfo: datetime.tzinfo | None = None,
     ) -> "Timespan":
         """Create a Timestapn for the specified date range."""
-        return Timespan(normalize_datetime(start), normalize_datetime(end))
+        return Timespan(
+            normalize_datetime(start, tzinfo), normalize_datetime(end, tzinfo)
+        )
 
     @property
     def start(self) -> datetime.datetime:
