@@ -1,10 +1,7 @@
 """Tests for PRIORITY types."""
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
@@ -26,8 +23,8 @@ def test_priority() -> None:
     model = FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="9")]})
     assert model.pri == 9
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="-1")]})
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="10")]})

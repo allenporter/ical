@@ -7,11 +7,8 @@ import zoneinfo
 from unittest.mock import patch
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
 
+from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 
 
@@ -36,7 +33,7 @@ def test_duration() -> None:
     assert todo.duration
 
     # Both due and Duration can't be set
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Todo(
             start=datetime.date(2022, 8, 7),
             duration=datetime.timedelta(days=1),
@@ -44,7 +41,7 @@ def test_duration() -> None:
         )
 
     # Duration requires start date
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Todo(duration=datetime.timedelta(days=1))
 
     todo = Todo(start=datetime.date(2022, 8, 7), due=datetime.date(2022, 8, 8))

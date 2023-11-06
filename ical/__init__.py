@@ -16,6 +16,7 @@ __all__ = [
     "todo",
     "types",
     "tzif",
+    "exceptions",
     "util",
     "diagnostics",
 ]

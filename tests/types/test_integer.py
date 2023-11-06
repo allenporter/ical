@@ -1,10 +1,7 @@
 """Tests for INTEGER data types."""
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
@@ -30,5 +27,5 @@ def test_integer() -> None:
     )
     assert model.example == [45, -46, 47]
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})

@@ -7,11 +7,8 @@ import zoneinfo
 from unittest.mock import patch
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
 
+from ical.exceptions import CalendarParseError
 from ical.journal import Journal, JournalStatus
 
 
@@ -32,7 +29,7 @@ def test_status() -> None:
     journal = Journal.parse_obj({"status": "DRAFT"})
     assert journal.status == JournalStatus.DRAFT
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Journal.parse_obj({"status": "invalid-status"})
 
 

@@ -2,10 +2,12 @@
 
 from collections.abc import Generator
 import json
+import textwrap
 
 import pytest
 from pytest_golden.plugin import GoldenTestFixture
 
+from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 
 
@@ -15,20 +17,22 @@ def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
     ics = IcsCalendarStream.calendar_to_ics(calendar)
     assert (
         ics
-        == """BEGIN:VCALENDAR
-PRODID:-//example//1.2.3
-VERSION:2.0
-END:VCALENDAR"""
-    )
+        == textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.3
+            VERSION:2.0
+            END:VCALENDAR"""
+    ))
 
     calendar.prodid = "-//example//1.2.4"
     ics = IcsCalendarStream.calendar_to_ics(calendar)
     assert (
         ics
-        == """BEGIN:VCALENDAR
-PRODID:-//example//1.2.4
-VERSION:2.0
-END:VCALENDAR"""
+        == textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.4
+            VERSION:2.0
+            END:VCALENDAR""")
     )
 
 
@@ -58,3 +62,39 @@ def test_serialize(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = IcsCalendarStream.from_ics(golden["input"])
     assert cal.ics() == golden.get("encoded", golden["input"])
+
+
+def test_invalid_ics() -> None:
+    """Test parsing failures for ics content."""
+    with pytest.raises(CalendarParseError, match="Failed to parse calendar stream"):
+        IcsCalendarStream.calendar_from_ics("invalid")
+
+
+def test_component_failure() -> None:
+    with pytest.raises(CalendarParseError, match="Failed to parse component"):
+        IcsCalendarStream.calendar_from_ics(
+            textwrap.dedent("""\
+                BEGIN:VCALENDAR
+                PRODID:-//example//1.2.3
+                VERSION:2.0
+                BEGIN:VEVENT
+                DTSTART:20220724T120000
+                DTEND:20220724
+                END:VEVENT
+                END:VCALENDAR
+            """))
+        
+
+def test_multiple_calendars() -> None:
+    with pytest.raises(CalendarParseError, match="more than one calendar"):
+        IcsCalendarStream.calendar_from_ics(
+            textwrap.dedent("""\
+                BEGIN:VCALENDAR
+                PRODID:-//example//1.2.3
+                VERSION:2.0
+                END:VCALENDAR
+                BEGIN:VCALENDAR
+                PRODID:-//example//1.2.3
+                VERSION:2.0
+                END:VCALENDAR
+            """))

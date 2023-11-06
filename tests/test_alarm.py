@@ -5,13 +5,9 @@ from __future__ import annotations
 import datetime
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
-
 
 from ical.alarm import Alarm
+from ical.exceptions import CalendarParseError
 
 
 def test_todo() -> None:
@@ -38,7 +34,7 @@ def test_duration_and_repeat() -> None:
     assert alarm.repeat == 2
 
     # Duration but no repeat
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Alarm(
             action="AUDIO",
             trigger=datetime.timedelta(minutes=-5),
@@ -46,13 +42,13 @@ def test_duration_and_repeat() -> None:
         )
 
     # Repeat but no duration
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Alarm(action="AUDIO", trigger=datetime.timedelta(minutes=-5), repeat=2)
 
 
 def test_display_required_fields() -> None:
     """Test required fields for action DISPLAY."""
-    with pytest.raises(ValidationError, match="Description value is required for action DISPLAY"):
+    with pytest.raises(CalendarParseError, match="Description value is required for action DISPLAY"):
         Alarm(action="DISPLAY", trigger=datetime.timedelta(minutes=-5))
 
     alarm = Alarm(
@@ -67,11 +63,11 @@ def test_display_required_fields() -> None:
 def test_email_required_fields() -> None:
     """Test required fields for action EMAIL."""
     # Missing multiple fields
-    with pytest.raises(ValidationError, match="Description value is required for action EMAIL"):
+    with pytest.raises(CalendarParseError, match="Description value is required for action EMAIL"):
         Alarm(action="EMAIL", trigger=datetime.timedelta(minutes=-5))
 
     # Missing summary
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Alarm(
             action="EMAIL",
             trigger=datetime.timedelta(minutes=-5),
@@ -79,7 +75,7 @@ def test_email_required_fields() -> None:
         )
 
     # Missing description
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Alarm(
             action="EMAIL",
             trigger=datetime.timedelta(minutes=-5),

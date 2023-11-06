@@ -1,10 +1,7 @@
 """Library for GEO values."""
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
@@ -25,5 +22,5 @@ def test_geo() -> None:
     assert model.geo.lat == 120.0
     assert model.geo.lng == -30.1
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         TestModel.parse_obj({"geo": [ParsedProperty(name="geo", value="10")]})

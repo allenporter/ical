@@ -1,12 +1,9 @@
 """Tests for BOOLEAN data types."""
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
 
 from ical.component import ComponentModel
+from ical.exceptions import CalendarParseError
 from ical.parsing.property import ParsedProperty
 
 
@@ -29,7 +26,7 @@ def test_bool() -> None:
     )
     assert not model.example
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="efd")]})
 
     # Populate based on bool object
