@@ -6,6 +6,7 @@ import json
 import pytest
 from pytest_golden.plugin import GoldenTestFixture
 
+from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 
 
@@ -58,3 +59,10 @@ def test_serialize(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = IcsCalendarStream.from_ics(golden["input"])
     assert cal.ics() == golden.get("encoded", golden["input"])
+
+
+
+def test_invalid_ics(mock_prodid: Generator[None, None, None]) -> None:
+    """Test parsing failures for ics content."""
+    with pytest.raises(CalendarParseError, match="Failed to parse calendar stream"):
+        IcsCalendarStream.calendar_from_ics("invalid")

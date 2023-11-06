@@ -29,16 +29,18 @@ with filename.open(mode="w") as ics_file:
 from __future__ import annotations
 
 import logging
+import pyparsing
 
 try:
-    from pydantic.v1 import Field
+    from pydantic.v1 import Field, ValidationError
 except ImportError:
-    from pydantic import Field
+    from pydantic import Field, ValidationError
 
 from .calendar import Calendar
 from .component import ComponentModel
 from .parsing.component import encode_content, parse_content
 from .types.data_types import DATA_TYPE
+from .exceptions import CalendarParseError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,13 +57,19 @@ class CalendarStream(ComponentModel):
     @classmethod
     def from_ics(cls, content: str) -> "CalendarStream":
         """Factory method to create a new instance from an rfc5545 iCalendar content."""
-        components = parse_content(content)
+        try:
+            components = parse_content(content)
+        except pyparsing.ParseException as err:
+            raise CalendarParseError(f"Failed to parse calendar stream: {err}") from err
         result: dict[str, list] = {"vcalendar": []}
         for component in components:
             result.setdefault(component.name, [])
             result[component.name].append(component.as_dict())
         _LOGGER.debug("Parsing object %s", result)
-        return cls.parse_obj(result)
+        try:
+            return cls.parse_obj(result)
+        except ValidationError as err:
+            raise CalendarParseError(f"Failed to parse calendar stream: {err}") from err
 
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
@@ -79,7 +87,7 @@ class IcsCalendarStream(CalendarStream):
             return stream.calendars[0]
         if len(stream.calendars) == 0:
             return Calendar()
-        raise ValueError("Calendar Stream had more than one calendar")
+        raise CalendarParseError("Calendar Stream had more than one calendar")
 
     @classmethod
     def calendar_to_ics(cls, calendar: Calendar) -> str:
