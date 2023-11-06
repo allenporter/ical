@@ -459,9 +459,3 @@ def test_floating_time_with_timezone_propagation() -> None:
         it = iter(cal.timeline_tz(zoneinfo.ZoneInfo("Europe/Brussels")))
         for i in range(0, 30):
             next(it)
-
-
-def test_invalid_ics() -> None:
-    """Test a parse failure for ics content."""
-    with pytest.raises(CalendarParseError, match="Failed to parse calendar stream"):
-        IcsCalendarStream.calendar_from_ics("invalid")

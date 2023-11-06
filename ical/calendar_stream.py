@@ -66,10 +66,7 @@ class CalendarStream(ComponentModel):
             result.setdefault(component.name, [])
             result[component.name].append(component.as_dict())
         _LOGGER.debug("Parsing object %s", result)
-        try:
-            return cls.parse_obj(result)
-        except ValidationError as err:
-            raise CalendarParseError(f"Failed to parse calendar stream: {err}") from err
+        return cls(**result)
 
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""

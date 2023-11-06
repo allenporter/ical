@@ -70,7 +70,7 @@ def test_invalid_ics() -> None:
         IcsCalendarStream.calendar_from_ics("invalid")
 
 
-def test_event_parse() -> None:
+def test_component_failure() -> None:
     with pytest.raises(CalendarParseError, match="Failed to parse component"):
         IcsCalendarStream.calendar_from_ics(
             textwrap.dedent("""\
