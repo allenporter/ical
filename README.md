@@ -38,12 +38,16 @@ prints out the events in order:
 ```python
 from pathlib import Path
 from ical.calendar_stream import IcsCalendarStream
+from ical.exceptions import CalendarParseError
 
 filename = Path("example/calendar.ics")
 with filename.open() as ics_file:
-    calendar = IcsCalendarStream.calendar_from_ics(ics_file.read())
-
-print([event.summary for event in calendar.timeline])
+    try:
+        calendar = IcsCalendarStream.calendar_from_ics(ics_file.read())
+    except CalendarParseError as err:
+        print(f"Failed to parse ics file '{str(filename)}': {err}")
+    else:
+        print([event.summary for event in calendar.timeline])
 ```
 
 # Writing ics files
