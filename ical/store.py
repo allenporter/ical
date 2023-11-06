@@ -17,6 +17,7 @@ from typing import Any
 
 from .calendar import Calendar
 from .event import Event
+from .exceptions import StoreError, TodoStoreError, EventStoreError
 from .todo import Todo
 from .iter import RulesetIterable
 from .timezone import Timezone
@@ -32,19 +33,8 @@ __all__ = [
     "EventStoreError",
     "TodoStore",
     "TodoStoreError",
+    "StoreError",
 ]
-
-
-class StoreError(Exception):
-    """Exception thrown by a Store."""
-
-
-class EventStoreError(StoreError):
-    """Exception thrown by the EventStore."""
-
-
-class TodoStoreError(StoreError):
-    """Exception thrown by the TodoStore."""
 
 
 class EventStore:

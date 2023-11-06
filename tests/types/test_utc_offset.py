@@ -3,10 +3,7 @@
 import datetime
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
@@ -35,7 +32,7 @@ def test_utc_offset() -> None:
     model = FakeModel(example=UtcOffset(offset=datetime.timedelta(hours=5)))
     assert model.example.offset == datetime.timedelta(hours=5)
 
-    with pytest.raises(ValidationError, match=r".*match UTC-OFFSET pattern.*"):
+    with pytest.raises(CalendarParseError, match=r".*match UTC-OFFSET pattern.*"):
         FakeModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="abcdef")]},
         )

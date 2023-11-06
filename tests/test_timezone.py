@@ -8,13 +8,10 @@ import inspect
 
 import pytest
 from freezegun import freeze_time
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
+from ical.exceptions import CalendarParseError
 from ical.timezone import IcsTimezoneInfo, Observance, Timezone
 from ical.types import UtcOffset
 from ical.types.recur import Frequency, Recur, Weekday, WeekdayValue
@@ -30,7 +27,7 @@ TEST_RECUR = Recur(
 
 def test_requires_subcompnent() -> None:
     """Test Timezone constructor."""
-    with pytest.raises(ValidationError, match=r"At least one standard or daylight.*"):
+    with pytest.raises(CalendarParseError, match=r"At least one standard or daylight.*"):
         Timezone(tz_id="America/New_York")
 
 
@@ -68,7 +65,7 @@ def test_daylight() -> None:
 def test_timezone_observence_start_time_validation() -> None:
     """Verify that a start time must be in local time."""
     with pytest.raises(
-        ValidationError, match=r".*Start time must be in local time format*"
+        CalendarParseError, match=r".*Start time must be in local time format*"
     ):
         Observance(
             start=datetime.datetime(1967, 10, 29, 2, tzinfo=datetime.timezone.utc),

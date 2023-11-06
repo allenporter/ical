@@ -3,10 +3,7 @@
 import datetime
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
@@ -62,20 +59,20 @@ def test_period() -> None:
         1997, 1, 1, 23, 30, 0, tzinfo=datetime.timezone.utc
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="19970101T180000Z/a")]}
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="a/19970102T070000Z")]}
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         FakeModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="a/PT5H30M")]}
         )

@@ -13,6 +13,7 @@ except ImportError:
     from pydantic import ValidationError
 
 from ical.event import Event
+from ical.exceptions import CalendarParseError
 
 SUMMARY = "test summary"
 LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -164,12 +165,12 @@ def test_within_and_includes() -> None:
 def test_start_end_same_type() -> None:
     """Verify that the start and end value are the same type."""
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(
             summary=SUMMARY, start=date(2022, 9, 9), end=datetime(2022, 9, 9, 11, 0, 0)
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(
             summary=SUMMARY, start=datetime(2022, 9, 9, 10, 0, 0), end=date(2022, 9, 9)
         )
@@ -190,14 +191,14 @@ def test_start_end_local_time() -> None:
         end=datetime(2022, 9, 9, 11, 0, 0, tzinfo=timezone.utc),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(
             summary=SUMMARY,
             start=datetime(2022, 9, 9, 10, 0, 0, tzinfo=timezone.utc),
             end=datetime(2022, 9, 9, 11, 0, 0),
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(
             summary=SUMMARY,
             start=datetime(2022, 9, 9, 10, 0, 0),
@@ -212,10 +213,10 @@ def test_start_and_duration() -> None:
     assert event.start == date(2022, 9, 9)
     assert event.end == date(2022, 9, 12)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(summary=SUMMARY, start=date(2022, 9, 9), duration=timedelta(days=-3))
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         Event(summary=SUMMARY, start=date(2022, 9, 9), duration=timedelta(seconds=60))
 
     event = Event(

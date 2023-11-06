@@ -4,12 +4,9 @@ import datetime
 from typing import Union
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
 
 
+from ical.exceptions import CalendarParseError
 from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -74,7 +71,7 @@ def test_datedatime_value_parser() -> None:
     )
     assert model.dt == datetime.date(2022, 7, 24)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         TestModel.parse_obj(
             {
                 "dt": [
@@ -89,7 +86,7 @@ def test_datedatime_value_parser() -> None:
             }
         )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(CalendarParseError):
         TestModel.parse_obj(
             {
                 "dt": [
@@ -149,7 +146,7 @@ def test_datedatime_parameter_encoder() -> None:
         ],
     )
 
-    with pytest.raises(ValueError, match="valid timezone"):
+    with pytest.raises(CalendarParseError, match="valid timezone"):
         TestModel.parse_obj(
             {
                 "dt": [

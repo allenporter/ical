@@ -5,10 +5,7 @@ import datetime
 import zoneinfo
 
 import pytest
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
 from ical.component import ComponentModel
@@ -627,7 +624,7 @@ def test_until_time_mismatch() -> None:
     """Test failure case where until has a different timezone than start."""
 
     with pytest.raises(
-        ValidationError,
+        CalendarParseError,
         match="DTSTART was DATE-TIME but UNTIL was DATE",
     ):
         Event(
@@ -641,7 +638,7 @@ def test_until_time_mismatch() -> None:
         )
 
     with pytest.raises(
-        ValidationError, match="DTSTART is date local but UNTIL was not"
+        CalendarParseError, match="DTSTART is date local but UNTIL was not"
     ):
         Event(
             summary="Bi-annual meeting",
@@ -656,7 +653,7 @@ def test_until_time_mismatch() -> None:
         )
 
     with pytest.raises(
-        ValidationError, match="DTSTART had UTC or local and UNTIL must be UTC"
+        CalendarParseError, match="DTSTART had UTC or local and UNTIL must be UTC"
     ):
         Event(
             summary="Bi-annual meeting",
@@ -671,7 +668,7 @@ def test_until_time_mismatch() -> None:
         )
 
     with pytest.raises(
-        ValidationError, match="DTSTART had UTC or local and UNTIL must be UTC"
+        CalendarParseError, match="DTSTART had UTC or local and UNTIL must be UTC"
     ):
         Event(
             summary="Bi-annual meeting",

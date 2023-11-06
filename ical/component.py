@@ -23,15 +23,16 @@ import logging
 from typing import Any, Union, get_args, get_origin
 
 try:
-    from pydantic.v1 import BaseModel, root_validator
+    from pydantic.v1 import BaseModel, root_validator, ValidationError
     from pydantic.v1.fields import SHAPE_LIST
 except ImportError:
-    from pydantic import BaseModel, root_validator
+    from pydantic import BaseModel, root_validator, ValidationError
     from pydantic.fields import SHAPE_LIST
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 from .types.data_types import DATA_TYPE
+from .exceptions import CalendarParseError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -121,6 +122,12 @@ def validate_recurrence_dates(
 
 class ComponentModel(BaseModel):
     """Abstract class for rfc5545 component model."""
+
+    def __init__(self, **data: Any) -> None:
+        try:
+            super().__init__(**data)
+        except ValidationError as err:
+            raise CalendarParseError(f"Failed to parse component: {err}") from err
 
     @root_validator(pre=True, allow_reuse=True)
     def parse_extra_fields(
