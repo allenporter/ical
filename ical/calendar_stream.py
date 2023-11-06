@@ -31,6 +31,11 @@ from __future__ import annotations
 import logging
 import pyparsing
 
+try:
+    from pydantic.v1 import Field
+except ImportError:
+    from pydantic import Field
+
 from .calendar import Calendar
 from .component import ComponentModel
 from .parsing.component import encode_content, parse_content
