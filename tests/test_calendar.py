@@ -13,7 +13,6 @@ from freezegun import freeze_time
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
-from ical.exceptions import CalendarParseError
 from ical.event import Event
 from ical.types.recur import Recur
 
