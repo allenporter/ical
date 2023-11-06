@@ -84,3 +84,17 @@ def test_event_parse() -> None:
                 END:VCALENDAR
             """))
         
+
+def test_multiple_calendars() -> None:
+    with pytest.raises(CalendarParseError, match="more than one calendar"):
+        IcsCalendarStream.calendar_from_ics(
+            textwrap.dedent("""\
+                BEGIN:VCALENDAR
+                PRODID:-//example//1.2.3
+                VERSION:2.0
+                END:VCALENDAR
+                BEGIN:VCALENDAR
+                PRODID:-//example//1.2.3
+                VERSION:2.0
+                END:VCALENDAR
+            """))
