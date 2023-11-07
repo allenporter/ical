@@ -21,7 +21,7 @@ from .exceptions import StoreError, TodoStoreError, EventStoreError
 from .todo import Todo
 from .iter import RulesetIterable
 from .timezone import Timezone
-from .types import Range, Recur, RecurrenceId
+from .types import Range, Recur, RecurrenceId, RelationshipType
 from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory
 
@@ -125,6 +125,12 @@ class EventStore:
         if event.sequence is None:
             update["sequence"] = 0
         new_event = event.copy(update=update)
+
+        # The store can only manage cascading deletes for some relationship types
+        for relation in new_event.related_to or ():
+            if relation.reltype != RelationshipType.PARENT:
+                raise EventStoreError(f"Unsupported relationship type {relation.reltype}")
+            
         _LOGGER.debug("Adding event: %s", new_event)
         self._ensure_timezone(event)
         self._calendar.events.append(new_event)
@@ -159,6 +165,14 @@ class EventStore:
             # Editing the first instance and all forward is the same as editing the
             # entire series so don't bother forking a new event
             recurrence_id = None
+
+        children = []
+        for event in self._calendar.events:
+            for relation in event.related_to or ():
+                if relation.reltype == RelationshipType.PARENT and relation.uid == uid:
+                    children.append(event)
+        for child in children:
+            self._calendar.events.remove(child)
 
         # Deleting all instances in the series
         if not recurrence_id:
@@ -259,6 +273,11 @@ class EventStore:
                 if dtvalue >= dtstart:
                     break
                 new_event.rrule.count = new_event.rrule.count - 1
+
+        # The store can only manage cascading deletes for some relationship types
+        for relation in new_event.related_to or ():
+            if relation.reltype != RelationshipType.PARENT:
+                raise EventStoreError(f"Unsupported relationship type {relation.reltype}")
 
         self._ensure_timezone(event)
 
@@ -377,6 +396,12 @@ class TodoStore:
         if todo.sequence is None:
             update["sequence"] = 0
         new_todo = todo.copy(update=update)
+
+        # The store can only manage cascading deletes for some relationship types
+        for relation in new_todo.related_to or ():
+            if relation.reltype != RelationshipType.PARENT:
+                raise TodoStoreError(f"Unsupported relationship type {relation.reltype}")
+            
         _LOGGER.debug("Adding todo: %s", new_todo)
         self._ensure_timezone(todo)
         self._calendar.todos.append(new_todo)
@@ -390,7 +415,15 @@ class TodoStore:
         store_index, store_todo = self._lookup_todo(uid)
         if not store_todo:
             raise TodoStoreError(f"No existing todo with uid: {uid}")
-        self._calendar.todos.remove(store_todo)
+        removals = [store_todo]
+
+        for todo in self._calendar.todos:
+            for relation in todo.related_to or ():
+                if relation.reltype == RelationshipType.PARENT and relation.uid == uid:
+                    removals.append(todo)
+
+        for todo in removals:
+            self._calendar.todos.remove(todo)
 
     def edit(
         self,
@@ -412,6 +445,11 @@ class TodoStore:
         }
         # Make a deep copy since deletion may update this objects recurrence rules
         new_todo = store_todo.copy(update=update, deep=True)
+
+        # The store can only manage cascading deletes for some relationship types
+        for relation in new_todo.related_to or ():
+            if relation.reltype != RelationshipType.PARENT:
+                raise TodoStoreError(f"Unsupported relationship type {relation.reltype}")
 
         self._ensure_timezone(todo)
 

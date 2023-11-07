@@ -19,6 +19,7 @@ from ical.event import Event
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
 from ical.types.recur import Range, Recur
+from ical.types import RelationshipType, RelatedTo
 
 
 @pytest.fixture(name="calendar")
@@ -1163,6 +1164,89 @@ def test_timezone_offset_not_supported(
     assert not calendar.timezones
 
 
+def test_delete_event_parent_cascade_to_children(
+    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+) -> None:
+    """Test deleting a parent event object deletes the children."""
+    event1 = store.add(
+        Event(
+            summary="Submit IRS documents",
+            start="2022-08-29T09:00:00",
+            duration=datetime.timedelta(minutes=30),
+        )
+    )
+    assert event1.uid == "mock-uid-1"
+
+    event2 = store.add(
+        Event(
+            summary="Lookup website",
+            start="2022-08-29T10:00:00",
+            duration=datetime.timedelta(minutes=30),
+            related_to=[RelatedTo(uid="mock-uid-1", reltype=RelationshipType.PARENT)],
+        )
+    )
+    assert event2.uid == "mock-uid-2"
+
+    event3 = store.add(
+        Event(
+            summary="Download forms",
+            start="2022-08-29T11:00:00",
+            duration=datetime.timedelta(minutes=30),
+            related_to=[RelatedTo(uid="mock-uid-1", reltype=RelationshipType.PARENT)],
+        )
+    )
+    assert event3.uid == "mock-uid-3"
+
+    event4 = store.add(
+        Event(
+            summary="Milk",
+            start="2022-08-29T12:00:00",
+            duration=datetime.timedelta(minutes=30),
+        )
+    )
+    assert [ item['uid'] for item in fetch_events() ] == [ event1.uid, event2.uid, event3.uid, event4.uid ]
+
+    # Delete parent and cascade to children
+    store.delete("mock-uid-1")
+    assert [ item['uid'] for item in fetch_events() ] == [ event4.uid ]
+
+
+@pytest.mark.parametrize(
+    "reltype",
+    [
+        (RelationshipType.SIBBLING),
+        (RelationshipType.CHILD),
+    ]
+)
+def test_unsupported_event_reltype(
+    store: EventStore,
+    reltype: RelationshipType,
+) -> None:
+    """Test that only PARENT relationships can be managed by the store."""
+
+    with pytest.raises(StoreError, match=r"Unsupported relationship type"):
+        store.add(
+            Event(
+                summary="Lookup website",
+                related_to=[RelatedTo(uid="mock-uid-1", reltype=reltype)],
+            )
+        )
+
+    event1 = store.add(
+        Event(
+            summary="Parent",
+        )
+    )
+    event2 = store.add(
+        Event(
+            summary="Future child",
+        )
+    )
+    event2.related_to = [RelatedTo(uid=event1.uid, reltype=reltype)]
+    with pytest.raises(StoreError, match=r"Unsupported relationship type"):
+        store.edit(event2.uid, event2)
+
+
 def test_add_and_delete_todo(
     todo_store: TodoStore, fetch_todos: Callable[..., list[dict[str, Any]]]
 ) -> None:
@@ -1317,3 +1401,79 @@ def test_todo_timezone_offset_not_supported(
         todo_store.add(event)
     assert not calendar.todos
     assert not calendar.timezones
+
+
+def test_delete_parent_todo_cascade_to_children(
+    todo_store: TodoStore, fetch_todos: Callable[..., list[dict[str, Any]]]
+) -> None:
+    """Test deleting a parent todo object deletes the children."""
+    todo1 = todo_store.add(
+        Todo(
+            summary="Submit IRS documents",
+            due="2022-08-29T09:00:00",
+        )
+    )
+    assert todo1.uid == "mock-uid-1"
+
+    todo2 = todo_store.add(
+        Todo(
+            summary="Lookup website",
+            related_to=[RelatedTo(uid="mock-uid-1", reltype=RelationshipType.PARENT)],
+        )
+    )
+    assert todo2.uid == "mock-uid-2"
+
+    todo3 = todo_store.add(
+        Todo(
+            summary="Download forms",
+            related_to=[RelatedTo(uid="mock-uid-1", reltype=RelationshipType.PARENT)],
+        )
+    )
+    assert todo3.uid == "mock-uid-3"
+
+    todo4 = todo_store.add(
+        Todo(
+            summary="Milk",
+        )
+    )
+    assert [ item['uid'] for item in fetch_todos() ] == [ todo1.uid, todo2.uid, todo3.uid, todo4.uid ]
+
+    # Delete parent and cascade to children
+    todo_store.delete("mock-uid-1")
+    assert [ item['uid'] for item in fetch_todos() ] == [ todo4.uid ]
+
+
+@pytest.mark.parametrize(
+    "reltype",
+    [
+        (RelationshipType.SIBBLING),
+        (RelationshipType.CHILD),
+    ]
+)
+def test_unsupported_todo_reltype(
+    todo_store: TodoStore,
+    reltype: RelationshipType,
+) -> None:
+    """Test that only PARENT relationships can be managed by the store."""
+
+    with pytest.raises(StoreError, match=r"Unsupported relationship type"):
+        todo_store.add(
+            Todo(
+                summary="Lookup website",
+                related_to=[RelatedTo(uid="mock-uid-1", reltype=reltype)],
+            )
+        )
+
+    todo1 = todo_store.add(
+        Todo(
+            summary="Parent",
+        )
+    )
+    todo2 = todo_store.add(
+        Todo(
+            summary="Future child",
+        )
+    )
+    todo2.related_to = [RelatedTo(uid=todo1.uid, reltype=reltype)]
+    with pytest.raises(StoreError, match=r"Unsupported relationship type"):
+        todo_store.edit(todo2.uid, todo2)
