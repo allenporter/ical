@@ -39,6 +39,7 @@ from .types import (
     RecurrenceId,
     RequestStatus,
     Uri,
+    RelatedTo,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -166,8 +167,11 @@ class Event(ComponentModel):
     instance within the recurrence set.
     """
 
-    related: list[str] = Field(default_factory=list)
+    related_to: list[RelatedTo] = Field(alias="related-to", default_factory=list)
     """Used to represent a relationship or reference between events."""
+
+    related: list[str] = Field(default_factory=list)
+    """Unused and will be deleted in a future release"""
 
     resources: list[str] = Field(default_factory=list)
     """Defines the equipment or resources anticipated for the calendar event."""
@@ -438,4 +442,6 @@ class Event(ComponentModel):
         return values
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
-    _validate_recurrence_dates = root_validator(allow_reuse=True)(validate_recurrence_dates)
+    _validate_recurrence_dates = root_validator(allow_reuse=True)(
+        validate_recurrence_dates
+    )

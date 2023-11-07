@@ -16,7 +16,7 @@ except ImportError:
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Classification, Recur, RecurrenceId, RequestStatus, Uri
+from .types import CalAddress, Classification, Recur, RecurrenceId, RequestStatus, Uri, RelatedTo
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +63,10 @@ class Journal(ComponentModel):
     )
     organizer: Optional[CalAddress] = None
     recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
+
+    related_to: list[RelatedTo] = Field(alias="related-to", default_factory=list)
+    """Used to represent a relationship or reference between events."""
+
     related: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)

@@ -10,6 +10,7 @@ from .geo import Geo
 from .period import FreeBusyType, Period
 from .priority import Priority
 from .recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
+from .relation import RelatedTo, RelationshipType
 from .request_status import RequestStatus
 from .uri import Uri
 from .utc_offset import UtcOffset
@@ -25,6 +26,8 @@ __all__ = [
     "Range",
     "Recur",
     "RecurrenceId",
+    "RelatedTo",
+    "RelationshipType",
     "RequestStatus",
     "UtcOffset",
     "Uri",

@@ -56,10 +56,7 @@ class Role(str, enum.Enum):
 
 @DATA_TYPE.register("CAL-ADDRESS")
 class CalAddress(BaseModel):
-    """A value type for a property that contains a calendar user address.
-    This is a subclass of string so that it can be used in place of a string
-    to get the calendar address, but also supports additional properties.
-    """
+    """A value type for a property that contains a calendar user address."""
 
     uri: Uri = Field(alias="value")
     """The calendar user address as a uri."""

@@ -23,6 +23,7 @@ from .types import (
     RecurrenceId,
     RequestStatus,
     Uri,
+    RelatedTo,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
 
@@ -68,6 +69,10 @@ class Todo(ComponentModel):
     percent: Optional[int] = None
     priority: Optional[Priority] = None
     recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
+
+    related_to: list[RelatedTo] = Field(alias="related-to", default_factory=list)
+    """Used to represent a relationship or reference between events."""
+
     request_status: Optional[RequestStatus] = Field(
         alias="request-status",
         default_value=None,
