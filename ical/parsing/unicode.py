@@ -10,9 +10,10 @@ import logging
 import re
 from typing import cast
 
-import emoji
 from pyparsing import unicode_set
 from pyparsing.unicode import UnicodeRangeList
+
+from .emoji import EMOJI
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,8 +70,6 @@ class BasicMultilingualPlane(CharRange):
         (0x0020, 0xFFFF),
     ]
 
-
-EMOJI = list(emoji.EMOJI_DATA.keys())
 
 NON_US_ASCII = NonUsAscii.all() + EMOJI
 
