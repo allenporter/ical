@@ -29,8 +29,8 @@ output:
         - weekday: SU
         - weekday: SA
       exdate:
-      - '2023-12-23T08:00:00'
-      - '2023-12-17T08:00:00'
+      - '2023-12-23'
+      - '2023-12-17'
 encoded: |-
   BEGIN:VCALENDAR
   PRODID:-//hacksw/handcal//NONSGML v1.0//EN
@@ -42,7 +42,7 @@ encoded: |-
   DTEND:20231224
   SUMMARY:Example date
   RRULE:FREQ=WEEKLY;BYDAY=SU,SA
-  EXDATE:20231223T080000
-  EXDATE:20231217T080000
+  EXDATE:20231223
+  EXDATE:20231217
   END:VEVENT
   END:VCALENDAR
