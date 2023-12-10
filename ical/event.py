@@ -287,7 +287,7 @@ class Event(ComponentModel):
     @property
     def computed_duration(self) -> datetime.timedelta:
         """Return the event duration."""
-        if self.duration != None:
+        if self.duration is not None:
             return self.duration
         return self.end - self.start
 
