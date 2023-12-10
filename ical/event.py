@@ -267,7 +267,12 @@ class Event(ComponentModel):
             return self.dtstart + self.duration
         if self.dtend:
             return self.dtend
-        raise ValueError("Unexpected state with no duration or dtend")
+
+        match type(self.dtstart):
+            case datetime.date:
+                return self.dtstart + datetime.timedelta(days=1)
+            case datetime.datetime:
+                return self.dtstart
 
     @property
     def start_datetime(self) -> datetime.datetime:
@@ -282,11 +287,9 @@ class Event(ComponentModel):
     @property
     def computed_duration(self) -> datetime.timedelta:
         """Return the event duration."""
-        if self.end:
-            return self.end - self.start
-        if not self.duration:
-            raise ValueError("Invalid state, expected end or duration")
-        return self.duration
+        if self.duration is not None:
+            return self.duration
+        return self.end - self.start
 
     @property
     def timespan(self) -> Timespan:
