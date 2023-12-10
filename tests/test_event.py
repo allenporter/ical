@@ -184,12 +184,16 @@ def test_no_end_time_or_dur() -> None:
         dtstart=date(2022, 9, 9)
     )
     assert day_event.end == date(2022, 9, 10)
+    assert day_event.duration is None
+    assert day_event.computed_duration == timedelta(days=1)
 
     time_event = Event(
         summary=SUMMARY,
         dtstart=datetime(2022, 9, 9, 10, 0, 0)
     )
     assert time_event.end == datetime(2022, 9, 9, 10, 0, 0)
+    assert time_event.duration is None
+    assert time_event.computed_duration == timedelta()
 
 
 def test_start_end_local_time() -> None:
