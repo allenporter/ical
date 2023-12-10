@@ -287,11 +287,9 @@ class Event(ComponentModel):
     @property
     def computed_duration(self) -> datetime.timedelta:
         """Return the event duration."""
-        if self.end:
-            return self.end - self.start
-        if not self.duration:
-            raise ValueError("Invalid state, expected end or duration")
-        return self.duration
+        if self.duration != None:
+            return self.duration
+        return self.end - self.start
 
     @property
     def timespan(self) -> Timespan:
