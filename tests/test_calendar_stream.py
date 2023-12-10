@@ -1,6 +1,7 @@
 """Tests for timeline related calendar events."""
 
 from collections.abc import Generator
+import itertools
 import json
 import textwrap
 
@@ -9,6 +10,8 @@ from pytest_golden.plugin import GoldenTestFixture
 
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
+
+MAX_ITERATIONS = 30
 
 
 def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
@@ -62,6 +65,21 @@ def test_serialize(golden: GoldenTestFixture) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = IcsCalendarStream.from_ics(golden["input"])
     assert cal.ics() == golden.get("encoded", golden["input"])
+
+
+@pytest.mark.golden_test("testdata/*.yaml")
+def test_iteration(golden: GoldenTestFixture) -> None:
+    """Fixture to ensure all calendar events are valid and support iteration."""
+    # Can be removed after https://github.com/allenporter/ical/pull/258
+    if str(golden.path).endswith("testdata/rrule-yearly.yaml"):
+        return
+
+    cal = IcsCalendarStream.from_ics(golden["input"])
+    for calendar in cal.calendars:
+        # Iterate over the timeline to ensure events are valid. There is a max
+        # to handle recurring events that may repeat forever.
+        for event in itertools.islice(calendar.timeline, MAX_ITERATIONS):
+            assert event is not None
 
 
 def test_invalid_ics() -> None:

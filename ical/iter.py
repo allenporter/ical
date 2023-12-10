@@ -163,21 +163,20 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         self._rrule = recur
         self._rdate = rdate
         self._exdate = exdate
+        # dateutil.rrule will convert all input values to datetime even if the
+        # input value is a date. If needed, convert back to a date so that
+        # comparisons between exdate/rdate as a date in the rruleset will
+        # be in the right format.
+        if not isinstance(dtstart, datetime.datetime):
+            self._converter = AllDayConverter
+        else:
+            self._converter = lambda x: x
 
     def _ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Create a dateutil.rruleset."""
-        is_date: bool = not isinstance(self._dtstart, datetime.datetime)
-
         ruleset = rrule.rruleset()
         for rule in self._rrule:
-            # dateutil.rrule will convert all input values to datetime even if the
-            # input value is a date. If needed, convert back to a date so that
-            # comparisons between exdate/rdate as a date in the rruleset will
-            # be in the right format.
-            value_iter: Iterable[datetime.date | datetime.datetime] = rule
-            if is_date:
-                value_iter = AllDayConverter(value_iter)
-            ruleset.rrule(value_iter)  # type: ignore[arg-type]
+            ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]
         for rdate in self._rdate:
             ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
         for exdate in self._exdate:
