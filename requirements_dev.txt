@@ -18,4 +18,4 @@ wheel==0.37.1
 PyYAML==6.0.1
 types-PyYAML==6.0.12.8
 pre-commit==3.6.0
- mypy==1.8.0
+mypy==1.8.0
