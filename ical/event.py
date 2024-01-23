@@ -199,7 +199,6 @@ class Event(ComponentModel):
     """
 
     exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
-
     """Defines the list of exceptions for recurring events.
 
     The exception dates are used in computing the recurrence set. The recurrence set is
@@ -233,7 +232,7 @@ class Event(ComponentModel):
     url: Optional[Uri] = None
     """Defines a url associated with the event.
 
-    May convey a location where a more dynamic rednition of the calendar event
+    May convey a location where a more dynamic rendition of the calendar event
     information associated with the event can be found.
     """
 
