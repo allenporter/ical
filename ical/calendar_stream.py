@@ -34,7 +34,7 @@ import pyparsing
 try:
     from pydantic.v1 import Field
 except ImportError:
-    from pydantic import Field
+    from pydantic import Field  # type: ignore[assignment]
 
 from .calendar import Calendar
 from .component import ComponentModel
@@ -89,7 +89,7 @@ class IcsCalendarStream(CalendarStream):
     @classmethod
     def calendar_to_ics(cls, calendar: Calendar) -> str:
         """Serialize a calendar as an ICS stream."""
-        stream = cls(vcalendar=[calendar])  # type: ignore
+        stream = cls(vcalendar=[calendar])
         return stream.ics()
 
     class Config:

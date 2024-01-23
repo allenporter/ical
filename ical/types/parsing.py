@@ -9,8 +9,8 @@ try:
     from pydantic.v1 import BaseModel
     from pydantic.v1.fields import SHAPE_LIST, ModelField
 except ImportError:
-    from pydantic import BaseModel
-    from pydantic.fields import SHAPE_LIST, ModelField
+    from pydantic import BaseModel  # type: ignore[assignment]
+    from pydantic.fields import SHAPE_LIST, ModelField  # type: ignore[attr-defined,no-redef]
 
 _LOGGER = logging.getLogger(__name__)
 

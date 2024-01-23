@@ -9,7 +9,7 @@ from typing import Any, Iterable, Protocol
 try:
     from pydantic.v1.fields import SHAPE_LIST, ModelField
 except ImportError:
-    from pydantic.fields import SHAPE_LIST, ModelField
+    from pydantic.fields import SHAPE_LIST, ModelField  # type: ignore[attr-defined, no-redef]
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 

@@ -151,6 +151,8 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     debug. This wrapper is meant to assist with that.
     """
 
+    _converter: Callable[[Iterable[Union[datetime.date, datetime.datetime]]], Iterable[Union[datetime.date, datetime.datetime]]]
+
     def __init__(
         self,
         dtstart: datetime.datetime | datetime.date,

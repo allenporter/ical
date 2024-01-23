@@ -12,7 +12,7 @@ from typing import Any, Optional, Union
 try:
     from pydantic.v1 import Field, root_validator
 except ImportError:
-    from pydantic import Field, root_validator
+    from pydantic import Field, root_validator  # type: ignore[no-redef, assignment]
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty
@@ -54,7 +54,7 @@ class Journal(ComponentModel):
     created: Optional[datetime.datetime] = None
     description: Optional[str] = None
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(  # type: ignore
+    dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
     exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)

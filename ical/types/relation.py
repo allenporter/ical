@@ -8,7 +8,7 @@ import logging
 try:
     from pydantic.v1 import root_validator
 except ImportError:
-    from pydantic import root_validator
+    from pydantic import root_validator # type: ignore[no-redef]
 
 from .data_types import DATA_TYPE
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -40,11 +40,11 @@ class RelatedTo:
     """Indicate the type of hierarchical relationship associated with the calendar component specified by the uid."""
 
     @classmethod
-    def __parse_property_value__(cls, prop: Any) -> int:
+    def __parse_property_value__(cls, prop: Any) -> dict[str, Any]:
         """Parse a rfc5545 int value."""
         logging.info("prop=%s", prop)
         if isinstance(prop, ParsedProperty):
-            data = {"uid": prop.value}
+            data: dict[str, Any] = {"uid": prop.value}
             for param in prop.params or ():
                 if len(param.values) > 1:
                     raise ValueError("Expected only one value for RELATED-TO parameter")

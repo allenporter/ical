@@ -7,7 +7,7 @@ from typing import Any, Optional, Union
 try:
     from pydantic.v1 import Field, root_validator
 except ImportError:
-    from pydantic import Field, root_validator
+    from pydantic import Field, root_validator  # type: ignore[no-redef, assignment]
 
 
 from .component import ComponentModel

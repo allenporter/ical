@@ -31,7 +31,7 @@ from dateutil import rrule
 try:
     from pydantic.v1 import BaseModel, root_validator, validator
 except ImportError:
-    from pydantic import BaseModel, root_validator, validator
+    from pydantic import BaseModel, root_validator, validator  # type: ignore[no-redef, assignment]
 from pyparsing import (
     Char,
     Combine,

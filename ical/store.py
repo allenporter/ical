@@ -381,7 +381,7 @@ class TodoStore:
         self._calendar = calendar
         self._dtstamp_fn = dtstamp_fn
 
-    def _lookup_todo(self, uid: str) -> (int | None, Todo | None):
+    def _lookup_todo(self, uid: str) -> tuple[int | None, Todo | None]:
         """Find the specified todo by id returning the index."""
         for i, todo in enumerate(self._calendar.todos):
             if todo.uid == uid:

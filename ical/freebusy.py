@@ -11,7 +11,7 @@ from typing import Any, Optional, Union
 try:
     from pydantic.v1 import Field, validator
 except ImportError:
-    from pydantic import Field, validator
+    from pydantic import Field, validator  # type: ignore[assignment]
 
 from .component import ComponentModel
 from .parsing.property import ParsedProperty
@@ -42,7 +42,7 @@ class FreeBusy(ComponentModel):
     """Contact information associated with this component."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(  # type: ignore
+    dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
     """Start of the time range covered by this component."""

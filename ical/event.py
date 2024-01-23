@@ -23,7 +23,7 @@ from typing import Any, Optional, Union
 try:
     from pydantic.v1 import Field, root_validator
 except ImportError:
-    from pydantic import Field, root_validator
+    from pydantic import Field, root_validator  # type: ignore[no-redef, assignment]
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
@@ -95,7 +95,7 @@ class Event(ComponentModel):
     """A globally unique identifier for the event."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(  # type: ignore
+    dtstart: Union[datetime.datetime, datetime.date] = Field(
         default=None,
     )
     """The start time or start day of the event."""
@@ -267,11 +267,9 @@ class Event(ComponentModel):
         if self.dtend:
             return self.dtend
 
-        match type(self.dtstart):
-            case datetime.date:
-                return self.dtstart + datetime.timedelta(days=1)
-            case datetime.datetime:
-                return self.dtstart
+        if isinstance(self.dtstart, datetime.datetime):
+            return self.dtstart
+        return self.dtstart + datetime.timedelta(days=1)
 
     @property
     def start_datetime(self) -> datetime.datetime:
