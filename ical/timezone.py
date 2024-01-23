@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Union
 
 from dateutil.rrule import rruleset
+
 try:
     from pydantic.v1 import Field, root_validator, validator
 except ImportError:
@@ -200,7 +201,9 @@ class Timezone(ComponentModel):
                     dtstart=rule.dst_start.rrule_dtstart(start),
                 )
             )
-        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)
+        # https://github.com/pydantic/pydantic/issues/3923 is not working even
+        # when the model config allows population by name. Try again on v2.
+        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)  # type: ignore[call-arg]
 
     def _observances(
         self,
@@ -290,7 +293,6 @@ class IcsTimezoneInfo(datetime.tzinfo):
             or not obs.observance.tz_name
         ):
             return None
-        _LOGGER.debug("obs=%s", obs)
         return obs.observance.tz_name[0]
 
     def dst(self, dt: datetime.datetime | None) -> datetime.timedelta | None:
@@ -301,7 +303,6 @@ class IcsTimezoneInfo(datetime.tzinfo):
             or obs.observance_type != _ObservanceType.DAYLIGHT
         ):
             return _ZERO
-        _LOGGER.debug("obs=%s", obs)
         return obs.observance.tz_offset_to.offset - obs.observance.tz_offset_from.offset
 
     def _get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:

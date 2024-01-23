@@ -129,8 +129,10 @@ class EventStore:
         # The store can only manage cascading deletes for some relationship types
         for relation in new_event.related_to or ():
             if relation.reltype != RelationshipType.PARENT:
-                raise EventStoreError(f"Unsupported relationship type {relation.reltype}")
-            
+                raise EventStoreError(
+                    f"Unsupported relationship type {relation.reltype}"
+                )
+
         _LOGGER.debug("Adding event: %s", new_event)
         self._ensure_timezone(event)
         self._calendar.events.append(new_event)
@@ -277,7 +279,9 @@ class EventStore:
         # The store can only manage cascading deletes for some relationship types
         for relation in new_event.related_to or ():
             if relation.reltype != RelationshipType.PARENT:
-                raise EventStoreError(f"Unsupported relationship type {relation.reltype}")
+                raise EventStoreError(
+                    f"Unsupported relationship type {relation.reltype}"
+                )
 
         self._ensure_timezone(event)
 
@@ -400,8 +404,10 @@ class TodoStore:
         # The store can only manage cascading deletes for some relationship types
         for relation in new_todo.related_to or ():
             if relation.reltype != RelationshipType.PARENT:
-                raise TodoStoreError(f"Unsupported relationship type {relation.reltype}")
-            
+                raise TodoStoreError(
+                    f"Unsupported relationship type {relation.reltype}"
+                )
+
         _LOGGER.debug("Adding todo: %s", new_todo)
         self._ensure_timezone(todo)
         self._calendar.todos.append(new_todo)
@@ -432,7 +438,7 @@ class TodoStore:
     ) -> None:
         """Update the todo with the specified uid."""
         store_index, store_todo = self._lookup_todo(uid)
-        if not store_todo:
+        if not store_todo or store_index is None:
             raise TodoStoreError(f"No existing todo with uid: {uid}")
 
         partial_update = todo.dict(exclude_unset=True)
@@ -449,7 +455,9 @@ class TodoStore:
         # The store can only manage cascading deletes for some relationship types
         for relation in new_todo.related_to or ():
             if relation.reltype != RelationshipType.PARENT:
-                raise TodoStoreError(f"Unsupported relationship type {relation.reltype}")
+                raise TodoStoreError(
+                    f"Unsupported relationship type {relation.reltype}"
+                )
 
         self._ensure_timezone(todo)
 

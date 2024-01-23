@@ -2,7 +2,8 @@
 
 import pytest
 
-from ical.parsing.unicode import SAFE_CHAR, VALUE_CHAR, EMOJI
+from ical.parsing.unicode import SAFE_CHAR, VALUE_CHAR
+from ical.parsing.emoji import EMOJI
 import emoji
 
 
