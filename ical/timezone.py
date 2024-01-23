@@ -22,7 +22,7 @@ from dateutil.rrule import rruleset
 try:
     from pydantic.v1 import Field, root_validator, validator
 except ImportError:
-    from pydantic import Field, root_validator, validator
+    from pydantic import Field, root_validator, validator  # type: ignore[no-redef, assignment]
 
 from .component import ComponentModel
 from .iter import MergedIterable, RecurIterable

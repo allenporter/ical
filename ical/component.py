@@ -26,8 +26,8 @@ try:
     from pydantic.v1 import BaseModel, root_validator, ValidationError
     from pydantic.v1.fields import SHAPE_LIST
 except ImportError:
-    from pydantic import BaseModel, root_validator, ValidationError
-    from pydantic.fields import SHAPE_LIST
+    from pydantic import BaseModel, root_validator, ValidationError  # type: ignore[no-redef, assignment]
+    from pydantic.fields import SHAPE_LIST  # type: ignore[attr-defined, no-redef]
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
