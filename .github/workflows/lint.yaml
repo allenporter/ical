@@ -22,3 +22,14 @@ jobs:
       with:
         exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
         check_hidden: false
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_dev.txt
+    - name: Static typing with mypy
+      run: |
+        mypy --install-types --non-interactive --no-warn-unused-ignores .
