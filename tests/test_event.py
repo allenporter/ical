@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import zoneinfo
+from typing import Any
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
+import zoneinfo
 
 import pytest
+
 try:
     from pydantic.v1 import ValidationError
 except ImportError:
@@ -14,6 +16,7 @@ except ImportError:
 
 from ical.event import Event
 from ical.exceptions import CalendarParseError
+from ical.types.recur import Recur
 
 SUMMARY = "test summary"
 LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -179,18 +182,12 @@ def test_start_end_same_type() -> None:
 def test_no_end_time_or_dur() -> None:
     """Verify that events with no end time or duration will use correct defaults."""
 
-    day_event = Event(
-        summary=SUMMARY,
-        dtstart=date(2022, 9, 9)
-    )
+    day_event = Event(summary=SUMMARY, dtstart=date(2022, 9, 9))
     assert day_event.end == date(2022, 9, 10)
     assert day_event.duration is None
     assert day_event.computed_duration == timedelta(days=1)
 
-    time_event = Event(
-        summary=SUMMARY,
-        dtstart=datetime(2022, 9, 9, 10, 0, 0)
-    )
+    time_event = Event(summary=SUMMARY, dtstart=datetime(2022, 9, 9, 10, 0, 0))
     assert time_event.end == datetime(2022, 9, 9, 10, 0, 0)
     assert time_event.duration is None
     assert time_event.computed_duration == timedelta()
@@ -432,3 +429,30 @@ def test_validate_assignment() -> None:
     # But updates that are valid are OK
     event.dtstart = date(2022, 9, 5)
     event.dtend = date(2022, 9, 10)
+
+
+@pytest.mark.parametrize(
+    ("params"),
+    [
+        ({}),
+        (
+            {
+                "end": datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "duration": timedelta(hours=1),
+            }
+        ),
+    ],
+)
+def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
+    """Test that an event with an rrule requires a dtstart."""
+    event = Event(
+        summary="Event 1",
+        rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=WE,MO,TU,TH,FR;COUNT=3"),
+        **params,
+    )
+    with pytest.raises(CalendarParseError):
+        event.as_rrule()

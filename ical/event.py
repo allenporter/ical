@@ -28,6 +28,7 @@ except ImportError:
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .iter import RulesetIterable
+from .exceptions import CalendarParseError
 from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
@@ -363,6 +364,8 @@ class Event(ComponentModel):
         """
         if not self.rrule and not self.rdate:
             return None
+        if not self.start:
+            raise CalendarParseError("Event must have a start date to be recurring")
         return RulesetIterable(
             self.start,
             [self.rrule.as_rrule(self.start)] if self.rrule else [],
