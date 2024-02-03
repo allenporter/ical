@@ -635,6 +635,41 @@ def test_edit_recurring_event_instance(
     ]
 
 
+def test_edit_recurring_with_same_rrule(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test that changing the rrule to the same value is a no-op."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(start="2022-08-30T09:00:00", summary="Tuesday meeting", rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),),
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220830T090000",
+            "dtstart": "2022-08-30T09:00:00",
+            "summary": "Tuesday meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220906T090000",
+            "dtstart": "2022-09-06T09:00:00",
+            "summary": "Tuesday meeting",
+        },
+    ]
+
+
 def test_cant_change_recurrence_for_event_instance(
     store: EventStore,
     frozen_time: FrozenDateTimeFactory,
@@ -1359,6 +1394,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Monday meeting",
+            dtstart=datetime.datetime(2022, 8, 29, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
             due=datetime.datetime(
                 2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1371,6 +1407,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Tuesday meeting",
+            dtstart=datetime.datetime(2022, 8, 30, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
             due=datetime.datetime(
                 2022, 8, 30, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1382,6 +1419,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Wednesday meeting",
+            dtstart=datetime.datetime(2022, 8, 31, 11, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/New_York")),
             due=datetime.datetime(
                 2022, 8, 31, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
             ),
@@ -1401,6 +1439,7 @@ def test_todo_timezone_offset_not_supported(
     tzinfo = datetime.timezone(offset=offset)
     event = Todo(
         summary="Monday meeting",
+        dtstart=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
         due=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
     )
     with pytest.raises(StoreError, match=r"No timezone information"):
