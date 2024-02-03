@@ -36,12 +36,14 @@ class RecurAdapter:
     def __init__(self, todo: Todo, tzinfo: datetime.tzinfo | None = None):
         """Initialize the RecurAdapter."""
         self._todo = todo
+        if todo.computed_duration is None:
+            raise ValueError("Recurring todo must have a duration")
         self._duration = todo.computed_duration
         self._tzinfo = tzinfo
 
     def get(
         self, dtstart: datetime.datetime | datetime.date
-    ) -> SortableItem[datetime.datetime, Todo]:
+    ) -> SortableItem[datetime.datetime | datetime.date | None, Todo]:
         """Return a lazy sortable item."""
 
         recur_id_dt = dtstart
@@ -77,11 +79,11 @@ def _todos_by_uid(todos: list[Todo]) -> dict[str, list[Todo]]:
 
 def _todo_iterable(
     iterable: list[Todo], tzinfo: datetime.tzinfo
-) -> Iterable[SortableItem[datetime.datetime, Todo]]:
+) -> Iterable[SortableItem[datetime.datetime | datetime.date | None, Todo]]:
     """Create a sorted iterable from the list of events."""
 
     def sortable_items() -> (
-        Generator[SortableItem[datetime.datetime, Todo], None, None]
+        Generator[SortableItem[datetime.datetime | datetime.date | None, Todo], None, None]
     ):
         for todo in iterable:
             if todo.recurring:
@@ -111,15 +113,18 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
         iters.append(RecurIterable(RecurAdapter(todo, tzinfo=tzinfo).get, recur))
 
     root_iter = MergedIterable(iters)
+    
     # Pick the first todo that hasn't started yet based on its dtstart
     now = datetime.datetime.now(tzinfo)
     last: Todo | None = None
-    todo = next(iter(root_iter))
-    for todo in root_iter:
-        if todo.item.start_datetime > now:
+
+    it = iter(root_iter)
+    last = next(it, None)
+    while cur := next(it, None):
+        if cur.item.start_datetime is None or cur.item.start_datetime > now:
             break
-        last = todo.item
-    return last
+        last = cur
+    return last.item if last is not None else None
 
 
 def todo_list_view(
