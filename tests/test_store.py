@@ -1071,10 +1071,10 @@ def test_invalid_uid(
     store: EventStore,
 ) -> None:
     """Test iteration over an empty calendar."""
-    with pytest.raises(StoreError, match=r"No existing event with uid"):
+    with pytest.raises(StoreError, match=r"No existing item with uid"):
         store.edit("invalid", Event(summary="example summary"))
 
-    with pytest.raises(StoreError, match=r"No existing event with uid"):
+    with pytest.raises(StoreError, match=r"No existing item with uid"):
         store.delete("invalid")
 
 
@@ -1095,7 +1095,7 @@ def test_invalid_recurrence_id(
 
     with pytest.raises(StoreError, match=r"event is not recurring"):
         store.edit(
-            "mock-uid-1", recurrence_id="invalid", event=Event(summary="invalid")
+            "mock-uid-1", Event(summary="tuesday"), recurrence_id="invalid"
         )
 
 
