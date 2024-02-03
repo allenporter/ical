@@ -81,9 +81,25 @@ def test_duration() -> None:
 def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
     """Test that a Todo with an rrule requires a dtstart."""
     with pytest.raises(CalendarParseError):
-        event = Todo(
-            summary="Event 1",
+        todo = Todo(
+            summary="Todo 1",
             rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=WE,MO,TU,TH,FR;COUNT=3"),
             **params,
         )
-        event.as_rrule()
+        todo.as_rrule()
+
+def test_is_recurring() -> None:
+    """Test that a Todo with an rrule requires a dtstart."""
+    todo = Todo(
+        summary="Todo 1",
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        dtstart="2024-02-02",
+        due="2024-02-03",
+    )
+    assert todo.recurring
+    assert todo.computed_duration == datetime.timedelta(days=1)
+    assert list(todo.as_rrule()) == [
+        datetime.date(2024, 2, 2),
+        datetime.date(2024, 2, 3),
+        datetime.date(2024, 2, 4),
+    ]
