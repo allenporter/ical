@@ -12,6 +12,7 @@ from ical.component import ComponentModel
 from ical.event import Event
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.timeline import Timeline
+from ical.todo import Todo
 from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
 
 
@@ -708,6 +709,25 @@ def test_recur_as_string(recur: Recur) -> None:
 @pytest.mark.parametrize(
     "recur",
     [
+        Recur(freq=Frequency.DAILY, interval=2),
+        Recur.from_rrule("FREQ=DAILY;INTERVAL=2"),
+    ],
+)
+def test_todo_recur_as_string(recur: Recur) -> None:
+    """Test converting a recurrence rule back to a string."""
+
+    event = Todo(
+        summary="summary",
+        due=datetime.date(2022, 8, 1),
+        rrule=recur,
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=DAILY;INTERVAL=2"
+
+
+@pytest.mark.parametrize(
+    "recur",
+    [
         Recur(freq=Frequency.DAILY, until=datetime.datetime(2022, 8, 10, 6, 0, 0)),
         Recur.from_rrule("FREQ=DAILY;UNTIL=20220810T060000"),
     ],
@@ -846,6 +866,7 @@ def test_rrule_exdate_mismatch() -> None:
 
 # BYSETPOS
 
+
 def test_bysetpos() -> None:
     """Test how all day events are handled with RDATE."""
 
@@ -857,7 +878,9 @@ def test_bysetpos() -> None:
                 start=datetime.date(2023, 1, 31),
                 end=datetime.date(2023, 2, 1),
                 # Last work day of the month
-                rrule=Recur.from_rrule("FREQ=MONTHLY;BYSETPOS=-1;BYDAY=MO,TU,WE,TH,FR;COUNT=5"),
+                rrule=Recur.from_rrule(
+                    "FREQ=MONTHLY;BYSETPOS=-1;BYDAY=MO,TU,WE,TH,FR;COUNT=5"
+                ),
             ),
         ]
     )

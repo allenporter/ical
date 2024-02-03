@@ -16,7 +16,7 @@ from freezegun.api import FrozenDateTimeFactory
 
 from ical.calendar import Calendar
 from ical.event import Event
-from ical.todo import Todo
+from ical.todo import Todo, TodoStatus
 from ical.store import EventStore, TodoStore, StoreError
 from ical.types.recur import Range, Recur
 from ical.types import RelationshipType, RelatedTo
@@ -89,7 +89,7 @@ def mock_fetch_todos(
     """Fixture to return todos on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        return [compact_dict(todo.dict(), keys) for todo in calendar.todos]
+        return [compact_dict(todo.dict(), keys) for todo in calendar.todo_list()]
 
     return _func
 
@@ -1204,11 +1204,16 @@ def test_delete_event_parent_cascade_to_children(
             duration=datetime.timedelta(minutes=30),
         )
     )
-    assert [ item['uid'] for item in fetch_events() ] == [ event1.uid, event2.uid, event3.uid, event4.uid ]
+    assert [item["uid"] for item in fetch_events()] == [
+        event1.uid,
+        event2.uid,
+        event3.uid,
+        event4.uid,
+    ]
 
     # Delete parent and cascade to children
     store.delete("mock-uid-1")
-    assert [ item['uid'] for item in fetch_events() ] == [ event4.uid ]
+    assert [item["uid"] for item in fetch_events()] == [event4.uid]
 
 
 @pytest.mark.parametrize(
@@ -1216,7 +1221,7 @@ def test_delete_event_parent_cascade_to_children(
     [
         (RelationshipType.SIBBLING),
         (RelationshipType.CHILD),
-    ]
+    ],
 )
 def test_unsupported_event_reltype(
     store: EventStore,
@@ -1339,7 +1344,9 @@ def test_edit_todo(
 def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
     """Edit a todo that does not exist."""
     with pytest.raises(StoreError, match="No existing"):
-        todo_store.edit("mock-uid-1", Todo(due="2022-08-29T09:05:00", summary="Delayed"))
+        todo_store.edit(
+            "mock-uid-1", Todo(due="2022-08-29T09:05:00", summary="Delayed")
+        )
     with pytest.raises(StoreError, match="No existing"):
         todo_store.delete("mock-uid-1")
 
@@ -1383,7 +1390,6 @@ def test_todo_timezone_for_datetime(
     assert len(calendar.timezones) == 2
     assert calendar.timezones[0].tz_id == "America/Los_Angeles"
     assert calendar.timezones[1].tz_id == "America/New_York"
-
 
 
 def test_todo_timezone_offset_not_supported(
@@ -1436,11 +1442,16 @@ def test_delete_parent_todo_cascade_to_children(
             summary="Milk",
         )
     )
-    assert [ item['uid'] for item in fetch_todos() ] == [ todo1.uid, todo2.uid, todo3.uid, todo4.uid ]
+    assert [item["uid"] for item in fetch_todos()] == [
+        todo1.uid,
+        todo2.uid,
+        todo3.uid,
+        todo4.uid,
+    ]
 
     # Delete parent and cascade to children
     todo_store.delete("mock-uid-1")
-    assert [ item['uid'] for item in fetch_todos() ] == [ todo4.uid ]
+    assert [item["uid"] for item in fetch_todos()] == [todo4.uid]
 
 
 @pytest.mark.parametrize(
@@ -1448,7 +1459,7 @@ def test_delete_parent_todo_cascade_to_children(
     [
         (RelationshipType.SIBBLING),
         (RelationshipType.CHILD),
-    ]
+    ],
 )
 def test_unsupported_todo_reltype(
     todo_store: TodoStore,
@@ -1477,3 +1488,58 @@ def test_unsupported_todo_reltype(
     todo2.related_to = [RelatedTo(uid=todo1.uid, reltype=reltype)]
     with pytest.raises(StoreError, match=r"Unsupported relationship type"):
         todo_store.edit(todo2.uid, todo2)
+
+
+def test_recurring_item(
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test a basic recurring item."""
+
+    frozen_time.move_to("2024-01-09T10:00:05")
+
+    # Create a recurring to-do item
+    todo_store.add(
+        Todo(
+            summary="Walk dog",
+            dtstart="2024-01-09",
+            due="2024-01-10",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20240109",
+            "due": "2024-01-10",
+            "summary": "Walk dog",
+            "status": TodoStatus.NEEDS_ACTION,
+        },
+    ]
+    # Mark the entire series as completed
+    todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20240109",
+            "due": "2024-01-10",
+            "summary": "Walk dog",
+            "status": TodoStatus.COMPLETED,
+        },
+    ]
+
+    # Advance to the next day.
+    frozen_time.move_to("2024-01-10T10:00:00")
+
+    # All instances are completed
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20240110",
+            "due": "2024-01-11",
+            "summary": "Walk dog",
+            "status": TodoStatus.COMPLETED,
+        },
+    ]
