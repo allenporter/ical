@@ -96,14 +96,12 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
     # Pick the first todo that hasn't started yet based on its dtstart
     now = datetime.datetime.now(tzinfo)
     it = iter(root_iter)
-    last = next(it, None)
-    if not last:
-        raise ValueError("Expected at least one item in the iterable")
+    last = next(it)
     while cur := next(it, None):
         if cur.item.start_datetime is None or cur.item.start_datetime > now:
             break
         last = cur
-    return last.item if last is not None else None
+    return last.item
 
 
 def todo_list_view(
