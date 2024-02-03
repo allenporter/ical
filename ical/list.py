@@ -36,8 +36,6 @@ class RecurAdapter:
     def __init__(self, todo: Todo, tzinfo: datetime.tzinfo | None = None):
         """Initialize the RecurAdapter."""
         self._todo = todo
-        if todo.computed_duration is None:
-            raise ValueError("Recurring todo must have a duration")
         self._duration = todo.computed_duration
         self._tzinfo = tzinfo
 
@@ -53,13 +51,13 @@ class RecurAdapter:
         recurrence_id = RecurrenceId.__parse_property_value__(recur_id_dt)
 
         def build() -> Todo:
-            return self._todo.copy(
-                update={
-                    "dtstart": dtstart,
-                    "due": dtstart + self._duration,
-                    "recurrence_id": recurrence_id,
-                },
-            )
+            updates = {
+                "dtstart": dtstart,
+                "recurrence_id": recurrence_id,
+            }
+            if self._todo.due and self._duration:
+                updates["due"] = dtstart + self._duration
+            return self._todo.copy(update=updates)
 
         return LazySortableItem(dtstart, build)
 
