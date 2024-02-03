@@ -77,22 +77,6 @@ def _todos_by_uid(todos: list[Todo]) -> dict[str, list[Todo]]:
     return todos_by_uid
 
 
-def _todo_iterable(
-    iterable: list[Todo], tzinfo: datetime.tzinfo
-) -> Iterable[SortableItem[datetime.datetime | datetime.date | None, Todo]]:
-    """Create a sorted iterable from the list of events."""
-
-    def sortable_items() -> (
-        Generator[SortableItem[datetime.datetime | datetime.date | None, Todo], None, None]
-    ):
-        for todo in iterable:
-            if todo.recurring:
-                continue
-            yield SortableItemValue(todo.due, todo)
-
-    return SortedItemIterable(sortable_items, tzinfo)
-
-
 def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
     """Pick a todo to return in a list from a list of recurring todos.
 
@@ -101,14 +85,13 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
     edited instance of a recurring todo has a recurrence-id that is
     different from the original todo. This function will return the
     next todo that is incomplete and has the latest due date.
-
-
     """
     # For a recurring todo, the dtstart is after the last due date. Therefore
-    # we can stort items by dtstart and pick the last one that hasn't happened
-    iters = [_todo_iterable(todos, tzinfo=tzinfo)]
+    # we can stort items by dtstart and pick the last one that hasn't happened    
+    iters = []
     for todo in todos:
         if not (recur := todo.as_rrule()):
+            iters.append([SortableItemValue(todo.dtstart, todo)])
             continue
         iters.append(RecurIterable(RecurAdapter(todo, tzinfo=tzinfo).get, recur))
 
@@ -120,6 +103,8 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
 
     it = iter(root_iter)
     last = next(it, None)
+    if not last:
+        raise ValueError("Expected at least one item in the iterable")
     while cur := next(it, None):
         if cur.item.start_datetime is None or cur.item.start_datetime > now:
             break

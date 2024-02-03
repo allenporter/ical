@@ -229,7 +229,7 @@ class Todo(ComponentModel):
 
         This is only valid for events where `recurring` is True.
         """
-        if not (self.rrule or self.rdate) or not self.start:
+        if not (self.rrule or self.rdate) or not self.computed_duration:
             return None
         return RulesetIterable(
             self.start,
