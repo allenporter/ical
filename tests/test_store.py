@@ -1497,12 +1497,13 @@ def test_recurring_item(
 ) -> None:
     """Test a basic recurring item."""
 
-    frozen_time.move_to("2024-01-10T10:00:05")
+    frozen_time.move_to("2024-01-09T10:00:05")
 
     # Create a recurring to-do item
     todo_store.add(
         Todo(
             summary="Walk dog",
+            dtstart="2024-01-09",
             due="2024-01-10",
             status="NEEDS-ACTION",
             rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
@@ -1511,18 +1512,18 @@ def test_recurring_item(
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
         {
             "uid": "mock-uid-1",
-            "recurrence_id": "XX",
+            "recurrence_id": "20240109",
             "due": "2024-01-10",
             "summary": "Walk dog",
             "status": TodoStatus.NEEDS_ACTION,
         },
     ]
-    # Mark as completed
+    # Mark the entire series as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
         {
             "uid": "mock-uid-1",
-            "recurrence_id": "XX",
+            "recurrence_id": "20240109",
             "due": "2024-01-10",
             "summary": "Walk dog",
             "status": TodoStatus.COMPLETED,
@@ -1530,16 +1531,15 @@ def test_recurring_item(
     ]
 
     # Advance to the next day.
-    frozen_time.move_to("2024-01-11T10:00:00")
+    frozen_time.move_to("2024-01-10T10:00:00")
 
-    # A new "NEEDS-ACTION" task appears on the list
+    # All instances are completed
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
         {
             "uid": "mock-uid-1",
-            "recurrence_id": "XX",
+            "recurrence_id": "20240110",
             "due": "2024-01-11",
             "summary": "Walk dog",
-            "status": TodoStatus.NEEDS_ACTION,
-            "sequence": 0,
+            "status": TodoStatus.COMPLETED,
         },
     ]
