@@ -17,12 +17,12 @@ from .iter import (
     RecurIterable,
     SortableItem,
     SortableItemValue,
-    SortedItemIterable,
 )
 from .types.recur import RecurrenceId
 
 
 _LOGGER = logging.getLogger(__name__)
+_SortableTodoItem = SortableItem[datetime.datetime | datetime.date | None, Todo]
 
 
 class RecurAdapter:
@@ -41,9 +41,7 @@ class RecurAdapter:
         self._duration = todo.computed_duration
         self._tzinfo = tzinfo
 
-    def get(
-        self, dtstart: datetime.datetime | datetime.date
-    ) -> SortableItem[datetime.datetime | datetime.date | None, Todo]:
+    def get(self, dtstart: datetime.datetime | datetime.date) -> _SortableTodoItem:
         """Return a lazy sortable item."""
 
         recur_id_dt = dtstart
@@ -87,8 +85,8 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
     next todo that is incomplete and has the latest due date.
     """
     # For a recurring todo, the dtstart is after the last due date. Therefore
-    # we can stort items by dtstart and pick the last one that hasn't happened    
-    iters = []
+    # we can stort items by dtstart and pick the last one that hasn't happened
+    iters: list[Iterable[_SortableTodoItem]] = []
     for todo in todos:
         if not (recur := todo.as_rrule()):
             iters.append([SortableItemValue(todo.dtstart, todo)])
@@ -96,11 +94,9 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
         iters.append(RecurIterable(RecurAdapter(todo, tzinfo=tzinfo).get, recur))
 
     root_iter = MergedIterable(iters)
-    
+
     # Pick the first todo that hasn't started yet based on its dtstart
     now = datetime.datetime.now(tzinfo)
-    last: Todo | None = None
-
     it = iter(root_iter)
     last = next(it, None)
     if not last:

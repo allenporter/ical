@@ -14,6 +14,7 @@ except ImportError:
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
+from .exceptions import CalendarParseError
 from .iter import RulesetIterable
 from .parsing.property import ParsedProperty
 from .types import (
@@ -229,8 +230,12 @@ class Todo(ComponentModel):
 
         This is only valid for events where `recurring` is True.
         """
-        if not (self.rrule or self.rdate) or not self.computed_duration:
+        if not self.rrule and not self.rdate:
             return None
+        if not self.start:
+            raise CalendarParseError("Event must have a start date to be recurring")
+        if not self.due:
+            raise CalendarParseError("Event must have a due date to be recurring")
         return RulesetIterable(
             self.start,
             [self.rrule.as_rrule(self.start)] if self.rrule else [],
@@ -247,7 +252,7 @@ class Todo(ComponentModel):
 
     @root_validator
     def validate_duration_requires_start(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate that only one of duration or end date may be set."""
+        """Validate that a duration requires the dtstart."""
         if values.get("duration") and not values.get("dtstart"):
             raise ValueError("Duration requires that dtstart is specified")
         return values

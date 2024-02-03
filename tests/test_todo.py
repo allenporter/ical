@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import datetime
 import zoneinfo
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
+from ical.types.recur import Recur
 
 
 def test_empty() -> None:
@@ -53,3 +55,35 @@ def test_duration() -> None:
         "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
     ):
         assert todo.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
+
+
+@pytest.mark.parametrize(
+    ("params"),
+    [
+        ({}),
+        (
+            {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "duration": datetime.timedelta(hours=1),
+            }
+        ),
+    ],
+)
+def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
+    """Test that a Todo with an rrule requires a dtstart."""
+    with pytest.raises(CalendarParseError):
+        event = Todo(
+            summary="Event 1",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=WE,MO,TU,TH,FR;COUNT=3"),
+            **params,
+        )
+        event.as_rrule()
