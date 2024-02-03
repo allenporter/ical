@@ -48,19 +48,19 @@ def _lookup_by_uid(uid: str, items: Iterable[_T]) -> tuple[int | None, _T | None
     return None, None
 
 
-def _ensure_timezone(item: _ItemType, timezones: list[Timezone]) -> Timezone | None:
+def _ensure_timezone(dtstart: datetime.datetime | datetime.date | None, timezones: list[Timezone]) -> Timezone | None:
     """Create a timezone object for the specified date if it does not already exist."""
     if (
-        not isinstance(item.dtstart, datetime.datetime)
-        or not item.dtstart.utcoffset()
-        or not item.dtstart.tzinfo
+        not isinstance(dtstart, datetime.datetime)
+        or not dtstart.utcoffset()
+        or not dtstart.tzinfo
     ):
         return None
 
     # Verify this timezone does not already exist. The number of timezones
     # in a calendar is typically very small so iterate over the whole thing
     # to avoid any synchronization/cache issues.
-    key = str(item.dtstart.tzinfo)
+    key = str(dtstart.tzinfo)
     for timezone in timezones:
         if timezone.tz_id == key:
             return None
@@ -71,6 +71,14 @@ def _ensure_timezone(item: _ItemType, timezones: list[Timezone]) -> Timezone | N
         raise EventStoreError(
             "No timezone information available for event: {key}"
         ) from err
+
+
+def _ensure_calendar_timezone(dtstart: datetime.datetime | datetime.date | None, calendar: Calendar) -> None:
+    """Ensure the calendar has the necessary timezone for the specified item."""
+    if (
+        new_timezone := _ensure_timezone(dtstart, calendar.timezones)
+    ) is not None:
+        calendar.timezones.append(new_timezone)
 
 
 def _prepare_update(
@@ -213,10 +221,7 @@ class EventStore:
                 )
 
         _LOGGER.debug("Adding event: %s", new_event)
-        if (
-            new_timezone := _ensure_timezone(event, self._calendar.timezones)
-        ) is not None:
-            self._calendar.timezones.append(new_timezone)
+        _ensure_calendar_timezone(event.dtstart, self._calendar)
         self._calendar.events.append(new_event)
         return new_event
 
@@ -365,10 +370,7 @@ class EventStore:
                     f"Unsupported relationship type {relation.reltype}"
                 )
 
-        if (
-            new_timezone := _ensure_timezone(event, self._calendar.timezones)
-        ) is not None:
-            self._calendar.timezones.append(new_timezone)
+        _ensure_calendar_timezone(event.dtstart, self._calendar)
 
         # Editing a single instance of a recurring event is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
@@ -409,10 +411,7 @@ class TodoStore:
                 )
 
         _LOGGER.debug("Adding todo: %s", new_todo)
-        if (
-            new_timezone := _ensure_timezone(todo, self._calendar.timezones)
-        ) is not None:
-            self._calendar.timezones.append(new_timezone)
+        _ensure_calendar_timezone(todo.dtstart, self._calendar)
         self._calendar.todos.append(new_todo)
         return new_todo
 
@@ -462,10 +461,6 @@ class TodoStore:
                     f"Unsupported relationship type {relation.reltype}"
                 )
 
-        if (
-            new_timezone := _ensure_timezone(todo, self._calendar.timezones)
-        ) is not None:
-            self._calendar.timezones.append(new_timezone)
-
+        _ensure_calendar_timezone(todo.dtstart, self._calendar)
         self._calendar.todos.pop(store_index)
         self._calendar.todos.insert(store_index, new_todo)

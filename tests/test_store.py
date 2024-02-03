@@ -635,6 +635,41 @@ def test_edit_recurring_event_instance(
     ]
 
 
+def test_edit_recurring_with_same_rrule(
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test that changing the rrule to the same value is a no-op."""
+    store.add(
+        Event(
+            summary="Monday meeting",
+            start="2022-08-29T09:00:00",
+            end="2022-08-29T09:30:00",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),
+        )
+    )
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+    store.edit(
+        "mock-uid-1",
+        Event(start="2022-08-30T09:00:00", summary="Tuesday meeting", rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),),
+    )
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220830T090000",
+            "dtstart": "2022-08-30T09:00:00",
+            "summary": "Tuesday meeting",
+        },
+        {
+            "uid": "mock-uid-1",
+            "recurrence_id": "20220906T090000",
+            "dtstart": "2022-09-06T09:00:00",
+            "summary": "Tuesday meeting",
+        },
+    ]
+
+
 def test_cant_change_recurrence_for_event_instance(
     store: EventStore,
     frozen_time: FrozenDateTimeFactory,
