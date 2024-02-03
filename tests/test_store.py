@@ -1359,6 +1359,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Monday meeting",
+            dtstart=datetime.datetime(2022, 8, 29, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
             due=datetime.datetime(
                 2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1371,6 +1372,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Tuesday meeting",
+            dtstart=datetime.datetime(2022, 8, 30, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
             due=datetime.datetime(
                 2022, 8, 30, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1382,6 +1384,7 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Wednesday meeting",
+            dtstart=datetime.datetime(2022, 8, 31, 11, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/New_York")),
             due=datetime.datetime(
                 2022, 8, 31, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
             ),
@@ -1401,6 +1404,7 @@ def test_todo_timezone_offset_not_supported(
     tzinfo = datetime.timezone(offset=offset)
     event = Todo(
         summary="Monday meeting",
+        dtstart=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
         due=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
     )
     with pytest.raises(StoreError, match=r"No timezone information"):
