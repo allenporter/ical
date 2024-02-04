@@ -7,7 +7,6 @@ import re
 
 import pytest
 from syrupy import SnapshotAssertion
-import yaml
 
 from ical.tzif.tzif import read_tzif
 
@@ -15,7 +14,7 @@ RFC_LINE = re.compile(r"\|(?:[0-9]|\s)+\| (.*?)\s+\| .+ \| .+ \|")
 
 TESTDATA_PATH = pathlib.Path("tests/tzif/testdata/")
 TESTDATA_FILES = list(TESTDATA_PATH.glob("*.txt"))
-TESTDATA_IDS = [ x.stem for x in TESTDATA_FILES ]
+TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 
 
 def rfc_to_binary(rfc_text: str) -> bytes:
