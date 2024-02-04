@@ -34,13 +34,12 @@ def test_encode_contentlines(filename: pathlib.Path, snapshot: SnapshotAssertion
 
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_parse_contentlines_benchmark(
-    filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder, benchmark: Any
+    filename: pathlib.Path, json_encoder: json.JSONEncoder, benchmark: Any
 ) -> None:
     """Benchmark to measure the speed of parsing."""
 
     def parse() -> None:
         values = parse_content(filename.read_text())
-        values = json.loads(json_encoder.encode(values))
-        assert values == snapshot
+        json.loads(json_encoder.encode(values))
 
     benchmark(parse)
