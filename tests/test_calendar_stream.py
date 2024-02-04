@@ -4,15 +4,18 @@ from collections.abc import Generator
 import itertools
 import json
 import textwrap
+import pathlib
 
 import pytest
-from pytest_golden.plugin import GoldenTestFixture
+from syrupy import SnapshotAssertion
 
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 
 MAX_ITERATIONS = 30
-
+TESTDATA_PATH = pathlib.Path("tests/testdata/")
+TESTDATA_FILES = list(TESTDATA_PATH.glob("*.ics"))
+TESTDATA_IDS = [ x.stem for x in TESTDATA_FILES ]
 
 def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
     """Test serialization of an empty ics file."""
@@ -39,14 +42,14 @@ def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
     )
 
 
-@pytest.mark.golden_test("testdata/*.yaml")
-def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> None:
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_parse(filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder) -> None:
     """Fixture to read golden file and compare to golden output."""
-    cal = CalendarStream.from_ics(golden["input"])
+    cal = CalendarStream.from_ics(filename.read_text())
     data = json.loads(
         cal.json(exclude_unset=True, exclude_none=True, encoder=json_encoder.default)
     )
-    assert data == golden.out["output"]
+    assert snapshot == data
 
     # Re-parse the data object to verify we get the original data values
     # back. This effectively confirms that all fields can be parsed from the
@@ -60,17 +63,19 @@ def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> Non
     assert data_reparsed == data
 
 
-@pytest.mark.golden_test("testdata/*.yaml")
-def test_serialize(golden: GoldenTestFixture) -> None:
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_serialize(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Fixture to read golden file and compare to golden output."""
-    cal = IcsCalendarStream.from_ics(golden["input"])
-    assert cal.ics() == golden.get("encoded", golden["input"])
+    with filename.open() as f:
+        cal = IcsCalendarStream.from_ics(f.read())
+    assert cal.ics() == snapshot
 
 
-@pytest.mark.golden_test("testdata/*.yaml")
-def test_iteration(golden: GoldenTestFixture) -> None:
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_iteration(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Fixture to ensure all calendar events are valid and support iteration."""
-    cal = IcsCalendarStream.from_ics(golden["input"])
+    with filename.open() as f:
+        cal = IcsCalendarStream.from_ics(f.read())
     for calendar in cal.calendars:
         # Iterate over the timeline to ensure events are valid. There is a max
         # to handle recurring events that may repeat forever.

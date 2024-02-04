@@ -1,0 +1,4 @@
+BEGIN:VEVENT
+DESCRIPTION;ALTREP="cid:part1.0001@example.org":The Fall'98 Wild
+  Wizards Conference - - Las Vegas\, NV\, USA
+END:VEVENT

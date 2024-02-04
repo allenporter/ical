@@ -1,36 +1,10 @@
 """Tests for diagnostics."""
 
-import yaml
+import pathlib
 import pytest
 
 from ical.diagnostics import redact_ics
-
-
-DATETIME_TIMEZONE = """BEGIN:VCALENDAR
-PRODID:-//hacksw/handcal//NONSGML v1.0//EN
-VERSION:***
-BEGIN:VEVENT
-DTSTAMP:19970610T172345Z
-UID:***
-DTSTART;TZID=America/New_York:19970714T133000
-DTEND;TZID=America/New_York:19970714T140000
-SUMMARY:***
-END:VEVENT
-END:VCALENDAR"""
-
-DESCRIPTION_ALTREP = """BEGIN:VCALENDAR
-PRODID:-//hacksw/handcal//NONSGML v1.0//EN
-VERSION:***
-BEGIN:VEVENT
-DTSTAMP:19970610T172345Z
-UID:***
-DTSTART:19970714T170000Z
-DTEND:19970715T040000Z
-SUMMARY:***
-DESCRIPTION:***
-***
-END:VEVENT
-END:VCALENDAR"""
+from syrupy import SnapshotAssertion
 
 
 def test_empty() -> None:
@@ -40,17 +14,14 @@ def test_empty() -> None:
 
 
 @pytest.mark.parametrize(
-    ("filename", "output"),
+    ("filename"),
     [
-        ("tests/testdata/datetime_timezone.yaml", DATETIME_TIMEZONE),
-        ("tests/testdata/description_altrep.yaml", DESCRIPTION_ALTREP),
+        ("tests/testdata/datetime_timezone.ics"),
+        ("tests/testdata/description_altrep.ics"),
     ],
     ids=("datetime_timezone", "description_altrep"),
 )
-def test_redact_date_timezone(filename: str, output: str) -> None:
+def test_redact_date_timezone(filename: str, snapshot: SnapshotAssertion) -> None:
     """Test redaction of an empty ics file."""
-
-    with open(filename) as f:
-        doc = yaml.load(f, Loader=yaml.CLoader)
-    ics = doc["input"]
-    assert "\n".join(list(redact_ics(ics))) == output
+    ics = pathlib.Path(filename).read_text()
+    assert "\n".join(list(redact_ics(ics))) == snapshot

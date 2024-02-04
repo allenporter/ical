@@ -1,0 +1,186 @@
+# serializer version: 1
+# name: test_parse[rfc8536-v1]
+  dict({
+    'leap_seconds': list([
+      list([
+        78796800,
+        1,
+      ]),
+      list([
+        94694401,
+        2,
+      ]),
+      list([
+        126230402,
+        3,
+      ]),
+      list([
+        157766403,
+        4,
+      ]),
+      list([
+        189302404,
+        5,
+      ]),
+      list([
+        220924805,
+        6,
+      ]),
+      list([
+        252460806,
+        7,
+      ]),
+      list([
+        283996807,
+        8,
+      ]),
+      list([
+        315532808,
+        9,
+      ]),
+      list([
+        362793609,
+        10,
+      ]),
+      list([
+        394329610,
+        11,
+      ]),
+      list([
+        425865611,
+        12,
+      ]),
+      list([
+        489024012,
+        13,
+      ]),
+      list([
+        567993613,
+        14,
+      ]),
+      list([
+        631152014,
+        15,
+      ]),
+      list([
+        662688015,
+        16,
+      ]),
+      list([
+        709948816,
+        17,
+      ]),
+      list([
+        741484817,
+        18,
+      ]),
+      list([
+        773020818,
+        19,
+      ]),
+      list([
+        820454419,
+        20,
+      ]),
+      list([
+        867715220,
+        21,
+      ]),
+      list([
+        915148821,
+        22,
+      ]),
+      list([
+        1136073622,
+        23,
+      ]),
+      list([
+        1230768023,
+        24,
+      ]),
+      list([
+        1341100824,
+        25,
+      ]),
+      list([
+        1435708825,
+        26,
+      ]),
+      list([
+        1483228826,
+        27,
+      ]),
+    ]),
+  })
+# ---
+# name: test_parse[rfc8536-v2]
+  dict({
+    'rule': dict({
+      'dst': None,
+      'dst_end': None,
+      'dst_start': None,
+      'std': dict({
+        'name': 'HST',
+        'offset': -36000.0,
+      }),
+    }),
+    'transitions': list([
+      dict({
+        'designation': 'HST',
+        'dst': False,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -2334101314,
+        'utoff': -37800,
+      }),
+      dict({
+        'designation': 'HDT',
+        'dst': True,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -1157283000,
+        'utoff': -34200,
+      }),
+      dict({
+        'designation': 'HST',
+        'dst': False,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -1155436200,
+        'utoff': -37800,
+      }),
+      dict({
+        'designation': 'HWT',
+        'dst': True,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -880198200,
+        'utoff': -34200,
+      }),
+      dict({
+        'designation': 'HPT',
+        'dst': True,
+        'isstdcnt': True,
+        'isutccnt': True,
+        'transition_time': -769395600,
+        'utoff': -34200,
+      }),
+      dict({
+        'designation': 'HST',
+        'dst': False,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -765376200,
+        'utoff': -37800,
+      }),
+      dict({
+        'designation': 'HST',
+        'dst': False,
+        'isstdcnt': False,
+        'isutccnt': False,
+        'transition_time': -712150200,
+        'utoff': -36000,
+      }),
+    ]),
+  })
+# ---

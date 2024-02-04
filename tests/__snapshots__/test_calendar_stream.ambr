@@ -1,0 +1,1853 @@
+# serializer version: 1
+# name: test_parse[datetime_local]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '1998-01-18T23:30:00',
+            'dtstamp': '1998-01-15T11:05:00',
+            'dtstart': '1998-01-18T23:00:00',
+            'summary': 'Bastille Day Party',
+            'uid': '19970610T172345Z-AF23B2@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[datetime_timezone]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '1997-07-14T14:00:00-04:00',
+            'dtstamp': '1997-06-10T17:23:45+00:00',
+            'dtstart': '1997-07-14T13:30:00-04:00',
+            'summary': 'Mid July check-in',
+            'uid': '19970610T172345Z-AF23B2@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[datetime_utc]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '1997-07-15T04:00:00+00:00',
+            'dtstamp': '1997-06-10T17:23:45+00:00',
+            'dtstart': '1997-07-14T17:00:00+00:00',
+            'summary': 'Bastille Day Party',
+            'uid': '19970610T172345Z-AF23B2@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[datetime_vtimezone]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2023-03-13T01:12:26',
+            'dtend': '2023-03-12T19:12:10-07:00',
+            'dtstamp': '2023-03-13T01:12:26',
+            'dtstart': '2023-03-12T18:12:10-07:00',
+            'sequence': 0,
+            'summary': 'Event 1',
+            'uid': '1e19f31b-c13c-11ed-8431-066a07ffbaf5',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'timezones': list([
+          dict({
+            'daylight': list([
+              dict({
+                'dtstart': '2010-03-14T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    3,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 2,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'PDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -28800.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -25200.0,
+                }),
+              }),
+            ]),
+            'dtstamp': '2023-03-13T01:12:29',
+            'standard': list([
+              dict({
+                'dtstart': '2010-11-07T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    11,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'PST',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -25200.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -28800.0,
+                }),
+              }),
+            ]),
+            'tz_id': 'America/Example',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[description_altrep]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'description': "The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA",
+            'dtend': '1997-07-15T04:00:00+00:00',
+            'dtstamp': '1997-06-10T17:23:45+00:00',
+            'dtstart': '1997-07-14T17:00:00+00:00',
+            'summary': 'Conference',
+            'uid': '19970610T172345Z-AF23B2@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[empty]
+  dict({
+    'calendars': list([
+    ]),
+  })
+# ---
+# name: test_parse[event_all_day]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2007-07-09',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28',
+            'summary': 'Festival International de Jazz de Montreal',
+            'transparency': 'TRANSPARENT',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_attendee]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'attendees': list([
+              dict({
+                'member': list([
+                  'mailto:DEV-GROUP@example.com',
+                ]),
+                'uri': 'mailto:joecool@example.com',
+              }),
+              dict({
+                'delegator': list([
+                  'mailto:immud@example.com',
+                ]),
+                'uri': 'mailto:ildoit@example.com',
+              }),
+            ]),
+            'dtend': '2007-07-09',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28',
+            'organizer': dict({
+              'common_name': 'John Smith',
+              'uri': 'mailto:jsmith@example.com',
+            }),
+            'request_status': dict({
+              'exdata': 'DTSTART:96-Apr-01',
+              'statcode': 3.1,
+              'statdesc': 'Invalid property value',
+            }),
+            'summary': 'Festival International de Jazz de Montreal',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_cal_address]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'attendees': list([
+              dict({
+                'uri': 'mailto:ietf-calsch@example.org',
+                'user_type': 'GROUP',
+              }),
+              dict({
+                'delegator': list([
+                  'mailto:jsmith@example.com',
+                ]),
+                'uri': 'mailto:jdoe@example.com',
+              }),
+              dict({
+                'delegate': list([
+                  'mailto:jdoe@example.com',
+                  'mailto:jqpublic@example.com',
+                ]),
+                'uri': 'mailto:jsmith@example.com',
+              }),
+              dict({
+                'member': list([
+                  'mailto:ietf-calsch@example.org',
+                ]),
+                'uri': 'mailto:jsmith@example.com',
+              }),
+              dict({
+                'member': list([
+                  'mailto:projectA@example.com',
+                  'mailto:projectB@example.com',
+                ]),
+                'uri': 'mailto:janedoe@example.com',
+              }),
+              dict({
+                'status': 'DECLINED',
+                'uri': 'mailto:jsmith@example.com',
+              }),
+              dict({
+                'role': 'CHAIR',
+                'uri': 'mailto:mrbig@example.com',
+              }),
+              dict({
+                'rsvp': True,
+                'uri': 'mailto:jsmith@example.com',
+              }),
+              dict({
+                'sent_by': 'mailto:sray@example.com',
+                'uri': 'mailto:jsmith@example.com',
+              }),
+            ]),
+            'dtend': '2007-07-09',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28',
+            'organizer': dict({
+              'directory_entry': 'ldap://example.com:6666/o=ABC%20Industries,c=US???(cn=Jim%20Dolittle)',
+              'uri': 'mailto:jimdo@example.com',
+            }),
+            'summary': 'Festival International de Jazz de Montreal',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_multi_day]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'categories': list([
+              'CONFERENCE',
+            ]),
+            'description': '''
+              Networld+Interop Conference and Exhibit
+              Atlanta World Congress Center
+              Atlanta, Georgia
+            ''',
+            'dtend': '1996-09-20T22:00:00+00:00',
+            'dtstamp': '1996-07-04T12:00:00+00:00',
+            'dtstart': '1996-09-18T14:30:00+00:00',
+            'organizer': dict({
+              'uri': 'mailto:jsmith@example.com',
+            }),
+            'status': 'CONFIRMED',
+            'summary': 'Networld+Interop Conference',
+            'uid': 'uid1@example.com',
+          }),
+        ]),
+        'prodid': '-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_priority]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2007-05-14T11:30:00+00:00',
+            'dtstamp': '2007-05-14T10:32:11+00:00',
+            'dtstart': '2007-05-14T11:00:00+00:00',
+            'priority': 1,
+            'summary': 'Client meeting',
+            'uid': '20070514T103211Z-123404@example.com',
+          }),
+        ]),
+        'prodid': '-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_properties]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'classification': 'PRIVATE',
+            'comment': list([
+              "The meeting really needs to include both ourselves and the customer. We can't hold this meeting without them. As a matter of fact, the venue for the meeting ought to be at their site. - - John",
+            ]),
+            'description': '''
+              Meeting to provide technical review for "Phoenix" design.
+              Happy Face Conference Room. Phoenix design team MUST attend this meeting.
+              RSVP to team leader.
+            ''',
+            'dtend': '2007-06-28T10:00:00',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28T09:00:00',
+            'geo': dict({
+              'lat': 37.386013,
+              'lng': -122.082932,
+            }),
+            'location': 'Conference Room - F123, Bldg. 002',
+            'summary': 'Customer Meeting',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_resources]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2007-06-28T10:00:00',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28T09:00:00',
+            'request_status': dict({
+              'statcode': 2.0,
+              'statdesc': 'Success',
+            }),
+            'resources': list([
+              'EASEL',
+              'PROJECTOR',
+              'VCR',
+              'Nettoyeur haute pression',
+            ]),
+            'summary': 'Customer Meeting',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[event_uri]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'contacts': list([
+              'Jim Dolittle, ABC Industries, +1-919-555-1234',
+            ]),
+            'dtend': '1998-04-10T14:17:11+00:00',
+            'dtstamp': '1998-03-13T06:00:00+00:00',
+            'dtstart': '1998-03-13T14:17:11+00:00',
+            'organizer': dict({
+              'uri': 'mailto:jsmith@example.com',
+            }),
+            'uid': '19970610T172345Z-AF23B2@example.com',
+            'url': 'http://www.example.com/calendar/busytime/jsmith.ifb',
+          }),
+        ]),
+        'prodid': '-//RDU Software//NONSGML HandCal//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[freebusy]
+  dict({
+    'calendars': list([
+      dict({
+        'freebusy': list([
+          dict({
+            'dtend': '1998-04-10T14:17:11+00:00',
+            'dtstamp': '1997-06-10T17:23:45+00:00',
+            'dtstart': '1998-03-13T14:17:11+00:00',
+            'freebusy': list([
+              dict({
+                'end': '1998-03-15T00:30:00+00:00',
+                'start': '1998-03-14T23:30:00+00:00',
+              }),
+              dict({
+                'end': '1998-03-16T16:30:00+00:00',
+                'start': '1998-03-16T15:30:00+00:00',
+              }),
+              dict({
+                'end': '1998-03-18T04:00:00+00:00',
+                'start': '1998-03-18T03:00:00+00:00',
+              }),
+            ]),
+            'organizer': dict({
+              'uri': 'mailto:jsmith@example.com',
+            }),
+            'uid': '19970610T172345Z-AF23B2@example.com',
+            'url': 'http://www.example.com/calendar/busytime/jsmith.ifb',
+          }),
+          dict({
+            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'freebusy': list([
+              dict({
+                'duration': 30600.0,
+                'free_busy_type': 'BUSY-UNAVAILABLE',
+                'start': '1997-03-08T16:00:00+00:00',
+              }),
+              dict({
+                'duration': 10800.0,
+                'free_busy_type': 'FREE',
+                'start': '1997-03-08T16:00:00+00:00',
+              }),
+              dict({
+                'duration': 3600.0,
+                'free_busy_type': 'FREE',
+                'start': '1997-03-08T20:00:00+00:00',
+              }),
+              dict({
+                'duration': 10800.0,
+                'free_busy_type': 'FREE',
+                'start': '1997-03-08T16:00:00+00:00',
+              }),
+              dict({
+                'duration': 3600.0,
+                'free_busy_type': 'FREE',
+                'start': '1997-03-08T20:00:00+00:00',
+              }),
+              dict({
+                'end': '1997-03-09T00:00:00+00:00',
+                'free_busy_type': 'FREE',
+                'start': '1997-03-08T23:00:00+00:00',
+              }),
+            ]),
+            'uid': '19970901T130000Z-123401@example.com',
+          }),
+        ]),
+        'prodid': '-//RDU Software//NONSGML HandCal//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[iana_property_boolean]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '1996-09-20T22:00:00+00:00',
+            'dtstamp': '1996-07-04T12:00:00+00:00',
+            'dtstart': '1996-09-18T14:30:00+00:00',
+            'extras': list([
+              dict({
+                'name': 'dresscode',
+                'value': 'CASUAL',
+              }),
+              dict({
+                'name': 'non-smoking',
+                'params': list([
+                  dict({
+                    'name': 'VALUE',
+                    'values': list([
+                      'BOOLEAN',
+                    ]),
+                  }),
+                ]),
+                'value': 'TRUE',
+              }),
+            ]),
+            'summary': 'Event Summary',
+            'uid': 'uid1@example.com',
+          }),
+        ]),
+        'prodid': '-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[journal_entry]
+  dict({
+    'calendars': list([
+      dict({
+        'journal': list([
+          dict({
+            'description': '''
+              1. Staff meeting: Participants include Joe, Lisa, and Bob. Aurora project plans were reviewed. There is currently no budget reserves for this project. Lisa will escalate to management. Next meeting on Tuesday.
+              2. Telephone Conference: ABC Corp. sales representative called to discuss new printer. Promised to get us a demo by Friday.
+              3. Henry Miller (Handsoff Insurance): Car was totaled by tree. Is looking into a loaner car. 555-2323 (tel).
+            ''',
+            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstart': '1997-03-17',
+            'summary': 'Staff meeting minutes',
+            'uid': '19970901T130000Z-123405@example.com',
+          }),
+        ]),
+        'prodid': '-//ABC Corporation//NONSGML My Product//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[journal_properties]
+  dict({
+    'calendars': list([
+      dict({
+        'journal': list([
+          dict({
+            'classification': 'PUBLIC',
+            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstart': '1997-03-17',
+            'status': 'FINAL',
+            'summary': 'Staff meeting minutes',
+            'uid': '19970901T130000Z-123405@example.com',
+          }),
+        ]),
+        'prodid': '-//ABC Corporation//NONSGML My Product//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[related_to]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'todos': list([
+          dict({
+            'categories': list([
+              'FAMILY',
+              'FINANCE',
+            ]),
+            'classification': 'CONFIDENTIAL',
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'due': '2007-05-01',
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Quebec Income Tax Return for 2006',
+            'uid': '20070313T123432Z-456553@example.com',
+          }),
+          dict({
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'related_to': list([
+              dict({
+                'reltype': 'PARENT',
+                'uid': '20070313T123432Z-456553@example.com',
+              }),
+            ]),
+            'status': 'NEEDS-ACTION',
+            'summary': 'Buy pens',
+            'uid': '20070313T123432Z-456554@example.com',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[related_to_default]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'todos': list([
+          dict({
+            'categories': list([
+              'FAMILY',
+              'FINANCE',
+            ]),
+            'classification': 'CONFIDENTIAL',
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'due': '2007-05-01',
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Quebec Income Tax Return for 2006',
+            'uid': '20070313T123432Z-456553@example.com',
+          }),
+          dict({
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'related_to': list([
+              dict({
+                'reltype': 'PARENT',
+                'uid': '20070313T123432Z-456553@example.com',
+              }),
+            ]),
+            'status': 'NEEDS-ACTION',
+            'summary': 'Buy pens',
+            'uid': '20070313T123432Z-456554@example.com',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-daily]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2022-07-31T19:02:07+00:00',
+            'description': '',
+            'dtend': '2022-08-02T09:30:00-07:00',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-02T09:00:00-07:00',
+            'last_modified': '2022-07-31T19:02:07+00:00',
+            'location': '',
+            'rrule': dict({
+              'freq': 'DAILY',
+            }),
+            'sequence': 0,
+            'status': 'CONFIRMED',
+            'summary': 'Morning Daily Exercise',
+            'transparency': 'OPAQUE',
+            'uid': '5gog4qp8rohrj69q63ddvbnbt5@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-date]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2022-07-31T19:02:07+00:00',
+            'description': '',
+            'dtend': '2022-08-03',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-02',
+            'last_modified': '2022-07-31T19:02:07+00:00',
+            'location': '',
+            'rrule': dict({
+              'freq': 'DAILY',
+              'until': '2022-09-04',
+            }),
+            'sequence': 0,
+            'status': 'CONFIRMED',
+            'summary': 'Daily Event',
+            'transparency': 'OPAQUE',
+            'uid': '5gog4qp8rohrj69q63ddvbnbt5@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-exdate-mismatch]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2023-12-24',
+            'dtstamp': '2023-12-10T16:34:27',
+            'dtstart': '2023-12-24',
+            'exdate': list([
+              '2023-12-23',
+              '2023-12-17',
+            ]),
+            'rrule': dict({
+              'by_weekday': list([
+                dict({
+                  'weekday': 'SU',
+                }),
+                dict({
+                  'weekday': 'SA',
+                }),
+              ]),
+              'freq': 'WEEKLY',
+            }),
+            'summary': 'Example date',
+            'uid': 'fc7a9b1e-9779-11ee-8e0d-6045bda9e0cd',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-exdate]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2022-08-02',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-01',
+            'exdate': list([
+              '2022-09-01',
+              '2022-10-01',
+              '2023-01-01',
+            ]),
+            'rrule': dict({
+              'by_month_day': list([
+                1,
+              ]),
+              'freq': 'MONTHLY',
+            }),
+            'summary': 'First of the month',
+            'uid': '2b83520vueebk0muv6osv1qci6@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-monthly]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2022-07-31T19:03:27+00:00',
+            'description': '',
+            'dtend': '2022-08-02',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-01',
+            'last_modified': '2022-07-31T19:03:39+00:00',
+            'location': '',
+            'recurrence_id': '20220901',
+            'rrule': dict({
+              'by_month_day': list([
+                1,
+              ]),
+              'freq': 'MONTHLY',
+            }),
+            'sequence': 0,
+            'status': 'CONFIRMED',
+            'summary': 'First of the month',
+            'transparency': 'TRANSPARENT',
+            'uid': '2b83520vueebk0muv6osv1qci6@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-until-mismatch]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2022-07-31T19:02:07+00:00',
+            'description': '',
+            'dtend': '2022-08-03',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-02',
+            'last_modified': '2022-07-31T19:02:07+00:00',
+            'location': '',
+            'rrule': dict({
+              'freq': 'DAILY',
+              'until': '2022-09-04',
+            }),
+            'sequence': 0,
+            'status': 'CONFIRMED',
+            'summary': 'Daily Event',
+            'transparency': 'OPAQUE',
+            'uid': '5gog4qp8rohrj69q63ddvbnbt5@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-weekly]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2022-07-31T19:02:40+00:00',
+            'description': '',
+            'dtend': '2022-08-05',
+            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstart': '2022-08-04',
+            'last_modified': '2022-07-31T19:02:51+00:00',
+            'location': '',
+            'rrule': dict({
+              'by_weekday': list([
+                dict({
+                  'weekday': 'TH',
+                }),
+              ]),
+              'freq': 'WEEKLY',
+            }),
+            'sequence': 0,
+            'status': 'CONFIRMED',
+            'summary': 'Weekly Trash Day',
+            'transparency': 'TRANSPARENT',
+            'uid': '41bqf3it4r8kgquptq22nhj3pt@google.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[rrule-yearly]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'categories': list([
+              'ANNIVERSARY',
+              'PERSONAL',
+              'SPECIAL OCCASION',
+            ]),
+            'classification': 'CONFIDENTIAL',
+            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstart': '1997-11-02',
+            'rrule': dict({
+              'freq': 'YEARLY',
+            }),
+            'summary': 'Our Blissful Anniversary',
+            'transparency': 'TRANSPARENT',
+            'uid': '19970901T130000Z-123403@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[timezone_ny]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//ABC Corporation//NONSGML My Product//EN',
+        'timezones': list([
+          dict({
+            'daylight': list([
+              dict({
+                'dtstart': '1967-04-30T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    4,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': -1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                  'until': '1973-04-29T07:00:00+00:00',
+                }),
+                'tz_name': list([
+                  'EDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -18000.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -14400.0,
+                }),
+              }),
+              dict({
+                'dtstart': '1974-01-06T02:00:00',
+                'rdate': list([
+                  '1975-02-23T02:00:00',
+                ]),
+                'tz_name': list([
+                  'EDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -18000.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -14400.0,
+                }),
+              }),
+              dict({
+                'dtstart': '1976-04-25T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    4,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': -1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                  'until': '1986-04-27T07:00:00+00:00',
+                }),
+                'tz_name': list([
+                  'EDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -18000.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -14400.0,
+                }),
+              }),
+              dict({
+                'dtstart': '1987-04-05T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    4,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                  'until': '2006-04-02T07:00:00+00:00',
+                }),
+                'tz_name': list([
+                  'EDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -18000.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -14400.0,
+                }),
+              }),
+              dict({
+                'dtstart': '2007-03-11T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    3,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 2,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'EDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -18000.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -14400.0,
+                }),
+              }),
+            ]),
+            'dtstamp': '2022-08-11T06:12:12',
+            'last_modified': '2005-08-09T05:00:00+00:00',
+            'standard': list([
+              dict({
+                'dtstart': '1967-10-29T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    10,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': -1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                  'until': '2006-10-29T06:00:00+00:00',
+                }),
+                'tz_name': list([
+                  'EST',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -14400.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -18000.0,
+                }),
+              }),
+              dict({
+                'dtstart': '2007-11-04T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    11,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'EST',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': -14400.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': -18000.0,
+                }),
+              }),
+            ]),
+            'tz_id': 'America/New_York',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[todo]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'todos': list([
+          dict({
+            'categories': list([
+              'FAMILY',
+              'FINANCE',
+            ]),
+            'classification': 'CONFIDENTIAL',
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'due': '2007-05-01',
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Quebec Income Tax Return for 2006',
+            'uid': '20070313T123432Z-456553@example.com',
+          }),
+          dict({
+            'completed': '2007-07-07T10:00:00+00:00',
+            'dtstamp': '2007-05-14T10:32:11+00:00',
+            'dtstart': '2007-05-14T11:00:00+00:00',
+            'due': '2007-07-09T13:00:00+00:00',
+            'priority': 1,
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Revised Internet-Draft',
+            'uid': '20070514T103211Z-123404@example.com',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[todo_valarm]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//ABC Corporation//NONSGML My Product//EN',
+        'todos': list([
+          dict({
+            'alarms': list([
+              dict({
+                'action': 'AUDIO',
+                'duration': 3600.0,
+                'extras': list([
+                  dict({
+                    'name': 'attach',
+                    'params': list([
+                      dict({
+                        'name': 'FMTTYPE',
+                        'values': list([
+                          'audio/basic',
+                        ]),
+                      }),
+                    ]),
+                    'value': 'http://example.com/pub/audio-files/ssbanner.aud',
+                  }),
+                ]),
+                'repeat': 4,
+                'trigger': '1998-04-03T12:00:00+00:00',
+              }),
+            ]),
+            'attendees': list([
+              dict({
+                'status': 'ACCEPTED',
+                'uri': 'mailto:jqpublic@example.com',
+              }),
+            ]),
+            'dtstamp': '1998-01-30T13:45:00+00:00',
+            'due': '1998-04-15T00:00:00',
+            'organizer': dict({
+              'uri': 'mailto:unclesam@example.com',
+            }),
+            'sequence': 2,
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Income Taxes',
+            'uid': 'uid4@example.com',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_serialize[datetime_local]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19980115T110500
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART:19980118T230000
+  DTEND:19980118T233000
+  SUMMARY:Bastille Day Party
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[datetime_timezone]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART;TZID=America/New_York:19970714T133000
+  DTEND;TZID=America/New_York:19970714T140000
+  SUMMARY:Mid July check-in
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[datetime_utc]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:Bastille Day Party
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[datetime_vtimezone]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20230313T011226
+  UID:1e19f31b-c13c-11ed-8431-066a07ffbaf5
+  DTSTART;TZID=America/Example:20230312T181210
+  DTEND;TZID=America/Example:20230312T191210
+  SUMMARY:Event 1
+  CREATED:20230313T011226
+  SEQUENCE:0
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  DTSTAMP:20230313T011229
+  TZID:America/Example
+  BEGIN:STANDARD
+  DTSTART:20101107T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:20100314T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:PDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[description_altrep]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:Conference
+  DESCRIPTION:The Fall'98 Wild Wizards Conference - - Las Vegas\, NV\, USA
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[empty]
+  ''
+# ---
+# name: test_serialize[event_all_day]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628
+  DTEND:20070709
+  SUMMARY:Festival International de Jazz de Montreal
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_attendee]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628
+  DTEND:20070709
+  SUMMARY:Festival International de Jazz de Montreal
+  ATTENDEE;MEMBER="mailto:DEV-GROUP@example.com":mailto:joecool@example.com
+  ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":mailto:ildoit@example.co
+   m
+  ORGANIZER;CN=John Smith:mailto:jsmith@example.com
+  REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_cal_address]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628
+  DTEND:20070709
+  SUMMARY:Festival International de Jazz de Montreal
+  ATTENDEE;CUTYPE=GROUP:mailto:ietf-calsch@example.org
+  ATTENDEE;DELEGATED-FROM="mailto:jsmith@example.com":mailto:jdoe@example.com
+  ATTENDEE;DELEGATED-TO="mailto:jdoe@example.com","mailto:jqpublic@example.co
+   m":mailto:jsmith@example.com
+  ATTENDEE;MEMBER="mailto:ietf-calsch@example.org":mailto:jsmith@example.com
+  ATTENDEE;MEMBER="mailto:projectA@example.com","mailto:projectB@example.com"
+   :mailto:janedoe@example.com
+  ATTENDEE;PARTSTAT=DECLINED:mailto:jsmith@example.com
+  ATTENDEE;ROLE=CHAIR:mailto:mrbig@example.com
+  ATTENDEE;RSVP=TRUE:mailto:jsmith@example.com
+  ATTENDEE;SENT-BY="mailto:sray@example.com":mailto:jsmith@example.com
+  ORGANIZER;DIR="ldap://example.com:6666/o=ABC%20Industries,c=US???(cn=Jim%20
+   Dolittle)":mailto:jimdo@example.com
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_multi_day]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19960704T120000Z
+  UID:uid1@example.com
+  DTSTART:19960918T143000Z
+  DTEND:19960920T220000Z
+  SUMMARY:Networld+Interop Conference
+  CATEGORIES:CONFERENCE
+  DESCRIPTION:Networld+Interop Conference and Exhibit\nAtlanta World Congress
+    Center\nAtlanta\, Georgia
+  ORGANIZER:mailto:jsmith@example.com
+  STATUS:CONFIRMED
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_priority]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070514T103211Z
+  UID:20070514T103211Z-123404@example.com
+  DTSTART:20070514T110000Z
+  DTEND:20070514T113000Z
+  SUMMARY:Client meeting
+  PRIORITY:1
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_properties]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628T090000
+  DTEND:20070628T100000
+  SUMMARY:Customer Meeting
+  CLASS:PRIVATE
+  COMMENT:The meeting really needs to include both ourselves and the 
+   customer. We can't hold this meeting without them. As a matter of fact\, 
+   the venue for the meeting ought to be at their site. - - John
+  DESCRIPTION:Meeting to provide technical review for "Phoenix" 
+   design.\nHappy Face Conference Room. Phoenix design team MUST attend this 
+   meeting.\nRSVP to team leader.
+  GEO:37.386013;-122.082932
+  LOCATION:Conference Room - F123\, Bldg. 002
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_resources]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628T090000
+  DTEND:20070628T100000
+  SUMMARY:Customer Meeting
+  RESOURCES:EASEL
+  RESOURCES:PROJECTOR
+  RESOURCES:VCR
+  RESOURCES:Nettoyeur haute pression
+  REQUEST-STATUS:2.0;Success
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[event_uri]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//RDU Software//NONSGML HandCal//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19980313T060000Z
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART:19980313T141711Z
+  DTEND:19980410T141711Z
+  CONTACT:Jim Dolittle\, ABC Industries\, +1-919-555-1234
+  ORGANIZER:mailto:jsmith@example.com
+  URL:http://www.example.com/calendar/busytime/jsmith.ifb
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[freebusy]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//RDU Software//NONSGML HandCal//EN
+  VERSION:2.0
+  BEGIN:VFREEBUSY
+  DTSTAMP:19970610T172345Z
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTART:19980313T141711Z
+  DTEND:19980410T141711Z
+  FREEBUSY:19980314T233000Z/19980315T003000Z
+  FREEBUSY:19980316T153000Z/19980316T163000Z
+  FREEBUSY:19980318T030000Z/19980318T040000Z
+  ORGANIZER:mailto:jsmith@example.com
+  URL:http://www.example.com/calendar/busytime/jsmith.ifb
+  END:VFREEBUSY
+  BEGIN:VFREEBUSY
+  DTSTAMP:19970901T130000Z
+  UID:19970901T130000Z-123401@example.com
+  FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:19970308T160000Z/PT8H30M
+  FREEBUSY;FBTYPE=FREE:19970308T160000Z/PT3H
+  FREEBUSY;FBTYPE=FREE:19970308T200000Z/PT1H
+  FREEBUSY;FBTYPE=FREE:19970308T160000Z/PT3H
+  FREEBUSY;FBTYPE=FREE:19970308T200000Z/PT1H
+  FREEBUSY;FBTYPE=FREE:19970308T230000Z/19970309T000000Z
+  END:VFREEBUSY
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[iana_property_boolean]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//xyz Corp//NONSGML PDA Calendar Version 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19960704T120000Z
+  UID:uid1@example.com
+  DTSTART:19960918T143000Z
+  DTEND:19960920T220000Z
+  SUMMARY:Event Summary
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[journal_entry]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VJOURNAL
+  DTSTAMP:19970901T130000Z
+  UID:19970901T130000Z-123405@example.com
+  DESCRIPTION:1. Staff meeting: Participants include Joe\, Lisa\, and Bob. 
+   Aurora project plans were reviewed. There is currently no budget reserves 
+   for this project. Lisa will escalate to management. Next meeting on 
+   Tuesday.\n2. Telephone Conference: ABC Corp. sales representative called 
+   to discuss new printer. Promised to get us a demo by Friday.\n3. Henry 
+   Miller (Handsoff Insurance): Car was totaled by tree. Is looking into a 
+   loaner car. 555-2323 (tel).
+  DTSTART:19970317
+  SUMMARY:Staff meeting minutes
+  END:VJOURNAL
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[journal_properties]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VJOURNAL
+  DTSTAMP:19970901T130000Z
+  UID:19970901T130000Z-123405@example.com
+  CLASS:PUBLIC
+  DTSTART:19970317
+  STATUS:FINAL
+  SUMMARY:Staff meeting minutes
+  END:VJOURNAL
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[related_to]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456553@example.com
+  CATEGORIES:FAMILY
+  CATEGORIES:FINANCE
+  CLASS:CONFIDENTIAL
+  DUE:20070501
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456554@example.com
+  RELATED-TO;RELTYPE=PARENT:20070313T123432Z-456553@example.com
+  STATUS:NEEDS-ACTION
+  SUMMARY:Buy pens
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[related_to_default]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456553@example.com
+  CATEGORIES:FAMILY
+  CATEGORIES:FINANCE
+  CLASS:CONFIDENTIAL
+  DUE:20070501
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456554@example.com
+  RELATED-TO;RELTYPE=PARENT:20070313T123432Z-456553@example.com
+  STATUS:NEEDS-ACTION
+  SUMMARY:Buy pens
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-daily]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  DTSTART;TZID=America/Los_Angeles:20220802T090000
+  DTEND;TZID=America/Los_Angeles:20220802T093000
+  SUMMARY:Morning Daily Exercise
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  RRULE:FREQ=DAILY
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-date]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  DTSTART:20220802
+  DTEND:20220803
+  SUMMARY:Daily Event
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  RRULE:FREQ=DAILY;UNTIL=20220904
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-exdate-mismatch]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20231210T163427
+  UID:fc7a9b1e-9779-11ee-8e0d-6045bda9e0cd
+  DTSTART:20231224
+  DTEND:20231224
+  SUMMARY:Example date
+  RRULE:FREQ=WEEKLY;BYDAY=SU,SA
+  EXDATE:20231223
+  EXDATE:20231217
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-exdate]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:2b83520vueebk0muv6osv1qci6@google.com
+  DTSTART:20220801
+  DTEND:20220802
+  SUMMARY:First of the month
+  RRULE:FREQ=MONTHLY;BYMONTHDAY=1
+  EXDATE:20220901
+  EXDATE:20221001
+  EXDATE:20230101
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-monthly]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:2b83520vueebk0muv6osv1qci6@google.com
+  DTSTART:20220801
+  DTEND:20220802
+  SUMMARY:First of the month
+  CREATED:20220731T190327Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190339Z
+  LOCATION:
+  RECURRENCE-ID:20220901
+  RRULE:FREQ=MONTHLY;BYMONTHDAY=1
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-until-mismatch]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:5gog4qp8rohrj69q63ddvbnbt5@google.com
+  DTSTART:20220802
+  DTEND:20220803
+  SUMMARY:Daily Event
+  CREATED:20220731T190207Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190207Z
+  LOCATION:
+  RRULE:FREQ=DAILY;UNTIL=20220904
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-weekly]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220731T190408Z
+  UID:41bqf3it4r8kgquptq22nhj3pt@google.com
+  DTSTART:20220804
+  DTEND:20220805
+  SUMMARY:Weekly Trash Day
+  CREATED:20220731T190240Z
+  DESCRIPTION:
+  LAST-MODIFIED:20220731T190251Z
+  LOCATION:
+  RRULE:FREQ=WEEKLY;BYDAY=TH
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-yearly]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19970901T130000Z
+  UID:19970901T130000Z-123403@example.com
+  DTSTART:19971102
+  SUMMARY:Our Blissful Anniversary
+  CATEGORIES:ANNIVERSARY
+  CATEGORIES:PERSONAL
+  CATEGORIES:SPECIAL OCCASION
+  CLASS:CONFIDENTIAL
+  RRULE:FREQ=YEARLY
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[timezone_ny]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VTIMEZONE
+  DTSTAMP:20220811T061212
+  TZID:America/New_York
+  LAST-MODIFIED:20050809T050000Z
+  BEGIN:STANDARD
+  DTSTART:19671029T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;UNTIL=20061029T060000Z;BYDAY=-1SU;BYMONTH=10
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:20071104T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19670430T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=19730429T070000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19740106T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RDATE:19750223T020000
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19760425T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=19860427T070000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19870405T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;UNTIL=20060402T070000Z;BYDAY=1SU;BYMONTH=4
+  TZNAME:EDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:20070311T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:EDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[todo]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456553@example.com
+  CATEGORIES:FAMILY
+  CATEGORIES:FINANCE
+  CLASS:CONFIDENTIAL
+  DUE:20070501
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20070514T103211Z
+  UID:20070514T103211Z-123404@example.com
+  COMPLETED:20070707T100000Z
+  DTSTART:20070514T110000Z
+  DUE:20070709T130000Z
+  PRIORITY:1
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Revised Internet-Draft
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[todo_valarm]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:19980130T134500Z
+  UID:uid4@example.com
+  ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
+  DUE:19980415T000000
+  ORGANIZER:mailto:unclesam@example.com
+  SEQUENCE:2
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Income Taxes
+  BEGIN:VALARM
+  ACTION:AUDIO
+  TRIGGER:19980403T120000Z
+  DURATION:PT1H
+  REPEAT:4
+  END:VALARM
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---

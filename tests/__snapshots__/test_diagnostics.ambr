@@ -1,0 +1,33 @@
+# serializer version: 1
+# name: test_redact_date_timezone[datetime_timezone]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:***
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:***
+  DTSTART;TZID=America/New_York:19970714T133000
+  DTEND;TZID=America/New_York:19970714T140000
+  SUMMARY:***
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_redact_date_timezone[description_altrep]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:***
+  BEGIN:VEVENT
+  DTSTAMP:19970610T172345Z
+  UID:***
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:***
+  DESCRIPTION:***
+  ***
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---

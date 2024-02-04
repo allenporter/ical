@@ -2,14 +2,20 @@
 
 import io
 import json
+import pathlib
 import re
 
 import pytest
-from pytest_golden.plugin import GoldenTestFixture
+from syrupy import SnapshotAssertion
+import yaml
 
 from ical.tzif.tzif import read_tzif
 
 RFC_LINE = re.compile(r"\|(?:[0-9]|\s)+\| (.*?)\s+\| .+ \| .+ \|")
+
+TESTDATA_PATH = pathlib.Path("tests/tzif/testdata/")
+TESTDATA_FILES = list(TESTDATA_PATH.glob("*.txt"))
+TESTDATA_IDS = [ x.stem for x in TESTDATA_FILES ]
 
 
 def rfc_to_binary(rfc_text: str) -> bytes:
@@ -25,12 +31,13 @@ def rfc_to_binary(rfc_text: str) -> bytes:
     return buf.getvalue()
 
 
-@pytest.mark.golden_test("testdata/rfc*.yaml")
-def test_parse(golden: GoldenTestFixture, json_encoder: json.JSONEncoder) -> None:
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_parse(
+    filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
+) -> None:
     """Test that reads RFC examples from golden files."""
-    if golden.get("disabled"):
-        return
-    content = rfc_to_binary(golden["input"])
+    content = rfc_to_binary(filename.read_text())
+    print(content)
     result = read_tzif(content)
     obj_data = json.loads(json.dumps(result, default=json_encoder.default))
-    assert obj_data == golden.out["output"]
+    assert obj_data == snapshot

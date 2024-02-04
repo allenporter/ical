@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:20070423T123432Z
+UID:20070423T123432Z-541111@example.com
+DTSTART:20070628
+DTEND:20070709
+SUMMARY:Festival International de Jazz de Montreal
+ATTENDEE;MEMBER="mailto:DEV-GROUP@example.com":
+ mailto:joecool@example.com
+ATTENDEE;DELEGATED-FROM="mailto:immud@example.com":
+ mailto:ildoit@example.com
+ORGANIZER;CN=John Smith:mailto:jsmith@example.com
+REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
+END:VEVENT
+END:VCALENDAR
