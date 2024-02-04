@@ -20,7 +20,6 @@ jobs:
     - uses: chartboost/ruff-action@v1.0.0
     - uses: codespell-project/actions-codespell@v2.0
       with:
-        exclude_file: tests/tzif/testdata/rfc8536-v3.yaml
         check_hidden: false
     - name: Set up Python
       uses: actions/setup-python@v5
