@@ -12,18 +12,20 @@ from __future__ import annotations
 
 import datetime
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Generator
 from typing import Any, TypeVar, Generic, cast
 
 from .calendar import Calendar
 from .event import Event
 from .exceptions import StoreError, TodoStoreError, EventStoreError
-from .todo import Todo
 from .iter import RulesetIterable
+from .list import todo_list_view
 from .timezone import Timezone
+from .todo import Todo
 from .types import Range, Recur, RecurrenceId, RelationshipType
 from .tzif.timezoneinfo import TimezoneInfoError
-from .util import dtstamp_factory
+from .util import dtstamp_factory, local_timezone
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,11 +41,14 @@ __all__ = [
 _T = TypeVar("_T", bound="Event | Todo")
 
 
-def _lookup_by_uid(uid: str, items: Iterable[_T]) -> tuple[int | None, _T | None]:
+def _lookup_by_uid(
+    items: Iterable[_T], uid: str, recurrence_id: str | None = None
+) -> tuple[int | None, _T | None]:
     """Find the specified item by id."""
     for i, item in enumerate(items):
-        if item.uid == uid:
-            return i, item
+        if item.uid != uid:
+            continue
+        return i, item
     return None, None
 
 
@@ -74,6 +79,39 @@ def _ensure_timezone(
         ) from err
 
 
+def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
+    """Return True if the item is an instance of a recurring event."""
+    if item.uid != uid:
+        return False
+    if recurrence_id is None:
+        # Match all items with the specified uids
+        return True
+    # Match a single item with the specified recurrence_id. If the item is an
+    # edited instance match return it
+    if item.recurrence_id == recurrence_id:
+        _LOGGER.debug("Matched exact recurrence_id: %s", item)
+        return True
+    # Otherwise, determine if this instance is in the series
+    _LOGGER.debug(
+        "Expanding item %s %s to look for match of %s", uid, item.dtstart, recurrence_id
+    )
+    dtstart = RecurrenceId.to_value(recurrence_id)
+    for dt in item.as_rrule() or ():
+        if dt == dtstart:
+            _LOGGER.debug("Found expanded recurrence_id: %s", dt)
+            return True
+    return False
+
+
+def _match_items(
+    items: list[_T], uid: str, recurrence_id: str | None
+) -> Generator[tuple[int, _T], None, None]:
+    """Return items from the list that match the uid and recurrence_id."""
+    for index, item in enumerate(items):
+        if _match_item(item, uid, recurrence_id):
+            yield index, item
+
+
 def _prepare_update(
     store_item: Event | Todo,
     item: Event | Todo,
@@ -81,7 +119,10 @@ def _prepare_update(
     recurrence_range: Range = Range.NONE,
 ) -> dict[str, Any]:
     """Prepare an update to an existing event."""
-    partial_update = item.dict(exclude_unset=True)
+    partial_update = item.dict(
+        exclude_unset=True,
+        exclude={"dtstamp", "uid", "sequence", "created", "last_modified"},
+    )
     _LOGGER.debug("Preparing update update=%s", item)
     update = {
         "created": store_item.dtstamp,
@@ -95,20 +136,21 @@ def _prepare_update(
     if recurrence_id:
         if not store_item.rrule:
             raise EventStoreError("Specified recurrence_id but event is not recurring")
-        # Forking a new event off the old event
-        update["uid"] = item.uid
+        # Forking a new event off the old event preserves the original uid and
+        # recurrence_id.
+        update.update(
+            {
+                "uid": store_item.uid,
+                "recurrence_id": recurrence_id,
+            }
+        )
         if recurrence_range == Range.NONE:
             # The new event copied from the original is a single instance,
-            # not recurrin
+            # which is not recurring.
             update["rrule"] = None
         else:
             # Overwriting with a new recurring event
-            update.update(
-                {
-                    "sequence": 0,
-                    "created": item.dtstamp,
-                }
-            )
+            update["created"] = item.dtstamp
 
             # Adjust start and end time of the event
             dtstart: datetime.datetime | datetime.date = RecurrenceId.to_value(
@@ -185,10 +227,23 @@ class GenericStore(Generic[_T]):
         When deleting individual instances, the range property may specify
         if deletion of just a specific instance, or a range of instances.
         """
-        _, store_item = _lookup_by_uid(uid, self._items)
-        if store_item is None:
-            raise self._exc(f"No existing item with uid: {uid}")
+        items_to_delete: list[_T] = [
+            item for _, item in _match_items(self._items, uid, recurrence_id)
+        ]
+        if not items_to_delete:
+            raise self._exc(
+                f"No existing item with uid/recurrence_id: {uid}/{recurrence_id}"
+            )
 
+        for store_item in items_to_delete:
+            self._apply_delete(store_item, recurrence_id, recurrence_range)
+
+    def _apply_delete(
+        self,
+        store_item: _T,
+        recurrence_id: str | None = None,
+        recurrence_range: Range = Range.NONE,
+    ) -> None:
         if (
             recurrence_id
             and recurrence_range == Range.THIS_AND_FUTURE
@@ -201,19 +256,18 @@ class GenericStore(Generic[_T]):
         children = []
         for event in self._items:
             for relation in event.related_to or ():
-                if relation.reltype == RelationshipType.PARENT and relation.uid == uid:
+                if (
+                    relation.reltype == RelationshipType.PARENT
+                    and relation.uid == store_item.uid
+                ):
                     children.append(event)
         for child in children:
             self._items.remove(child)
 
         # Deleting all instances in the series
-        if not recurrence_id:
+        if not recurrence_id or not store_item.rrule:
             self._items.remove(store_item)
             return
-
-        # Deleting one or more instances in the recurrence
-        if not store_item.rrule:
-            raise EventStoreError("Specified recurrence_id but event is not recurring")
 
         exdate = RecurrenceId.to_value(recurrence_id)
         if recurrence_range == Range.NONE:
@@ -258,10 +312,28 @@ class GenericStore(Generic[_T]):
         `ical.timezone.Timezone` needed to fully specify the item time information
         when encoded.
         """
-        store_index, store_item = _lookup_by_uid(uid, self._items)
-        if store_index is None or store_item is None:
-            raise EventStoreError(f"No existing item with uid: {uid}")
+        items_to_edit: list[tuple[int, _T]] = [
+            (index, item)
+            for index, item in _match_items(self._items, uid, recurrence_id)
+        ]
+        if not items_to_edit:
+            raise self._exc(
+                f"No existing item with uid/recurrence_id: {uid}/{recurrence_id}"
+            )
 
+        for store_index, store_item in items_to_edit:
+            self._apply_edit(
+                store_index, store_item, item, recurrence_id, recurrence_range
+            )
+
+    def _apply_edit(
+        self,
+        store_index: int,
+        store_item: _T,
+        item: _T,
+        recurrence_id: str | None = None,
+        recurrence_range: Range = Range.NONE,
+    ) -> None:
         if (
             recurrence_id
             and recurrence_range == Range.THIS_AND_FUTURE
@@ -315,7 +387,11 @@ class GenericStore(Generic[_T]):
         # Editing a single instance of a recurring item is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
         # specified then the entire item is replaced.
-        self.delete(uid, recurrence_id=recurrence_id, recurrence_range=recurrence_range)
+        self.delete(
+            store_item.uid,
+            recurrence_id=recurrence_id,
+            recurrence_range=recurrence_range,
+        )
         self._items.insert(store_index, new_item)
 
     def _ensure_timezone(
@@ -406,6 +482,7 @@ class TodoStore(GenericStore[Todo]):
     def __init__(
         self,
         calendar: Calendar,
+        tzinfo: datetime.tzinfo | None = None,
         dtstamp_fn: Callable[[], datetime.datetime] = lambda: dtstamp_factory(),
     ):
         """Initialize the TodoStore."""
@@ -415,3 +492,12 @@ class TodoStore(GenericStore[Todo]):
             TodoStoreError,
             dtstamp_fn,
         )
+        self._calendar = calendar
+        self._tzinfo = tzinfo or local_timezone()
+
+    def todo_list(self, dtstart: datetime.datetime | None = None) -> Iterable[Todo]:
+        """Return a list of all todos on the calendar.
+
+        This view accounts for recurring todos.
+        """
+        return todo_list_view(self._calendar.todos, dtstart)

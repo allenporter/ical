@@ -119,6 +119,87 @@
     'mock-uid-4',
   ])
 # ---
+# name: test_delete_instance_in_todo_series
+  list([
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.1
+  list([
+    tuple(
+      '2024-01-09',
+      '20240109',
+      None,
+      list([
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      list([
+        FakeDate(2024, 1, 9),
+      ]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.2
+  list([
+    tuple(
+      '2024-01-09',
+      '20240109',
+      None,
+      list([
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      list([
+        FakeDate(2024, 1, 9),
+        FakeDate(2024, 1, 10),
+      ]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.3
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.4
+  list([
+    dict({
+      'due': '2024-01-12',
+      'recurrence_id': '20240111',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.5
+  list([
+    dict({
+      'due': '2024-01-13',
+      'recurrence_id': '20240112',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
 # name: test_delete_parent_todo_cascade_to_children
   list([
     'mock-uid-1',
@@ -303,13 +384,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00',
       'recurrence_id': '20220919T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -362,17 +443,21 @@
     dict({
       'dtstart': '2022-08-29',
       'recurrence_id': '20220829',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
+      'recurrence_id': '20220905',
+      'sequence': 1,
       'summary': 'Tuesday event',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
@@ -383,17 +468,21 @@
     dict({
       'dtstart': '2022-08-29',
       'recurrence_id': '20220829',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
+      'recurrence_id': '20220905',
+      'sequence': 1,
       'summary': 'Tuesday event',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
@@ -411,13 +500,13 @@
       'dtstart': '2022-09-05',
       'recurrence_id': '20220905',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -433,13 +522,13 @@
       'dtstart': '2022-09-05',
       'recurrence_id': '20220905',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -497,8 +586,9 @@
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220905T090000',
       'summary': 'Tuesday meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
@@ -518,8 +608,9 @@
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220905T090000',
       'summary': 'Tuesday meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
@@ -541,13 +632,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
       'recurrence_id': '20220912T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -563,13 +654,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
       'recurrence_id': '20220912T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -732,7 +823,7 @@
     }),
   ])
 # ---
-# name: test_recurring_item
+# name: test_recurring_todo_item_edit_series
   list([
     dict({
       'due': '2024-01-10',
@@ -743,7 +834,7 @@
     }),
   ])
 # ---
-# name: test_recurring_item.1
+# name: test_recurring_todo_item_edit_series.1
   list([
     dict({
       'due': '2024-01-10',
@@ -754,11 +845,103 @@
     }),
   ])
 # ---
-# name: test_recurring_item.2
+# name: test_recurring_todo_item_edit_series.2
   list([
     dict({
       'due': '2024-01-11',
       'recurrence_id': '20240110',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.1
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.2
+  list([
+    dict({
+      'due': '2024-01-11',
+      'recurrence_id': '20240110',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.3
+  list([
+    tuple(
+      '2024-01-09',
+      '2024-01-10',
+      '20240109',
+      None,
+      list([
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      '2024-01-10',
+      '20240110',
+      None,
+      list([
+        FakeDate(2024, 1, 9),
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      '2024-01-10',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      list([
+        FakeDate(2024, 1, 9),
+        FakeDate(2024, 1, 10),
+      ]),
+    ),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.4
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240110',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.5
+  list([
+    '20240109',
+    None,
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single.6
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',

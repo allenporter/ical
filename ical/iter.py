@@ -95,6 +95,10 @@ class SortableItem(Generic[K, T], ABC):
         return cast(bool, self._key < other.key)
 
 
+SpanOrderedItem = SortableItem[Timespan, T]
+"""A sortable item with a timespan as the key."""
+
+
 class SortableItemValue(SortableItem[K, T]):
     """Concrete value implementation of SortableItem."""
 
@@ -151,7 +155,10 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     debug. This wrapper is meant to assist with that.
     """
 
-    _converter: Callable[[Iterable[Union[datetime.date, datetime.datetime]]], Iterable[Union[datetime.date, datetime.datetime]]]
+    _converter: Callable[
+        [Iterable[Union[datetime.date, datetime.datetime]]],
+        Iterable[Union[datetime.date, datetime.datetime]],
+    ]
 
     def __init__(
         self,
@@ -307,7 +314,7 @@ class SortedItemIterable(Iterable[SortableItem[K, T]]):
 class SortableItemTimeline(Iterable[T]):
     """A set of components on a calendar."""
 
-    def __init__(self, iterable: Iterable[SortableItem[Timespan, T]]) -> None:
+    def __init__(self, iterable: Iterable[SpanOrderedItem[T]]) -> None:
         self._iterable = iterable
 
     def __iter__(self) -> Iterator[T]:
@@ -391,6 +398,6 @@ class SortableItemTimeline(Iterable[T]):
         """Return an iterator containing all events active on the specified day."""
         return self.on_date(datetime.date.today())
 
-    def now(self) -> Iterator[T]:
+    def now(self, tz: datetime.tzinfo | None = None) -> Iterator[T]:
         """Return an iterator containing all events active on the specified day."""
-        return self.at_instant(datetime.datetime.now())
+        return self.at_instant(datetime.datetime.now(tz=tz))
