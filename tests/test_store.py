@@ -13,10 +13,11 @@ from unittest.mock import patch
 import pytest
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
+from syrupy import SnapshotAssertion
 
 from ical.calendar import Calendar
 from ical.event import Event
-from ical.todo import Todo, TodoStatus
+from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
 from ical.types.recur import Range, Recur
 from ical.types import RelationshipType, RelatedTo
@@ -108,7 +109,9 @@ def test_empty_store(fetch_events: Callable[..., list[dict[str, Any]]]) -> None:
 
 
 def test_add_and_delete_event(
-    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding an event to the store and retrieval."""
     store.add(
@@ -118,17 +121,7 @@ def test_add_and_delete_event(
             end="2022-08-29T09:30:00",
         )
     )
-    assert fetch_events() == [
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "dtstart": "2022-08-29T09:00:00",
-            "dtend": "2022-08-29T09:30:00",
-            "summary": "Monday meeting",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_events() == snapshot
     store.delete("mock-uid-1")
     assert fetch_events() == []
 
@@ -137,6 +130,7 @@ def test_edit_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing an event."""
     store.add(
@@ -146,17 +140,7 @@ def test_edit_event(
             end="2022-08-29T09:30:00",
         )
     )
-    assert fetch_events() == [
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "dtstart": "2022-08-29T09:00:00",
-            "dtend": "2022-08-29T09:30:00",
-            "summary": "Monday meeting",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_events() == snapshot
 
     frozen_time.tick(delta=datetime.timedelta(seconds=10))
 
@@ -165,18 +149,7 @@ def test_edit_event(
         "mock-uid-1",
         Event(start="2022-08-29T09:05:00", summary="Monday meeting (Delayed)"),
     )
-    assert fetch_events() == [
-        {
-            "dtstamp": "2022-09-03T09:38:15",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "dtstart": "2022-08-29T09:05:00",
-            "dtend": "2022-08-29T09:30:00",
-            "summary": "Monday meeting (Delayed)",
-            "sequence": 1,
-            "last_modified": "2022-09-03T09:38:15",
-        },
-    ]
+    assert fetch_events() == snapshot
 
 
 def test_edit_event_invalid_uid(store: EventStore) -> None:
@@ -186,31 +159,17 @@ def test_edit_event_invalid_uid(store: EventStore) -> None:
 
 
 @pytest.mark.parametrize(
-    ("start", "end", "recur", "results"),
+    ("start", "end", "recur"),
     [
         (
             datetime.datetime(2022, 8, 29, 9, 0),
             datetime.datetime(2022, 8, 29, 9, 30),
             Recur.from_rrule("FREQ=WEEKLY;UNTIL=20220926T090000"),
-            [
-                "2022-08-29T09:00:00",
-                "2022-09-05T09:00:00",
-                "2022-09-12T09:00:00",
-                "2022-09-19T09:00:00",
-                "2022-09-26T09:00:00",
-            ],
         ),
         (
             datetime.datetime(2022, 8, 29, 9, 0),
             datetime.datetime(2022, 8, 29, 9, 30),
             Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
-            [
-                "2022-08-29T09:00:00",
-                "2022-09-05T09:00:00",
-                "2022-09-12T09:00:00",
-                "2022-09-19T09:00:00",
-                "2022-09-26T09:00:00",
-            ],
         ),
         (
             datetime.datetime(
@@ -220,13 +179,6 @@ def test_edit_event_invalid_uid(store: EventStore) -> None:
                 2022, 8, 29, 9, 30, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
             Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
-            [
-                "2022-08-29T09:00:00-07:00",
-                "2022-09-05T09:00:00-07:00",
-                "2022-09-12T09:00:00-07:00",
-                "2022-09-19T09:00:00-07:00",
-                "2022-09-26T09:00:00-07:00",
-            ],
         ),
     ],
 )
@@ -236,7 +188,7 @@ def test_recurring_event(
     start: datetime.datetime,
     end: datetime.datetime,
     recur: Recur,
-    results: list[str],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding a recurring event and deleting the entire series."""
     store.add(
@@ -247,38 +199,7 @@ def test_recurring_event(
             rrule=recur,
         )
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": results[0],
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220905T090000",
-            "dtstart": results[1],
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912T090000",
-            "dtstart": results[2],
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220919T090000",
-            "dtstart": results[3],
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220926T090000",
-            "dtstart": results[4],
-            "summary": "Monday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
     store.delete("mock-uid-1")
     assert fetch_events(None) == []
 
@@ -294,6 +215,7 @@ def test_deletel_partial_recurring_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding a recurring event and deleting part of the series."""
     store.add(
@@ -306,26 +228,7 @@ def test_deletel_partial_recurring_event(
     )
     store.delete(uid="mock-uid-1", recurrence_id="20220905T090000")
     store.delete(uid="mock-uid-1", recurrence_id="20220919T090000")
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912T090000",
-            "dtstart": "2022-09-12T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220926T090000",
-            "dtstart": "2022-09-26T09:00:00",
-            "summary": "Monday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -339,6 +242,7 @@ def test_delete_this_and_future_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding a recurring event and deleting events after one event."""
     store.add(
@@ -354,26 +258,7 @@ def test_delete_this_and_future_event(
         recurrence_id="20220919T090000",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220905T090000",
-            "dtstart": "2022-09-05T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912T090000",
-            "dtstart": "2022-09-12T09:00:00",
-            "summary": "Monday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -387,6 +272,7 @@ def test_delete_this_and_future_all_day_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding a recurring event and deleting events after one event."""
     store.add(
@@ -402,26 +288,7 @@ def test_delete_this_and_future_all_day_event(
         recurrence_id="20220919",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829",
-            "dtstart": "2022-08-29",
-            "summary": "Mondays",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220905",
-            "dtstart": "2022-09-05",
-            "summary": "Mondays",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912",
-            "dtstart": "2022-09-12",
-            "summary": "Mondays",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -500,6 +367,7 @@ def test_edit_recurring_event(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing all instances of a recurring event."""
     store.add(
@@ -515,26 +383,7 @@ def test_edit_recurring_event(
         "mock-uid-1",
         Event(start="2022-08-30T09:00:00", summary="Tuesday meeting"),
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220830T090000",
-            "dtstart": "2022-08-30T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220906T090000",
-            "dtstart": "2022-09-06T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220913T090000",
-            "dtstart": "2022-09-13T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -549,6 +398,7 @@ def test_edit_recurring_all_day_event_instance(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing a single instance of a recurring all day event."""
     store.add(
@@ -565,25 +415,7 @@ def test_edit_recurring_all_day_event_instance(
         Event(start="2022-09-06", summary="Tuesday event"),
         recurrence_id="20220905",
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829",
-            "dtstart": "2022-08-29",
-            "summary": "Monday event",
-        },
-        {
-            "uid": "mock-uid-2",
-            "dtstart": "2022-09-06",
-            "summary": "Tuesday event",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912",
-            "dtstart": "2022-09-12",
-            "summary": "Monday event",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -598,6 +430,7 @@ def test_edit_recurring_event_instance(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing a single instance of a recurring event."""
     store.add(
@@ -614,31 +447,14 @@ def test_edit_recurring_event_instance(
         Event(start="2022-09-06T09:00:00", summary="Tuesday meeting"),
         recurrence_id="20220905T090000",
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-2",
-            "dtstart": "2022-09-06T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220912T090000",
-            "dtstart": "2022-09-12T09:00:00",
-            "summary": "Monday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_edit_recurring_with_same_rrule(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test that changing the rrule to the same value is a no-op."""
     store.add(
@@ -652,22 +468,13 @@ def test_edit_recurring_with_same_rrule(
     frozen_time.tick(delta=datetime.timedelta(seconds=10))
     store.edit(
         "mock-uid-1",
-        Event(start="2022-08-30T09:00:00", summary="Tuesday meeting", rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),),
+        Event(
+            start="2022-08-30T09:00:00",
+            summary="Tuesday meeting",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=2"),
+        ),
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220830T090000",
-            "dtstart": "2022-08-30T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220906T090000",
-            "dtstart": "2022-09-06T09:00:00",
-            "summary": "Tuesday meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_cant_change_recurrence_for_event_instance(
@@ -701,6 +508,7 @@ def test_convert_single_instance_to_recurring(
     store: EventStore,
     frozen_time: FrozenDateTimeFactory,
     fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing all instances of a recurring event."""
     store.add(
@@ -710,13 +518,7 @@ def test_convert_single_instance_to_recurring(
             end="2022-08-29T09:30:00",
         )
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Daily meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
     frozen_time.tick(delta=datetime.timedelta(seconds=10))
     store.edit(
@@ -729,26 +531,7 @@ def test_convert_single_instance_to_recurring(
         ),
     )
 
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Daily meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220830T090000",
-            "dtstart": "2022-08-30T09:00:00",
-            "summary": "Daily meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220831T090000",
-            "dtstart": "2022-08-31T09:00:00",
-            "summary": "Daily meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -763,6 +546,7 @@ def test_edit_recurring_event_this_and_future(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing future instance of a recurring event."""
     store.add(
@@ -780,26 +564,7 @@ def test_edit_recurring_event_this_and_future(
         recurrence_id="20220905T090000",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-2",
-            "dtstart": "2022-09-05T09:00:00",
-            "recurrence_id": "20220905T090000",
-            "summary": "Team meeting",
-        },
-        {
-            "uid": "mock-uid-2",
-            "recurrence_id": "20220912T090000",
-            "dtstart": "2022-09-12T09:00:00",
-            "summary": "Team meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -814,6 +579,7 @@ def test_edit_recurring_all_day_event_this_and_future(
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     recur: Recur,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing future instance of a recurring event."""
     store.add(
@@ -831,30 +597,13 @@ def test_edit_recurring_all_day_event_this_and_future(
         recurrence_id="20220905",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829",
-            "dtstart": "2022-08-29",
-            "summary": "Monday",
-        },
-        {
-            "uid": "mock-uid-2",
-            "dtstart": "2022-09-05",
-            "recurrence_id": "20220905",
-            "summary": "Mondays [edit]",
-        },
-        {
-            "uid": "mock-uid-2",
-            "recurrence_id": "20220912",
-            "dtstart": "2022-09-12",
-            "summary": "Mondays [edit]",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_delete_all_day_event(
-    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test deleting a single all day event."""
     store.add(
@@ -864,23 +613,15 @@ def test_delete_all_day_event(
             end="2022-08-29",
         )
     )
-    assert fetch_events() == [
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "dtstart": "2022-08-29",
-            "dtend": "2022-08-29",
-            "summary": "Monday meeting",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_events() == snapshot
     store.delete("mock-uid-1")
     assert fetch_events() == []
 
 
 def test_delete_all_day_recurring(
-    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test deleting all instances of a recurring all day event."""
     store.add(
@@ -891,48 +632,17 @@ def test_delete_all_day_recurring(
             rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),
         )
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-08-29",
-            "summary": "Monday meeting",
-            "recurrence_id": "20220829",
-        },
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-09-05",
-            "summary": "Monday meeting",
-            "recurrence_id": "20220905",
-        },
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-09-12",
-            "summary": "Monday meeting",
-            "recurrence_id": "20220912",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
     store.delete("mock-uid-1", recurrence_id="20220905")
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-08-29",
-            "summary": "Monday meeting",
-            "recurrence_id": "20220829",
-        },
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-09-12",
-            "summary": "Monday meeting",
-            "recurrence_id": "20220912",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_edit_recurrence_rule_this_and_future(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing future instances of a recurring event."""
     store.add(
@@ -953,32 +663,14 @@ def test_edit_recurrence_rule_this_and_future(
         recurrence_id="20220905T090000",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220829T090000",
-            "dtstart": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-        },
-        {
-            "uid": "mock-uid-2",
-            "dtstart": "2022-09-05T09:00:00",
-            "recurrence_id": "20220905T090000",
-            "summary": "Team meeting",
-        },
-        {
-            "uid": "mock-uid-2",
-            "recurrence_id": "20220919T090000",
-            "dtstart": "2022-09-19T09:00:00",
-            "summary": "Team meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_edit_recurrence_rule_this_and_future_all_day_first_instance(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing future instances starting at the first instance."""
     store.add(
@@ -999,32 +691,14 @@ def test_edit_recurrence_rule_this_and_future_all_day_first_instance(
         recurrence_id="20220829",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-08-29",
-            "recurrence_id": "20220829",
-            "summary": "Mondays [edit]",
-        },
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-09-12",
-            "recurrence_id": "20220912",
-            "summary": "Mondays [edit]",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220926",
-            "dtstart": "2022-09-26",
-            "summary": "Mondays [edit]",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_edit_recurrence_rule_this_and_future_first_instance(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing future instances starting at the first instance."""
     store.add(
@@ -1045,26 +719,7 @@ def test_edit_recurrence_rule_this_and_future_first_instance(
         recurrence_id="20220829T090000",
         recurrence_range=Range.THIS_AND_FUTURE,
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == [
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-08-29T09:00:00",
-            "recurrence_id": "20220829T090000",
-            "summary": "Team meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "dtstart": "2022-09-12T09:00:00",
-            "recurrence_id": "20220912T090000",
-            "summary": "Team meeting",
-        },
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20220926T090000",
-            "dtstart": "2022-09-26T09:00:00",
-            "summary": "Team meeting",
-        },
-    ]
+    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
 
 
 def test_invalid_uid(
@@ -1094,9 +749,7 @@ def test_invalid_recurrence_id(
         store.delete("mock-uid-1", recurrence_id="invalid")
 
     with pytest.raises(StoreError, match=r"event is not recurring"):
-        store.edit(
-            "mock-uid-1", Event(summary="tuesday"), recurrence_id="invalid"
-        )
+        store.edit("mock-uid-1", Event(summary="tuesday"), recurrence_id="invalid")
 
 
 def test_no_timezone_for_floating(
@@ -1200,7 +853,9 @@ def test_timezone_offset_not_supported(
 
 
 def test_delete_event_parent_cascade_to_children(
-    store: EventStore, fetch_events: Callable[..., list[dict[str, Any]]]
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test deleting a parent event object deletes the children."""
     event1 = store.add(
@@ -1232,23 +887,18 @@ def test_delete_event_parent_cascade_to_children(
     )
     assert event3.uid == "mock-uid-3"
 
-    event4 = store.add(
+    store.add(
         Event(
             summary="Milk",
             start="2022-08-29T12:00:00",
             duration=datetime.timedelta(minutes=30),
         )
     )
-    assert [item["uid"] for item in fetch_events()] == [
-        event1.uid,
-        event2.uid,
-        event3.uid,
-        event4.uid,
-    ]
+    assert [item["uid"] for item in fetch_events()] == snapshot
 
     # Delete parent and cascade to children
     store.delete("mock-uid-1")
-    assert [item["uid"] for item in fetch_events()] == [event4.uid]
+    assert [item["uid"] for item in fetch_events()] == snapshot
 
 
 @pytest.mark.parametrize(
@@ -1288,7 +938,9 @@ def test_unsupported_event_reltype(
 
 
 def test_add_and_delete_todo(
-    todo_store: TodoStore, fetch_todos: Callable[..., list[dict[str, Any]]]
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test adding a todoto the store and retrieval."""
     todo_store.add(
@@ -1297,16 +949,7 @@ def test_add_and_delete_todo(
             due="2022-08-29T09:00:00",
         )
     )
-    assert fetch_todos() == [
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "due": "2022-08-29T09:00:00",
-            "summary": "Monday meeting",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_todos() == snapshot
     todo_store.delete("mock-uid-1")
     assert fetch_todos() == []
 
@@ -1315,6 +958,7 @@ def test_edit_todo(
     todo_store: TodoStore,
     fetch_todos: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test editing an todo preserves order."""
     todo_store.add(
@@ -1329,24 +973,7 @@ def test_edit_todo(
             due="2022-08-30T09:00:00",
         )
     )
-    assert fetch_todos() == [
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "due": "2022-08-29T09:00:00",
-            "summary": "Monday morning items",
-            "sequence": 0,
-        },
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-2",
-            "created": "2022-09-03T09:38:05",
-            "due": "2022-08-30T09:00:00",
-            "summary": "Tuesday morning items",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_todos() == snapshot
 
     frozen_time.tick(delta=datetime.timedelta(seconds=10))
 
@@ -1355,25 +982,7 @@ def test_edit_todo(
         "mock-uid-1",
         Todo(due="2022-08-29T09:05:00", summary="Monday morning items (Delayed)"),
     )
-    assert fetch_todos() == [
-        {
-            "dtstamp": "2022-09-03T09:38:15",
-            "uid": "mock-uid-1",
-            "created": "2022-09-03T09:38:05",
-            "due": "2022-08-29T09:05:00",
-            "summary": "Monday morning items (Delayed)",
-            "sequence": 1,
-            "last_modified": "2022-09-03T09:38:15",
-        },
-        {
-            "dtstamp": "2022-09-03T09:38:05",
-            "uid": "mock-uid-2",
-            "created": "2022-09-03T09:38:05",
-            "due": "2022-08-30T09:00:00",
-            "summary": "Tuesday morning items",
-            "sequence": 0,
-        },
-    ]
+    assert fetch_todos() == snapshot
 
 
 def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
@@ -1394,7 +1003,9 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Monday meeting",
-            dtstart=datetime.datetime(2022, 8, 29, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
+            dtstart=datetime.datetime(
+                2022, 8, 29, 8, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
             due=datetime.datetime(
                 2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1407,7 +1018,9 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Tuesday meeting",
-            dtstart=datetime.datetime(2022, 8, 30, 8, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")),
+            dtstart=datetime.datetime(
+                2022, 8, 30, 8, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
             due=datetime.datetime(
                 2022, 8, 30, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
             ),
@@ -1419,7 +1032,9 @@ def test_todo_timezone_for_datetime(
     todo_store.add(
         Todo(
             summary="Wednesday meeting",
-            dtstart=datetime.datetime(2022, 8, 31, 11, 0, 0,tzinfo=zoneinfo.ZoneInfo("America/New_York")),
+            dtstart=datetime.datetime(
+                2022, 8, 31, 11, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
             due=datetime.datetime(
                 2022, 8, 31, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
             ),
@@ -1449,7 +1064,9 @@ def test_todo_timezone_offset_not_supported(
 
 
 def test_delete_parent_todo_cascade_to_children(
-    todo_store: TodoStore, fetch_todos: Callable[..., list[dict[str, Any]]]
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test deleting a parent todo object deletes the children."""
     todo1 = todo_store.add(
@@ -1476,21 +1093,16 @@ def test_delete_parent_todo_cascade_to_children(
     )
     assert todo3.uid == "mock-uid-3"
 
-    todo4 = todo_store.add(
+    todo_store.add(
         Todo(
             summary="Milk",
         )
     )
-    assert [item["uid"] for item in fetch_todos()] == [
-        todo1.uid,
-        todo2.uid,
-        todo3.uid,
-        todo4.uid,
-    ]
+    assert [item["uid"] for item in fetch_todos()] == snapshot
 
     # Delete parent and cascade to children
     todo_store.delete("mock-uid-1")
-    assert [item["uid"] for item in fetch_todos()] == [todo4.uid]
+    assert [item["uid"] for item in fetch_todos()] == snapshot
 
 
 @pytest.mark.parametrize(
@@ -1533,6 +1145,7 @@ def test_recurring_item(
     todo_store: TodoStore,
     fetch_todos: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
 ) -> None:
     """Test a basic recurring item."""
 
@@ -1548,37 +1161,14 @@ def test_recurring_item(
             rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
         )
     )
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20240109",
-            "due": "2024-01-10",
-            "summary": "Walk dog",
-            "status": TodoStatus.NEEDS_ACTION,
-        },
-    ]
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+
     # Mark the entire series as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20240109",
-            "due": "2024-01-10",
-            "summary": "Walk dog",
-            "status": TodoStatus.COMPLETED,
-        },
-    ]
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
 
     # Advance to the next day.
     frozen_time.move_to("2024-01-10T10:00:00")
 
     # All instances are completed
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == [
-        {
-            "uid": "mock-uid-1",
-            "recurrence_id": "20240110",
-            "due": "2024-01-11",
-            "summary": "Walk dog",
-            "status": TodoStatus.COMPLETED,
-        },
-    ]
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot

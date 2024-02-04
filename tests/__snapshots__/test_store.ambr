@@ -1,0 +1,767 @@
+# serializer version: 1
+# name: test_add_and_delete_event
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtend': '2022-08-29T09:30:00',
+      'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_add_and_delete_todo
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtstamp': '2022-09-03T09:38:05',
+      'due': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_convert_single_instance_to_recurring
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'summary': 'Daily meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_convert_single_instance_to_recurring.1
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Daily meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-08-30T09:00:00',
+      'recurrence_id': '20220830T090000',
+      'summary': 'Daily meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-08-31T09:00:00',
+      'recurrence_id': '20220831T090000',
+      'summary': 'Daily meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_all_day_event
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtend': '2022-08-29',
+      'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29',
+      'sequence': 0,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_all_day_recurring
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05',
+      'recurrence_id': '20220905',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_all_day_recurring.1
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_event_parent_cascade_to_children
+  list([
+    'mock-uid-1',
+    'mock-uid-2',
+    'mock-uid-3',
+    'mock-uid-4',
+  ])
+# ---
+# name: test_delete_event_parent_cascade_to_children.1
+  list([
+    'mock-uid-4',
+  ])
+# ---
+# name: test_delete_parent_todo_cascade_to_children
+  list([
+    'mock-uid-1',
+    'mock-uid-2',
+    'mock-uid-3',
+    'mock-uid-4',
+  ])
+# ---
+# name: test_delete_parent_todo_cascade_to_children.1
+  list([
+    'mock-uid-4',
+  ])
+# ---
+# name: test_delete_this_and_future_all_day_event[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05',
+      'recurrence_id': '20220905',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_this_and_future_all_day_event[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05',
+      'recurrence_id': '20220905',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Mondays',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_this_and_future_event[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_this_and_future_event[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_deletel_partial_recurring_event[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_deletel_partial_recurring_event[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_event
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtend': '2022-08-29T09:30:00',
+      'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_event.1
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtend': '2022-08-29T09:30:00',
+      'dtstamp': '2022-09-03T09:38:15',
+      'dtstart': '2022-08-29T09:05:00',
+      'last_modified': '2022-09-03T09:38:15',
+      'sequence': 1,
+      'summary': 'Monday meeting (Delayed)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurrence_rule_this_and_future
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-19T09:00:00',
+      'recurrence_id': '20220919T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_recurrence_rule_this_and_future_all_day_first_instance
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26',
+      'recurrence_id': '20220926',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurrence_rule_this_and_future_first_instance
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_all_day_event_instance[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday event',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06',
+      'summary': 'Tuesday event',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Monday event',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_all_day_event_instance[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday event',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06',
+      'summary': 'Tuesday event',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Monday event',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_all_day_event_this_and_future[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05',
+      'recurrence_id': '20220905',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_all_day_event_this_and_future[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29',
+      'recurrence_id': '20220829',
+      'summary': 'Monday',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05',
+      'recurrence_id': '20220905',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12',
+      'recurrence_id': '20220912',
+      'summary': 'Mondays [edit]',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-30T09:00:00',
+      'recurrence_id': '20220830T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220906T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-13T09:00:00',
+      'recurrence_id': '20220913T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-30T09:00:00',
+      'recurrence_id': '20220830T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220906T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-13T09:00:00',
+      'recurrence_id': '20220913T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event_instance[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06T09:00:00',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event_instance[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06T09:00:00',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event_this_and_future[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_event_this_and_future[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Team meeting',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_recurring_with_same_rrule
+  list([
+    dict({
+      'dtstart': '2022-08-30T09:00:00',
+      'recurrence_id': '20220830T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220906T090000',
+      'summary': 'Tuesday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_edit_todo
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtstamp': '2022-09-03T09:38:05',
+      'due': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'summary': 'Monday morning items',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtstamp': '2022-09-03T09:38:05',
+      'due': '2022-08-30T09:00:00',
+      'sequence': 0,
+      'summary': 'Tuesday morning items',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_todo.1
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtstamp': '2022-09-03T09:38:15',
+      'due': '2022-08-29T09:05:00',
+      'last_modified': '2022-09-03T09:38:15',
+      'sequence': 1,
+      'summary': 'Monday morning items (Delayed)',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'created': '2022-09-03T09:38:05',
+      'dtstamp': '2022-09-03T09:38:05',
+      'due': '2022-08-30T09:00:00',
+      'sequence': 0,
+      'summary': 'Tuesday morning items',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_recurring_event[start0-end0-recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-19T09:00:00',
+      'recurrence_id': '20220919T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_event[start1-end1-recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-19T09:00:00',
+      'recurrence_id': '20220919T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_event[start2-end2-recur2]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00-07:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-05T09:00:00-07:00',
+      'recurrence_id': '20220905T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00-07:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-19T09:00:00-07:00',
+      'recurrence_id': '20220919T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00-07:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_item
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_item.1
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_item.2
+  list([
+    dict({
+      'due': '2024-01-11',
+      'recurrence_id': '20240110',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
