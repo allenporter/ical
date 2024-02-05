@@ -17,6 +17,7 @@ from .component import ComponentModel, validate_until_dtstart, validate_recurren
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
 from .parsing.property import ParsedProperty
+from .timespan import Timespan
 from .types import (
     CalAddress,
     Classification,
@@ -207,6 +208,22 @@ class Todo(ComponentModel):
         if self.due is None or self.dtstart is None:
             return None
         return self.due - self.dtstart
+
+
+    @property
+    def timespan(self) -> Timespan:
+        """Return a timespan representing the item start and due date."""
+        if not self.start:
+            raise ValueError("Event must have a start and due date to calculate timespan")
+        return Timespan.of(self.start, self.due or self.start)
+
+    def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
+        """Return a timespan representing the item start and due date."""
+        if not self.start:
+            raise ValueError("Event must have a start and due date to calculate timespan")
+        return Timespan.of(
+            normalize_datetime(self.start, tzinfo), normalize_datetime(self.due or self.start, tzinfo)
+        )
 
     @property
     def recurring(self) -> bool:

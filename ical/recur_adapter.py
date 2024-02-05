@@ -93,16 +93,10 @@ def merge_and_expand_items(
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
     for item in items:
         if not (recur := item.as_rrule()):
-            dtstart = item.dtstart or datetime.datetime.now(tz=tzinfo)
-            dtend = dtstart
-            if isinstance(item, Todo) and item.due:
-                dtend = item.due
-            elif isinstance(item, Event) and item.dtend:
-                dtend = item.dtend
             iters.append(
                 [
                     SortableItemValue(
-                        Timespan.of(dtstart, dtend, tzinfo),
+                        item.timespan_of(tzinfo),
                         item,
                     )
                 ]

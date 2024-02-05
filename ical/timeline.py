@@ -20,7 +20,7 @@ from .iter import (
     SortedItemIterable,
     SpanOrderedItem,
 )
-from .recur_adapter import RecurAdapter
+from .recur_adapter import RecurAdapter, merge_and_expand_items
 from .timespan import Timespan
 
 __all__ = ["Timeline"]
@@ -96,27 +96,6 @@ class Timeline(SortableItemTimeline[Event]):
         return super().now(tz)
 
 
-def _event_iterable(
-    iterable: list[Event], tzinfo: datetime.tzinfo
-) -> Iterable[SortableItem[Timespan, Event]]:
-    """Create a sorted iterable from the list of events."""
-
-    def sortable_items() -> Generator[SpanOrderedItem[Event], None, None]:
-        for event in iterable:
-            if event.recurring:
-                continue
-            yield SortableItemValue(event.timespan_of(tzinfo), event)
-
-    return SortedItemIterable(sortable_items, tzinfo)
-
-
 def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
-    iters: list[Iterable[SpanOrderedItem[Event]]] = [
-        _event_iterable(events, tzinfo=tzinfo)
-    ]
-    for event in events:
-        if not (recur := event.as_rrule()):
-            continue
-        iters.append(RecurIterable(RecurAdapter(event, tzinfo=tzinfo).get, recur))
-    return Timeline(MergedIterable(iters))
+    return Timeline(merge_and_expand_items(events, tzinfo))

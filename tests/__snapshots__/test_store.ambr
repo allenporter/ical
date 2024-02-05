@@ -17,6 +17,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:00:00',
       'sequence': 0,
       'summary': 'Monday meeting',
@@ -685,6 +686,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:00:00',
       'sequence': 0,
       'summary': 'Monday morning items',
@@ -693,6 +695,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
       'due': '2022-08-30T09:00:00',
       'sequence': 0,
       'summary': 'Tuesday morning items',
@@ -705,6 +708,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:15',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:05:00',
       'last_modified': '2022-09-03T09:38:15',
       'sequence': 1,
@@ -714,6 +718,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
       'due': '2022-08-30T09:00:00',
       'sequence': 0,
       'summary': 'Tuesday morning items',

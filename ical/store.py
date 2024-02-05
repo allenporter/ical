@@ -186,6 +186,11 @@ class GenericStore(Generic[_T]):
             update["created"] = item.dtstamp
         if item.sequence is None:
             update["sequence"] = 0
+        if isinstance(item, Todo) and not item.dtstart:
+            if item.due:
+                update["dtstart"] = item.due - datetime.timedelta(days=1)
+            else:
+                update["dtstart"] = datetime.datetime.now(tz=local_timezone())
         new_item = cast(_T, item.copy(update=update))
 
         # The store can only manage cascading deletes for some relationship types
