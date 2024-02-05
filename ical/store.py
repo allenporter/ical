@@ -41,17 +41,6 @@ __all__ = [
 _T = TypeVar("_T", bound="Event | Todo")
 
 
-def _lookup_by_uid(
-    items: Iterable[_T], uid: str, recurrence_id: str | None = None
-) -> tuple[int | None, _T | None]:
-    """Find the specified item by id."""
-    for i, item in enumerate(items):
-        if item.uid != uid:
-            continue
-        return i, item
-    return None, None
-
-
 def _ensure_timezone(
     dtstart: datetime.datetime | datetime.date | None, timezones: list[Timezone]
 ) -> Timezone | None:
