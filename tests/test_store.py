@@ -16,6 +16,7 @@ from freezegun.api import FrozenDateTimeFactory
 from syrupy import SnapshotAssertion
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
@@ -1144,12 +1145,13 @@ def test_unsupported_todo_reltype(
 
 
 def test_recurring_todo_item_edit_series(
+    calendar: Calendar,
     todo_store: TodoStore,
     fetch_todos: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     snapshot: SnapshotAssertion,
 ) -> None:
-    """Test a basic recurring item."""
+    """Test editing an item that affects the entire series."""
 
     frozen_time.move_to("2024-01-09T10:00:05")
 
@@ -1163,17 +1165,19 @@ def test_recurring_todo_item_edit_series(
             rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
         )
     )
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
 
     # Mark the entire series as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
 
     # Advance to the next day.
     frozen_time.move_to("2024-01-10T10:00:00")
 
     # All instances are completed
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot
 
 
 def test_recurring_todo_item_edit_single(
@@ -1198,69 +1202,43 @@ def test_recurring_todo_item_edit_single(
         )
     )
     # There is a single underlying instance
-    recurrence_ids = [item.recurrence_id for item in calendar.todos]
-    assert recurrence_ids == [None]
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert len(calendar.todos) == 1
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
 
     # Mark a single instance as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240109")
     # There are now two underlying instances
     assert len(calendar.todos) == 2
-    todo = calendar.todos[0]
-    assert todo.dtstart.isoformat() == "2024-01-09"
-    assert todo.recurrence_id == "20240109"
-    assert todo.rrule is None
-    assert todo.exdate == []
-    # Series continues from the next instance by excluding the edited instance
-    # from the series.
-    todo = calendar.todos[1]
-    assert todo.dtstart.isoformat() == "2024-01-09"
-    assert todo.recurrence_id is None
-    assert todo.rrule == Recur.from_rrule("FREQ=DAILY;COUNT=10")
-    assert todo.exdate == [datetime.date(2024, 1, 9)]
 
     # Collapsed view of a single item
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
 
     # Advance to the next day and a new incomplete instance appears
     frozen_time.move_to("2024-01-10T10:00:00")
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
 
     # Mark the new instance as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240110")
-    # Now 3 underlying objects
-    # When editing an item in the series and forking it, we need to clone the
-    # recurring instance rather than the original instance.
-
-    raw_ids = [
-        (
-            item.dtstart.isoformat(),
-            item.due.isoformat(),
-            item.recurrence_id,
-            item.rrule,
-            item.exdate,
-        )
-        for item in calendar.todos
-    ]
-    assert raw_ids == snapshot
+    assert len(calendar.todos) == 3
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="result_ics")
 
     # Collapsed view of the same item
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_completed")
 
     # Delete a single instance and the following days instance appears. This is
     # not really a common operation, but still worth exercsing the behavior.
     todo_store.delete("mock-uid-1", recurrence_id="20240110")
 
     # Now only two underlying objects
-    recurrence_ids = [item.recurrence_id for item in calendar.todos]
-    assert recurrence_ids == snapshot
     # The prior instance is the latest on the list
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_deleted")
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="next_instance_deleted_ics")
 
     # Delete the entire series
     todo_store.delete("mock-uid-1")
     assert not calendar.todos
-
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="deleted_series_ics")
 
 def test_delete_todo_series(
     calendar: Calendar,
