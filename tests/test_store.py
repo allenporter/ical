@@ -1240,6 +1240,7 @@ def test_recurring_todo_item_edit_single(
     assert not calendar.todos
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="deleted_series_ics")
 
+
 def test_delete_todo_series(
     calendar: Calendar,
     todo_store: TodoStore,
@@ -1318,3 +1319,42 @@ def test_delete_instance_in_todo_series(
     # Advance to the next day and New item appears.
     frozen_time.move_to("2024-01-12T10:00:00")
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+
+
+def test_modify_todo_rrule_for_this_and_future(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test modify an rrule in the middle of the series."""
+    # Create a recurring to-do item to wash the card every Saturday
+    todo_store.add(
+        Todo(
+            summary="Wash car (Sa)",
+            dtstart="2024-01-06",
+            due="2024-01-07",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SA;COUNT=10"),
+        )
+    )
+
+    # Move the item to Sunday going forward
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(
+            summary="Wash car (Su)",
+            dtstart="2024-01-21",
+            due="2024-01-22",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SU;COUNT=10")
+        ),
+        recurrence_id="20240120",
+        recurrence_range=Range.THIS_AND_FUTURE
+    )
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="ics")
+
+    for date in ("2024-01-05", "2024-01-12", "2024-01-19", "2024-01-26"):
+        frozen_time.move_to(date)
+        assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name=date)

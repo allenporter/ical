@@ -721,6 +721,83 @@
     }),
   ])
 # ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-05]
+  list([
+    dict({
+      'due': '2024-01-07',
+      'recurrence_id': '20240106',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-12]
+  list([
+    dict({
+      'due': '2024-01-07',
+      'recurrence_id': '20240106',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-19]
+  list([
+    dict({
+      'due': '2024-01-14',
+      'recurrence_id': '20240113',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-26]
+  list([
+    dict({
+      'due': '2024-01-22',
+      'recurrence_id': '20240121',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Su)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[ics]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20220903T093805
+  UID:mock-uid-1
+  CREATED:20220903T093805
+  DTSTART:20240121
+  DUE:20240122
+  LAST-MODIFIED:20220903T093805
+  RECURRENCE-ID:20240120
+  RRULE:FREQ=WEEKLY;COUNT=8;BYDAY=SU
+  SEQUENCE:1
+  STATUS:NEEDS-ACTION
+  SUMMARY:Wash car (Su)
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20220903T093805
+  UID:mock-uid-1
+  CREATED:20220903T093805
+  DTSTART:20240106
+  DUE:20240107
+  LAST-MODIFIED:20220903T093805
+  RRULE:FREQ=WEEKLY;UNTIL=20240119;BYDAY=SA
+  SEQUENCE:0
+  STATUS:NEEDS-ACTION
+  SUMMARY:Wash car (Sa)
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
 # name: test_recurring_event[start0-end0-recur0]
   list([
     dict({
