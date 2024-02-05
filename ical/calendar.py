@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 import datetime
 import itertools
 import logging
@@ -22,7 +21,6 @@ from .types.date_time import TZID
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
-from .list import todo_list_view
 from .todo import Todo
 from .util import local_timezone, prodid_factory
 
@@ -81,13 +79,6 @@ class Calendar(ComponentModel):
         events are returned.
         """
         return calendar_timeline(self.events, tzinfo=tzinfo or local_timezone())
-
-    def todo_list(self, tzinfo: datetime.tzinfo | None = None) -> Iterable[Todo]:
-        """Return a list of all todos on the calendar.
-
-        This view accounts for recurring todos.
-        """
-        return todo_list_view(self.todos, tzinfo=tzinfo or local_timezone())
 
     @root_validator(pre=True)
     def _propagate_timezones(cls, values: dict[str, Any]) -> dict[str, Any]:

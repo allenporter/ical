@@ -7,73 +7,20 @@ forever.
 """
 
 import datetime
-from collections.abc import Generator, Iterable
+from collections.abc import Generator
 import logging
 
 from .todo import Todo
-from .iter import (
-    LazySortableItem,
-    MergedIterable,
-    RecurIterable,
-    SortableItem,
-    SortableItemValue,
-)
-from .types.recur import RecurrenceId
+from .recur_adapter import items_by_uid, merge_and_expand_items
+from .util import local_timezone
 
+# Not part of the public API
+__all__: list[str] = []
 
 _LOGGER = logging.getLogger(__name__)
-_SortableTodoItem = SortableItem[datetime.datetime | datetime.date | None, Todo]
 
 
-class RecurAdapter:
-    """An adapter that expands an Todo instance for a recurrence rule.
-
-    This adapter is given an todo, then invoked with a specific date/time instance
-    that the todo is due from a recurrence rule. The todo is copied with
-    necessary updated fields to act as a flattened instance of the todo item.
-    """
-
-    def __init__(self, todo: Todo, tzinfo: datetime.tzinfo | None = None):
-        """Initialize the RecurAdapter."""
-        self._todo = todo
-        self._duration = todo.computed_duration
-        self._tzinfo = tzinfo
-
-    def get(self, dtstart: datetime.datetime | datetime.date) -> _SortableTodoItem:
-        """Return a lazy sortable item."""
-
-        recur_id_dt = dtstart
-        # Make recurrence_id floating time to avoid dealing with serializing
-        # TZID. This value will still be unique within the series and is in
-        # the context of dtstart which may have a timezone.
-        if isinstance(recur_id_dt, datetime.datetime) and recur_id_dt.tzinfo:
-            recur_id_dt = recur_id_dt.replace(tzinfo=None)
-        recurrence_id = RecurrenceId.__parse_property_value__(recur_id_dt)
-
-        def build() -> Todo:
-            updates = {
-                "dtstart": dtstart,
-                "recurrence_id": recurrence_id,
-            }
-            if self._todo.due and self._duration:
-                updates["due"] = dtstart + self._duration
-            return self._todo.copy(update=updates)
-
-        return LazySortableItem(dtstart, build)
-
-
-def _todos_by_uid(todos: list[Todo]) -> dict[str, list[Todo]]:
-    todos_by_uid: dict[str, list[Todo]] = {}
-    for todo in todos:
-        if todo.uid is None:
-            raise ValueError("Todo must have a UID")
-        if todo.uid not in todos_by_uid:
-            todos_by_uid[todo.uid] = []
-        todos_by_uid[todo.uid].append(todo)
-    return todos_by_uid
-
-
-def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
+def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo:
     """Pick a todo to return in a list from a list of recurring todos.
 
     The items passed in must all be for the same original todo (either a
@@ -84,30 +31,28 @@ def _pick_todo(todos: list[Todo], tzinfo: datetime.tzinfo) -> Todo:
     """
     # For a recurring todo, the dtstart is after the last due date. Therefore
     # we can stort items by dtstart and pick the last one that hasn't happened
-    iters: list[Iterable[_SortableTodoItem]] = []
-    for todo in todos:
-        if not (recur := todo.as_rrule()):
-            iters.append([SortableItemValue(todo.dtstart, todo)])
-            continue
-        iters.append(RecurIterable(RecurAdapter(todo, tzinfo=tzinfo).get, recur))
+    root_iter = merge_and_expand_items(todos, dtstart.tzinfo or local_timezone())
 
-    root_iter = MergedIterable(iters)
-
-    # Pick the first todo that hasn't started yet based on its dtstart
-    now = datetime.datetime.now(tzinfo)
     it = iter(root_iter)
     last = next(it)
     while cur := next(it, None):
-        if cur.item.start_datetime is None or cur.item.start_datetime > now:
+        if cur.item.start_datetime is None or cur.item.start_datetime > dtstart:
             break
         last = cur
     return last.item
 
 
 def todo_list_view(
-    todos: list[Todo], tzinfo: datetime.tzinfo
+    todos: list[Todo],
+    dtstart: datetime.datetime | None = None,
 ) -> Generator[Todo, None, None]:
-    """Create a list view for todos on a calendar, including recurrence."""
-    todos_by_uid = _todos_by_uid(todos)
+    """Create a list view for todos on a calendar, including recurrence.
+
+    The dtstart value is used to determine the current time for the list and
+    for deciding which instance of a recurring todo to return.
+    """
+    if dtstart is None:
+        dtstart = datetime.datetime.now(tz=local_timezone())
+    todos_by_uid = items_by_uid(todos)
     for todos in todos_by_uid.values():
-        yield _pick_todo(todos, tzinfo=tzinfo)
+        yield _pick_todo(todos, dtstart)

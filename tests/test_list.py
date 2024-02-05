@@ -12,7 +12,7 @@ from ical.types.recur import Recur
 
 def test_empty_list() -> None:
     """Test an empty list."""
-    view = todo_list_view([], tzinfo=datetime.timezone.utc)
+    view = todo_list_view([])
     assert list(view) == []
 
 
@@ -33,7 +33,7 @@ def test_daily_recurring_item_due_today_incomplete(status: str) -> None:
             rrule=Recur.from_rrule("FREQ=DAILY"),
             status=status,
         )
-        view = list(todo_list_view([todo], tzinfo=datetime.timezone.utc))
+        view = list(todo_list_view([todo]))
 
     assert len(view) == 1
     assert view[0].summary == todo.summary
@@ -59,7 +59,7 @@ def test_daily_recurring_item_due_tomorrow(status: str) -> None:
             rrule=Recur.from_rrule("FREQ=DAILY"),
             status=status,
         )
-        view = list(todo_list_view([todo], tzinfo=datetime.timezone.utc))
+        view = list(todo_list_view([todo]))
 
     assert len(view) == 1
     assert view[0].summary == todo.summary
@@ -86,7 +86,7 @@ def test_daily_recurring_item_due_yesterday(status: str) -> None:
             rrule=Recur.from_rrule("FREQ=DAILY"),
             status=status,
         )
-        view = list(todo_list_view([todo], tzinfo=datetime.timezone.utc))
+        view = list(todo_list_view([todo]))
 
     # The item should be returned with a recurrence_id of today
     assert len(view) == 1
@@ -97,7 +97,7 @@ def test_daily_recurring_item_due_yesterday(status: str) -> None:
     assert view[0].status == status
 
     with freezegun.freeze_time("2024-01-11T08:05:00-05:00"):
-        view = list(todo_list_view([todo], tzinfo=datetime.timezone.utc))
+        view = list(todo_list_view([todo]))
 
     assert len(view) == 1
     assert view[0].summary == todo.summary

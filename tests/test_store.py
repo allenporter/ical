@@ -16,6 +16,7 @@ from freezegun.api import FrozenDateTimeFactory
 from syrupy import SnapshotAssertion
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
@@ -85,12 +86,12 @@ def mock_fetch_events(
 
 @pytest.fixture(name="fetch_todos")
 def mock_fetch_todos(
-    calendar: Calendar,
+    todo_store: TodoStore,
 ) -> Callable[..., list[dict[str, Any]]]:
     """Fixture to return todos on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        return [compact_dict(todo.dict(), keys) for todo in calendar.todo_list()]
+        return [compact_dict(todo.dict(), keys) for todo in todo_store.todo_list()]
 
     return _func
 
@@ -415,7 +416,8 @@ def test_edit_recurring_all_day_event_instance(
         Event(start="2022-09-06", summary="Tuesday event"),
         recurrence_id="20220905",
     )
-    assert fetch_events({"uid", "recurrence_id", "dtstart", "summary"}) == snapshot
+
+    assert fetch_events({"uid", "recurrence_id", "sequence", "dtstart", "summary"}) == snapshot
 
 
 @pytest.mark.parametrize(
@@ -739,17 +741,18 @@ def test_invalid_recurrence_id(
     """Test adding an event to the store and retrieval."""
     store.add(
         Event(
+            uid="mock-uid-1",
             summary="Monday meeting",
             start="2022-08-29T09:00:00",
             end="2022-08-29T09:30:00",
         )
     )
 
-    with pytest.raises(StoreError, match=r"event is not recurring"):
-        store.delete("mock-uid-1", recurrence_id="invalid")
+    with pytest.raises(StoreError, match=r"No existing item"):
+        store.delete("mock-uid-1", recurrence_id="20220828T090000")
 
-    with pytest.raises(StoreError, match=r"event is not recurring"):
-        store.edit("mock-uid-1", Event(summary="tuesday"), recurrence_id="invalid")
+    with pytest.raises(StoreError, match=r"No existing item with"):
+        store.edit("mock-uid-1", Event(summary="tuesday"), recurrence_id="20210828")
 
 
 def test_no_timezone_for_floating(
@@ -1141,13 +1144,14 @@ def test_unsupported_todo_reltype(
         todo_store.edit(todo2.uid, todo2)
 
 
-def test_recurring_item(
+def test_recurring_todo_item_edit_series(
+    calendar: Calendar,
     todo_store: TodoStore,
     fetch_todos: Callable[..., list[dict[str, Any]]],
     frozen_time: FrozenDateTimeFactory,
     snapshot: SnapshotAssertion,
 ) -> None:
-    """Test a basic recurring item."""
+    """Test editing an item that affects the entire series."""
 
     frozen_time.move_to("2024-01-09T10:00:05")
 
@@ -1161,14 +1165,196 @@ def test_recurring_item(
             rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
         )
     )
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
 
     # Mark the entire series as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
 
     # Advance to the next day.
     frozen_time.move_to("2024-01-10T10:00:00")
 
     # All instances are completed
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot
+
+
+def test_recurring_todo_item_edit_single(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test editing a single recurring item."""
+
+    frozen_time.move_to("2024-01-09T10:00:05")
+
+    # Create a recurring to-do item
+    todo_store.add(
+        Todo(
+            summary="Walk dog",
+            dtstart="2024-01-09",
+            due="2024-01-10",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+    # There is a single underlying instance
+    assert len(calendar.todos) == 1
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
+
+    # Mark a single instance as completed
+    todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240109")
+    # There are now two underlying instances
+    assert len(calendar.todos) == 2
+
+    # Collapsed view of a single item
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
+
+    # Advance to the next day and a new incomplete instance appears
+    frozen_time.move_to("2024-01-10T10:00:00")
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
+
+    # Mark the new instance as completed
+    todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240110")
+    assert len(calendar.todos) == 3
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="result_ics")
+
+    # Collapsed view of the same item
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_completed")
+
+    # Delete a single instance and the following days instance appears. This is
+    # not really a common operation, but still worth exercsing the behavior.
+    todo_store.delete("mock-uid-1", recurrence_id="20240110")
+
+    # Now only two underlying objects
+    # The prior instance is the latest on the list
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_deleted")
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="next_instance_deleted_ics")
+
+    # Delete the entire series
+    todo_store.delete("mock-uid-1")
+    assert not calendar.todos
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="deleted_series_ics")
+
+
+def test_delete_todo_series(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+) -> None:
+    """Test deleting a recurring todo item with edits applied."""
+    # Create a recurring to-do item
+    todo_store.add(
+        Todo(
+            summary="Walk dog",
+            dtstart="2024-01-09",
+            due="2024-01-10",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+    # Mark instances as completed
+    todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240109")
+    # Delete all the items
+    todo_store.delete("mock-uid-1")
+    assert not calendar.todos
+
+
+def test_delete_instance_in_todo_series(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test deleting a single instance of a recurring todo item."""
+    # Create a recurring to-do item
+    todo_store.add(
+        Todo(
+            summary="Walk dog",
+            dtstart="2024-01-09",
+            due="2024-01-10",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+    raw_ids = [
+        (item.dtstart.isoformat(), item.recurrence_id, item.rrule)
+        for item in calendar.todos
+    ]
+    assert raw_ids == snapshot
+
+    # Mark instances as completed
+    todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240109")
+    raw_ids = [
+        (item.dtstart.isoformat(), item.recurrence_id, item.rrule, item.exdate)
+        for item in calendar.todos
+    ]
+    assert raw_ids == snapshot
+
+    # Delete a another instance
+    todo_store.delete("mock-uid-1", recurrence_id="20240110")
+
+    raw_ids = [
+        (item.dtstart.isoformat(), item.recurrence_id, item.rrule, item.exdate)
+        for item in calendar.todos
+    ]
+    assert raw_ids == snapshot
+
+    # Advance to the next day.
+    frozen_time.move_to("2024-01-10T10:00:00")
+
+    # Previous item is still marked completed and new item has not started yet
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+
+    # Advance to the next day and New item appears.
+    frozen_time.move_to("2024-01-11T10:00:00")
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+
+    # Advance to the next day and New item appears.
+    frozen_time.move_to("2024-01-12T10:00:00")
+    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot
+
+
+def test_modify_todo_rrule_for_this_and_future(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test modify an rrule in the middle of the series."""
+    # Create a recurring to-do item to wash the card every Saturday
+    todo_store.add(
+        Todo(
+            summary="Wash car (Sa)",
+            dtstart="2024-01-06",
+            due="2024-01-07",
+            status="NEEDS-ACTION",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SA;COUNT=10"),
+        )
+    )
+
+    # Move the item to Sunday going forward
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(
+            summary="Wash car (Su)",
+            dtstart="2024-01-21",
+            due="2024-01-22",
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SU;COUNT=10")
+        ),
+        recurrence_id="20240120",
+        recurrence_range=Range.THIS_AND_FUTURE
+    )
+
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="ics")
+
+    for date in ("2024-01-05", "2024-01-12", "2024-01-19", "2024-01-26"):
+        frozen_time.move_to(date)
+        assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name=date)

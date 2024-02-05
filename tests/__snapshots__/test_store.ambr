@@ -17,6 +17,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:00:00',
       'sequence': 0,
       'summary': 'Monday meeting',
@@ -117,6 +118,87 @@
 # name: test_delete_event_parent_cascade_to_children.1
   list([
     'mock-uid-4',
+  ])
+# ---
+# name: test_delete_instance_in_todo_series
+  list([
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.1
+  list([
+    tuple(
+      '2024-01-09',
+      '20240109',
+      None,
+      list([
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      list([
+        FakeDate(2024, 1, 9),
+      ]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.2
+  list([
+    tuple(
+      '2024-01-09',
+      '20240109',
+      None,
+      list([
+      ]),
+    ),
+    tuple(
+      '2024-01-09',
+      None,
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      list([
+        FakeDate(2024, 1, 9),
+        FakeDate(2024, 1, 10),
+      ]),
+    ),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.3
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.4
+  list([
+    dict({
+      'due': '2024-01-12',
+      'recurrence_id': '20240111',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_instance_in_todo_series.5
+  list([
+    dict({
+      'due': '2024-01-13',
+      'recurrence_id': '20240112',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
   ])
 # ---
 # name: test_delete_parent_todo_cascade_to_children
@@ -303,13 +385,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00',
       'recurrence_id': '20220919T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -362,17 +444,21 @@
     dict({
       'dtstart': '2022-08-29',
       'recurrence_id': '20220829',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
+      'recurrence_id': '20220905',
+      'sequence': 1,
       'summary': 'Tuesday event',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
@@ -383,17 +469,21 @@
     dict({
       'dtstart': '2022-08-29',
       'recurrence_id': '20220829',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
+      'recurrence_id': '20220905',
+      'sequence': 1,
       'summary': 'Tuesday event',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
+      'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
@@ -411,13 +501,13 @@
       'dtstart': '2022-09-05',
       'recurrence_id': '20220905',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -433,13 +523,13 @@
       'dtstart': '2022-09-05',
       'recurrence_id': '20220905',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
       'recurrence_id': '20220912',
       'summary': 'Mondays [edit]',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -497,8 +587,9 @@
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220905T090000',
       'summary': 'Tuesday meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
@@ -518,8 +609,9 @@
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
+      'recurrence_id': '20220905T090000',
       'summary': 'Tuesday meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
@@ -541,13 +633,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
       'recurrence_id': '20220912T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -563,13 +655,13 @@
       'dtstart': '2022-09-05T09:00:00',
       'recurrence_id': '20220905T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
       'recurrence_id': '20220912T090000',
       'summary': 'Team meeting',
-      'uid': 'mock-uid-2',
+      'uid': 'mock-uid-1',
     }),
   ])
 # ---
@@ -594,6 +686,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:00:00',
       'sequence': 0,
       'summary': 'Monday morning items',
@@ -602,6 +695,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
       'due': '2022-08-30T09:00:00',
       'sequence': 0,
       'summary': 'Tuesday morning items',
@@ -614,6 +708,7 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:15',
+      'dtstart': '2022-08-28T09:00:00',
       'due': '2022-08-29T09:05:00',
       'last_modified': '2022-09-03T09:38:15',
       'sequence': 1,
@@ -623,12 +718,90 @@
     dict({
       'created': '2022-09-03T09:38:05',
       'dtstamp': '2022-09-03T09:38:05',
+      'dtstart': '2022-08-29T09:00:00',
       'due': '2022-08-30T09:00:00',
       'sequence': 0,
       'summary': 'Tuesday morning items',
       'uid': 'mock-uid-2',
     }),
   ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-05]
+  list([
+    dict({
+      'due': '2024-01-07',
+      'recurrence_id': '20240106',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-12]
+  list([
+    dict({
+      'due': '2024-01-07',
+      'recurrence_id': '20240106',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-19]
+  list([
+    dict({
+      'due': '2024-01-14',
+      'recurrence_id': '20240113',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Sa)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[2024-01-26]
+  list([
+    dict({
+      'due': '2024-01-22',
+      'recurrence_id': '20240121',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Wash car (Su)',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_modify_todo_rrule_for_this_and_future[ics]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20220903T093805
+  UID:mock-uid-1
+  CREATED:20220903T093805
+  DTSTART:20240121
+  DUE:20240122
+  LAST-MODIFIED:20220903T093805
+  RECURRENCE-ID:20240120
+  RRULE:FREQ=WEEKLY;COUNT=8;BYDAY=SU
+  SEQUENCE:1
+  STATUS:NEEDS-ACTION
+  SUMMARY:Wash car (Su)
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20220903T093805
+  UID:mock-uid-1
+  CREATED:20220903T093805
+  DTSTART:20240106
+  DUE:20240107
+  LAST-MODIFIED:20220903T093805
+  RRULE:FREQ=WEEKLY;UNTIL=20240119;BYDAY=SA
+  SEQUENCE:0
+  STATUS:NEEDS-ACTION
+  SUMMARY:Wash car (Sa)
+  END:VTODO
+  END:VCALENDAR
+  '''
 # ---
 # name: test_recurring_event[start0-end0-recur0]
   list([
@@ -732,7 +905,38 @@
     }),
   ])
 # ---
-# name: test_recurring_item
+# name: test_recurring_todo_item_edit_series.3
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20240109T100005
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  LAST-MODIFIED:20240109T100005
+  RRULE:FREQ=DAILY;COUNT=10
+  SEQUENCE:1
+  STATUS:COMPLETED
+  SUMMARY:Walk dog
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_recurring_todo_item_edit_series[completed]
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_series[initial]
   list([
     dict({
       'due': '2024-01-10',
@@ -743,7 +947,18 @@
     }),
   ])
 # ---
-# name: test_recurring_item.1
+# name: test_recurring_todo_item_edit_series[next_instance]
+  list([
+    dict({
+      'due': '2024-01-11',
+      'recurrence_id': '20240110',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single[completed]
   list([
     dict({
       'due': '2024-01-10',
@@ -754,14 +969,134 @@
     }),
   ])
 # ---
-# name: test_recurring_item.2
+# name: test_recurring_todo_item_edit_single[deleted_series_ics]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  END:VCALENDAR
+  '''
+# ---
+# name: test_recurring_todo_item_edit_single[initial]
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single[next_instance]
   list([
     dict({
       'due': '2024-01-11',
+      'recurrence_id': '20240110',
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single[next_instance_completed]
+  list([
+    dict({
+      'due': '2024-01-10',
       'recurrence_id': '20240110',
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
     }),
   ])
+# ---
+# name: test_recurring_todo_item_edit_single[next_instance_deleted]
+  list([
+    dict({
+      'due': '2024-01-10',
+      'recurrence_id': '20240109',
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Walk dog',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_recurring_todo_item_edit_single[next_instance_deleted_ics]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20240109T100005
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  LAST-MODIFIED:20240109T100005
+  RECURRENCE-ID:20240109
+  SEQUENCE:1
+  STATUS:COMPLETED
+  SUMMARY:Walk dog
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20240109T100005
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  RRULE:FREQ=DAILY;COUNT=10
+  EXDATE:20240109
+  EXDATE:20240110
+  SEQUENCE:0
+  STATUS:NEEDS-ACTION
+  SUMMARY:Walk dog
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_recurring_todo_item_edit_single[result_ics]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20240109T100005
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  LAST-MODIFIED:20240109T100005
+  RECURRENCE-ID:20240109
+  SEQUENCE:1
+  STATUS:COMPLETED
+  SUMMARY:Walk dog
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20240110T100000
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  LAST-MODIFIED:20240110T100000
+  RECURRENCE-ID:20240110
+  EXDATE:20240109
+  SEQUENCE:1
+  STATUS:COMPLETED
+  SUMMARY:Walk dog
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20240109T100005
+  UID:mock-uid-1
+  CREATED:20240109T100005
+  DTSTART:20240109
+  DUE:20240110
+  RRULE:FREQ=DAILY;COUNT=10
+  EXDATE:20240109
+  EXDATE:20240110
+  SEQUENCE:0
+  STATUS:NEEDS-ACTION
+  SUMMARY:Walk dog
+  END:VTODO
+  END:VCALENDAR
+  '''
 # ---
