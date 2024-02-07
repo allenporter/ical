@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from freezegun import freeze_time
 
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
@@ -94,3 +95,28 @@ def test_is_recurring() -> None:
         datetime.date(2024, 2, 3),
         datetime.date(2024, 2, 4),
     ]
+
+
+def test_timestamp_start_due() -> None:
+    """Test a timespan of a Todo."""
+    todo = Todo(summary="Example", dtstart=datetime.date(2022, 8, 1), due=datetime.date(2022, 8, 7))
+    ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-08-01T00:00:00-06:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00-06:00"
+
+
+def test_implicit_timespan() -> None:
+    """Test a timespan of a Todo."""
+    todo = Todo(summary="Example", due=datetime.date(2022, 8, 7))
+    ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-08-06T00:00:00-06:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00-06:00"
+
+
+def test_timespan_dtstart_fallback() -> None:
+    """Test a timespan of a Todo."""
+    with freeze_time("2022-09-03T09:38:05") as freeze:
+        todo = Todo(summary="Example")
+        ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-09-03T09:38:05-07:00"
+    assert ts.end.isoformat() == "2022-09-03T09:38:05-07:00"
