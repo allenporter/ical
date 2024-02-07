@@ -9,11 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
-from ical.calendar import Calendar
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.types.recur import Recur
-from ical.store import TodoStore
 
 
 
