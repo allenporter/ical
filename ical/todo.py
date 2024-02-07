@@ -225,7 +225,8 @@ class Todo(ComponentModel):
         This will fallback to the dtstamp if no start date is set.
         """
         if not self.start:
-            return Timespan.of(self.dtstamp, self.dtstamp)
+            ndt = normalize_datetime(self.dtstamp, tzinfo)
+            return Timespan.of(ndt, ndt)
         return Timespan.of(
             normalize_datetime(self.start, tzinfo),
             normalize_datetime(self.due or self.start, tzinfo),

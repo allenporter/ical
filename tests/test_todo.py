@@ -132,7 +132,7 @@ def test_implicit_timespan() -> None:
 def test_timespan_dtstart_fallback() -> None:
     """Test a timespan of a Todo."""
 
-    with freeze_time("2022-09-03T09:38:05"):
+    with freeze_time("2022-09-03T09:38:05", tz_offset=-3):
         todo = Todo(summary="Example")
 
     with patch("ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("CET")):
@@ -140,7 +140,6 @@ def test_timespan_dtstart_fallback() -> None:
     assert ts.start.isoformat() == "2022-09-03T09:38:05+02:00"
     assert ts.end.isoformat() == "2022-09-03T09:38:05+02:00"
 
-    with freeze_time("2022-09-03T09:38:05"):
-        ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
-    assert ts.start.isoformat() == "2022-09-03T09:38:05-07:00"
-    assert ts.end.isoformat() == "2022-09-03T09:38:05-07:00"
+    ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-09-03T09:38:05-06:00"
+    assert ts.end.isoformat() == "2022-09-03T09:38:05-06:00"
