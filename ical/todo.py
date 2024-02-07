@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
-import logging
 from typing import Any, Optional, Union
 
 try:
@@ -31,11 +30,6 @@ from .types import (
     RelatedTo,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
-
-_LOGGER = logging.getLogger(__name__)
-
-_DATE_MIN = datetime.date(1970, 1, 1)
-_DATETIME_MIN = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
 
 
 class TodoStatus(str, enum.Enum):
@@ -215,11 +209,10 @@ class Todo(ComponentModel):
             return None
         return self.due - self.dtstart
 
-
     @property
     def timespan(self) -> Timespan:
         """Return a timespan representing the item start and due date.
-        
+
         This will fallback to the dtstamp if no start date is set.
         """
         if not self.start:
@@ -229,12 +222,13 @@ class Todo(ComponentModel):
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date.
 
-        This will fallback to the dtstamp if no start date is set.        
+        This will fallback to the dtstamp if no start date is set.
         """
         if not self.start:
             return Timespan.of(self.dtstamp, self.dtstamp)
         return Timespan.of(
-            normalize_datetime(self.start, tzinfo), normalize_datetime(self.due or self.start, tzinfo)
+            normalize_datetime(self.start, tzinfo),
+            normalize_datetime(self.due or self.start, tzinfo),
         )
 
     @property
@@ -298,7 +292,6 @@ class Todo(ComponentModel):
                 dtstart = next(iter(RulesetIterable(due, [[rule]], [], [])))
             values["dtstart"] = dtstart
         return values
-
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
     _validate_recurrence_dates = root_validator(allow_reuse=True)(

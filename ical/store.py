@@ -25,7 +25,7 @@ from .todo import Todo
 from .types import Range, Recur, RecurrenceId, RelationshipType
 from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory, local_timezone
-from .timeline import calendar_timeline
+from .timeline import calendar_timeline, Timeline
 
 
 _LOGGER = logging.getLogger(__name__)
