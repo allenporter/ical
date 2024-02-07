@@ -1,4 +1,12 @@
-"""A grouping of component properties that describe a to-do."""
+"""A grouping of component properties that describe a to-do.
+
+A todo component can represent an item of work assigned to an individual
+such as "turn in a travel expense today".
+
+A todo component without a start date or due date (or duration) specifies
+a to-do that will be associated with each successive calendar date until it
+is completed.
+"""
 
 from __future__ import annotations
 
