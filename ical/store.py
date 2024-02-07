@@ -25,6 +25,7 @@ from .todo import Todo
 from .types import Range, Recur, RecurrenceId, RelationshipType
 from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory, local_timezone
+from .timeline import calendar_timeline
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -459,6 +460,7 @@ class EventStore(GenericStore[Event]):
     def __init__(
         self,
         calendar: Calendar,
+        tzinfo: datetime.tzinfo | None = None,
         dtstamp_fn: Callable[[], datetime.datetime] = lambda: dtstamp_factory(),
     ):
         """Initialize the EventStore."""
@@ -468,6 +470,17 @@ class EventStore(GenericStore[Event]):
             EventStoreError,
             dtstamp_fn,
         )
+        self._calendar = calendar
+        self._tzinfo = tzinfo or local_timezone()
+
+    def timeline_tz(self) -> Timeline:
+        """Return a timeline view of events on the calendar.
+
+        All events are returned as if the attendee is viewing from the
+        specified timezone. For example, this affects the order that All Day
+        events are returned.
+        """
+        return calendar_timeline(self._calendar.events, tzinfo=self._tzinfo)
 
 
 class TodoStore(GenericStore[Todo]):

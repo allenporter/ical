@@ -9,9 +9,12 @@ from unittest.mock import patch
 
 import pytest
 
+from ical.calendar import Calendar
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.types.recur import Recur
+from ical.store import TodoStore
+
 
 
 def test_empty() -> None:
@@ -61,16 +64,6 @@ def test_duration() -> None:
     ("params"),
     [
         ({}),
-        (
-            {
-                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
-            }
-        ),
-        (
-            {
-                "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
-            }
-        ),
         (
             {
                 "duration": datetime.timedelta(hours=1),

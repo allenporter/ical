@@ -11,6 +11,7 @@ from syrupy import SnapshotAssertion
 
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
+from ical.store import EventStore, TodoStore
 
 MAX_ITERATIONS = 30
 TESTDATA_PATH = pathlib.Path("tests/testdata/")
@@ -117,3 +118,21 @@ def test_multiple_calendars() -> None:
                 VERSION:2.0
                 END:VCALENDAR
             """))
+
+
+
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_store_iteration(filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder) -> None:
+    """Fixture to read golden file and compare to golden output."""
+    cal = CalendarStream.from_ics(filename.read_text())
+    if not cal.calendars:
+        return
+    calendar = cal.calendars[0]
+
+    tl = EventStore(calendar).timeline_tz()
+    for event in itertools.islice(tl, MAX_ITERATIONS):
+        assert event is not None
+
+    tl = TodoStore(calendar).todo_list()
+    for todo in itertools.islice(tl, MAX_ITERATIONS):
+        assert todo is not None

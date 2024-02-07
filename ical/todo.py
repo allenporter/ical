@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
+import logging
 from typing import Any, Optional, Union
 
 try:
@@ -30,6 +31,11 @@ from .types import (
     RelatedTo,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory
+
+_LOGGER = logging.getLogger(__name__)
+
+_DATE_MIN = datetime.date(1970, 1, 1)
+_DATETIME_MIN = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
 
 
 class TodoStatus(str, enum.Enum):
@@ -212,15 +218,21 @@ class Todo(ComponentModel):
 
     @property
     def timespan(self) -> Timespan:
-        """Return a timespan representing the item start and due date."""
+        """Return a timespan representing the item start and due date.
+        
+        This will fallback to the dtstamp if no start date is set.
+        """
         if not self.start:
-            raise ValueError("Event must have a start and due date to calculate timespan")
+            return Timespan.of(self.dtstamp, self.dtstamp)
         return Timespan.of(self.start, self.due or self.start)
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
-        """Return a timespan representing the item start and due date."""
+        """Return a timespan representing the item start and due date.
+
+        This will fallback to the dtstamp if no start date is set.        
+        """
         if not self.start:
-            raise ValueError("Event must have a start and due date to calculate timespan")
+            return Timespan.of(self.dtstamp, self.dtstamp)
         return Timespan.of(
             normalize_datetime(self.start, tzinfo), normalize_datetime(self.due or self.start, tzinfo)
         )
@@ -251,8 +263,6 @@ class Todo(ComponentModel):
             return None
         if not self.start:
             raise CalendarParseError("Event must have a start date to be recurring")
-        if not self.due:
-            raise CalendarParseError("Event must have a due date to be recurring")
         return RulesetIterable(
             self.start,
             [self.rrule.as_rrule(self.start)] if self.rrule else [],
@@ -273,6 +283,22 @@ class Todo(ComponentModel):
         if values.get("duration") and not values.get("dtstart"):
             raise ValueError("Duration requires that dtstart is specified")
         return values
+
+    @root_validator
+    def validate_repair_missing_dtstart(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Repair Todo entries that is missing a dtstart value."""
+        if values.get("dtstart") is None and (due := values.get("due")):
+            dtstart = due - datetime.timedelta(days=1)
+            if (recur := values.get("rrule")) and isinstance(recur, Recur):
+                # Get previous day
+                due_dt = normalize_datetime(due)
+                past = normalize_datetime(due) - datetime.timedelta(days=365)
+                rule = recur.as_rrule(past).before(due_dt, inc=False)
+                # Handle all-day conversion
+                dtstart = next(iter(RulesetIterable(due, [[rule]], [], [])))
+            values["dtstart"] = dtstart
+        return values
+
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
     _validate_recurrence_dates = root_validator(allow_reuse=True)(
