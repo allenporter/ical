@@ -86,6 +86,16 @@ each recurring event. A merged iterator peeks into the input of each
 iterator to decide which one to pull from when determinig the next item
 in the iterator.
 
+An individual instance of a recurring event is generated with the same `UID`,
+but with a different `RECURRENCE_ID` based on the start time of that instance.
+
 ### Recurrence Editing
 
-WIP
+An entire series may be modified by modifying the original event without
+referencing a `RECURRENCE_ID`. A `RECURRENCE_ID` can refer to a specific
+instance in the series, or with `THIS_AND_FUTURE` to apply to forward looking
+events.
+
+When modifying an instance, a new copy of the event is created for that instance
+and the original event representing the whole series is modified to exclude
+the edited instance.

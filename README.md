@@ -63,6 +63,14 @@ with filename.open() as ics_file:
     ics_file.write(IcsCalendarStream.calendar_to_ics(calendar))
 ```
 
+# Application-level APIs
+
+The above APIs are used for lower level interaction with calendar components,
+however applications require a higher level interface to manage some of the
+underlying complexity. The `ical.store` library is used to manage state at a higher
+level (e.g. ensuring timezones are created properly) or handling edits to
+recurring events.
+
 # Recurring events
 
 A calendar event may be recurring (e.g. weekly, monthly, etc). Recurring events
