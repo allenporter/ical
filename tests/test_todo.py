@@ -7,6 +7,7 @@ import zoneinfo
 from typing import Any
 from unittest.mock import patch
 
+from freezegun import freeze_time
 import pytest
 
 from ical.exceptions import CalendarParseError
@@ -103,3 +104,50 @@ def test_is_recurring() -> None:
         datetime.date(2024, 2, 3),
         datetime.date(2024, 2, 4),
     ]
+
+
+def test_timestamp_start_due() -> None:
+    """Test a timespan of a Todo with a start and due date."""
+    todo = Todo(
+        summary="Example",
+        dtstart=datetime.date(2022, 8, 1),
+        due=datetime.date(2022, 8, 7),
+    )
+
+    with patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("CET")):
+        ts = todo.timespan
+    assert ts.start.isoformat() == "2022-08-01T00:00:00+02:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00+02:00"
+
+    ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-08-01T00:00:00-06:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00-06:00"
+
+
+def test_timespan_missing_dtstart() -> None:
+    """Test a timespan of a Todo without a dtstart."""
+    todo = Todo(summary="Example", due=datetime.date(2022, 8, 7))
+
+    with patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+        ts = todo.timespan
+    assert ts.start.isoformat() == "2022-08-07T00:00:00-10:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00-10:00"
+
+    ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-08-07T00:00:00-06:00"
+    assert ts.end.isoformat() == "2022-08-07T00:00:00-06:00"
+
+
+def test_timespan_fallback() -> None:
+    """Test a timespan of a Todo with no explicit dtstart and due date"""
+
+    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+        todo = Todo(summary="Example")
+        ts = todo.timespan
+    assert ts.start.isoformat() == "2022-09-03T00:00:00-10:00"
+    assert ts.end.isoformat() == "2022-09-04T00:00:00-10:00"
+
+    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+        ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
+    assert ts.start.isoformat() == "2022-09-03T00:00:00-06:00"
+    assert ts.end.isoformat() == "2022-09-04T00:00:00-06:00"

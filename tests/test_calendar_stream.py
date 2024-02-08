@@ -11,11 +11,13 @@ from syrupy import SnapshotAssertion
 
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
+from ical.store import EventStore, TodoStore
 
 MAX_ITERATIONS = 30
 TESTDATA_PATH = pathlib.Path("tests/testdata/")
 TESTDATA_FILES = list(TESTDATA_PATH.glob("*.ics"))
 TESTDATA_IDS = [ x.stem for x in TESTDATA_FILES ]
+
 
 def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
     """Test serialization of an empty ics file."""
@@ -72,7 +74,7 @@ def test_serialize(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
 
 
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
-def test_iteration(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
+def test_timeline_iteration(filename: pathlib.Path) -> None:
     """Fixture to ensure all calendar events are valid and support iteration."""
     with filename.open() as f:
         cal = IcsCalendarStream.from_ics(f.read())
@@ -81,6 +83,18 @@ def test_iteration(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
         # to handle recurring events that may repeat forever.
         for event in itertools.islice(calendar.timeline, MAX_ITERATIONS):
             assert event is not None
+
+
+@pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
+def test_todo_list_iteration(filename: pathlib.Path) -> None:
+    """Fixture to read golden file and compare to golden output."""
+    cal = CalendarStream.from_ics(filename.read_text())
+    if not cal.calendars:
+        return
+    calendar = cal.calendars[0]
+    tl = TodoStore(calendar).todo_list()
+    for todo in itertools.islice(tl, MAX_ITERATIONS):
+        assert todo is not None
 
 
 def test_invalid_ics() -> None:
