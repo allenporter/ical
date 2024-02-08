@@ -29,7 +29,7 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .util import dtstamp_factory, normalize_datetime, uid_factory
+from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
 
 
 class TodoStatus(str, enum.Enum):
@@ -213,16 +213,28 @@ class Todo(ComponentModel):
     @property
     def timespan(self) -> Timespan:
         """Return a timespan representing the item start and due date."""
-        if not self.start:
-            raise ValueError("Event must have a start and due date to calculate timespan")
-        return Timespan.of(self.start, self.due or self.start)
+        return self.timespan_of(local_timezone())
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date."""
-        if not self.start:
-            raise ValueError("Event must have a start and due date to calculate timespan")
+        dtstart = self.dtstart
+        dtend = self.due
+        if dtstart is None:
+            if dtend is None:
+                # A component with the DTSTART and DUE specifies a to-do that
+                # will be associated with each successive calendar date, until
+                # it is completed.
+                dtstart = datetime.datetime.now(tzinfo).date()
+                dtend = dtstart + datetime.timedelta(days=1)
+            else:
+                # Component with a DTSTART but no DUE date will be sorted next
+                # to the due date.
+                dtstart = dtend
+        elif dtend is None:
+            # Component with a DTSTART but not DUE date will be sorted next to the start date
+            dtend = dtstart
         return Timespan.of(
-            normalize_datetime(self.start, tzinfo), normalize_datetime(self.due or self.start, tzinfo)
+            normalize_datetime(dtstart, tzinfo), normalize_datetime(dtend, tzinfo)
         )
 
     @property
