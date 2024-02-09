@@ -8,20 +8,14 @@ like returning all events happening today or after a specific date.
 from __future__ import annotations
 
 import datetime
-from collections.abc import Generator, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 from .event import Event
 from .iter import (
-    MergedIterable,
-    RecurIterable,
-    SortableItem,
     SortableItemTimeline,
-    SortableItemValue,
-    SortedItemIterable,
     SpanOrderedItem,
 )
-from .recur_adapter import RecurAdapter, merge_and_expand_items
-from .timespan import Timespan
+from .recur_adapter import merge_and_expand_items
 
 __all__ = ["Timeline"]
 
