@@ -1058,7 +1058,7 @@ def test_todo_timezone_offset_not_supported(
     event = Todo(
         summary="Monday meeting",
         dtstart=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
-        due=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
+        due=datetime.datetime(2022, 8, 30, 9, 0, 0, tzinfo=tzinfo),
     )
     with pytest.raises(StoreError, match=r"No timezone information"):
         todo_store.add(event)

@@ -281,17 +281,66 @@ class Todo(ComponentModel):
         )
 
     @root_validator
-    def validate_one_due_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_one_due_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that only one of duration or end date may be set."""
         if values.get("due") and values.get("duration"):
             raise ValueError("Only one of dtend or duration may be set." "")
         return values
 
     @root_validator
-    def validate_duration_requires_start(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_duration_requires_start(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that a duration requires the dtstart."""
         if values.get("duration") and not values.get("dtstart"):
             raise ValueError("Duration requires that dtstart is specified")
+        return values
+
+    @root_validator
+    def _validate_due_later(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that the due property is later than dtstart."""
+        if not (due := values.get("due")) or not (dtstart := values.get("dtstart")):
+            return values
+        if due <= dtstart:
+            raise ValueError("due value must be later in time than dtstart.")
+        return values
+
+    @root_validator(allow_reuse=True)
+    def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that start and end values are the same date or datetime type."""
+        dtstart = values.get("dtstart")
+        due = values.get("due")
+
+        if not dtstart or not due:
+            return values
+        if isinstance(dtstart, datetime.datetime):
+            if not isinstance(due, datetime.datetime):
+                raise ValueError(
+                    f"Unexpected dtstart value '{dtstart}' was datetime but "
+                    f"dtend value '{due}' was not datetime"
+                )
+        elif isinstance(dtstart, datetime.date):
+            if isinstance(due, datetime.datetime):
+                raise ValueError(
+                    f"Unexpected dtstart value '{dtstart}' was date but "
+                    f"dtend value '{due}' was datetime"
+                )
+        return values
+    
+    @root_validator(allow_reuse=True)
+    def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that start and due values have the same timezone information."""
+        if (
+            not (dtstart := values.get("dtstart"))
+            or not (due := values.get("due"))
+            or not isinstance(dtstart, datetime.datetime)
+            or not isinstance(due, datetime.datetime)
+        ):
+            return values
+        if dtstart.tzinfo is None and due.tzinfo is not None:
+            raise ValueError(
+                f"Expected end datetime value in localtime but was {due}"
+            )
+        if dtstart.tzinfo is not None and due.tzinfo is None:
+            raise ValueError(f"Expected end datetime with timezone but was {due}")
         return values
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)

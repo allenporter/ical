@@ -74,6 +74,30 @@ def test_duration() -> None:
         ),
         (
             {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
+                "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "start": datetime.date(2022, 9, 6),
+                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),  # floating
+            }
+        ),
+        (
+            {
+                "start": datetime.date(2022, 9, 6),
+                "due": datetime.date(2022, 9, 6),
+            }
+        ),
+        (
+            {
                 "duration": datetime.timedelta(hours=1),
             }
         ),
