@@ -199,3 +199,12 @@ def test_is_due(due: datetime.date | datetime.datetime, expected: bool) -> None:
         due=due,
     )
     assert todo.is_due(tzinfo=_TEST_TZ) == expected
+
+
+def test_is_due_default_timezone() -> None:
+    """Test a Todo is due with the default timezone."""
+    todo = Todo(
+        summary="Example",
+        due=datetime.date(2022, 9, 6),
+    )
+    assert todo.is_due()
