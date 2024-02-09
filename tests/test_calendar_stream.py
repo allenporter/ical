@@ -11,7 +11,7 @@ from syrupy import SnapshotAssertion
 
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
-from ical.store import EventStore, TodoStore
+from ical.store import TodoStore
 
 MAX_ITERATIONS = 30
 TESTDATA_PATH = pathlib.Path("tests/testdata/")

@@ -14,6 +14,8 @@ from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.types.recur import Recur
 
+_TEST_TZ = datetime.timezone(datetime.timedelta(hours=1))
+
 
 def test_empty() -> None:
     """Test that in practice a Todo requires no fields."""
@@ -70,6 +72,36 @@ def test_duration() -> None:
         (
             {
                 "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
+                "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
+                "due": datetime.datetime(2022, 9, 7, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+            }
+        ),
+        (
+            {
+                "start": datetime.date(2022, 9, 6),
+                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),
+            }
+        ),
+        (
+            {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),  # floating
+            }
+        ),
+        (
+            {
+                "start": datetime.date(2022, 9, 6),
+                "due": datetime.date(2022, 9, 6),
             }
         ),
         (
@@ -151,3 +183,34 @@ def test_timespan_fallback() -> None:
         ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
     assert ts.start.isoformat() == "2022-09-03T00:00:00-06:00"
     assert ts.end.isoformat() == "2022-09-04T00:00:00-06:00"
+
+
+@pytest.mark.parametrize(
+    ("due", "expected"),
+    [
+        (datetime.date(2022, 9, 6), True),
+        (datetime.date(2022, 9, 7), True),
+        (datetime.date(2022, 9, 8), False),
+        (datetime.date(2022, 9, 9), False),
+        (datetime.datetime(2022, 9, 7, 6, 0, 0, tzinfo=_TEST_TZ), True),
+        (datetime.datetime(2022, 9, 7, 12, 0, 0, tzinfo=_TEST_TZ), False),
+        (datetime.datetime(2022, 9, 8, 6, 0, 0, tzinfo=_TEST_TZ), False),
+    ],
+)
+@freeze_time("2022-09-07T09:38:05", tz_offset=1)
+def test_is_due(due: datetime.date | datetime.datetime, expected: bool) -> None:
+    """Test that a Todo is due."""
+    todo = Todo(
+        summary="Example",
+        due=due,
+    )
+    assert todo.is_due(tzinfo=_TEST_TZ) == expected
+
+
+def test_is_due_default_timezone() -> None:
+    """Test a Todo is due with the default timezone."""
+    todo = Todo(
+        summary="Example",
+        due=datetime.date(2022, 9, 6),
+    )
+    assert todo.is_due()
