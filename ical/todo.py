@@ -14,6 +14,7 @@ from collections.abc import Iterable
 import datetime
 import enum
 from typing import Any, Optional, Union
+import logging
 
 try:
     from pydantic.v1 import Field, root_validator
@@ -38,6 +39,9 @@ from .types import (
     RelatedTo,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TodoStatus(str, enum.Enum):
@@ -217,6 +221,12 @@ class Todo(ComponentModel):
             return None
         return self.due - self.dtstart
 
+    def is_due(self, tzinfo: datetime.tzinfo | None = None) -> bool:
+        """Return true if the todo is due."""
+        if tzinfo is None:
+            tzinfo = local_timezone()
+        now = datetime.datetime.now(tz=tzinfo)
+        return self.due is not None and normalize_datetime(self.due, tzinfo) < now
 
     @property
     def timespan(self) -> Timespan:
