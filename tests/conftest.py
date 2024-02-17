@@ -35,7 +35,7 @@ def json_encoder() -> json.JSONEncoder:
     return DataclassEncoder()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_prodid() -> Generator[None, None, None]:
     """Mock out the prodid used in tests."""
     with patch("ical.calendar.prodid_factory", return_value=PRODID):
