@@ -773,7 +773,7 @@
 # name: test_modify_todo_rrule_for_this_and_future[ics]
   '''
   BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  PRODID:-//example//1.2.3
   VERSION:2.0
   BEGIN:VTODO
   DTSTAMP:20220903T093805
@@ -908,7 +908,7 @@
 # name: test_recurring_todo_item_edit_series.3
   '''
   BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  PRODID:-//example//1.2.3
   VERSION:2.0
   BEGIN:VTODO
   DTSTAMP:20240109T100005
@@ -972,7 +972,7 @@
 # name: test_recurring_todo_item_edit_single[deleted_series_ics]
   '''
   BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  PRODID:-//example//1.2.3
   VERSION:2.0
   END:VCALENDAR
   '''
@@ -1024,7 +1024,7 @@
 # name: test_recurring_todo_item_edit_single[next_instance_deleted_ics]
   '''
   BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  PRODID:-//example//1.2.3
   VERSION:2.0
   BEGIN:VTODO
   DTSTAMP:20240109T100005
@@ -1057,7 +1057,7 @@
 # name: test_recurring_todo_item_edit_single[result_ics]
   '''
   BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//6.1.1//EN
+  PRODID:-//example//1.2.3
   VERSION:2.0
   BEGIN:VTODO
   DTSTAMP:20240109T100005
