@@ -849,7 +849,7 @@ def test_timezone_offset_not_supported(
         start=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
         end=datetime.datetime(2022, 8, 29, 9, 30, 0, tzinfo=tzinfo),
     )
-    with pytest.raises(StoreError, match=r"No timezone information"):
+    with pytest.raises(StoreError, match=r"No timezone information available for event: UTC-08:00"):
         store.add(event)
     assert not calendar.events
     assert not calendar.timezones

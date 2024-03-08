@@ -64,7 +64,7 @@ def _ensure_timezone(
         return Timezone.from_tzif(key)
     except TimezoneInfoError as err:
         raise EventStoreError(
-            "No timezone information available for event: {key}"
+            f"No timezone information available for event: {key}"
         ) from err
 
 
