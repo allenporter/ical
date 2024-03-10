@@ -1358,3 +1358,36 @@ def test_modify_todo_rrule_for_this_and_future(
     for date in ("2024-01-05", "2024-01-12", "2024-01-19", "2024-01-26"):
         frozen_time.move_to(date)
         assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name=date)
+
+
+
+def test_modify_todo_due_without_dtstart(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Validate that a due date modification without updating dtstart will be repaired."""
+    # Create a recurring to-do item to wash the card every Saturday
+    todo_store.add(
+        Todo(
+            summary="Wash car",
+            dtstart="2024-01-06",
+            due="2024-01-07",
+        )
+    )
+
+    # Move the due date to be before the dtstart and change to a datetime.
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(
+            summary="Wash car",
+            due="2024-01-01T10:00:00Z",
+        ),
+    )
+
+    todos = list(todo_store.todo_list())
+    assert len(todos) == 1
+    todo = todos[0]
+    assert todo.due == datetime.datetime(2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc)
+    assert isinstance(todo.dtstart, datetime.datetime)
+    assert todo.dtstart < todo.due

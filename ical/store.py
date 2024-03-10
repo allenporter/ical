@@ -120,8 +120,8 @@ def _prepare_update(
         **partial_update,
         "dtstamp": item.dtstamp,
     }
-    if "rrule" in update:
-        update["rrule"] = Recur.parse_obj(update["rrule"])
+    if rrule := update.get("rrule"):
+        update["rrule"] = Recur.parse_obj(rrule)
     if recurrence_id:
         if not store_item.rrule:
             raise EventStoreError("Specified recurrence_id but event is not recurring")
@@ -191,7 +191,7 @@ class GenericStore(Generic[_T]):
                 update["dtstart"] = item.due - datetime.timedelta(days=1)
             else:
                 update["dtstart"] = datetime.datetime.now(tz=local_timezone())
-        new_item = cast(_T, item.copy(update=update))
+        new_item = cast(_T, item.copy_and_validate(update=update))
 
         # The store can only manage cascading deletes for some relationship types
         for relation in new_item.related_to or ():
@@ -349,7 +349,7 @@ class GenericStore(Generic[_T]):
                 item.rrule = None
 
         # Make a deep copy since deletion may update this objects recurrence rules
-        new_item = cast(_T, store_item.copy(update=update, deep=True))
+        new_item = cast(_T, store_item.copy_and_validate(update=update))
         if (
             recurrence_id
             and new_item.rrule

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import zoneinfo
+import textwrap
 from typing import Any
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ import pytest
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.types.recur import Recur
+from ical.calendar_stream import IcsCalendarStream
 
 _TEST_TZ = datetime.timezone(datetime.timedelta(hours=1))
 
@@ -77,31 +79,17 @@ def test_duration() -> None:
         (
             {
                 "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
-                "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
+                "due": datetime.datetime(
+                    2022, 9, 7, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
+                ),
             }
         ),
         (
             {
-                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
-                "due": datetime.datetime(2022, 9, 7, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
-            }
-        ),
-        (
-            {
-                "start": datetime.date(2022, 9, 6),
-                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),
-            }
-        ),
-        (
-            {
-                "start": datetime.datetime(2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")),
+                "start": datetime.datetime(
+                    2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
+                ),
                 "due": datetime.datetime(2022, 9, 7, 6, 0, 0),  # floating
-            }
-        ),
-        (
-            {
-                "start": datetime.date(2022, 9, 6),
-                "due": datetime.date(2022, 9, 6),
             }
         ),
         (
@@ -120,6 +108,7 @@ def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
             **params,
         )
         todo.as_rrule()
+
 
 def test_is_recurring() -> None:
     """Test that a Todo with an rrule requires a dtstart."""
@@ -160,7 +149,9 @@ def test_timespan_missing_dtstart() -> None:
     """Test a timespan of a Todo without a dtstart."""
     todo = Todo(summary="Example", due=datetime.date(2022, 8, 7))
 
-    with patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+    with patch(
+        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    ):
         ts = todo.timespan
     assert ts.start.isoformat() == "2022-08-07T00:00:00-10:00"
     assert ts.end.isoformat() == "2022-08-07T00:00:00-10:00"
@@ -173,13 +164,17 @@ def test_timespan_missing_dtstart() -> None:
 def test_timespan_fallback() -> None:
     """Test a timespan of a Todo with no explicit dtstart and due date"""
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
+        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    ):
         todo = Todo(summary="Example")
         ts = todo.timespan
     assert ts.start.isoformat() == "2022-09-03T00:00:00-10:00"
     assert ts.end.isoformat() == "2022-09-04T00:00:00-10:00"
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch("ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")):
+    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
+        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    ):
         ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
     assert ts.start.isoformat() == "2022-09-03T00:00:00-06:00"
     assert ts.end.isoformat() == "2022-09-04T00:00:00-06:00"
@@ -214,3 +209,94 @@ def test_is_due_default_timezone() -> None:
         due=datetime.date(2022, 9, 6),
     )
     assert todo.is_due()
+
+
+def test_repair_mismatched_due_date_and_dtstart() -> None:
+    """The calendar store has a bug when the due date changes type without updating the start date."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent(
+            """\
+                BEGIN:VCALENDAR
+                PRODID:-//example.io//todo 2.0//EN
+                VERSION:2.0
+                BEGIN:VTODO
+                DTSTAMP:20240310T151256
+                UID:85cce364-def0-11ee-a2a9-6045bde93490
+                CREATED:20240310T151156
+                DESCRIPTION:Modify
+                DTSTART:20240310T151151Z
+                DUE:20240318
+                LAST-MODIFIED:20240310T151256
+                SEQUENCE:2
+                STATUS:NEEDS-ACTION
+                SUMMARY:Example
+                END:VTODO
+                END:VCALENDAR
+            """
+        )
+    )
+    assert len(calendar.todos) == 1
+    assert calendar.todos[0].due == datetime.date(2024, 3, 18)
+    assert calendar.todos[0].dtstart == datetime.date(2024, 3, 10)
+
+
+def test_repair_mismatched_due_datetime_and_dtstart() -> None:
+    """The calendar store has a bug when the due date changes type without updating the start date."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent(
+            """\
+                BEGIN:VCALENDAR
+                PRODID:-//example.io//todo 2.0//EN
+                VERSION:2.0
+                BEGIN:VTODO
+                DTSTAMP:20240310T151256
+                UID:85cce364-def0-11ee-a2a9-6045bde93490
+                CREATED:20240310T151156
+                DESCRIPTION:Modify
+                DTSTART:20240310
+                DUE:20240318T151151Z
+                LAST-MODIFIED:20240310T151256
+                SEQUENCE:2
+                STATUS:NEEDS-ACTION
+                SUMMARY:Example
+                END:VTODO
+                END:VCALENDAR
+            """
+        )
+    )
+    assert len(calendar.todos) == 1
+    assert calendar.todos[0].due == datetime.datetime(
+        2024, 3, 18, 15, 11, 51, tzinfo=datetime.timezone.utc
+    )
+    assert calendar.todos[0].dtstart == datetime.datetime(
+        2024, 3, 10, 0, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_repair_out_of_order_due_and_dtstart() -> None:
+    """The calendar store has a bug when the due date changes type without updating the start date."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent(
+            """\
+                BEGIN:VCALENDAR
+                PRODID:-//example.io//todo 2.0//EN
+                VERSION:2.0
+                BEGIN:VTODO
+                DTSTAMP:20240310T151256
+                UID:85cce364-def0-11ee-a2a9-6045bde93490
+                CREATED:20240310T151156
+                DESCRIPTION:Modify
+                DTSTART:20240410
+                DUE:20240318
+                LAST-MODIFIED:20240310T151256
+                SEQUENCE:2
+                STATUS:NEEDS-ACTION
+                SUMMARY:Example
+                END:VTODO
+                END:VCALENDAR
+            """
+        )
+    )
+    assert len(calendar.todos) == 1
+    assert calendar.todos[0].due == datetime.date(2024, 3, 18)
+    assert calendar.todos[0].dtstart == datetime.date(2024, 3, 17)
