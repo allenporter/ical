@@ -298,43 +298,42 @@ class Todo(ComponentModel):
         return values
 
     @root_validator
-    def _validate_duration_requires_start(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def _validate_duration_requires_start(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
         """Validate that a duration requires the dtstart."""
         if values.get("duration") and not values.get("dtstart"):
             raise ValueError("Duration requires that dtstart is specified")
         return values
 
-    @root_validator
-    def _validate_due_later(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate that the due property is later than dtstart."""
-        if not (due := values.get("due")) or not (dtstart := values.get("dtstart")):
-            return values
-        if due <= dtstart:
-            raise ValueError("due value must be later in time than dtstart.")
-        return values
-
     @root_validator(allow_reuse=True)
     def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate that start and end values are the same date or datetime type."""
+        """Validate and repair due vs start values to ensure they are the same date or datetime type."""
         dtstart = values.get("dtstart")
         due = values.get("due")
-
         if not dtstart or not due:
             return values
-        if isinstance(dtstart, datetime.datetime):
-            if not isinstance(due, datetime.datetime):
-                raise ValueError(
-                    f"Unexpected dtstart value '{dtstart}' was datetime but "
-                    f"dtend value '{due}' was not datetime"
+        if isinstance(due, datetime.datetime):
+            if not isinstance(dtstart, datetime.datetime):
+                _LOGGER.debug(
+                    "Repairing unexpected dtstart value '%s' as date with due value '%s' as datetime",
+                    dtstart,
+                    due,
                 )
-        elif isinstance(dtstart, datetime.date):
-            if isinstance(due, datetime.datetime):
-                raise ValueError(
-                    f"Unexpected dtstart value '{dtstart}' was date but "
-                    f"dtend value '{due}' was datetime"
+                values["dtstart"] = datetime.datetime.combine(
+                    dtstart, datetime.time.min, tzinfo=due.tzinfo
                 )
+        elif isinstance(due, datetime.date):
+            if isinstance(dtstart, datetime.datetime):
+                _LOGGER.debug(
+                    "Repairing unexpected dtstart value '%s' as date with due value '%s' as datetime",
+                    dtstart,
+                    due,
+                )
+                values["dtstart"] = dtstart.date()
+                _LOGGER.debug("values=%s", values)
         return values
-    
+
     @root_validator(allow_reuse=True)
     def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Validate that start and due values have the same timezone information."""
@@ -346,11 +345,23 @@ class Todo(ComponentModel):
         ):
             return values
         if dtstart.tzinfo is None and due.tzinfo is not None:
-            raise ValueError(
-                f"Expected end datetime value in localtime but was {due}"
-            )
+            raise ValueError(f"Expected due datetime value in localtime but was {due}")
         if dtstart.tzinfo is not None and due.tzinfo is None:
-            raise ValueError(f"Expected end datetime with timezone but was {due}")
+            raise ValueError(f"Expected due datetime with timezone but was {due}")
+        return values
+
+    @root_validator
+    def _validate_due_later(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Validate that the due property is later than dtstart."""
+        if not (due := values.get("due")) or not (dtstart := values.get("dtstart")):
+            return values
+        if due <= dtstart:
+            _LOGGER.debug(
+                "Due date %s is earlier than start date %s, adjusting start date",
+                due,
+                dtstart,
+            )
+            values["dtstart"] = due - datetime.timedelta(days=1)
         return values
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)

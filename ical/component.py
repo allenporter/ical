@@ -140,6 +140,14 @@ class ComponentModel(BaseModel):
         except ValidationError as err:
             raise CalendarParseError(f"Failed to parse component: {err}") from err
 
+    def copy_and_validate(self, update: dict[str, Any]) -> ComponentModel:
+        """Create a new object with updated values and validate it."""
+        # Make a deep copy since deletion may update this objects recurrence rules
+        new_item_copy = self.copy(update=update, deep=True)
+        # Create a new object using the constructore to ensure we're performing
+        # validation on the new object.
+        return self.__class__(**new_item_copy.dict())
+
     @root_validator(pre=True, allow_reuse=True)
     def parse_extra_fields(
         cls, values: dict[str, list[ParsedProperty | ParsedComponent]]
