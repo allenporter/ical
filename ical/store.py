@@ -164,12 +164,14 @@ class GenericStore(Generic[_T]):
         timezones: list[Timezone],
         exc: type[StoreError],
         dtstamp_fn: Callable[[], datetime.datetime] = lambda: dtstamp_factory(),
+        tzinfo: datetime.tzinfo | None = None,
     ):
         """Initialize the EventStore."""
         self._items = items
         self._timezones = timezones
         self._exc = exc
         self._dtstamp_fn = dtstamp_fn
+        self._tzinfo = tzinfo or local_timezone()
 
     def add(self, item: _T) -> _T:
         """Add the specified item to the calendar.
@@ -190,7 +192,7 @@ class GenericStore(Generic[_T]):
             if item.due:
                 update["dtstart"] = item.due - datetime.timedelta(days=1)
             else:
-                update["dtstart"] = datetime.datetime.now(tz=local_timezone())
+                update["dtstart"] = datetime.datetime.now(tz=self._tzinfo)
         new_item = cast(_T, item.copy_and_validate(update=update))
 
         # The store can only manage cascading deletes for some relationship types
@@ -467,6 +469,7 @@ class EventStore(GenericStore[Event]):
             calendar.timezones,
             EventStoreError,
             dtstamp_fn,
+            tzinfo=None,
         )
 
 
@@ -485,9 +488,9 @@ class TodoStore(GenericStore[Todo]):
             calendar.timezones,
             TodoStoreError,
             dtstamp_fn,
+            tzinfo=tzinfo,
         )
         self._calendar = calendar
-        self._tzinfo = tzinfo or local_timezone()
 
     def todo_list(self, dtstart: datetime.datetime | None = None) -> Iterable[Todo]:
         """Return a list of all todos on the calendar.

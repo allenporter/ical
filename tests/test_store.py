@@ -23,6 +23,7 @@ from ical.store import EventStore, TodoStore, StoreError
 from ical.types.recur import Range, Recur
 from ical.types import RelationshipType, RelatedTo
 
+TZ = zoneinfo.ZoneInfo("America/Los_Angeles")
 
 @pytest.fixture(name="calendar")
 def mock_calendar() -> Calendar:
@@ -39,7 +40,7 @@ def mock_store(calendar: Calendar) -> EventStore:
 @pytest.fixture(name="todo_store")
 def mock_todo_store(calendar: Calendar) -> TodoStore:
     """Fixture to create an event store."""
-    return TodoStore(calendar)
+    return TodoStore(calendar, tzinfo=TZ)
 
 
 @pytest.fixture(name="_uid", autouse=True)
@@ -1364,7 +1365,6 @@ def test_modify_todo_rrule_for_this_and_future(
 def test_modify_todo_due_without_dtstart(
     calendar: Calendar,
     todo_store: TodoStore,
-    snapshot: SnapshotAssertion,
 ) -> None:
     """Validate that a due date modification without updating dtstart will be repaired."""
     # Create a recurring to-do item to wash the card every Saturday
@@ -1391,3 +1391,32 @@ def test_modify_todo_due_without_dtstart(
     assert todo.due == datetime.datetime(2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc)
     assert isinstance(todo.dtstart, datetime.datetime)
     assert todo.dtstart < todo.due
+             
+
+@pytest.mark.parametrize(
+        ("due", "expected_tz"),
+        [
+            (None, TZ),
+            ("2024-01-07T10:00:00Z", datetime.timezone.utc),
+            ("2024-01-07T10:00:00-05:00", zoneinfo.ZoneInfo("America/New_York")),
+        ],
+)
+def test_dtstart_timezone(
+    calendar: Calendar,
+    todo_store: TodoStore,
+    due: str | None,
+    expected_tz: zoneinfo.ZoneInfo,
+) -> None:
+    """Validate that a due date modification without updating dtstart will be repaired."""
+    # Create a recurring to-do item to wash the card every Saturday
+    todo_store.add(
+        Todo(
+            summary="Wash car",
+        )
+    )
+    todos = list(todo_store.todo_list())
+    assert len(todos) == 1
+    todo = todos[0]
+    assert todo.due is None
+    assert todo.dtstart.tzinfo == TZ
+                                        
