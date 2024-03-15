@@ -346,8 +346,6 @@ class Todo(ComponentModel):
         ):
             return values
         if dtstart.tzinfo is None and due.tzinfo is not None:
-            # _LOGGER.debug("Repairing local dtstart to match")
-            # values["dtstart"] = dtstart.replace(tzinfo=due.tzinfo)
             raise ValueError(f"Expected due datetime value in localtime but was {due}")
         if dtstart.tzinfo is not None and due.tzinfo is None:
             raise ValueError(f"Expected due datetime with timezone but was {due}")
