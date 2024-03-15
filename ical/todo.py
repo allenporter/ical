@@ -25,7 +25,7 @@ from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
-from .parsing.property import ParsedProperty, ParsedPropertyParameter
+from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
     CalAddress,
@@ -37,7 +37,6 @@ from .types import (
     RequestStatus,
     Uri,
     RelatedTo,
-    date_time,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
 
