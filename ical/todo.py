@@ -376,35 +376,13 @@ class Todo(ComponentModel):
                 and field_type == datetime.datetime
                 and prop.params is not None
             ):
-                new_prop = ParsedProperty(
-                    prop.name, prop.value, _repair_tzid_param(prop.params)
-                )
                 _LOGGER.debug(
-                    "Applying todo dtstart repair for invalid timezone: %s", new_prop
+                    "Applying todo dtstart repair for invalid timezone; Removing dtstart",
                 )
-                try:
-                    return date_time.parse_property_value(new_prop)
-                except ValueError as repair_err:
-                    _LOGGER.debug(
-                        "To-do dtstart repair failed %s, raising original error",
-                        repair_err,
-                    )
+                return None
             raise err
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
     _validate_recurrence_dates = root_validator(allow_reuse=True)(
         validate_recurrence_dates
     )
-
-
-def _repair_tzid_param(
-    params: list[ParsedPropertyParameter],
-) -> list[ParsedPropertyParameter]:
-    """Repair the TZID parameter."""
-    result_params = []
-    for param in params:
-        if param.name == "TZID":
-            result_params.append(ParsedPropertyParameter(param.name, ["UTC"]))
-            continue
-        result_params.append(param)
-    return result_params
