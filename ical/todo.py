@@ -25,7 +25,7 @@ from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
-from .parsing.property import ParsedProperty
+from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .timespan import Timespan
 from .types import (
     CalAddress,
@@ -37,6 +37,7 @@ from .types import (
     RequestStatus,
     Uri,
     RelatedTo,
+    date_time,
 )
 from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
 
@@ -345,6 +346,8 @@ class Todo(ComponentModel):
         ):
             return values
         if dtstart.tzinfo is None and due.tzinfo is not None:
+            # _LOGGER.debug("Repairing local dtstart to match")
+            # values["dtstart"] = dtstart.replace(tzinfo=due.tzinfo)
             raise ValueError(f"Expected due datetime value in localtime but was {due}")
         if dtstart.tzinfo is not None and due.tzinfo is None:
             raise ValueError(f"Expected due datetime with timezone but was {due}")
@@ -364,7 +367,46 @@ class Todo(ComponentModel):
             values["dtstart"] = due - datetime.timedelta(days=1)
         return values
 
+    @classmethod
+    def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field as a single type."""
+        try:
+            return super()._parse_single_property(field_type, prop)
+        except ValueError as err:
+            if (
+                prop.name == "dtstart"
+                and field_type == datetime.datetime
+                and prop.params is not None
+            ):
+                new_prop = ParsedProperty(
+                    prop.name, prop.value, _repair_tzid_param(prop.params)
+                )
+                _LOGGER.debug(
+                    "Applying todo dtstart repair for invalid timezone: %s", new_prop
+                )
+                try:
+                    return date_time.parse_property_value(new_prop)
+                except ValueError as repair_err:
+                    _LOGGER.debug(
+                        "To-do dtstart repair failed %s, raising original error",
+                        repair_err,
+                    )
+            raise err
+
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
     _validate_recurrence_dates = root_validator(allow_reuse=True)(
         validate_recurrence_dates
     )
+
+
+def _repair_tzid_param(
+    params: list[ParsedPropertyParameter],
+) -> list[ParsedPropertyParameter]:
+    """Repair the TZID parameter."""
+    result_params = []
+    for param in params:
+        if param.name == "TZID":
+            result_params.append(ParsedPropertyParameter(param.name, ["UTC"]))
+            continue
+        result_params.append(param)
+    return result_params

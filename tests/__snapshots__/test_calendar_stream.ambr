@@ -1088,6 +1088,41 @@
     ]),
   })
 # ---
+# name: test_parse[todo-invalid-dtstart-tzid]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'todos': list([
+          dict({
+            'categories': list([
+              'FAMILY',
+              'FINANCE',
+            ]),
+            'classification': 'CONFIDENTIAL',
+            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstart': '2007-05-01T11:00:00+00:00',
+            'due': '2007-05-01T11:00:00-07:00',
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Quebec Income Tax Return for 2006',
+            'uid': '20070313T123432Z-456553@example.com',
+          }),
+          dict({
+            'completed': '2007-07-07T10:00:00+00:00',
+            'dtstamp': '2007-05-14T10:32:11+00:00',
+            'dtstart': '2007-05-14T11:00:00+00:00',
+            'due': '2007-07-09T13:00:00+00:00',
+            'priority': 1,
+            'status': 'NEEDS-ACTION',
+            'summary': 'Submit Revised Internet-Draft',
+            'uid': '20070514T103211Z-123404@example.com',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[todo]
   dict({
     'calendars': list([
@@ -1796,6 +1831,35 @@
   TZNAME:EDT
   END:DAYLIGHT
   END:VTIMEZONE
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[todo-invalid-dtstart-tzid]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20070313T123432Z
+  UID:20070313T123432Z-456553@example.com
+  CATEGORIES:FAMILY
+  CATEGORIES:FINANCE
+  CLASS:CONFIDENTIAL
+  DTSTART:20070501T110000Z
+  DUE;TZID=America/Los_Angeles:20070501T110000
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  END:VTODO
+  BEGIN:VTODO
+  DTSTAMP:20070514T103211Z
+  UID:20070514T103211Z-123404@example.com
+  COMPLETED:20070707T100000Z
+  DTSTART:20070514T110000Z
+  DUE:20070709T130000Z
+  PRIORITY:1
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Revised Internet-Draft
+  END:VTODO
   END:VCALENDAR
   '''
 # ---
