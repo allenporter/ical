@@ -100,6 +100,7 @@
                 }),
               }),
             ]),
+            'dtstamp': '2023-03-13T01:12:29',
             'standard': list([
               dict({
                 'dtstart': '2010-11-07T02:00:00',
@@ -1026,6 +1027,7 @@
                 }),
               }),
             ]),
+            'dtstamp': '2022-08-11T06:12:12',
             'last_modified': '2005-08-09T05:00:00+00:00',
             'standard': list([
               dict({
@@ -1276,6 +1278,7 @@
   SEQUENCE:0
   END:VEVENT
   BEGIN:VTIMEZONE
+  DTSTAMP:20230313T011229
   TZID:America/Example
   BEGIN:STANDARD
   DTSTART:20101107T020000
@@ -1785,6 +1788,7 @@
   PRODID:-//ABC Corporation//NONSGML My Product//EN
   VERSION:2.0
   BEGIN:VTIMEZONE
+  DTSTAMP:20220811T061212
   TZID:America/New_York
   LAST-MODIFIED:20050809T050000Z
   BEGIN:STANDARD

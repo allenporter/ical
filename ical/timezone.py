@@ -135,6 +135,11 @@ class Timezone(ComponentModel):
     sub-component.
     """
 
+    dtstamp: Union[datetime.datetime, datetime.date] = Field(
+        default_factory=lambda: dtstamp_factory()
+    )
+    """Last revision date."""
+
     tz_id: str = Field(alias="tzid")
     """An identifier for this Timezone, unique within a calendar."""
 
