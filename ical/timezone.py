@@ -30,7 +30,6 @@ from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
 from .types import Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
-from .util import dtstamp_factory
 
 __all__ = [
     "Timezone",
@@ -134,11 +133,6 @@ class Timezone(ComponentModel):
     A Timezone must have at least one definition of a standard or daylight
     sub-component.
     """
-
-    dtstamp: Union[datetime.datetime, datetime.date] = Field(
-        default_factory=lambda: dtstamp_factory()
-    )
-    """Last revision date."""
 
     tz_id: str = Field(alias="tzid")
     """An identifier for this Timezone, unique within a calendar."""
