@@ -30,7 +30,6 @@ from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
 from .types import Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
-from .util import dtstamp_factory
 
 __all__ = [
     "Timezone",
