@@ -173,3 +173,44 @@ def test_invalid_tzif_key() -> None:
 
     with pytest.raises(TimezoneInfoError, match=r"Unable to find timezone"):
         Timezone.from_tzif("invalid")
+
+
+
+@freeze_time("2022-08-22 12:30:00")
+def test_clear_old_dtstamp(
+    mock_prodid: Generator[None, None, None]
+) -> None:
+    """Verify a timezone created from a tzif timezone info with a fixed offset"""
+
+    stream = IcsCalendarStream.from_ics(inspect.cleandoc("""
+       BEGIN:VCALENDAR
+       PRODID:-//example//1.2.3
+       VERSION:2.0
+       BEGIN:VTIMEZONE
+       DTSTAMP:20220822T123000
+       TZID:Asia/Tokyo
+       BEGIN:STANDARD
+       DTSTART:20100101T000000
+       TZOFFSETTO:0900
+       TZOFFSETFROM:0900
+       TZNAME:JST
+       END:STANDARD
+       END:VTIMEZONE
+       END:VCALENDAR
+    """))
+    # DTSTAMP is omitted from the output
+    assert stream.ics() == inspect.cleandoc("""
+       BEGIN:VCALENDAR
+       PRODID:-//example//1.2.3
+       VERSION:2.0
+       BEGIN:VTIMEZONE
+       TZID:Asia/Tokyo
+       BEGIN:STANDARD
+       DTSTART:20100101T000000
+       TZOFFSETTO:0900
+       TZOFFSETFROM:0900
+       TZNAME:JST
+       END:STANDARD
+       END:VTIMEZONE
+       END:VCALENDAR
+    """)
