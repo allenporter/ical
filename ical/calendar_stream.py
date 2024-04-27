@@ -52,7 +52,7 @@ class CalendarStream(ComponentModel):
     support encoding. See `IcsCalendarStream` instead for encoding ics files.
     """
 
-    calendars: list[Calendar] = Field(alias="vcalendar", defaut_factory=[])
+    calendars: list[Calendar] = Field(alias="vcalendar", default_factory=list)
 
     @classmethod
     def from_ics(cls, content: str) -> "CalendarStream":
