@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable, Protocol, TypeVar
 
 try:
     from pydantic.v1.fields import SHAPE_LIST, ModelField
@@ -14,6 +14,8 @@ except ImportError:
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 _LOGGER = logging.getLogger(__name__)
+
+T_TYPE = TypeVar("T_TYPE", bound=type)
 
 
 class DataType(Protocol):
@@ -70,13 +72,13 @@ class Registry:
         name: str | None = None,
         disable_value_param: bool = False,
         parse_order: int | None = None,
-    ) -> Callable[[type], type]:
+    ) -> Callable[[T_TYPE], T_TYPE]:
         """Return decorator to register a type.
 
         The name when specified is the Property Data Type value name.
         """
 
-        def decorator(func: type) -> type:
+        def decorator(func: T_TYPE) -> T_TYPE:
             """Register decorated function."""
             if name:
                 self._items[name] = func
