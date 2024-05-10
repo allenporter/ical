@@ -122,9 +122,7 @@ def _prepare_update(
     }
     if rrule := update.get("rrule"):
         update["rrule"] = Recur.parse_obj(rrule)
-    if recurrence_id:
-        if not store_item.rrule:
-            raise EventStoreError("Specified recurrence_id but event is not recurring")
+    if recurrence_id and store_item.rrule:
         # Forking a new event off the old event preserves the original uid and
         # recurrence_id.
         update.update(

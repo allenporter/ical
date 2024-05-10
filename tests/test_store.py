@@ -1223,6 +1223,11 @@ def test_recurring_todo_item_edit_single(
     assert len(calendar.todos) == 3
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="result_ics")
 
+    # Also edit the instance summary and verify that it can be modified again
+    todo_store.edit("mock-uid-1", Todo(summary="Walk cat"), recurrence_id="20240110")
+    assert len(calendar.todos) == 3
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="result_ics_modified")
+
     # Collapsed view of the same item
     assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_completed")
 
