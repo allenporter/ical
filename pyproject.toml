@@ -25,6 +25,7 @@ disallow_untyped_decorators = true
 disallow_untyped_defs = true
 warn_return_any = true
 warn_unreachable = true
+# Additional checks
 ignore_missing_imports = true
 disallow_any_generics = true
 no_implicit_reexport = true
