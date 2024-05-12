@@ -1,4 +1,5 @@
 [tool.mypy]
+plugins = "pydantic.mypy"
 exclude = [
   "venv/",
 ]
@@ -24,3 +25,16 @@ disallow_untyped_decorators = true
 disallow_untyped_defs = true
 warn_return_any = true
 warn_unreachable = true
+ignore_missing_imports = true
+disallow_any_generics = true
+no_implicit_optional = true
+no_implicit_reexport = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = false
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
