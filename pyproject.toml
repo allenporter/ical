@@ -2,6 +2,7 @@
 plugins = "pydantic.mypy"
 exclude = [
   "venv/",
+  "tests/",
 ]
 platform = "linux"
 show_error_codes = true
