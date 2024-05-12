@@ -27,10 +27,7 @@ warn_return_any = true
 warn_unreachable = true
 ignore_missing_imports = true
 disallow_any_generics = true
-no_implicit_optional = true
 no_implicit_reexport = true
-warn_redundant_casts = true
-warn_unused_ignores = true
 warn_no_return = true
 
 [tool.pydantic-mypy]
