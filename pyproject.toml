@@ -1,0 +1,39 @@
+[tool.mypy]
+plugins = "pydantic.mypy"
+exclude = [
+  "venv/",
+  "tests/",
+]
+platform = "linux"
+show_error_codes = true
+follow_imports = "normal"
+local_partial_types = true
+strict_equality = true
+no_implicit_optional = true
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+disable_error_code = [
+    "import-untyped",
+]
+extra_checks = false
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unreachable = true
+# Additional checks
+ignore_missing_imports = true
+disallow_any_generics = true
+no_implicit_reexport = true
+warn_no_return = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = false
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
