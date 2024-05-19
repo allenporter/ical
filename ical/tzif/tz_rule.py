@@ -25,9 +25,10 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 from dateutil import rrule
+
 try:
     from pydantic.v1 import BaseModel, root_validator, validator
 except ImportError:
@@ -127,7 +128,7 @@ class RuleDate(BaseModel):
     def rrule_dtstart(self, start: datetime.datetime) -> datetime.datetime:
         """Return an rrule dtstart starting at the specified date with the time applied."""
         dt_start = start.replace(hour=0, minute=0, second=0) + self.time
-        return cast(datetime.datetime, next(iter(self.as_rrule(dt_start))))
+        return next(iter(self.as_rrule(dt_start)))
 
     @property
     def _rrule_byday(self) -> rrule.weekday:
