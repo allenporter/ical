@@ -1,6 +1,7 @@
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = [
+  "setup.py",
   "venv/",
   "tests/",
 ]
