@@ -11,7 +11,7 @@ ruff==0.4.8
 
 python-dateutil==2.9.0.post0
 freezegun==1.5.1
-pydantic==2.7.3
+pydantic==2.7.4
 pyparsing==3.1.2
 pytest-benchmark==4.0.0
 types-python-dateutil==v2.9.0.20240316
