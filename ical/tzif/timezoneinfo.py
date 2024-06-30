@@ -22,11 +22,6 @@ from .tzif import read_tzif
 _LOGGER = logging.getLogger(__name__)
 
 
-_IGNORED_TIMEZONES = {
-    "Asia/Hanoi",  # Not in tzdata
-}
-
-
 class TimezoneInfoError(Exception):
     """Raised on error working with timezone information."""
 
@@ -174,7 +169,6 @@ def read_tzinfo(key: str) -> TzInfo:
         return TzInfo.from_timezoneinfo(timezoneinfo)
     except ValueError as err:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
-
 
 
 # Avoid blocking disk reads in async function by pre-loading all timezone reads
