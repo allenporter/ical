@@ -15,6 +15,7 @@ __all__ = [
 
 MIDNIGHT = datetime.time()
 PRODID = "github.com/allenporter/ical"
+VERSION = metadata.version("ical")
 
 
 def dtstamp_factory() -> datetime.datetime:
@@ -29,7 +30,7 @@ def uid_factory() -> str:
 
 def prodid_factory() -> str:
     """Return the ical version to facilitate mocking."""
-    return f"-//{PRODID}//{metadata.version('ical')}//EN"
+    return f"-//{PRODID}//{VERSION}//EN"
 
 
 def local_timezone() -> datetime.tzinfo:
