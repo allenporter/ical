@@ -159,7 +159,7 @@ def encode_model_property_params(
             continue
         if field.shape != SHAPE_LIST:
             values = [values]
-        if field.type_ == bool:
+        if field.type_ is bool:
             encoder = DATA_TYPE.encode_property_value[bool]
             values = [encoder(value) for value in values]
         params.append(ParsedPropertyParameter(name=key, values=values))
