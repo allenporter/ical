@@ -22,6 +22,11 @@ from .tzif import read_tzif
 _LOGGER = logging.getLogger(__name__)
 
 
+_IGNORED_TIMEZONES = {
+    "Asia/Hanoi",  # Not in tzdata
+}
+
+
 class TimezoneInfoError(Exception):
     """Raised on error working with timezone information."""
 
@@ -32,6 +37,7 @@ def _read_system_timezones() -> set[str]:
     return zoneinfo.available_timezones()
 
 
+@cache
 def _find_tzfile(key: str) -> str | None:
     """Retrieve the path to a TZif file from a key."""
     for search_path in zoneinfo.TZPATH:
@@ -63,6 +69,7 @@ def _iana_key_to_resource(key: str) -> tuple[str, str]:
     return package, resource
 
 
+@cache
 def read(key: str) -> TimezoneInfo:
     """Read the TZif file from the tzdata package and return timezone records."""
     if key not in _read_system_timezones() and key not in _read_tzdata_timezones():
@@ -167,3 +174,12 @@ def read_tzinfo(key: str) -> TzInfo:
         return TzInfo.from_timezoneinfo(timezoneinfo)
     except ValueError as err:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
+
+
+
+# Avoid blocking disk reads in async function by pre-loading all timezone reads
+for key in _read_system_timezones():
+    try:
+        read_tzinfo(key)
+    except TimezoneInfoError:
+        pass
