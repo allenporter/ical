@@ -27,7 +27,7 @@ class CalendarUserType(str, enum.Enum):
 
     INDIVIDUAL = "INDIVIDUAL"
     GROUP = "GROUP"
-    RESOURCE = "GROUP"
+    RESOURCE = "RESOURCE"
     ROOM = "ROOM"
     UNKNOWN = "UNKNOWN"
 
