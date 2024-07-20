@@ -437,7 +437,7 @@ class Event(ComponentModel):
         if not (duration := values.get("duration")):
             return values
         dtstart = values["dtstart"]
-        if type(dtstart) == datetime.date:  # pylint: disable=unidiomatic-typecheck
+        if type(dtstart) is datetime.date:
             if duration.seconds != 0:
                 raise ValueError("Event with start date expects duration in days only")
         if duration < datetime.timedelta(seconds=0):
