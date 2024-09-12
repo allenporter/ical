@@ -10,6 +10,7 @@ import pytest
 
 from ical.exceptions import CalendarParseError
 from ical.journal import Journal, JournalStatus
+from ical.timespan import Timespan
 
 
 def test_empty() -> None:
@@ -43,3 +44,9 @@ def test_start_datetime() -> None:
         "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
     ):
         assert journal.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
+
+    assert not journal.recurring
+    ts = journal.timespan
+    assert ts
+    assert ts.start == datetime.datetime(2022, 8, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    assert ts.end == datetime.datetime(2022, 8, 8, 0, 0, 0, tzinfo=datetime.timezone.utc)
