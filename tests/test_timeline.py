@@ -65,6 +65,7 @@ def test_journal_timeline() -> None:
         start=datetime.date(2022, 8, 7),
         rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
     )
+    assert journal.recurring
 
     timeline = generic_timeline([journal], TZ)
     assert list(timeline) == [
