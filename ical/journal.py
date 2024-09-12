@@ -28,7 +28,7 @@ from .types import (
 )
 from .exceptions import CalendarParseError
 from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
-from .iter import RulesetIterable
+from .iter import RulesetIterable, as_rrule
 from .timespan import Timespan
 
 
@@ -156,16 +156,7 @@ class Journal(ComponentModel):
 
         This is only valid for events where `recurring` is True.
         """
-        if not self.rrule and not self.rdate:
-            return None
-        if not self.start:
-            raise CalendarParseError("Event must have a start date to be recurring")
-        return RulesetIterable(
-            self.start,
-            [self.rrule.as_rrule(self.start)] if self.rrule else [],
-            self.rdate,
-            [],
-        )
+        return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
     _validate_recurrence_dates = root_validator(allow_reuse=True)(

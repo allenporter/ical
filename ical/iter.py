@@ -28,6 +28,8 @@ from dateutil import rrule
 
 from .timespan import Timespan
 from .util import normalize_datetime
+from .types.recur import Recur
+from .exceptions import CalendarParseError
 
 __all__ = [
     "RecurrenceError",
@@ -401,3 +403,29 @@ class SortableItemTimeline(Iterable[T]):
     def now(self, tz: datetime.tzinfo | None = None) -> Iterator[T]:
         """Return an iterator containing all events active on the specified day."""
         return self.at_instant(datetime.datetime.now(tz=tz))
+
+
+def as_rrule(
+    rrule: Recur | None,
+    rdate: list[datetime.datetime | datetime.date],
+    exdate: list[datetime.datetime | datetime.date],
+    start: datetime.datetime | datetime.date,
+) -> Iterable[datetime.datetime | datetime.date] | None:
+    """Return an iterable containing the occurrences of a recurring event.
+
+    A recurring event is typically evaluated specially on the timeline. The
+    data model has a single event, but the timeline evaluates the recurrence
+    to expand and copy the the event to multiple places on the timeline.
+
+    This is only valid for events where `recurring` is True.
+    """
+    if not rrule and not rdate:
+        return None
+    if not start:
+        raise CalendarParseError("Event must have a start date to be recurring")
+    return RulesetIterable(
+        start,
+        [rrule.as_rrule(start)] if rrule else [],
+        rdate,
+        exdate,
+    )
