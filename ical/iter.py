@@ -409,7 +409,7 @@ def as_rrule(
     rrule: Recur | None,
     rdate: list[datetime.datetime | datetime.date],
     exdate: list[datetime.datetime | datetime.date],
-    start: datetime.datetime | datetime.date,
+    start: datetime.datetime | datetime.date | None,
 ) -> Iterable[datetime.datetime | datetime.date] | None:
     """Return an iterable containing the occurrences of a recurring event.
 
