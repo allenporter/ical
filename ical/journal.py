@@ -7,6 +7,7 @@ from __future__ import annotations
 import datetime
 import enum
 import logging
+from collections.abc import Iterable
 from typing import Any, Optional, Union
 
 try:
@@ -16,10 +17,27 @@ except ImportError:
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty
-from .types import CalAddress, Classification, Recur, RecurrenceId, RequestStatus, Uri, RelatedTo
-from .util import dtstamp_factory, normalize_datetime, uid_factory
+from .types import (
+    CalAddress,
+    Classification,
+    Recur,
+    RecurrenceId,
+    RequestStatus,
+    Uri,
+    RelatedTo,
+)
+from .exceptions import CalendarParseError
+from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
+from .iter import RulesetIterable
+from .timespan import Timespan
+
 
 _LOGGER = logging.getLogger(__name__)
+
+__all__ = ["Journal", "JournalStatus"]
+
+_ONE_HOUR = datetime.timedelta(hours=1)
+_ONE_DAY = datetime.timedelta(days=1)
 
 
 class JournalStatus(str, enum.Enum):
@@ -97,5 +115,59 @@ class Journal(ComponentModel):
         """Return the events start as a datetime."""
         return normalize_datetime(self.start).astimezone(tz=datetime.timezone.utc)
 
+    @property
+    def computed_duration(self) -> datetime.timedelta:
+        """Return the event duration."""
+        if isinstance(self.dtstart, datetime.datetime):
+            return _ONE_HOUR
+        return _ONE_DAY
+
+    @property
+    def timespan(self) -> Timespan:
+        """Return a timespan representing the item start and due date."""
+        return self.timespan_of(local_timezone())
+
+    def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
+        """Return a timespan representing the item start and due date."""
+        dtstart = normalize_datetime(self.dtstart, tzinfo) or datetime.datetime.now(
+            tz=tzinfo
+        )
+        return Timespan.of(dtstart, dtstart + self.computed_duration, tzinfo)
+
+    @property
+    def recurring(self) -> bool:
+        """Return true if this Todo is recurring.
+
+        A recurring event is typically evaluated specially on the list. The
+        data model has a single todo, but the timeline evaluates the recurrence
+        to expand and copy the the event to multiple places on the timeline
+        using `as_rrule`.
+        """
+        if self.rrule or self.rdate:
+            return True
+        return False
+
+    def as_rrule(self) -> Iterable[datetime.datetime | datetime.date] | None:
+        """Return an iterable containing the occurrences of a recurring todo.
+
+        A recurring todo is typically evaluated specially on the todo list. The
+        data model has a single todo item, but the timeline evaluates the recurrence
+        to expand and copy the the item to multiple places on the timeline.
+
+        This is only valid for events where `recurring` is True.
+        """
+        if not self.rrule and not self.rdate:
+            return None
+        if not self.start:
+            raise CalendarParseError("Event must have a start date to be recurring")
+        return RulesetIterable(
+            self.start,
+            [self.rrule.as_rrule(self.start)] if self.rrule else [],
+            self.rdate,
+            [],
+        )
+
     _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
-    _validate_recurrence_dates = root_validator(allow_reuse=True)(validate_recurrence_dates)
+    _validate_recurrence_dates = root_validator(allow_reuse=True)(
+        validate_recurrence_dates
+    )

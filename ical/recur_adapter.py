@@ -20,10 +20,12 @@ from .iter import (
 from .types.recur import RecurrenceId
 from .event import Event
 from .todo import Todo
+from .journal import Journal
+from .freebusy import FreeBusy
 from .timespan import Timespan
 
 
-ItemType = TypeVar("ItemType", bound="Event | Todo")
+ItemType = TypeVar("ItemType", bound="Event | Todo | Journal")
 _DateOrDatetime = datetime.datetime | datetime.date
 
 

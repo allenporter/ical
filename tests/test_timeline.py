@@ -9,7 +9,9 @@ import pytest
 
 from ical.calendar import Calendar
 from ical.event import Event
+from ical.journal import Journal
 from ical.types.recur import Recur
+from ical.timeline import generic_timeline
 
 TZ = zoneinfo.ZoneInfo("America/Regina")
 
@@ -53,3 +55,35 @@ def test_benchmark_merged_iter(
 
     result = benchmark(exhaust)
     assert result == num_events * num_instances
+
+
+def test_journal_timeline() -> None:
+    """Test journal entries on a timeline."""
+
+    journal = Journal(
+        summary="Example",
+        start=datetime.date(2022, 8, 7),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+    )
+
+    timeline = generic_timeline([journal], TZ)
+    assert list(timeline) == [
+        Journal.copy(journal, update={"recurrence_id": "20220807"}),
+        Journal.copy(
+            journal,
+            update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+        ),
+        Journal.copy(
+            journal,
+            update={"dtstart": datetime.date(2022, 8, 9), "recurrence_id": "20220809"},
+        ),
+    ]
+    assert list(
+        timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
+    ) == [
+        Journal.copy(journal, update={"recurrence_id": "20220807"}),
+        Journal.copy(
+            journal,
+            update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+        ),
+    ]

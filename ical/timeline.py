@@ -9,87 +9,37 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Iterable, Iterator
+from typing import TypeVar, Generic, Protocol
 
 from .event import Event
 from .iter import (
     SortableItemTimeline,
     SpanOrderedItem,
 )
-from .recur_adapter import merge_and_expand_items
+from .recur_adapter import merge_and_expand_items, ItemType
 
-__all__ = ["Timeline"]
+__all__ = ["Timeline", "generic_timeline"]
 
-
-class Timeline(SortableItemTimeline[Event]):
-    """A set of events on a calendar.
-
-    A timeline is typically created from a `ics.calendar.Calendar` and is
-    typically not instantiated directly.
-    """
-
-    def __init__(self, iterable: Iterable[SpanOrderedItem[Event]]) -> None:
-        super().__init__(iterable)
-
-    def __iter__(self) -> Iterator[Event]:
-        """Return an iterator as a traversal over events in chronological order."""
-        return super().__iter__()
-
-    def included(
-        self,
-        start: datetime.date | datetime.datetime,
-        end: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:
-        """Return an iterator for all events active during the timespan.
-
-        The end date is exclusive.
-        """
-        return super().included(start, end)
-
-    def overlapping(
-        self,
-        start: datetime.date | datetime.datetime,
-        end: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events active during the timespan.
-
-        The end date is exclusive.
-        """
-        return super().overlapping(start, end)
-
-    def start_after(
-        self,
-        instant: datetime.datetime | datetime.date,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events starting after the specified time."""
-        return super().start_after(instant)
-
-    def active_after(
-        self,
-        instant: datetime.datetime | datetime.date,
-    ) -> Iterator[Event]:
-        """Return an iterator containing events active after the specified time."""
-        return super().active_after(instant)
-
-    def at_instant(
-        self,
-        instant: datetime.date | datetime.datetime,
-    ) -> Iterator[Event]:  # pylint: disable
-        """Return an iterator containing events starting after the specified time."""
-        return super().at_instant(instant)
-
-    def on_date(self, day: datetime.date) -> Iterator[Event]:  # pylint: disable
-        """Return an iterator containing all events active on the specified day."""
-        return super().on_date(day)
-
-    def today(self) -> Iterator[Event]:
-        """Return an iterator containing all events active on the specified day."""
-        return super().today()
-
-    def now(self, tz: datetime.tzinfo | None = None) -> Iterator[Event]:
-        """Return an iterator containing all events active on the specified day."""
-        return super().now(tz)
+Timeline = SortableItemTimeline[Event]
 
 
 def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
     return Timeline(merge_and_expand_items(events, tzinfo))
+
+
+def generic_timeline(
+    items: list[ItemType], tzinfo: datetime.tzinfo
+) -> SortableItemTimeline[ItemType]:
+    """Return a timeline view of events on the calendar.
+
+    All events are returned as if the attendee is viewing from the
+    specified timezone. For example, this affects the order that All Day
+    events are returned.
+    """
+    return SortableItemTimeline(
+        merge_and_expand_items(
+            items,
+            tzinfo,
+        )
+    )
