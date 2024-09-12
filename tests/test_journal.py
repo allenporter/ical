@@ -50,3 +50,19 @@ def test_start_datetime() -> None:
     assert ts
     assert ts.start == datetime.datetime(2022, 8, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
     assert ts.end == datetime.datetime(2022, 8, 8, 0, 0, 0, tzinfo=datetime.timezone.utc)
+
+
+def test_computed_duration_date() -> None:
+    """Test computed duration for a date."""
+
+    journal = Journal(start=datetime.date(2022, 8, 7,))
+    assert journal.start
+    assert journal.computed_duration == datetime.timedelta(days=1)
+
+
+def test_computed_duration_datetime() -> None:
+    """Test computed duration for a datetime."""
+
+    journal = Journal(start=datetime.datetime(2022, 8, 7, 0, 0, 0))
+    assert journal.start
+    assert journal.computed_duration == datetime.timedelta(hours=1)
