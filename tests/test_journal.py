@@ -39,17 +39,18 @@ def test_start_datetime() -> None:
 
     journal = Journal(start=datetime.date(2022, 8, 7))
     assert journal.start
+    assert journal.start.isoformat() == "2022-08-07"
 
     with patch(
         "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
-    ):
+    ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
         assert journal.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
+        assert not journal.recurring
 
-    assert not journal.recurring
-    ts = journal.timespan
-    assert ts
-    assert ts.start == datetime.datetime(2022, 8, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
-    assert ts.end == datetime.datetime(2022, 8, 8, 0, 0, 0, tzinfo=datetime.timezone.utc)
+        ts = journal.timespan
+        assert ts
+        assert ts.start.isoformat() == "2022-08-07T00:00:00-06:00"
+        assert ts.end.isoformat() == "2022-08-08T00:00:00-06:00"
 
 
 def test_computed_duration_date() -> None:
