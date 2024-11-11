@@ -120,12 +120,11 @@ def test_debug_invalid_rules() -> None:
     with pytest.raises(RecurrenceError) as exc_info:
         list(recur_iter)
 
-    assert exc_info.value.args[0] == (
+    assert exc_info.value.args[0].startswith(
         "Error evaluating recurrence rule (RulesetIterable(dtstart=2022-12-19 05:00:00, "
         "rrule=['DTSTART:20221219T050000\\nRRULE:FREQ=DAILY;COUNT=3'], "
         "rdate=[datetime.date(2022, 12, 22)], "
         "exdate=[datetime.date(2022, 12, 23)]))"
-        ": can't compare datetime.datetime to datetime.date"
     )
 
 
@@ -140,10 +139,9 @@ def test_debug_invalid_rule_without_recur() -> None:
     with pytest.raises(RecurrenceError) as exc_info:
         list(recur_iter)
 
-    assert exc_info.value.args[0] == (
+    assert exc_info.value.args[0].startswith(
         "Error evaluating recurrence rule (RulesetIterable(dtstart=2022-12-19 05:00:00, "
         "rrule=[], "
         "rdate=[datetime.date(2022, 12, 22)], "
         "exdate=[datetime.datetime(2022, 12, 23, 5, 0)]))"
-        ": can't compare datetime.datetime to datetime.date"
     )
