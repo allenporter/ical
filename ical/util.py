@@ -20,7 +20,7 @@ VERSION = metadata.version("ical")
 
 def dtstamp_factory() -> datetime.datetime:
     """Factory method for new event timestamps to facilitate mocking."""
-    return datetime.datetime.utcnow()
+    return datetime.datetime.now(tz=datetime.UTC)
 
 
 def uid_factory() -> str:

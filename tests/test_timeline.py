@@ -4,6 +4,7 @@ import datetime
 import random
 import zoneinfo
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -67,24 +68,27 @@ def test_journal_timeline() -> None:
     )
     assert journal.recurring
 
-    timeline = generic_timeline([journal], TZ)
-    assert list(timeline) == [
-        Journal.copy(journal, update={"recurrence_id": "20220807"}),
-        Journal.copy(
-            journal,
-            update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
-        ),
-        Journal.copy(
-            journal,
-            update={"dtstart": datetime.date(2022, 8, 9), "recurrence_id": "20220809"},
-        ),
-    ]
-    assert list(
-        timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
-    ) == [
-        Journal.copy(journal, update={"recurrence_id": "20220807"}),
-        Journal.copy(
-            journal,
-            update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
-        ),
-    ]
+    with patch(
+        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
+        timeline = generic_timeline([journal], TZ)
+        assert list(timeline) == [
+            Journal.copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.copy(
+                journal,
+                update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+            ),
+            Journal.copy(
+                journal,
+                update={"dtstart": datetime.date(2022, 8, 9), "recurrence_id": "20220809"},
+            ),
+        ]
+        assert list(
+            timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
+        ) == [
+            Journal.copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.copy(
+                journal,
+                update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+            ),
+        ]
