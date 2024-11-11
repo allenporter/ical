@@ -46,7 +46,7 @@ def test_start_datetime() -> None:
         assert journal.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
 
     assert not journal.recurring
-    ts = journal.timespan_of(datetime.timezone.utc)
+    ts = journal.timespan
     assert ts
     assert ts.start == datetime.datetime(2022, 8, 7, 0, 0, 0, tzinfo=datetime.timezone.utc)
     assert ts.end == datetime.datetime(2022, 8, 8, 0, 0, 0, tzinfo=datetime.timezone.utc)

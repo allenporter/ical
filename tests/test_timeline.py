@@ -80,7 +80,7 @@ def test_journal_timeline() -> None:
         ),
     ]
     assert list(
-        timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 8))
+        timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
     ) == [
         Journal.copy(journal, update={"recurrence_id": "20220807"}),
         Journal.copy(
