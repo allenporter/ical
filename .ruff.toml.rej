@@ -1,0 +1,4 @@
+diff a/.ruff.toml b/.ruff.toml	(rejected hunks)
+@@ -1 +1,2 @@
++[lint]
+ ignore = ["E501"]
