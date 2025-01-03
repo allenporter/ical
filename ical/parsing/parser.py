@@ -28,6 +28,7 @@ import logging
 import threading
 from functools import cache
 from typing import cast
+from typing import Iterable
 
 from pyparsing import (
     Combine,
@@ -100,7 +101,7 @@ def _create_parser() -> ParserElement:
 _parser_lock = threading.Lock()
 
 
-def parse_contentlines(lines: list[str]) -> list[ParseResults]:
+def parse_contentlines(lines: Iterable[str]) -> list[ParseResults]:
     """Parse a set of unfolded lines into parse results.
 
     Note, this method is not threadsafe and may be called from only one method at a time.
