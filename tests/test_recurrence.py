@@ -10,6 +10,7 @@ from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
 from ical.component import ComponentModel
+from ical.exceptions import RecurrenceError
 from ical.event import Event
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.parsing.component import parse_content
@@ -167,3 +168,50 @@ def test_from_invalid_contentlines(contentlines: list[str]) -> None:
     """Test parsing content lines that are not valid."""
     with pytest.raises(CalendarParseError):
         Recurrences.from_basic_contentlines(contentlines)
+
+
+
+def test_as_rrule() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220802T060000Z",
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE:20220803T060000Z",
+        ]
+    )
+    assert list(recurrences.as_rrule()) == [
+        datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=datetime.UTC),
+    ]
+
+
+
+def test_rrule_failure() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220802T060000Z",
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE:20220803T060000",
+        ]
+    )
+    with pytest.raises(RecurrenceError, match="can't compare offset-naive"):
+        list(recurrences.as_rrule())
+
+
+
+def test_ics() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220802T060000Z",
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE:20220803T060000Z",
+        ]
+    )
+    assert recurrences.ics() == [
+        "DTSTART:20220802T060000Z",
+        "RRULE:FREQ=DAILY;COUNT=3",
+        "EXDATE:20220803T060000Z",
+    ]

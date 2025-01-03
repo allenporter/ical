@@ -29,7 +29,7 @@ from dateutil import rrule
 from .timespan import Timespan
 from .util import normalize_datetime
 from .types.recur import Recur
-from .exceptions import CalendarParseError
+from .exceptions import CalendarParseError, RecurrenceError
 
 __all__ = [
     "RecurrenceError",
@@ -56,16 +56,6 @@ The adapter is invoked with the date/time of the current instance and
 the callback returns an object at that time (e.g. event with updated time)
 """
 
-
-class RecurrenceError(Exception):
-    """Exception raised when evaluating a recurrence rule.
-
-    Recurrence rules have complex logic and it is common for there to be
-    invalid date or bugs, so this special exception exists to help
-    provide additional debug data to find the source of the issue. Often
-    `dateutil.rrule` has limitataions and ical has to work around them
-    by providing special wrapping libraries.
-    """
 
 
 class SortableItem(Generic[K, T], ABC):

@@ -14,11 +14,7 @@ from collections.abc import Iterable
 from typing import Any, Optional, Union, Self
 
 from dateutil import rrule
-
-try:
-    from pydantic.v1 import BaseModel, Field
-except ImportError:
-    from pydantic import BaseModel, Field  # type: ignore[assignment]
+from pydantic.v1 import BaseModel, Field
 
 from .parsing.property import (
     ParsedProperty,
@@ -73,9 +69,13 @@ class Recurrences(ComponentModel):
         return cls.parse_obj(component.as_dict())
 
     def as_rrule(
-        self, dtstart: datetime.date | datetime.datetime
+        self, dtstart: datetime.date | datetime.datetime | None = None
     ) -> Iterable[datetime.date | datetime.datetime]:
         """Return the set of recurrences as a rrule that emits start times."""
+        if dtstart is None:
+            dtstart = self.dtstart
+        if dtstart is None:
+            raise ValueError("dtstart is required to generate recurrences")
         return RulesetIterable(
             dtstart,
             [rule.as_rrule(dtstart) for rule in self.rrule],
@@ -83,6 +83,13 @@ class Recurrences(ComponentModel):
             self.exdate,
         )
 
-    def as_recurrence(self) -> list[str]:
-        """Serialize the recurrence rule as an API string."""
+    def ics(self) -> list[str]:
+        """Serialize the recurrence rules as strings."""
         return [prop.ics() for prop in self.__encode_component_root__().properties]
+
+    class Config:
+        """Configuration for IcsCalendarStream pydantic model."""
+
+        json_encoders = DATA_TYPE.encode_property_json
+        validate_assignment = True
+        allow_population_by_field_name = True
