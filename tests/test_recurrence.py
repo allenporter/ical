@@ -170,7 +170,6 @@ def test_from_invalid_contentlines(contentlines: list[str]) -> None:
         Recurrences.from_basic_contentlines(contentlines)
 
 
-
 def test_as_rrule() -> None:
     """Test parsing a recurrence rule from a string."""
     recurrences = Recurrences.from_basic_contentlines(
@@ -186,6 +185,48 @@ def test_as_rrule() -> None:
     ]
 
 
+def test_as_rrule_with_rdate() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220801",
+            "RDATE:20220803",
+            "RDATE:20220804",
+            "RDATE:20220805",
+        ]
+    )
+    assert list(recurrences.as_rrule()) == [
+        datetime.date(2022, 8, 3),
+        datetime.date(2022, 8, 4),
+        datetime.date(2022, 8, 5),
+    ]
+
+
+def test_as_rrule_with_date() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE:20220803T060000Z",
+        ]
+    )
+    assert list(recurrences.as_rrule(datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC))) == [
+        datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=datetime.UTC),
+    ]
+
+
+def test_as_rrule_without_date() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE:20220803T060000Z",
+        ]
+    )
+    with pytest.raises(ValueError, match="dtstart is required"):
+        list(recurrences.as_rrule())
+
 
 def test_rrule_failure() -> None:
     """Test parsing a recurrence rule from a string."""
@@ -198,7 +239,6 @@ def test_rrule_failure() -> None:
     )
     with pytest.raises(RecurrenceError, match="can't compare offset-naive"):
         list(recurrences.as_rrule())
-
 
 
 def test_ics() -> None:
@@ -215,3 +255,18 @@ def test_ics() -> None:
         "RRULE:FREQ=DAILY;COUNT=3",
         "EXDATE:20220803T060000Z",
     ]
+
+
+
+def test_mismatch_date_and_datetime_types() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220801T060000Z",
+            "RDATE:20220803",
+            "RDATE:20220804T060000Z",
+            "RDATE:20220805",
+        ]
+    )
+    with pytest.raises(RecurrenceError, match=r"can't compare datetime.datetime to datetime.date"):
+        list(recurrences.as_rrule())
