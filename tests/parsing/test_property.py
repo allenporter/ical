@@ -35,9 +35,12 @@ def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
         "PROP-VALUE",
         "PROP;:VALUE",
         "PROP;PARAM:VALUE",
+        ";VALUE",
+        ";:VALUE",
     ]
 )
 def test_invalid_format(ics: str) -> None:
     """Test parsing invalid property format."""
     with pytest.raises(ValueError):
-        list(parse_basic_ics_properties([ics]))
+        r = list(parse_basic_ics_properties([ics]))
+        assert r == 'a'

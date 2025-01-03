@@ -107,12 +107,9 @@ class ParsedProperty:
         name, sep, value = contentline.partition(":")
         if not sep:
             raise ValueError(f"Expected ':' in contentline: {contentline}")
-        if not (property_parameter_parts := name.split(";")):
+        if not (name_parts := name.split(";")) or not name_parts[0]:
             raise ValueError(f"Empty property name in contentline: {contentline}")
-        name, property_parameters = (
-            property_parameter_parts[0],
-            property_parameter_parts[1:],
-        )
+        name, property_parameters = name_parts[0], name_parts[1:]
         parsed_property_parameters = []
         for property_parameter in property_parameters:
             param_parts = property_parameter.split("=")
