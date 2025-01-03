@@ -104,7 +104,8 @@ class ParsedProperty:
         # RRULE:FREQ=WEEKLY;COUNT=10
         # RDATE;VALUE=DATE:19970304T080000Z
         # RDATE:19970304T080000Z
-        if contentline.find(":") == -1:
+        name, sep, value = contentline.partition(":")
+        if sep is None:
             raise ValueError(f"Expected ':' in contentline: {contentline}")
         name, value = contentline.split(":", 1)
         if (params := name.split(";")) is None:
