@@ -107,25 +107,28 @@ class ParsedProperty:
         name, sep, value = contentline.partition(":")
         if not sep:
             raise ValueError(f"Expected ':' in contentline: {contentline}")
-        param_parts = name.split(";")
-        if not param_parts:
+        if not (property_parameter_parts := name.split(";")):
             raise ValueError(f"Empty property name in contentline: {contentline}")
-        name = param_parts[0]
-        params = param_parts[1:]
-        parsed_params = []
-        for param in params:
-            prop_param = param.split("=")
-            if len(prop_param) < 2:
-                raise ValueError(f"Invalid property parameter: {param}")
-            prop_param_name = prop_param[0]
-            prop_param_values = prop_param[1:]
-            parsed_params.append(ParsedPropertyParameter(
-                name=prop_param_name, values=prop_param_values,
-            ))
+        name, property_parameters = (
+            property_parameter_parts[0],
+            property_parameter_parts[1:],
+        )
+        parsed_property_parameters = []
+        for property_parameter in property_parameters:
+            param_parts = property_parameter.split("=")
+            if len(param_parts) < 2:
+                raise ValueError(f"Invalid property parameter: {property_parameter}")
+            parsed_property_parameters.append(
+                ParsedPropertyParameter(
+                    name=param_parts[0],
+                    values=param_parts[1:],  # type: ignore[arg-type]
+                )
+            )
+
         return ParsedProperty(
             name=name.lower(),
             value=value,
-            params=parsed_params or None,
+            params=parsed_property_parameters or None,
         )
 
 
