@@ -132,5 +132,4 @@ def encode_content(components: list[ParsedComponent]) -> str:
 def unfolded_lines(content: str) -> Generator[str, None, None]:
     """Read content and unfold lines."""
     content = FOLD_RE.sub("", content)
-    for line in LINES_RE.split(content):
-        yield line
+    yield from LINES_RE.split(content)
