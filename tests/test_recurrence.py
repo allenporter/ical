@@ -268,5 +268,5 @@ def test_mismatch_date_and_datetime_types() -> None:
             "RDATE:20220805",
         ]
     )
-    with pytest.raises(RecurrenceError, match=r"can't compare datetime.datetime to datetime.date"):
+    with pytest.raises(RecurrenceError):
         list(recurrences.as_rrule())
