@@ -29,6 +29,9 @@ from .const import (
 from .parser import parse_contentlines
 from .property import ParsedProperty, parse_property_params
 
+FOLD_RE = re.compile(FOLD, flags=re.MULTILINE)
+LINES_RE = re.compile(r"\r?\n")
+
 
 @dataclass
 class ParsedComponent:
@@ -86,8 +89,8 @@ def parse_content(content: str) -> list[ParsedComponent]:
     minimum possible parsing into a dictionary of objects to get the right structure.
     All the more detailed parsing of the objects is handled by pydantic, elsewhere.
     """
-    content = re.sub(FOLD, "", content, flags=re.MULTILINE)  # Unfold content lines
-    lines = re.split("\r?\n", content)
+    content = FOLD_RE.sub("", content)  # Unfold content lines
+    lines = LINES_RE.split(content)
     token_results = parse_contentlines(lines)
 
     stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
