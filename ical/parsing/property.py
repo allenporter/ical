@@ -105,19 +105,23 @@ class ParsedProperty:
         # RDATE;VALUE=DATE:19970304T080000Z
         # RDATE:19970304T080000Z
         name, sep, value = contentline.partition(":")
-        if sep is None:
+        if not sep:
             raise ValueError(f"Expected ':' in contentline: {contentline}")
-        name, value = contentline.split(":", 1)
-        if (params := name.split(";")) is None:
+        param_parts = name.split(";")
+        if not param_parts:
             raise ValueError(f"Empty property name in contentline: {contentline}")
-        name = params[0]
-        params = params[1:]
-        parsed_params = [
-            ParsedPropertyParameter(
-                name=param.split("=")[0], values=[param.split("=")[1]]
-            )
-            for param in params
-        ]
+        name = param_parts[0]
+        params = param_parts[1:]
+        parsed_params = []
+        for param in params:
+            prop_param = param.split("=")
+            if len(prop_param) < 2:
+                raise ValueError(f"Invalid property parameter: {param}")
+            prop_param_name = prop_param[0]
+            prop_param_values = prop_param[1:]
+            parsed_params.append(ParsedPropertyParameter(
+                name=prop_param_name, values=prop_param_values,
+            ))
         return ParsedProperty(
             name=name.lower(),
             value=value,

@@ -28,3 +28,16 @@ def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
     """Fixture to read golden file and compare to golden output."""
     properties = list(parse_basic_ics_properties(unfolded_lines(filename.read_text())))
     assert properties == snapshot
+
+@pytest.mark.parametrize(
+    "ics",
+    [
+        "PROP-VALUE",
+        "PROP;:VALUE",
+        "PROP;PARAM:VALUE",
+    ]
+)
+def test_invalid_format(ics: str) -> None:
+    """Test parsing invalid property format."""
+    with pytest.raises(ValueError):
+        list(parse_basic_ics_properties([ics]))
