@@ -1,0 +1,99 @@
+# serializer version: 1
+# name: test_from_ics[attendee]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='attendee', value='mailto: jsmith@example.com', params=[ParsedPropertyParameter(name='RSVP', values=['TRUE']), ParsedPropertyParameter(name='ROLE', values=['REQ-PARTICIPANT'])]),
+    ParsedProperty(name='attendee', value='jdoe@example.com","mailto:jqpublic @example.com":mailto:jsmith@example.com', params=[ParsedPropertyParameter(name='DELEGATED-TO', values=['"mailto'])]),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+  ])
+# ---
+# name: test_from_ics[comma]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='description', value='part1.0001@example.org":The Fall\'98 Wild Wizards Conference - - Las Vegas\\, NV\\, USA', params=[ParsedPropertyParameter(name='ALTREP', values=['"cid'])]),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+  ])
+# ---
+# name: test_from_ics[fold]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='description', value='This is a lo ng description that exists on a long line.', params=None),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+  ])
+# ---
+# name: test_from_ics[icalendar_object]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='version', value='2.0', params=None),
+    ParsedProperty(name='prodid', value='-//hacksw/handcal//NONSGML v1.0//EN', params=None),
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='uid', value='19970610T172345Z-AF23B2@example.com', params=None),
+    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
+    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
+    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
+    ParsedProperty(name='summary', value='Bastille Day Party', params=None),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[params]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[params_quoted]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM-VALUE"'])]),
+    ParsedProperty(name='name', value='VALUE":VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[rdate]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='rdate', value='19970304,19970504,19970704,19970904', params=[ParsedPropertyParameter(name='VALUE', values=['DATE'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[vcalendar_emoji]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='dtstamp', value='20221202T075310', params=None),
+    ParsedProperty(name='uid', value='5deea302-7216-11ed-b1b6-48d2240d04ae', params=None),
+    ParsedProperty(name='dtstart', value='20221202T085500', params=None),
+    ParsedProperty(name='dtend', value='20221202T090000', params=None),
+    ParsedProperty(name='summary', value='🎄emojis!', params=None),
+    ParsedProperty(name='created', value='20221202T075310', params=None),
+    ParsedProperty(name='sequence', value='0', params=None),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+  ])
+# ---
+# name: test_from_ics[vevent]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='uid', value='19970901T130000Z-123401@example.com', params=None),
+    ParsedProperty(name='dtstamp', value='19970901T130000Z', params=None),
+    ParsedProperty(name='dtstart', value='19970903T163000Z', params=None),
+    ParsedProperty(name='dtend', value='19970903T190000Z', params=None),
+    ParsedProperty(name='summary', value='Annual Employee Review', params=None),
+    ParsedProperty(name='class', value='PRIVATE', params=None),
+    ParsedProperty(name='categories', value='BUSINESS,HUMAN RESOURCES', params=None),
+    ParsedProperty(name='end', value='VEVENT', params=None),
+  ])
+# ---
+# name: test_from_ics[vtodo]
+  list([
+    ParsedProperty(name='begin', value='VTODO', params=None),
+    ParsedProperty(name='uid', value='20070313T123432Z-456553@example.com', params=None),
+    ParsedProperty(name='dtstamp', value='20070313T123432Z', params=None),
+    ParsedProperty(name='due', value='20070501', params=[ParsedPropertyParameter(name='VALUE', values=['DATE'])]),
+    ParsedProperty(name='summary', value='Submit Quebec Income Tax Return for 2006', params=None),
+    ParsedProperty(name='class', value='CONFIDENTIAL', params=None),
+    ParsedProperty(name='categories', value='FAMILY,FINANCE', params=None),
+    ParsedProperty(name='status', value='NEEDS-ACTION', params=None),
+    ParsedProperty(name='end', value='VTODO', params=None),
+  ])
+# ---

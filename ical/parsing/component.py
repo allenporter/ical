@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 import textwrap
 from dataclasses import dataclass, field
+from collections.abc import Generator
 
 from .const import (
     ATTR_BEGIN,
@@ -27,7 +28,7 @@ from .const import (
     PARSE_VALUE,
 )
 from .parser import parse_contentlines
-from .property import ParsedProperty, parse_property_params
+from .property import ParsedProperty, parse_property_params, parse_basic_ics_properties
 
 FOLD_RE = re.compile(FOLD, flags=re.MULTILINE)
 LINES_RE = re.compile(r"\r?\n")
@@ -89,8 +90,7 @@ def parse_content(content: str) -> list[ParsedComponent]:
     minimum possible parsing into a dictionary of objects to get the right structure.
     All the more detailed parsing of the objects is handled by pydantic, elsewhere.
     """
-    content = FOLD_RE.sub("", content)  # Unfold content lines
-    lines = LINES_RE.split(content)
+    lines = unfolded_lines(content)
     token_results = parse_contentlines(lines)
 
     stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
@@ -127,3 +127,10 @@ def parse_content(content: str) -> list[ParsedComponent]:
 def encode_content(components: list[ParsedComponent]) -> str:
     """Encode a set of parsed properties into content."""
     return "\n".join([component.ics() for component in components])
+
+
+def unfolded_lines(content: str) -> Generator[str, None, None]:
+    """Read content and unfold lines."""
+    content = FOLD_RE.sub("", content)
+    for line in LINES_RE.split(content):
+        yield line
