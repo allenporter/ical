@@ -12,8 +12,10 @@ or sub component).
 
 from __future__ import annotations
 
+import re
 import datetime
 from dataclasses import dataclass
+from collections.abc import Iterator, Generator, Iterable
 from typing import Optional, Union
 
 from .const import PARSE_PARAM_NAME, PARSE_PARAM_VALUE, PARSE_PARAMS
@@ -88,6 +90,44 @@ class ParsedProperty:
         result.append(str(self.value))
         return "".join(result)
 
+    @classmethod
+    def from_basic_ics(cls, contentline: str) -> "ParsedProperty":
+        """Decode a ParsedProperty from an rfc5545 iCalendar content line.
+
+        This does not support the full rfc5545 specification. This may only
+        be used for narrower use cases that need more performance than invoking
+        the full rfc5545 spec from the `parser` library.
+
+        Will raise a ValueError on failure.
+        """
+        # Lines can be in either of these formats where the parameters are optional:
+        # RRULE:FREQ=WEEKLY;COUNT=10
+        # RDATE;VALUE=DATE:19970304T080000Z
+        # RDATE:19970304T080000Z
+        name, sep, value = contentline.partition(":")
+        if not sep:
+            raise ValueError(f"Expected ':' in contentline: {contentline}")
+        if not (name_parts := name.split(";")) or not name_parts[0]:
+            raise ValueError(f"Empty property name in contentline: {contentline}")
+        name, property_parameters = name_parts[0], name_parts[1:]
+        parsed_property_parameters = []
+        for property_parameter in property_parameters:
+            param_parts = property_parameter.split("=")
+            if len(param_parts) < 2:
+                raise ValueError(f"Invalid property parameter: {property_parameter}")
+            parsed_property_parameters.append(
+                ParsedPropertyParameter(
+                    name=param_parts[0],
+                    values=param_parts[1:],  # type: ignore[arg-type]
+                )
+            )
+
+        return ParsedProperty(
+            name=name.lower(),
+            value=value,
+            params=parsed_property_parameters or None,
+        )
+
 
 def parse_property_params(
     parse_result_dict: dict[str, str | list]
@@ -106,3 +146,12 @@ def parse_property_params(
                 )
             )
     return params
+
+
+def parse_basic_ics_properties(
+    contentlines: Iterable[str],
+) -> Generator[ParsedProperty, None, None]:
+    for contentline in contentlines:
+        if not contentline:
+            continue
+        yield ParsedProperty.from_basic_ics(contentline)
