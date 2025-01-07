@@ -7,7 +7,11 @@ ical's main focus is on simplicity, and the internal implementation
 is based on existing parsing libraries, where possible, making it
 easy to support as much as possible of rfc5545. It is not a goal to
 support everything exhaustively, however, the simplicity of the
-implementation makes it easy to do so.
+implementation makes it easy to do so. The package has high coverage,
+and high test coverage, and is easy to extend with new rfc5545 properties.
+
+This packages uses semantic versioning, and releases often, and works
+on recent python versions.
 
 See [documentation](https://allenporter.github.io/ical/) for full quickstart and API reference.
 
