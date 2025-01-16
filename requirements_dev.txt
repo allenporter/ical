@@ -21,4 +21,4 @@ types-PyYAML==6.0.12.20241230
 syrupy==4.8.1
 
 # emjoji is a dev only dependency used by script/update_emoji.py
-emoji==2.14.0
+emoji==2.14.1
