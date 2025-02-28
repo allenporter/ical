@@ -12,7 +12,7 @@ from ical.calendar import Calendar
 from ical.event import Event
 from ical.journal import Journal
 from ical.types.recur import Recur
-from ical.timeline import generic_timeline
+from ical.timeline import generic_timeline, Timeline
 
 TZ = zoneinfo.ZoneInfo("America/Regina")
 
@@ -92,3 +92,62 @@ def test_journal_timeline() -> None:
                 update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
             ),
         ]
+
+
+@pytest.fixture(name="all_day_calendar")
+def all_day_calendar_fixture(num_events: int, num_instances: int) -> Timeline[Event]:
+    """Fixture for testing start/end date overlap corner cases."""
+    with patch(
+        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
+        event1 = Event(
+            summary="Example",
+            start=datetime.date(2022, 8, 7),
+            end=datetime.date(2022, 8, 8),
+        )
+        event2 = Event(
+            summary="Example",
+            start=datetime.date(2022, 8, 8),
+            end=datetime.date(2022, 8, 9),
+        )
+        return generic_timeline([event1, event2], TZ)
+
+
+
+def test_active_after(all_day_calendar: Timeline) -> None:
+    """Test edge cases for matching overlapping events entries on a timeline."""
+    assert list(all_day_calendar) == [event1, event2]
+
+
+    assert list(
+        all_day_calendar.active_after(datetime.date(2022, 8, 7))
+    ) == [event1, event2]
+    assert list(
+        all_day_calendar.active_after(datetime.date(2022, 8, 8))
+    ) == [event2]
+    assert list(
+        all_day_calendar.active_after(datetime.date(2022, 8, 9))
+    ) == []
+
+
+def test_overlapping_events(all_day_calendar: Timeline) -> None:
+    """Test edge cases for matching overlapping events entries on a timeline."""
+        assert list(timeline) == [event1, event2]
+
+
+        assert list(
+            timeline.active_after(datetime.date(2022, 8, 7))
+        ) == [event1, event2]
+        assert list(
+            timeline.active_after(datetime.date(2022, 8, 8))
+        ) == [event2]
+        assert list(
+            timeline.active_after(datetime.date(2022, 8, 9))
+        ) == []
+
+        assert list(
+            timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 7))
+        ) == [event1]
+        assert list(
+            timeline.overlapping(datetime.date(2022, 8, 8), datetime.date(2022, 8, 8))
+        ) == [event2]
