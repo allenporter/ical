@@ -262,6 +262,196 @@ def test_included(
     ] == expected_events
 
 
+
+@pytest.fixture(name="calendar_all_day")
+def mock_calendar_all_day() -> Calendar:
+    """Fixture with a mix of all day and datetime based events."""
+    cal = Calendar()
+    cal.events.extend(
+        [
+            Event(
+                summary="New Years Day",
+                start=datetime.date(2000, 1, 1),
+                end=datetime.date(2000, 1, 2),
+            ),
+            Event(
+                summary="Day After",
+                start=datetime.date(2000, 1, 2),
+                end=datetime.date(2000, 1, 3),
+            ),
+        ]
+    )
+    return cal
+
+
+@pytest.mark.parametrize(
+    "param,expected_events",
+    [
+        (
+            datetime.datetime(1999, 12, 31, 23, 59, 59),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 0, 0),
+            ["Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 10, 0),
+            ["Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 23, 59, 59),
+            ["Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 0),
+            [],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 1),
+            [],
+        ),
+    ]
+)
+def test_start_after(calendar_all_day: Calendar, param: datetime.datetime | datetime.date, expected_events: list[str]) -> None:
+    """Test start/end corner cases for start_after."""
+    assert [
+        e.summary
+        for e in calendar_all_day.timeline.start_after(param)
+    ] == expected_events
+
+
+@pytest.mark.parametrize(
+    "param,expected_events",
+    [
+        (
+            datetime.datetime(2000, 1, 1, 0, 0),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 10, 0),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 23, 59, 59),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 0),
+            ["Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 1),
+            ["Day After"],
+        ),
+    ]
+)
+def test_active_after_start_end(calendar_all_day: Calendar, param: datetime.datetime | datetime.date, expected_events: list[str]) -> None:
+    """Test start/end corner cases for active_after."""
+    assert [
+        e.summary
+        for e in calendar_all_day.timeline.active_after(param)
+    ] == expected_events
+
+
+
+@pytest.mark.parametrize(
+    "param,expected_events",
+    [
+        (
+            datetime.date(1999, 12, 31),
+            [],
+        ),
+        (
+            datetime.date(2000, 1, 1),
+            ["New Years Day"],
+        ),
+        (
+            datetime.date(2000, 1, 2),
+            ["Day After"],
+        ),
+    ]
+)
+def test_on_date(calendar_all_day: Calendar, param: datetime.datetime | datetime.date, expected_events: list[str]) -> None:
+    """Test start/end corner cases for on_date."""
+    assert [
+        e.summary
+        for e in calendar_all_day.timeline.on_date(param)
+    ] == expected_events
+
+
+@pytest.mark.parametrize(
+    "param,expected_events",
+    [
+        (
+            datetime.datetime(2000, 1, 1, 0, 0),
+            ["New Years Day"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 10, 0),
+            ["New Years Day"],
+        ),
+        (
+            datetime.datetime(2000, 1, 1, 23, 59, 59),
+            ["New Years Day"],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 0),
+            ["Day After"],
+        ),
+        (
+            datetime.datetime(2000, 1, 2, 0, 1),
+            ["Day After"],
+        ),
+    ]
+)
+def test_at_instance_start_end(calendar_all_day: Calendar, param: datetime.datetime | datetime.date, expected_events: list[str]) -> None:
+    """Test start/end corner cases for at_instance."""
+    assert [
+        e.summary
+        for e in calendar_all_day.timeline.at_instant(param)
+    ] == expected_events
+
+
+
+@pytest.mark.parametrize(
+    "start,end,expected_events",
+    [
+        (
+            datetime.date(1999, 12, 31),
+            datetime.date(2000, 1, 3),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.date(1999, 12, 31),
+            datetime.date(2000, 1, 2),
+            ["New Years Day"],
+        ),
+        (
+            datetime.date(1999, 1, 1),
+            datetime.date(2000, 1, 3),
+            ["New Years Day", "Day After"],
+        ),
+        (
+            datetime.date(1999, 1, 2),
+            datetime.date(2000, 1, 3),
+            ["Day After"],
+        ),
+        (
+            datetime.date(1999, 1, 3),
+            datetime.date(2000, 1, 4),
+            [],
+        ),
+    ]
+)
+def test_included(calendar_all_day: Calendar, start: datetime.datetime | datetime.date, end: datetime.datetime | datetime.date, expected_events: list[str]) -> None:
+    """Test start/end corner cases for included_in."""
+    assert [
+        e.summary
+        for e in calendar_all_day.timeline.included(start, end)
+    ] == expected_events
+
+
 def test_multiple_calendars(calendar: Calendar, calendar_times: Calendar) -> None:
     """Test multiple calendars have independent event lists."""
     assert len(calendar.events) == 4
