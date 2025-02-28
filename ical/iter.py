@@ -319,7 +319,7 @@ class SortableItemTimeline(Iterable[T]):
         start: datetime.date | datetime.datetime,
         end: datetime.date | datetime.datetime,
     ) -> Iterator[T]:
-        """Return an iterator for all events active during the timespan.
+        """Return an iterator for all events entirely contained during the timespan.
 
         The end date is exclusive.
         """
@@ -374,7 +374,7 @@ class SortableItemTimeline(Iterable[T]):
         self,
         instant: datetime.date | datetime.datetime,
     ) -> Iterator[T]:  # pylint: disable
-        """Return an iterator containing events starting after the specified time."""
+        """Return an iterator containing events active at the specified time."""
         timespan = Timespan.of(instant, instant)
         for item in self._iterable:
             if item.key.includes(timespan):
