@@ -6,9 +6,9 @@ setting up a development environment.
 ## Setup a virtual environment
 
 ```
-$ python3 -m venv venv
+$ uv venv --python=3.13
 $ source venv/bin/activate
-$ pip3 install -r requirements_dev.txt
+$ uv pip install -r requirements_dev.txt
 ```
 
 ## Running the tests
