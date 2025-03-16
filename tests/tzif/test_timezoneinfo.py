@@ -1,9 +1,11 @@
 """Tests for the tzif library."""
 
 import datetime
+from unittest.mock import patch
 import zoneinfo
 
 import pytest
+
 
 from ical.tzif import timezoneinfo, tz_rule
 
@@ -162,3 +164,16 @@ def test_all_zoneinfo(key: str) -> None:
 
     # Verify there is a paresable tz rule
     timezoneinfo.TzInfo.from_timezoneinfo(result)
+
+
+def test_read_tzinfo_value_error() -> None:
+    """Test TzInfo implementation for known date/times."""
+    with patch(
+        "ical.tzif.timezoneinfo._read_tzdata_timezones", return_value=["X/Y"]
+    ), patch("ical.tzif.timezoneinfo._find_tzfile"), patch(
+        "ical.tzif.timezoneinfo.read_tzif",
+        side_effect=ValueError("zoneinfo file did not contain magic header"),
+    ), pytest.raises(
+        timezoneinfo.TimezoneInfoError, match="Unable to load tzdata file: X/Y"
+    ):
+        timezoneinfo.read_tzinfo("X/Y")
