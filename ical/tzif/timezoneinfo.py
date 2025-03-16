@@ -78,6 +78,8 @@ def read(key: str) -> TimezoneInfo:
     except ModuleNotFoundError:
         # Unexpected given we previously read the list of timezones
         pass
+    except ValueError as err:
+        raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
     except FileNotFoundError as err:
         raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
 
@@ -85,7 +87,10 @@ def read(key: str) -> TimezoneInfo:
     tzfile = _find_tzfile(key)
     if tzfile is not None:
         with open(tzfile, "rb") as tzfile_file:
-            return read_tzif(tzfile_file.read())
+            try:
+                return read_tzif(tzfile_file.read())
+            except ValueError as err:
+                raise TimezoneInfoError(f"Unable to load tzdata file: {key}") from err
 
     raise TimezoneInfoError(f"Unable to find timezone data for {key}")
 
