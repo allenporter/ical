@@ -134,6 +134,84 @@
     ]),
   })
 # ---
+# name: test_parse[datetime_vtimezone_plus]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'created': '2023-03-13T01:12:26',
+            'dtend': '2023-03-12T19:12:10+01:00',
+            'dtstamp': '2023-03-13T01:12:26',
+            'dtstart': '2023-03-12T18:12:10+01:00',
+            'sequence': 0,
+            'summary': 'Event 1',
+            'uid': '1e19f31b-c13c-11ed-8431-066a07ffbaf5',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'timezones': list([
+          dict({
+            'daylight': list([
+              dict({
+                'dtstart': '2010-03-14T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    3,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 2,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'PDT',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': 7200.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': 3600.0,
+                }),
+              }),
+            ]),
+            'standard': list([
+              dict({
+                'dtstart': '2010-11-07T02:00:00',
+                'rrule': dict({
+                  'by_month': list([
+                    11,
+                  ]),
+                  'by_weekday': list([
+                    dict({
+                      'occurrence': 1,
+                      'weekday': 'SU',
+                    }),
+                  ]),
+                  'freq': 'YEARLY',
+                }),
+                'tz_name': list([
+                  'PST',
+                ]),
+                'tz_offset_from': dict({
+                  'offset': 3600.0,
+                }),
+                'tz_offset_to': dict({
+                  'offset': 7200.0,
+                }),
+              }),
+            ]),
+            'tz_id': 'Europe/Berlin',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[description_altrep]
   dict({
     'calendars': list([
@@ -1288,6 +1366,40 @@
   DTSTART:20100314T020000
   TZOFFSETTO:-0700
   TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:PDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[datetime_vtimezone_plus]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20230313T011226
+  UID:1e19f31b-c13c-11ed-8431-066a07ffbaf5
+  DTSTART;TZID=Europe/Berlin:20230312T181210
+  DTEND;TZID=Europe/Berlin:20230312T191210
+  SUMMARY:Event 1
+  CREATED:20230313T011226
+  SEQUENCE:0
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  TZID:Europe/Berlin
+  BEGIN:STANDARD
+  DTSTART:20101107T020000
+  TZOFFSETTO:+0200
+  TZOFFSETFROM:+0100
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:20100314T020000
+  TZOFFSETTO:+0100
+  TZOFFSETFROM:+0200
   RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
   TZNAME:PDT
   END:DAYLIGHT
