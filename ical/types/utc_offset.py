@@ -48,6 +48,8 @@ class UtcOffset:
         if duration < datetime.timedelta(days=0):
             parts.append("-")
             duration = -duration
+        else:
+            parts.append("+")
         seconds = duration.seconds
         hours = int(seconds / 3600)
         seconds %= 3600

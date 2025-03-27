@@ -158,8 +158,8 @@ def test_from_tzif_timezoneinfo_fixed_offset(
        TZID:Asia/Tokyo
        BEGIN:STANDARD
        DTSTART:20100101T000000
-       TZOFFSETTO:0900
-       TZOFFSETFROM:0900
+       TZOFFSETTO:+0900
+       TZOFFSETFROM:+0900
        TZNAME:JST
        END:STANDARD
        END:VTIMEZONE
@@ -191,8 +191,8 @@ def test_clear_old_dtstamp(
        TZID:Asia/Tokyo
        BEGIN:STANDARD
        DTSTART:20100101T000000
-       TZOFFSETTO:0900
-       TZOFFSETFROM:0900
+       TZOFFSETTO:+0900
+       TZOFFSETFROM:+0900
        TZNAME:JST
        END:STANDARD
        END:VTIMEZONE
@@ -207,8 +207,8 @@ def test_clear_old_dtstamp(
        TZID:Asia/Tokyo
        BEGIN:STANDARD
        DTSTART:20100101T000000
-       TZOFFSETTO:0900
-       TZOFFSETFROM:0900
+       TZOFFSETTO:+0900
+       TZOFFSETFROM:+0900
        TZNAME:JST
        END:STANDARD
        END:VTIMEZONE
