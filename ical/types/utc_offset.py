@@ -11,7 +11,7 @@ from ical.parsing.property import ParsedProperty
 
 from .data_types import DATA_TYPE
 
-UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})$")
+UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})([0-9]{2})?$")
 
 
 @DATA_TYPE.register("UTC-OFFSET")
@@ -31,10 +31,11 @@ class UtcOffset:
             value = prop.value
         if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
             raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
-        sign, hours, minutes = match.groups()
+        sign, hours, minutes, seconds = match.groups()
         result = datetime.timedelta(
             hours=int(hours or 0),
             minutes=int(minutes or 0),
+            seconds=int(seconds or 0),
         )
         if sign == "-":
             result = -result
