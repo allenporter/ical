@@ -36,3 +36,26 @@ def test_utc_offset() -> None:
         FakeModel.parse_obj(
             {"example": [ParsedProperty(name="example", value="abcdef")]},
         )
+
+
+def test_optional_seconds() -> None:
+    """Test for UTC offset fields with optional seconds."""
+    model = FakeModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="+0019")]}
+    )
+    assert model.example.offset == datetime.timedelta(minutes=19)
+
+    model = FakeModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="+001932")]}
+    )
+    assert model.example.offset == datetime.timedelta(minutes=19, seconds=32)
+
+    model = FakeModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="-0019")]}
+    )
+    assert model.example.offset == datetime.timedelta(minutes=-19)
+
+    model = FakeModel.parse_obj(
+        {"example": [ParsedProperty(name="example", value="-001932")]}
+    )
+    assert model.example.offset == datetime.timedelta(minutes=-19, seconds=-32)
