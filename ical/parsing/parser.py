@@ -67,7 +67,7 @@ def _create_parser() -> ParserElement:
     param_name = Or([iana_token, x_name])
     # rfc5545 Q-SAFE-CHAR is any character except CONTROL and DQUOTE which is
     # close enough to the pyparsing provided parser element
-    param_text = Word(SAFE_CHAR)
+    param_text = Word(SAFE_CHAR) | ""
     quoted_string = QuotedString('"')
 
     param_value = Or([param_text, quoted_string])

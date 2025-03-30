@@ -142,7 +142,7 @@ def parse_property_params(
         for pair in parsed_params[PARSE_PARAMS]:
             params.append(
                 ParsedPropertyParameter(
-                    name=pair[PARSE_PARAM_NAME], values=pair[PARSE_PARAM_VALUE]
+                    name=pair[PARSE_PARAM_NAME], values=pair[PARSE_PARAM_VALUE] if PARSE_PARAM_VALUE in pair else [""]
                 )
             )
     return params
