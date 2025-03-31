@@ -1,5 +1,6 @@
 """Library for parsing and encoding PERIOD values."""
 
+from collections.abc import Callable, Generator
 import dataclasses
 import datetime
 import enum
@@ -17,6 +18,7 @@ from .data_types import DATA_TYPE, encode_model_property_params
 from .date_time import DateTimeEncoder
 from .duration import DurationEncoder
 from .parsing import parse_parameter_values
+from .enum import create_enum_validator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +37,11 @@ class FreeBusyType(str, enum.Enum):
 
     BUSY_TENTATIVE = "BUSY-TENTATIVE"
     """One or more events have been tentatively scheduled for the interval."""
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable[[Any], Any], None, None]:
+        """Return a generator that validates the value against the enum."""
+        yield create_enum_validator(FreeBusyType)
 
 
 @DATA_TYPE.register("PERIOD")

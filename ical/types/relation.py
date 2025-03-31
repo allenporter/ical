@@ -2,17 +2,20 @@
 
 import enum
 from dataclasses import dataclass
+from collections.abc import Callable, Generator
 from typing import Any
 import logging
 
 try:
     from pydantic.v1 import root_validator
 except ImportError:
-    from pydantic import root_validator # type: ignore[no-redef]
+    from pydantic import root_validator  # type: ignore[no-redef]
+
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 from .data_types import DATA_TYPE
-from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from .parsing import parse_parameter_values
+from .enum import create_enum_validator
 
 
 class RelationshipType(str, enum.Enum):
@@ -26,6 +29,11 @@ class RelationshipType(str, enum.Enum):
 
     SIBBLING = "SIBBLING"
     """Sibling relationship."""
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable[[Any], Any], None, None]:
+        """Return a generator that validates the value against the enum."""
+        yield create_enum_validator(RelationshipType)
 
 
 @DATA_TYPE.register("RELATED-TO")

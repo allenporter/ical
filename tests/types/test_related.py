@@ -1,6 +1,5 @@
 """Tests for RELATED-TO data types."""
 
-
 import pytest
 from ical.exceptions import CalendarParseError
 
@@ -68,22 +67,24 @@ def test_reltype(reltype: str) -> None:
 
 
 def test_invalid_reltype() -> None:
-    with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj(
-            {
-                "example": [
-                    ParsedProperty(
-                        name="example",
-                        value="example-uid@example.com",
-                        params=[
-                            ParsedPropertyParameter(
-                                name="reltype", values=["invalid-reltype"]
-                            )
-                        ],
-                    )
-                ]
-            },
-        )
+    model = FakeModel.parse_obj(
+        {
+            "example": [
+                ParsedProperty(
+                    name="example",
+                    value="example-uid@example.com",
+                    params=[
+                        ParsedPropertyParameter(
+                            name="reltype", values=["invalid-reltype"]
+                        )
+                    ],
+                )
+            ]
+        },
+    )
+    assert model.example
+    assert model.example.uid == "example-uid@example.com"
+    assert not model.example.reltype
 
 
 def test_too_many_reltype_values() -> None:
