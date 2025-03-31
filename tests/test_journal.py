@@ -30,7 +30,10 @@ def test_status() -> None:
     journal = Journal.parse_obj({"status": "DRAFT"})
     assert journal.status == JournalStatus.DRAFT
 
-    with pytest.raises(CalendarParseError):
+    with pytest.raises(
+        CalendarParseError,
+        match="^Failed to parse calendar JOURNAL component: value is not a valid enumeration member; permitted: 'DRAFT', 'FINAL', 'CANCELLED'$",
+    ):
         Journal.parse_obj({"status": "invalid-status"})
 
 
@@ -43,7 +46,9 @@ def test_start_datetime() -> None:
 
     with patch(
         "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
-    ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
+    ), patch(
+        "ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    ):
         assert journal.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
         assert not journal.recurring
 
@@ -56,7 +61,13 @@ def test_start_datetime() -> None:
 def test_computed_duration_date() -> None:
     """Test computed duration for a date."""
 
-    journal = Journal(start=datetime.date(2022, 8, 7,))
+    journal = Journal(
+        start=datetime.date(
+            2022,
+            8,
+            7,
+        )
+    )
     assert journal.start
     assert journal.computed_duration == datetime.timedelta(days=1)
 

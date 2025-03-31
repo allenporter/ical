@@ -61,7 +61,9 @@ class Recurrences(ComponentModel):
         try:
             properties = list(parse_basic_ics_properties(contentlines))
         except ValueError as err:
-            raise CalendarParseError(f"Failed to parse recurrence: {err}") from err
+            raise CalendarParseError(
+                "Failed to parse recurrence", detailed_error=str(err)
+            ) from err
         component = ParsedComponent(
             name="recurrences",  # Not used in the model
             properties=properties,

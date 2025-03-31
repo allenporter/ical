@@ -100,6 +100,7 @@ def _as_datetime(
         return datetime.datetime.combine(date_value, dtstart.time())
     return date_value
 
+
 def _as_date(
     date_value: datetime.datetime | datetime.date,
     dtstart: datetime.datetime,
@@ -116,7 +117,9 @@ def validate_recurrence_dates(
     if (
         not values.get("rrule")
         or not (dtstart := values.get("dtstart"))
-        or not (isinstance(dtstart, datetime.datetime) or isinstance(dtstart, datetime.date))
+        or not (
+            isinstance(dtstart, datetime.datetime) or isinstance(dtstart, datetime.date)
+        )
     ):
         return values
     is_datetime = isinstance(dtstart, datetime.datetime)
@@ -125,9 +128,7 @@ def validate_recurrence_dates(
         if not (date_values := values.get(field)):
             continue
 
-        values[field] = [
-            validator(date_value, dtstart) for date_value in date_values
-        ]
+        values[field] = [validator(date_value, dtstart) for date_value in date_values]
     return values
 
 
@@ -138,7 +139,15 @@ class ComponentModel(BaseModel):
         try:
             super().__init__(**data)
         except ValidationError as err:
-            raise CalendarParseError(f"Failed to parse component: {err}") from err
+            _LOGGER.debug("Failed to parse component %s", err)
+            message = [
+                f"Failed to parse calendar {self.__class__.__name__.upper()} component"
+            ]
+            for error in err.errors():
+                if msg := error.get("msg"):
+                    message.append(msg)
+            error_str = ": ".join(message)
+            raise CalendarParseError(error_str, detailed_error=str(err)) from err
 
     def copy_and_validate(self, update: dict[str, Any]) -> ComponentModel:
         """Create a new object with updated values and validate it."""

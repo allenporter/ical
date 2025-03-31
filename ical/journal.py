@@ -26,7 +26,6 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .exceptions import CalendarParseError
 from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
 from .iter import RulesetIterable, as_rrule
 from .timespan import Timespan
