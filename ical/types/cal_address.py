@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 import dataclasses
 import enum
 import logging
@@ -18,6 +19,7 @@ from ical.parsing.property import ParsedPropertyParameter
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
+from .enum import create_enum_validator
 
 _LOGGER = logging.getLogger(__name__)
 
