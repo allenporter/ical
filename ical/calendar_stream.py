@@ -60,7 +60,9 @@ class CalendarStream(ComponentModel):
         try:
             components = parse_content(content)
         except pyparsing.ParseException as err:
-            raise CalendarParseError(f"Failed to parse calendar stream: {err}") from err
+            raise CalendarParseError(
+                f"Failed to parse calendar contents", detailed_error=str(err)
+            ) from err
         result: dict[str, list] = {"vcalendar": []}
         for component in components:
             result.setdefault(component.name, [])

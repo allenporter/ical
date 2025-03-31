@@ -99,12 +99,15 @@ def test_todo_list_iteration(filename: pathlib.Path) -> None:
 
 def test_invalid_ics() -> None:
     """Test parsing failures for ics content."""
-    with pytest.raises(CalendarParseError, match="Failed to parse calendar stream"):
+    with pytest.raises(CalendarParseError, match="^Failed to parse calendar contents"):
         IcsCalendarStream.calendar_from_ics("invalid")
 
 
 def test_component_failure() -> None:
-    with pytest.raises(CalendarParseError, match="Failed to parse component"):
+    with pytest.raises(
+        CalendarParseError,
+        match="^Failed to parse calendar EVENT component: Unexpected dtstart value '2022-07-24 12:00:00' was datetime but dtend value '2022-07-24' was not datetime$",
+    ):
         IcsCalendarStream.calendar_from_ics(
             textwrap.dedent(
                 """\
