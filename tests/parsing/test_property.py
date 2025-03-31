@@ -29,6 +29,7 @@ def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
     properties = list(parse_basic_ics_properties(unfolded_lines(filename.read_text())))
     assert properties == snapshot
 
+
 @pytest.mark.parametrize(
     "ics",
     [
@@ -37,10 +38,32 @@ def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
         "PROP;PARAM:VALUE",
         ";VALUE",
         ";:VALUE",
-    ]
+    ],
 )
 def test_invalid_format(ics: str) -> None:
     """Test parsing invalid property format."""
     with pytest.raises(ValueError):
-        r = list(parse_basic_ics_properties([ics]))
-        assert r == 'a'
+        list(parse_basic_ics_properties([ics]))
+
+
+@pytest.mark.parametrize(
+    "ics",
+    [
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=" ":VALUE",
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=" ":VALUE",
+    ],
+)
+def test_blank_parameters(ics: str) -> None:
+    """Test parsing invalid property format."""
+    properties = list(parse_basic_ics_properties([ics]))
+    assert len(properties) == 1
+    prop = properties[0]
+    assert prop.name == "x-test-blank"
+    assert prop.value == "VALUE"
+    assert len(prop.params) == 2
+    assert prop.params[0].name == "VALUE"
+    assert prop.params[0].values == ["URI"]
+    assert prop.params[1].name == "X-TEST-BLANK-PARAM"
+    assert prop.params[1].values == [""]

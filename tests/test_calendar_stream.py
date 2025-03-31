@@ -16,36 +16,36 @@ from ical.store import TodoStore
 MAX_ITERATIONS = 30
 TESTDATA_PATH = pathlib.Path("tests/testdata/")
 TESTDATA_FILES = list(TESTDATA_PATH.glob("*.ics"))
-TESTDATA_IDS = [ x.stem for x in TESTDATA_FILES ]
+TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 
 
 def test_empty_ics(mock_prodid: Generator[None, None, None]) -> None:
     """Test serialization of an empty ics file."""
     calendar = IcsCalendarStream.calendar_from_ics("")
     ics = IcsCalendarStream.calendar_to_ics(calendar)
-    assert (
-        ics
-        == textwrap.dedent("""\
+    assert ics == textwrap.dedent(
+        """\
             BEGIN:VCALENDAR
             PRODID:-//example//1.2.3
             VERSION:2.0
             END:VCALENDAR"""
-    ))
+    )
 
     calendar.prodid = "-//example//1.2.4"
     ics = IcsCalendarStream.calendar_to_ics(calendar)
-    assert (
-        ics
-        == textwrap.dedent("""\
+    assert ics == textwrap.dedent(
+        """\
             BEGIN:VCALENDAR
             PRODID:-//example//1.2.4
             VERSION:2.0
-            END:VCALENDAR""")
+            END:VCALENDAR"""
     )
 
 
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
-def test_parse(filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder) -> None:
+def test_parse(
+    filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
+) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = CalendarStream.from_ics(filename.read_text())
     data = json.loads(
@@ -106,7 +106,8 @@ def test_invalid_ics() -> None:
 def test_component_failure() -> None:
     with pytest.raises(CalendarParseError, match="Failed to parse component"):
         IcsCalendarStream.calendar_from_ics(
-            textwrap.dedent("""\
+            textwrap.dedent(
+                """\
                 BEGIN:VCALENDAR
                 PRODID:-//example//1.2.3
                 VERSION:2.0
@@ -115,13 +116,16 @@ def test_component_failure() -> None:
                 DTEND:20220724
                 END:VEVENT
                 END:VCALENDAR
-            """))
-        
+            """
+            )
+        )
+
 
 def test_multiple_calendars() -> None:
     with pytest.raises(CalendarParseError, match="more than one calendar"):
         IcsCalendarStream.calendar_from_ics(
-            textwrap.dedent("""\
+            textwrap.dedent(
+                """\
                 BEGIN:VCALENDAR
                 PRODID:-//example//1.2.3
                 VERSION:2.0
@@ -130,43 +134,6 @@ def test_multiple_calendars() -> None:
                 PRODID:-//example//1.2.3
                 VERSION:2.0
                 END:VCALENDAR
-            """))
-
-def test_blank_param_value() -> None:
-    IcsCalendarStream.calendar_from_ics(
-        textwrap.dedent("""\
-            BEGIN:VCALENDAR
-            PRODID:-//example//1.2.3
-            VERSION:2.0
-            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE
-            END:VCALENDAR
-        """))
-
-def test_blank_quoted_param_value() -> None:
-    IcsCalendarStream.calendar_from_ics(
-        textwrap.dedent("""\
-            BEGIN:VCALENDAR
-            PRODID:-//example//1.2.3
-            VERSION:2.0
-            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM="":VALUE
-            END:VCALENDAR
-        """))
-
-def test_blank_vs_blank_quoted_param_value() -> None:
-    ics = IcsCalendarStream.calendar_from_ics(
-        textwrap.dedent("""\
-            BEGIN:VCALENDAR
-            PRODID:-//example//1.2.3
-            VERSION:2.0
-            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE
-            END:VCALENDAR
-        """))
-    ics2 = IcsCalendarStream.calendar_from_ics(
-        textwrap.dedent("""\
-            BEGIN:VCALENDAR
-            PRODID:-//example//1.2.3
-            VERSION:2.0
-            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM="":VALUE
-            END:VCALENDAR
-        """))
-    assert ics == ics2
+            """
+            )
+        )
