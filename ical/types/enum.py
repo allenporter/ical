@@ -13,8 +13,6 @@ def create_enum_validator(enum_type: Type[T]) -> Callable[[str], str | None]:
     """Validate the value against the enum."""
 
     def validate(value: str) -> str | None:
-        if not isinstance(value, str):
-            raise TypeError("String required for parsing enum value")
         if value not in [member.value for member in enum_type]:
             return None
         return value
