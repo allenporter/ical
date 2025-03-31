@@ -131,3 +131,42 @@ def test_multiple_calendars() -> None:
                 VERSION:2.0
                 END:VCALENDAR
             """))
+
+def test_blank_param_value() -> None:
+    IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.3
+            VERSION:2.0
+            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE
+            END:VCALENDAR
+        """))
+
+def test_blank_quoted_param_value() -> None:
+    IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.3
+            VERSION:2.0
+            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM="":VALUE
+            END:VCALENDAR
+        """))
+
+def test_blank_vs_blank_quoted_param_value() -> None:
+    ics = IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.3
+            VERSION:2.0
+            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE
+            END:VCALENDAR
+        """))
+    ics2 = IcsCalendarStream.calendar_from_ics(
+        textwrap.dedent("""\
+            BEGIN:VCALENDAR
+            PRODID:-//example//1.2.3
+            VERSION:2.0
+            X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM="":VALUE
+            END:VCALENDAR
+        """))
+    assert ics == ics2
