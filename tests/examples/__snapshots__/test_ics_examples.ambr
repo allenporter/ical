@@ -2,6 +2,23 @@
 # name: test_parse[filename0]
   '''
   BEGIN:VCALENDAR
+  PRODID:-//github.com/allenporter/ical//8.2.0//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20250313T123432Z
+  UID:20070313T123432Z-456553@example.com
+  CATEGORIES:FAMILY
+  CATEGORIES:FINANCE
+  DUE:20070501
+  STATUS:NEEDS-ACTION
+  SUMMARY:Submit Quebec Income Tax Return for 2006
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[filename1]
+  '''
+  BEGIN:VCALENDAR
   CALSCALE:GREGORIAN
   METHOD:PUBLISH
   PRODID:-//Google Inc//Google Calendar 70.9054//EN
@@ -1629,23 +1646,6 @@
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
   END:VEVENT
-  END:VCALENDAR
-  '''
-# ---
-# name: test_parse[filename1]
-  '''
-  BEGIN:VCALENDAR
-  PRODID:-//github.com/allenporter/ical//8.2.0//EN
-  VERSION:2.0
-  BEGIN:VTODO
-  DTSTAMP:20250313T123432Z
-  UID:20070313T123432Z-456553@example.com
-  CATEGORIES:FAMILY
-  CATEGORIES:FINANCE
-  DUE:20070501
-  STATUS:NEEDS-ACTION
-  SUMMARY:Submit Quebec Income Tax Return for 2006
-  END:VTODO
   END:VCALENDAR
   '''
 # ---
