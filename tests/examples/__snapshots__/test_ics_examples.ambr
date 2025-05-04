@@ -1,4 +1,13 @@
 # serializer version: 1
+# name: test_iterate_events[apple_ical]
+  list([
+    Event(dtstamp=datetime.datetime(2022, 9, 25, 19, 15, 45, tzinfo=datetime.timezone.utc), uid='A409C8CF-31E9-4234-BE8A-6CE2B6BB875A', dtstart=datetime.datetime(2022, 9, 12, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), dtend=datetime.datetime(2022, 9, 12, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), duration=None, summary='New Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2022, 9, 25, 19, 15, 43, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2022, 9, 25, 19, 15, 43, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id=None, related_to=[], related=[], resources=[], rrule=None, rdate=[], exdate=[], request_status=None, sequence=1, status=None, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2022, 9, 25, 19, 22, 30, tzinfo=datetime.timezone.utc), uid='E53B06A1-9F72-41D9-9446-68E335D2D4F4', dtstart=datetime.datetime(2022, 9, 13, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), dtend=datetime.datetime(2022, 9, 13, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), duration=None, summary='Daily', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2022, 9, 25, 19, 15, 59, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2022, 9, 24, 17, 6, 16, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20220913T090000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2022, 9, 26, 15, 59, 59, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=1, status=None, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2022, 9, 25, 19, 22, 30, tzinfo=datetime.timezone.utc), uid='E53B06A1-9F72-41D9-9446-68E335D2D4F4', dtstart=datetime.datetime(2022, 9, 14, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), dtend=datetime.datetime(2022, 9, 14, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), duration=None, summary='Daily', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2022, 9, 25, 19, 15, 59, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2022, 9, 24, 17, 6, 16, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20220914T090000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2022, 9, 26, 15, 59, 59, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=1, status=None, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2022, 9, 25, 19, 22, 30, tzinfo=datetime.timezone.utc), uid='E53B06A1-9F72-41D9-9446-68E335D2D4F4', dtstart=datetime.datetime(2022, 9, 15, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), dtend=datetime.datetime(2022, 9, 15, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), duration=None, summary='Daily', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2022, 9, 25, 19, 15, 59, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2022, 9, 24, 17, 6, 16, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20220915T090000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2022, 9, 26, 15, 59, 59, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=1, status=None, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2022, 9, 25, 19, 22, 30, tzinfo=datetime.timezone.utc), uid='E53B06A1-9F72-41D9-9446-68E335D2D4F4', dtstart=datetime.datetime(2022, 9, 16, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), dtend=datetime.datetime(2022, 9, 16, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')), duration=None, summary='Daily', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2022, 9, 25, 19, 15, 59, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2022, 9, 24, 17, 6, 16, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20220916T090000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2022, 9, 26, 15, 59, 59, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=1, status=None, transparency=None, url=None, extras=[], alarm=[]),
+  ])
+# ---
 # name: test_iterate_events[extended_values]
   list([
   ])
@@ -20,6 +29,222 @@
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 7), dtend=datetime.date(2025, 5, 8), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250507', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 8), dtend=datetime.date(2025, 5, 9), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250508', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
   ])
+# ---
+# name: test_parse[apple_ical]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//caldav.icloud.com//CALDAVJ 2514B607//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20220925T191543Z
+  UID:001BE545-52F9-4099-ACFC-A14FF63C4701
+  DTSTART;TZID=America/Los_Angeles:20220927T090000
+  DTEND;TZID=America/Los_Angeles:20220927T100000
+  SUMMARY:New Event
+  CREATED:20220925T061541Z
+  LAST-MODIFIED:20220925T061541Z
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20231015T180900Z
+  UID:020C71BB-A981-4520-83E9-98E488A60863
+  DTSTART:20231011
+  DTEND:20231013
+  SUMMARY:Multi-day event
+  CREATED:20231015T180900Z
+  SEQUENCE:0
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20231015T180532Z
+  UID:3B4E9E16-8D79-422F-B48F-888861099B5B
+  DTSTART:20231015
+  DTEND:20231018
+  SUMMARY:Multi-day event
+  CREATED:20231015T180532Z
+  SEQUENCE:0
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20220924T152626Z
+  UID:543E8A23-5A51-4489-8117-55241E8A1E30
+  DTSTART;TZID=America/Los_Angeles:20220920T090000
+  DTEND;TZID=America/Los_Angeles:20220920T110000
+  SUMMARY:Example
+  CREATED:20220924T152551Z
+  DESCRIPTION:Test description
+  LAST-MODIFIED:20220924T152623Z
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20220924T170617Z
+  UID:6D0A3855-9577-40D3-AE87-9624657C7561
+  DTSTART;TZID=America/Los_Angeles:20220926T090000
+  DTEND;TZID=America/Los_Angeles:20220926T100000
+  SUMMARY:Daily
+  CREATED:20220924T170609Z
+  LAST-MODIFIED:20220925T191650Z
+  RRULE:FREQ=DAILY
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20220925T191545Z
+  UID:A409C8CF-31E9-4234-BE8A-6CE2B6BB875A
+  DTSTART;TZID=America/Los_Angeles:20220912T090000
+  DTEND;TZID=America/Los_Angeles:20220912T100000
+  SUMMARY:New Event
+  CREATED:20220925T191543Z
+  LAST-MODIFIED:20220925T191543Z
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20220925T192230Z
+  UID:E53B06A1-9F72-41D9-9446-68E335D2D4F4
+  DTSTART;TZID=America/Los_Angeles:20220913T090000
+  DTEND;TZID=America/Los_Angeles:20220913T100000
+  SUMMARY:Daily
+  CREATED:20220925T191559Z
+  LAST-MODIFIED:20220924T170616Z
+  RRULE:FREQ=DAILY;UNTIL=20220926T155959Z
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20220924T162627Z
+  UID:F17B5DBD-1915-4654-90A5-1D068739A75F
+  DTSTART;TZID=America/Los_Angeles:20220922T090000
+  DTEND;TZID=America/Los_Angeles:20220922T100000
+  SUMMARY:bar
+  CREATED:20220924T162621Z
+  DESCRIPTION:foo
+  LAST-MODIFIED:20220924T162627Z
+  SEQUENCE:1
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  TZID:America/Los_Angeles
+  BEGIN:STANDARD
+  DTSTART:18831118T120702
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0752
+  RDATE:18831118T120702
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19181027T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;UNTIL=19191026T090000Z;BYDAY=-1SU;BYMONTH=10
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19450930T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RDATE:19450930T020000
+  RDATE:19490101T020000
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19460101T000000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0800
+  RDATE:19460101T000000
+  RDATE:19670101T000000
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19500924T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;UNTIL=19610924T090000Z;BYDAY=-1SU;BYMONTH=9
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19621028T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;UNTIL=19661030T090000Z;BYDAY=-1SU;BYMONTH=10
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:19671029T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;UNTIL=20061029T090000Z;BYDAY=-1SU;BYMONTH=10
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:STANDARD
+  DTSTART:20071104T020000
+  TZOFFSETTO:-0800
+  TZOFFSETFROM:-0700
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:PST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19180331T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;UNTIL=19190330T100000Z;BYDAY=-1SU;BYMONTH=3
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19420209T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RDATE:19420209T020000
+  TZNAME:PWT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19450814T160000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0700
+  RDATE:19450814T160000
+  TZNAME:PPT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19480314T020100
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RDATE:19480314T020100
+  RDATE:19740106T020000
+  RDATE:19750223T020000
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19500430T010000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;UNTIL=19660424T090000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19670430T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;UNTIL=19730429T100000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19760425T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;UNTIL=19860427T100000Z;BYDAY=-1SU;BYMONTH=4
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:19870405T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;UNTIL=20060402T100000Z;BYDAY=1SU;BYMONTH=4
+  TZNAME:PDT
+  END:DAYLIGHT
+  BEGIN:DAYLIGHT
+  DTSTART:20070311T020000
+  TZOFFSETTO:-0700
+  TZOFFSETFROM:-0800
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:PDT
+  END:DAYLIGHT
+  END:VTIMEZONE
+  END:VCALENDAR
+  '''
 # ---
 # name: test_parse[extended_values]
   '''
