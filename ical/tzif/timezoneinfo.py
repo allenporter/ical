@@ -190,7 +190,9 @@ class TzInfo(datetime.tzinfo):
 
     def __repr__(self) -> str:
         """Return the string representation of the timezone."""
-        return f"TzInfo({self._rule.std.name}, {self._rule.dst.name})"
+        if self._rule.dst is not None:
+            return f"TzInfo({self._rule.std.name}, {self._rule.dst.name})"
+        return f"TzInfo({self._rule.std.name})"
 
 
 def read_tzinfo(key: str) -> TzInfo:
