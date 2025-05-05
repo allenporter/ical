@@ -51,8 +51,7 @@ def test_parse_failure(filename: pathlib.Path, snapshot: SnapshotAssertion) -> N
 )
 def test_make_compat_not_enabled(ics: str) -> None:
     """Test to read golden files and verify they are parsed."""
-    with filename.open() as ics_file:
-        with enable_compat_mode(ics) as compat_ics:
-            assert compat_ics == ics
-            assert not timezone_compat.is_allow_invalid_timezones_enabled()
-            assert not timezone_compat.is_extended_timezones_enabled()
+    with enable_compat_mode(ics) as compat_ics:
+        assert compat_ics == ics
+        assert not timezone_compat.is_allow_invalid_timezones_enabled()
+        assert not timezone_compat.is_extended_timezones_enabled()
