@@ -15,9 +15,17 @@ from dataclasses import dataclass
 from functools import cache
 from importlib import resources
 
+from ical.compat import timezone_compat
+
+from . import extended_timezones
 from .model import TimezoneInfo
 from .tz_rule import Rule, RuleDate
 from .tzif import read_tzif
+
+__all__ = [
+    "TimezoneInfoError",
+    "read",
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,9 +72,19 @@ def _iana_key_to_resource(key: str) -> tuple[str, str]:
     return package, resource
 
 
-@cache
 def read(key: str) -> TimezoneInfo:
     """Read the TZif file from the tzdata package and return timezone records."""
+    _LOGGER.debug("Reading timezone: %s", key)
+    if timezone_compat.is_extended_timezones_enabled():
+        if target_timezone := extended_timezones.EXTENDED_TIMEZONES.get(key):
+            _LOGGER.debug("Using extended timezone: %s", target_timezone)
+            key = target_timezone
+
+    return _read_cache(key)
+
+
+@cache
+def _read_cache(key: str) -> TimezoneInfo:
     if key not in _read_system_timezones() and key not in _read_tzdata_timezones():
         raise TimezoneInfoError(f"Unable to find timezone in system timezones: {key}")
 
@@ -165,6 +183,16 @@ class TzInfo(datetime.tzinfo):
             return dst_offset
 
         return _ZERO
+
+    def __str__(self) -> str:
+        """Return the string representation of the timezone."""
+        return self._rule.std.name
+
+    def __repr__(self) -> str:
+        """Return the string representation of the timezone."""
+        if self._rule.dst is not None:
+            return f"TzInfo({self._rule.std.name}, {self._rule.dst.name})"
+        return f"TzInfo({self._rule.std.name})"
 
 
 def read_tzinfo(key: str) -> TzInfo:

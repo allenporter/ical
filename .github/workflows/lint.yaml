@@ -25,6 +25,7 @@ jobs:
       - uses: codespell-project/actions-codespell@v2.1
         with:
           check_hidden: false
+          skip: ./ical/tzif/extended_timezones.py,./tests/tzif/testdata/rfc8536-v3.yaml
       - name: Run yamllint
         uses: ibiqlik/action-yamllint@v3
         with:
