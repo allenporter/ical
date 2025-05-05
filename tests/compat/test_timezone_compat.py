@@ -22,7 +22,7 @@ def test_extended_timezone_fail() -> None:
         CalendarParseError,
         match="Expected DATE-TIME TZID value 'W. Europe Standard Time' to be valid timezone",
     ):
-        IcsCalendarStream.from_ics(
+        IcsCalendarStream.calendar_from_ics(
             OFFICE_365_EXTENDED_TIMEZONE.read_text(encoding="utf-8")
         )
 
@@ -30,7 +30,7 @@ def test_extended_timezone_fail() -> None:
 def test_extended_timezone_compat(snapshot: SnapshotAssertion) -> None:
     """Test Office 365 extended timezone with compat enabled."""
     with timezone_compat.enable_extended_timezones():
-        calendar = IcsCalendarStream.from_ics(
+        calendar = IcsCalendarStream.calendar_from_ics(
             OFFICE_365_EXTENDED_TIMEZONE.read_text(encoding="utf-8")
         )
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot
@@ -43,7 +43,7 @@ def test_invalid_timezone_fail() -> None:
         CalendarParseError,
         match="Expected DATE-TIME TZID value 'Customized Time Zone' to be valid timezone",
     ):
-        IcsCalendarStream.from_ics(
+        IcsCalendarStream.calendar_from_ics(
             OFFICE_365_INVALID_TIMEZONE.read_text(encoding="utf-8")
         )
 
@@ -52,7 +52,7 @@ def test_invalid_timezone_compat(snapshot: SnapshotAssertion) -> None:
     """Test Office 365 invalid timezone."""
 
     with timezone_compat.enable_allow_invalid_timezones():
-        calendar = IcsCalendarStream.from_ics(
+        calendar = IcsCalendarStream.calendar_from_ics(
             OFFICE_365_INVALID_TIMEZONE.read_text(encoding="utf-8")
         )
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot
