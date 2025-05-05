@@ -39,3 +39,20 @@ def test_parse_failure(filename: pathlib.Path, snapshot: SnapshotAssertion) -> N
         ics = ics_file.read()
         with pytest.raises(CalendarParseError):
             IcsCalendarStream.calendar_from_ics(ics)
+
+
+@pytest.mark.parametrize(
+    "ics",
+    [
+        "invalid",
+        "PRODID:not-exchange",
+        "BEGIN:VCALENDAR\nPRODID:not-exchange\nVERSION:2.0\nEND:VCALENDAR",
+    ]
+)
+def test_make_compat_not_enabled(ics: str) -> None:
+    """Test to read golden files and verify they are parsed."""
+    with filename.open() as ics_file:
+        with enable_compat_mode(ics) as compat_ics:
+            assert compat_ics == ics
+            assert not timezone_compat.is_allow_invalid_timezones_enabled()
+            assert not timezone_compat.is_extended_timezones_enabled()
