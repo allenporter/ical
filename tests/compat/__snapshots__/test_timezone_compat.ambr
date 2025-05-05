@@ -1,0 +1,17 @@
+# serializer version: 1
+# name: test_extended_timezone_compat
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//example//1.2.3
+  VERSION:2.0
+  END:VCALENDAR
+  '''
+# ---
+# name: test_invalid_timezone_compat
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//example//1.2.3
+  VERSION:2.0
+  END:VCALENDAR
+  '''
+# ---

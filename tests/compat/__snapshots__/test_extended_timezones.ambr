@@ -1,0 +1,9 @@
+# serializer version: 1
+# name: test_office_365_extended_timezone
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//example//1.2.3
+  VERSION:2.0
+  END:VCALENDAR
+  '''
+# ---

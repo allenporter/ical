@@ -32,8 +32,9 @@ repos:
     hooks:
       - id: codespell
         exclude: |
-          ^(
-              tests/tzif/testdata/rfc8536-v3.yaml
+          (?x)^(
+              tests/tzif/testdata/rfc8536-v3.yaml|
+              ical/tzif/extended_timezones.py
           )$
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.37.1
