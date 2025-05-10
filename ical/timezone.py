@@ -12,6 +12,8 @@ different calendaring systems.
 
 from __future__ import annotations
 
+import copy
+import traceback
 import datetime
 import enum
 import logging
@@ -268,6 +270,12 @@ class IcsTimezoneInfo(datetime.tzinfo):
         """Initialize IcsTimezoneInfo."""
         self._timezone = timezone
 
+    def __deepcopy__(self, memo: Any) -> IcsTimezoneInfo:
+        """Return a deep copy of the timezone object."""
+        return IcsTimezoneInfo(
+            timezone=copy.deepcopy(self._timezone, memo),
+        )
+
     @classmethod
     def from_timezone(cls, timezone: Timezone) -> IcsTimezoneInfo:
         """Create a new instance of an IcsTimezoneInfo."""
@@ -305,6 +313,10 @@ class IcsTimezoneInfo(datetime.tzinfo):
     def __str__(self) -> str:
         """A string representation of the timezone object."""
         return self._timezone.tz_id
+
+    def __repr__(self) -> str:
+        """A string representation of the timezone object."""
+        return f"{self.__class__.__name__}({self._timezone.tz_id})"
 
 
 class TimezoneModel(ComponentModel):
