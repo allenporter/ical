@@ -90,5 +90,10 @@ See the `rrule`, `rdate`, and `exdate` fields on the `ical.event.Event` for more
 There are other python rfc5545 implementations that are more mature, and having
 been around for many years, are still active, and served as reference
 implementations for this project:
+
   - Ics.py - [github](https://github.com/ics-py/ics-py) [docs](https://icspy.readthedocs.io/en/stable/) - Since 2013
   - icalendar [github](https://github.com/collective/icalendar) [docs](https://icalendar.readthedocs.io/) - Since 2005
+
+You may prefer these projects if you want something that changes less often or
+if you require a non-modern version of python and if you don't mind patching
+recurring events on top yourself e.g. using `python-recurring-ical-events`.
