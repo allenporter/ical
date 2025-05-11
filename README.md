@@ -1,14 +1,17 @@
 This is an iCalendar rfc 5545 implementation in python. The goal of this
-project is to offer a calendar library with the relevant and practical
-features needed for building a calendar application (e.g. recurring
-events).
+project is to offer a calendar library that fills gaps in other widely used
+calendar libraries such as:
 
-ical's main focus is on simplicity, and the internal implementation
-is based on existing parsing libraries, where possible, making it
-easy to support as much as possible of rfc5545. It is not a goal to
-support everything exhaustively, however, the simplicity of the
-implementation makes it easy to do so. The package has high coverage,
-and high test coverage, and is easy to extend with new rfc5545 properties.
+- Relevant and practical features needed for building a calendar application -- namely recurring events.
+- Simple APIs that are straight forward to use
+- High quality code base with high test coverage and regular releases.
+
+ical's main focus is on simplicity. Internally, this library uses other existing
+data parsing libraries making it easy to support as much as possible of rfc5545.
+It is not a goal to support everything exhaustively (e.g. enterprise features),
+however, the simplicity of the implementation makes it easy to do so. The package
+has high coverage, and high test coverage, and is easy to extend with new rfc5545
+properties.
 
 This packages uses semantic versioning, and releases often, and works
 on recent python versions.
