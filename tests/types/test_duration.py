@@ -30,6 +30,7 @@ class FakeModel(ComponentModel):
         ),
         ("P7W", datetime.timedelta(days=7 * 7), "P7W"),
         ("-P7W", datetime.timedelta(days=-7 * 7), "-P7W"),
+        ("-P1W6DT15H", datetime.timedelta(days=-(7 + 6), hours=-15), "-P1W6DT15H"),
     ],
 )
 def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) -> None:

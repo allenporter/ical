@@ -232,6 +232,48 @@
     ]),
   })
 # ---
+# name: test_parse[duration_negative]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'alarm': list([
+              dict({
+                'action': 'AUDIO',
+                'duration': -1177200.0,
+                'extras': list([
+                  dict({
+                    'name': 'attach',
+                    'params': list([
+                      dict({
+                        'name': 'FMTTYPE',
+                        'values': list([
+                          'audio/basic',
+                        ]),
+                      }),
+                    ]),
+                    'value': 'ftp://example.com/pub/sounds/bell-01.aud',
+                  }),
+                ]),
+                'repeat': 4,
+                'trigger': '1997-03-17T13:30:00+00:00',
+              }),
+            ]),
+            'dtend': '2007-07-09',
+            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstart': '2007-06-28',
+            'summary': 'Festival International de Jazz de Montreal',
+            'transparency': 'TRANSPARENT',
+            'uid': '20070423T123432Z-541111@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[empty]
   dict({
     'calendars': list([
@@ -1419,6 +1461,28 @@
   DTEND:19970715T040000Z
   SUMMARY:Conference
   DESCRIPTION:The Fall'98 Wild Wizards Conference - - Las Vegas\, NV\, USA
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[duration_negative]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20070423T123432Z
+  UID:20070423T123432Z-541111@example.com
+  DTSTART:20070628
+  DTEND:20070709
+  SUMMARY:Festival International de Jazz de Montreal
+  TRANSP:TRANSPARENT
+  BEGIN:VALARM
+  ACTION:AUDIO
+  TRIGGER:19970317T133000Z
+  DURATION:-P1W6DT15H
+  REPEAT:4
+  END:VALARM
   END:VEVENT
   END:VCALENDAR
   '''
