@@ -42,20 +42,20 @@ _T = TypeVar("_T", bound="Event | Todo")
 
 
 def _ensure_timezone(
-    dtstart: datetime.datetime | datetime.date | None, timezones: list[Timezone]
+    dtvalue: datetime.datetime | datetime.date | None, timezones: list[Timezone]
 ) -> Timezone | None:
     """Create a timezone object for the specified date if it does not already exist."""
     if (
-        not isinstance(dtstart, datetime.datetime)
-        or not dtstart.utcoffset()
-        or not dtstart.tzinfo
+        not isinstance(dtvalue, datetime.datetime)
+        or not dtvalue.utcoffset()
+        or not dtvalue.tzinfo
     ):
         return None
 
     # Verify this timezone does not already exist. The number of timezones
     # in a calendar is typically very small so iterate over the whole thing
     # to avoid any synchronization/cache issues.
-    key = str(dtstart.tzinfo)
+    key = str(dtvalue.tzinfo)
     for timezone in timezones:
         if timezone.tz_id == key:
             return None
@@ -200,6 +200,8 @@ class GenericStore(Generic[_T]):
 
         _LOGGER.debug("Adding item: %s", new_item)
         self._ensure_timezone(item.dtstart)
+        if isinstance(item, Event) and item.dtend:
+            self._ensure_timezone(item.dtend)
         self._items.append(new_item)
         return new_item
 
@@ -377,6 +379,8 @@ class GenericStore(Generic[_T]):
                 raise self._exc(f"Unsupported relationship type {relation.reltype}")
 
         self._ensure_timezone(new_item.dtstart)
+        if isinstance(new_item, Event) and new_item.dtend:
+            self._ensure_timezone(new_item.dtend)
 
         # Editing a single instance of a recurring item is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
@@ -389,9 +393,9 @@ class GenericStore(Generic[_T]):
         self._items.insert(store_index, new_item)
 
     def _ensure_timezone(
-        self, dtstart: datetime.datetime | datetime.date | None
+        self, dtvalue: datetime.datetime | datetime.date | None
     ) -> None:
-        if (new_timezone := _ensure_timezone(dtstart, self._timezones)) is not None:
+        if (new_timezone := _ensure_timezone(dtvalue, self._timezones)) is not None:
             self._timezones.append(new_timezone)
 
 
