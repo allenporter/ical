@@ -97,7 +97,8 @@ def _as_datetime(
     dtstart: datetime.datetime,
 ) -> datetime.datetime:
     if not isinstance(date_value, datetime.datetime):
-        return datetime.datetime.combine(date_value, dtstart.time())
+        new_dt = datetime.datetime.combine(date_value, dtstart.time())
+        return new_dt.replace(tzinfo=dtstart.tzinfo)
     return date_value
 
 
