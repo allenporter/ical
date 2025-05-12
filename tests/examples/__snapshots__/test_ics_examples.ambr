@@ -12,6 +12,15 @@
   list([
   ])
 # ---
+# name: test_iterate_events[google_calendar_invalid_offset]
+  list([
+    Event(dtstamp=datetime.datetime(2025, 5, 11, 23, 39, 45, tzinfo=datetime.timezone.utc), uid='KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.google.com', dtstart=datetime.datetime(2003, 2, 3, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), dtend=datetime.datetime(2003, 2, 3, 19, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), duration=None, summary='Event Summary', attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2006, 3, 15, 21, 4, 21, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2023, 2, 20, 3, 40, 45, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20030203T170000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2003, 2, 13, 16, 0, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[datetime.datetime(2003, 2, 8, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), datetime.datetime(2003, 2, 9, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires'))], request_status=None, sequence=3, status=<EventStatus.TENTATIVE: 'TENTATIVE'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 11, 23, 39, 45, tzinfo=datetime.timezone.utc), uid='KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.google.com', dtstart=datetime.datetime(2003, 2, 4, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), dtend=datetime.datetime(2003, 2, 4, 19, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), duration=None, summary='Event Summary', attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2006, 3, 15, 21, 4, 21, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2023, 2, 20, 3, 40, 45, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20030204T170000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2003, 2, 13, 16, 0, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[datetime.datetime(2003, 2, 8, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), datetime.datetime(2003, 2, 9, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires'))], request_status=None, sequence=3, status=<EventStatus.TENTATIVE: 'TENTATIVE'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 11, 23, 39, 45, tzinfo=datetime.timezone.utc), uid='KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.google.com', dtstart=datetime.datetime(2003, 2, 5, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), dtend=datetime.datetime(2003, 2, 5, 19, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), duration=None, summary='Event Summary', attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2006, 3, 15, 21, 4, 21, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2023, 2, 20, 3, 40, 45, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20030205T170000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2003, 2, 13, 16, 0, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[datetime.datetime(2003, 2, 8, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), datetime.datetime(2003, 2, 9, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires'))], request_status=None, sequence=3, status=<EventStatus.TENTATIVE: 'TENTATIVE'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 11, 23, 39, 45, tzinfo=datetime.timezone.utc), uid='KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.google.com', dtstart=datetime.datetime(2003, 2, 6, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), dtend=datetime.datetime(2003, 2, 6, 19, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), duration=None, summary='Event Summary', attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2006, 3, 15, 21, 4, 21, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2023, 2, 20, 3, 40, 45, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20030206T170000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2003, 2, 13, 16, 0, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[datetime.datetime(2003, 2, 8, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), datetime.datetime(2003, 2, 9, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires'))], request_status=None, sequence=3, status=<EventStatus.TENTATIVE: 'TENTATIVE'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 11, 23, 39, 45, tzinfo=datetime.timezone.utc), uid='KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.google.com', dtstart=datetime.datetime(2003, 2, 7, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), dtend=datetime.datetime(2003, 2, 7, 19, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), duration=None, summary='Event Summary', attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2006, 3, 15, 21, 4, 21, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2023, 2, 20, 3, 40, 45, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20030207T170000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=datetime.datetime(2003, 2, 13, 16, 0, tzinfo=datetime.timezone.utc), count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[datetime.datetime(2003, 2, 8, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires')), datetime.datetime(2003, 2, 9, 17, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Argentina/Buenos_Aires'))], request_status=None, sequence=3, status=<EventStatus.TENTATIVE: 'TENTATIVE'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+  ])
+# ---
 # name: test_iterate_events[google_calendar_public_holidays]
   list([
     Event(dtstamp=datetime.datetime(2022, 7, 30, 15, 3, 14, tzinfo=datetime.timezone.utc), uid='20210101_fokaslga04sgnfruusv1tomhs4@google.com', dtstart=datetime.date(2021, 1, 1), dtend=datetime.date(2021, 1, 2), duration=None, summary="New Year's Day", attendees=[], categories=[], classification='PUBLIC', comment=[], contacts=[], created=datetime.datetime(2021, 9, 10, 19, 0, 34, tzinfo=datetime.timezone.utc), description='Public holiday', geo=None, last_modified=datetime.datetime(2021, 9, 10, 19, 0, 34, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id=None, related_to=[], related=[], resources=[], rrule=None, rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
@@ -269,6 +278,51 @@
   STATUS:NEEDS-ACTION
   SUMMARY:Submit Quebec Income Tax Return for 2006
   END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[google_calendar_invalid_offset]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//Google Inc//Google Calendar 70.9054//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20250511T233945Z
+  UID:KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.goo
+   gle.com
+  DTSTART;TZID=America/Argentina/Buenos_Aires:20030203T170000
+  DTEND;TZID=America/Argentina/Buenos_Aires:20030203T190000
+  SUMMARY:Event Summary
+  CLASS:PUBLIC
+  CREATED:20060315T210421Z
+  LAST-MODIFIED:20230220T034045Z
+  RRULE:FREQ=DAILY;UNTIL=20030213T160000Z
+  EXDATE;TZID=America/Argentina/Buenos_Aires:20030208T170000
+  EXDATE;TZID=America/Argentina/Buenos_Aires:20030209T170000
+  SEQUENCE:3
+  STATUS:TENTATIVE
+  TRANSP:OPAQUE
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  TZID:America/Sao_Paulo
+  BEGIN:STANDARD
+  DTSTART:19700101T000000
+  TZOFFSETTO:-0300
+  TZOFFSETFROM:-0300
+  TZNAME:GMT-3
+  END:STANDARD
+  END:VTIMEZONE
+  BEGIN:VTIMEZONE
+  TZID:America/Argentina/Buenos_Aires
+  BEGIN:STANDARD
+  DTSTART:19700101T000000
+  TZOFFSETTO:-0300
+  TZOFFSETFROM:-0300
+  TZNAME:GMT-3
+  END:STANDARD
+  END:VTIMEZONE
   END:VCALENDAR
   '''
 # ---
