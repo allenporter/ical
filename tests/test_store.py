@@ -25,6 +25,7 @@ from ical.types import RelationshipType, RelatedTo
 
 TZ = zoneinfo.ZoneInfo("America/Los_Angeles")
 
+
 @pytest.fixture(name="calendar")
 def mock_calendar() -> Calendar:
     """Fixture to create a calendar."""
@@ -418,7 +419,10 @@ def test_edit_recurring_all_day_event_instance(
         recurrence_id="20220905",
     )
 
-    assert fetch_events({"uid", "recurrence_id", "sequence", "dtstart", "summary"}) == snapshot
+    assert (
+        fetch_events({"uid", "recurrence_id", "sequence", "dtstart", "summary"})
+        == snapshot
+    )
 
 
 @pytest.mark.parametrize(
@@ -838,6 +842,43 @@ def test_timezone_for_datetime(
     assert calendar.timezones[1].tz_id == "America/New_York"
 
 
+def test_timezone_for_dtend(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    store.add(
+        Event(
+            uid="mock-uid-1",
+            summary="Monday meeting",
+            start=datetime.datetime(
+                2022, 8, 29, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+            ),
+            end=datetime.datetime(
+                2022, 8, 29, 8, 30, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+        )
+    )
+    assert len(calendar.events) == 1
+    assert len(calendar.timezones) == 2
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+    assert calendar.timezones[1].tz_id == "America/New_York"
+
+    store.edit(
+        "mock-uid-1",
+        Event(
+            end=datetime.datetime(
+                2022, 8, 29, 8, 30, 0, tzinfo=zoneinfo.ZoneInfo("America/Denver")
+            ),
+        ),
+    )
+    assert len(calendar.events) == 1
+    assert len(calendar.timezones) == 3
+    assert calendar.timezones[0].tz_id == "America/Los_Angeles"
+    assert calendar.timezones[1].tz_id == "America/New_York"
+    assert calendar.timezones[2].tz_id == "America/Denver"
+
+
 def test_timezone_offset_not_supported(
     calendar: Calendar,
     store: EventStore,
@@ -850,7 +891,9 @@ def test_timezone_offset_not_supported(
         start=datetime.datetime(2022, 8, 29, 9, 0, 0, tzinfo=tzinfo),
         end=datetime.datetime(2022, 8, 29, 9, 30, 0, tzinfo=tzinfo),
     )
-    with pytest.raises(StoreError, match=r"No timezone information available for event: UTC-08:00"):
+    with pytest.raises(
+        StoreError, match=r"No timezone information available for event: UTC-08:00"
+    ):
         store.add(event)
     assert not calendar.events
     assert not calendar.timezones
@@ -1166,17 +1209,23 @@ def test_recurring_todo_item_edit_series(
             rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
         )
     )
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="initial")
 
     # Mark the entire series as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"))
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="completed")
 
     # Advance to the next day.
     frozen_time.move_to("2024-01-10T10:00:00")
 
     # All instances are completed
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="next_instance")
 
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot
 
@@ -1204,7 +1253,9 @@ def test_recurring_todo_item_edit_single(
     )
     # There is a single underlying instance
     assert len(calendar.todos) == 1
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="initial")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="initial")
 
     # Mark a single instance as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240109")
@@ -1212,11 +1263,15 @@ def test_recurring_todo_item_edit_single(
     assert len(calendar.todos) == 2
 
     # Collapsed view of a single item
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="completed")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="completed")
 
     # Advance to the next day and a new incomplete instance appears
     frozen_time.move_to("2024-01-10T10:00:00")
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="next_instance")
 
     # Mark the new instance as completed
     todo_store.edit("mock-uid-1", Todo(status="COMPLETED"), recurrence_id="20240110")
@@ -1226,10 +1281,14 @@ def test_recurring_todo_item_edit_single(
     # Also edit the instance summary and verify that it can be modified again
     todo_store.edit("mock-uid-1", Todo(summary="Walk cat"), recurrence_id="20240110")
     assert len(calendar.todos) == 3
-    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="result_ics_modified")
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(
+        name="result_ics_modified"
+    )
 
     # Collapsed view of the same item
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_completed")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="next_instance_completed")
 
     # Delete a single instance and the following days instance appears. This is
     # not really a common operation, but still worth exercsing the behavior.
@@ -1237,14 +1296,20 @@ def test_recurring_todo_item_edit_single(
 
     # Now only two underlying objects
     # The prior instance is the latest on the list
-    assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name="next_instance_deleted")
+    assert fetch_todos(
+        ["uid", "recurrence_id", "due", "summary", "status"]
+    ) == snapshot(name="next_instance_deleted")
 
-    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="next_instance_deleted_ics")
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(
+        name="next_instance_deleted_ics"
+    )
 
     # Delete the entire series
     todo_store.delete("mock-uid-1")
     assert not calendar.todos
-    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="deleted_series_ics")
+    assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(
+        name="deleted_series_ics"
+    )
 
 
 def test_delete_todo_series(
@@ -1353,18 +1418,19 @@ def test_modify_todo_rrule_for_this_and_future(
             summary="Wash car (Su)",
             dtstart="2024-01-21",
             due="2024-01-22",
-            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SU;COUNT=10")
+            rrule=Recur.from_rrule("FREQ=WEEKLY;BYDAY=SU;COUNT=10"),
         ),
         recurrence_id="20240120",
-        recurrence_range=Range.THIS_AND_FUTURE
+        recurrence_range=Range.THIS_AND_FUTURE,
     )
 
     assert IcsCalendarStream.calendar_to_ics(calendar) == snapshot(name="ics")
 
     for date in ("2024-01-05", "2024-01-12", "2024-01-19", "2024-01-26"):
         frozen_time.move_to(date)
-        assert fetch_todos(["uid", "recurrence_id", "due", "summary", "status"]) == snapshot(name=date)
-
+        assert fetch_todos(
+            ["uid", "recurrence_id", "due", "summary", "status"]
+        ) == snapshot(name=date)
 
 
 def test_modify_todo_due_without_dtstart(
@@ -1393,18 +1459,20 @@ def test_modify_todo_due_without_dtstart(
     todos = list(todo_store.todo_list())
     assert len(todos) == 1
     todo = todos[0]
-    assert todo.due == datetime.datetime(2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc)
+    assert todo.due == datetime.datetime(
+        2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
+    )
     assert isinstance(todo.dtstart, datetime.datetime)
     assert todo.dtstart < todo.due
-             
+
 
 @pytest.mark.parametrize(
-        ("due", "expected_tz"),
-        [
-            (None, TZ),
-            ("2024-01-07T10:00:00Z", datetime.timezone.utc),
-            ("2024-01-07T10:00:00-05:00", zoneinfo.ZoneInfo("America/New_York")),
-        ],
+    ("due", "expected_tz"),
+    [
+        (None, TZ),
+        ("2024-01-07T10:00:00Z", datetime.timezone.utc),
+        ("2024-01-07T10:00:00-05:00", zoneinfo.ZoneInfo("America/New_York")),
+    ],
 )
 def test_dtstart_timezone(
     calendar: Calendar,
@@ -1424,4 +1492,3 @@ def test_dtstart_timezone(
     todo = todos[0]
     assert todo.due is None
     assert todo.dtstart.tzinfo == TZ
-                                        
