@@ -10,8 +10,8 @@ from .data_types import DATA_TYPE
 DATE_PART = r"(\d+)D"
 TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
 DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
-WEEKS_PART = r"(\d+)W"
-DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}|{DATETIME_PART})$")
+WEEKS_PART = r"(?:(\d+)W)?"
+DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}{DATETIME_PART})$")
 
 
 @DATA_TYPE.register("DURATION")
@@ -30,16 +30,13 @@ class DurationEncoder:
         if not (match := DURATION_REGEX.fullmatch(prop.value)):
             raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
         sign, weeks, days, hours, minutes, seconds = match.groups()
-        result: datetime.timedelta
-        if weeks:
-            result = datetime.timedelta(weeks=int(weeks))
-        else:
-            result = datetime.timedelta(
-                days=int(days or 0),
-                hours=int(hours or 0),
-                minutes=int(minutes or 0),
-                seconds=int(seconds or 0),
-            )
+        result: datetime.timedelta = datetime.timedelta(
+            weeks=int(weeks or 0),
+            days=int(days or 0),
+            hours=int(hours or 0),
+            minutes=int(minutes or 0),
+            seconds=int(seconds or 0),
+        )
         if sign == "-":
             result = -result
         return result
