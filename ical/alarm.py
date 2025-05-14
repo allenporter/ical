@@ -88,7 +88,7 @@ class Alarm(ComponentModel):
         action = values.get("action")
         if action != Action.DISPLAY:
             return values
-        if not values.get("description"):
+        if values.get("description") is None:
             raise ValueError(f"Description value is required for action {action}")
         return values
 
@@ -98,9 +98,9 @@ class Alarm(ComponentModel):
         action = values.get("action")
         if action != Action.EMAIL:
             return values
-        if not values.get("description"):
+        if values.get("description") is None:
             raise ValueError(f"Description value is required for action {action}")
-        if not values.get("summary"):
+        if values.get("summary") is None:
             raise ValueError(f"Summary value is required for action {action}")
         return values
 
