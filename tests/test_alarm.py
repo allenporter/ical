@@ -48,7 +48,9 @@ def test_duration_and_repeat() -> None:
 
 def test_display_required_fields() -> None:
     """Test required fields for action DISPLAY."""
-    with pytest.raises(CalendarParseError, match="Description value is required for action DISPLAY"):
+    with pytest.raises(
+        CalendarParseError, match="Description value is required for action DISPLAY"
+    ):
         Alarm(action="DISPLAY", trigger=datetime.timedelta(minutes=-5))
 
     alarm = Alarm(
@@ -60,10 +62,23 @@ def test_display_required_fields() -> None:
     assert alarm.description == "Notification description"
 
 
+def test_empty_display_field() -> None:
+    """Test required fields for action DISPLAY."""
+    alarm = Alarm(
+        action="DISPLAY",
+        trigger=datetime.timedelta(minutes=-5),
+        description="",
+    )
+    assert alarm.action == "DISPLAY"
+    assert alarm.description == ""
+
+
 def test_email_required_fields() -> None:
     """Test required fields for action EMAIL."""
     # Missing multiple fields
-    with pytest.raises(CalendarParseError, match="Description value is required for action EMAIL"):
+    with pytest.raises(
+        CalendarParseError, match="Description value is required for action EMAIL"
+    ):
         Alarm(action="EMAIL", trigger=datetime.timedelta(minutes=-5))
 
     # Missing summary
