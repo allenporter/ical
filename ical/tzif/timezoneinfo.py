@@ -204,8 +204,27 @@ def read_tzinfo(key: str) -> TzInfo:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
 
 
+@cache
+def _extended_timezones() -> set[str]:
+    """Return the set of extended timezones."""
+    return set(extended_timezones.EXTENDED_TIMEZONES.keys())
+
+
+def available_timezones() -> set[str]:
+    """Return a set of all available timezones.
+    
+    This includes system timezones, tzdata timezones, and extended timezones if
+    enabled for compatibility mode.
+    """
+    result = _read_system_timezones()
+    result |= _read_tzdata_timezones()
+    if timezone_compat.is_extended_timezones_enabled():
+        result |= _extended_timezones()
+    return result
+
+
 # Avoid blocking disk reads in async function by pre-loading all timezone reads
-for key in _read_system_timezones():
+for key in available_timezones():
     try:
         read_tzinfo(key)
     except TimezoneInfoError:
