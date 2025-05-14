@@ -23,6 +23,8 @@ from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
 from .util import local_timezone, prodid_factory
+from .tzif import timezoneinfo
+from .compat import timezone_compat
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -101,7 +103,7 @@ class Calendar(ComponentModel):
 
         # First parse the timezones out of the calendar, ignoring everything else
         timezone_model = TimezoneModel.parse_obj(values)
-        system_tzids = zoneinfo.available_timezones()
+        system_tzids = timezoneinfo.available_timezones()
         tzinfos: dict[str, datetime.tzinfo] = {
             timezone.tz_id: IcsTimezoneInfo.from_timezone(timezone)
             for timezone in timezone_model.timezones
