@@ -79,7 +79,6 @@ def _fold(contentline: str) -> list[str]:
         break_on_hyphens=False,
     )
 
-
 def parse_content(content: str) -> list[ParsedComponent]:
     """Parse content into raw properties.
 
@@ -94,8 +93,7 @@ def parse_content(content: str) -> list[ParsedComponent]:
     token_results = parse_contentlines(lines)
 
     stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
-    for result in token_results:
-        result_dict = result.as_dict()
+    for result_dict in token_results:
         if PARSE_NAME not in result_dict:
             raise ValueError(
                 f"Missing fields {PARSE_NAME} or {PARSE_VALUE} in {result_dict}"
@@ -109,7 +107,7 @@ def parse_content(content: str) -> list[ParsedComponent]:
             component = stack.pop()
             if value != component.name:
                 raise ValueError(
-                    f"Unexpected '{result}', expected {ATTR_END}:{component.name}"
+                    f"Unexpected '{result_dict}', expected {ATTR_END}:{component.name}"
                 )
             stack[-1].components.append(component)
         else:
@@ -122,6 +120,7 @@ def parse_content(content: str) -> list[ParsedComponent]:
                 property_dict[PARSE_PARAMS] = property_params
             stack[-1].properties.append(ParsedProperty(**property_dict))
     return stack[0].components
+
 
 
 def encode_content(components: list[ParsedComponent]) -> str:

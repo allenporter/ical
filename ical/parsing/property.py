@@ -128,7 +128,6 @@ class ParsedProperty:
             params=parsed_property_parameters or None,
         )
 
-
 def parse_property_params(
     parse_result_dict: dict[str, str | list]
 ) -> list[ParsedPropertyParameter]:
@@ -137,16 +136,12 @@ def parse_property_params(
         return []
     params: list[ParsedPropertyParameter] = []
     for parsed_params in parse_result_dict[PARSE_PARAMS]:
-        if not isinstance(parsed_params, dict) or PARSE_PARAMS not in parsed_params:
-            continue
-        for pair in parsed_params[PARSE_PARAMS]:
-            params.append(
-                ParsedPropertyParameter(
-                    name=pair[PARSE_PARAM_NAME], values=pair.get(PARSE_PARAM_VALUE, [""])
-                )
+        params.append(
+            ParsedPropertyParameter(
+                name=parsed_params[PARSE_PARAM_NAME], values=parsed_params.get(PARSE_PARAM_VALUE, [""])
             )
+        )
     return params
-
 
 def parse_basic_ics_properties(
     contentlines: Iterable[str],
