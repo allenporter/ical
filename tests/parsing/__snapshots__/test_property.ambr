@@ -43,6 +43,8 @@
     ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM+VALUE2'])]),
     ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM VALUE3'])]),
     ParsedProperty(name='name', value='VALUE4":VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM'])]),
+    ParsedProperty(name='description', value='', params=None),
+    ParsedProperty(name='description', value='', params=[ParsedPropertyParameter(name='TYPE', values=[''])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---
