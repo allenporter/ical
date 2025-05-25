@@ -62,49 +62,53 @@ def parse_line(line: str) -> dict:
         params_start = pos
         value_start = 0
         while pos < len(line):
-            char = line[pos]
-            if char == '=':
-                # param name reached
-                param_name = line[params_start:pos]
+            
+            # Read until we hit name/value separator (=)
+            if line[pos] != '=':
                 pos += 1
+                continue
                 
-                # Now read values. (list separated by comma)
-                param_values = []
-                all_values_read = False
-                while not all_values_read:
-                    value_start = pos
-                    quoted = False
+            # param name reached
+            param_name = line[params_start:pos]
+            pos += 1
+            
+            # Now read values. (list separated by comma)
+            param_values = []
+            all_values_read = False
+            while not all_values_read:
+                value_start = pos
+                quoted = False
 
-                    if line[pos] == '"':
-                        # read all in quotes
-                        quoted = True
-                        pos += 1
+                if line[pos] == '"':
+                    # read all in quotes
+                    quoted = True
+                    pos += 1
 
-                    value_read = False
-                    while not value_read:
-                        assert pos < len(line), "Unexpected end of line"
-                        char = line[pos]
-                        
-                        if (quoted and char == '"') or (not quoted and (char == ',' or char == ';' or char == ':')):
-                            if quoted:
-                                param_value = line[value_start + 1:pos]
-                                pos += 1
-                                char = line[pos]
-                            else:
-                                param_value = line[value_start:pos]
-
-                            param_values.append(param_value)
-                            value_read = True
-                            all_values_read = char != ','
-                        pos += 1
+                value_read = False
+                while not value_read:
+                    assert pos < len(line), "Unexpected end of line"
+                    char = line[pos]
                     
-                dict_result[PARSE_PARAMS].append(
-                    {PARSE_PARAM_NAME: param_name, PARSE_PARAM_VALUE: param_values}
-                )
+                    if (quoted and char == '"') or (not quoted and (char == ',' or char == ';' or char == ':')):
+                        if quoted:
+                            param_value = line[value_start + 1:pos]
+                            pos += 1
+                            char = line[pos]
+                        else:
+                            param_value = line[value_start:pos]
+
+                        param_values.append(param_value)
+                        value_read = True
+                        all_values_read = char != ','
+                    pos += 1
                 
-                if char == ':':
-                    break
-                params_start = pos
+            dict_result[PARSE_PARAMS].append(
+                {PARSE_PARAM_NAME: param_name, PARSE_PARAM_VALUE: param_values}
+            )
+            
+            if char == ':':
+                break
+            params_start = pos
             pos += 1
     else:
         assert line[pos] == ':', "Expected ':' after property name"
