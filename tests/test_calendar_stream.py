@@ -97,10 +97,47 @@ def test_todo_list_iteration(filename: pathlib.Path) -> None:
         assert todo is not None
 
 
-def test_invalid_ics() -> None:
-    """Test parsing failures for ics content."""
+@pytest.mark.parametrize(
+    "content",
+    [
+        textwrap.dedent(
+            """\
+            invalid
+            """
+        ),
+        textwrap.dedent(
+            """\
+            BEGIN:VCALENDAR
+            VERSION:\x007
+            END:VCALENDAR
+            """
+        ),
+        textwrap.dedent(
+            """\
+            BEGIN:VCALENDAR
+            PROD\uc27fID://example
+            END:VCALENDAR
+            """
+        ),
+        # This is a bug and should be fixed.
+        textwrap.dedent(
+            """\
+            BEGIN:VCALENDAR
+            ATTACH;FILENAME=Fødselsdag_40.pdf:https://someurl.com
+            END:VCALENDAR
+            """
+        ),
+    ],
+    ids=["invalid", "control-char-value", "control-char-name", "non-us-ascii-unicode"],
+)
+def test_invalid_ics(content: str) -> None:
+    """Test parsing failures for ics content.
+
+    These are tested here so we can add escape sequences. Most other invalid
+    encodings are tested in the yaml testdata/ files.
+    """
     with pytest.raises(CalendarParseError, match="^Failed to parse calendar contents"):
-        IcsCalendarStream.calendar_from_ics("invalid")
+        IcsCalendarStream.calendar_from_ics(content)
 
 
 def test_component_failure() -> None:

@@ -57,12 +57,7 @@ class CalendarStream(ComponentModel):
     @classmethod
     def from_ics(cls, content: str) -> "CalendarStream":
         """Factory method to create a new instance from an rfc5545 iCalendar content."""
-        try:
-            components = parse_content(content)
-        except pyparsing.ParseException as err:
-            raise CalendarParseError(
-                f"Failed to parse calendar contents", detailed_error=str(err)
-            ) from err
+        components = parse_content(content)
         result: dict[str, list] = {"vcalendar": []}
         for component in components:
             result.setdefault(component.name, [])

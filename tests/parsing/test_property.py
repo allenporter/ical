@@ -18,7 +18,7 @@ from ical.parsing.property import (
 from ical.parsing.component import unfolded_lines
 
 
-TESTDATA_PATH = pathlib.Path("tests/parsing/testdata/")
+TESTDATA_PATH = pathlib.Path("tests/parsing/testdata/valid/")
 TESTDATA_FILES = list(TESTDATA_PATH.glob("*.ics"))
 TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 
