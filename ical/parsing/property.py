@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from collections.abc import Iterator, Generator, Iterable
 from typing import Optional, Union
 
-from .const import PARSE_PARAM_NAME, PARSE_PARAM_VALUE, PARSE_PARAMS
 from .unicode import UNSAFE_CHAR_RE
 
 
@@ -127,21 +126,6 @@ class ParsedProperty:
             value=value,
             params=parsed_property_parameters or None,
         )
-
-def parse_property_params(
-    parse_result_dict: dict[str, str | list]
-) -> list[ParsedPropertyParameter]:
-    """Extract the property parameters from a pyparsing ParseResult object."""
-    if PARSE_PARAMS not in parse_result_dict:
-        return []
-    params: list[ParsedPropertyParameter] = []
-    for parsed_params in parse_result_dict[PARSE_PARAMS]:
-        params.append(
-            ParsedPropertyParameter(
-                name=parsed_params[PARSE_PARAM_NAME], values=parsed_params.get(PARSE_PARAM_VALUE, [""])
-            )
-        )
-    return params
 
 def parse_basic_ics_properties(
     contentlines: Iterable[str],

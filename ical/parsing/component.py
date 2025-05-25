@@ -28,7 +28,7 @@ from .const import (
     PARSE_VALUE,
 )
 from .parser import parse_contentlines
-from .property import ParsedProperty, parse_property_params, parse_basic_ics_properties
+from .property import ParsedProperty
 
 FOLD_RE = re.compile(FOLD, flags=re.MULTILINE)
 LINES_RE = re.compile(r"\r?\n")
@@ -116,9 +116,8 @@ def parse_content(content: str) -> list[ParsedComponent]:
             property_dict = {
                 PARSE_NAME: name,
                 PARSE_VALUE: value,
+                PARSE_PARAMS: result_dict.get(PARSE_PARAMS, None)
             }
-            if property_params := parse_property_params(result_dict):
-                property_dict[PARSE_PARAMS] = property_params
             stack[-1].properties.append(ParsedProperty(**property_dict))
     return stack[0].components
 

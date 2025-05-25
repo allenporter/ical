@@ -27,6 +27,7 @@ Note: This specific example may be a bit confusing because one of the property p
 import logging
 from typing import Iterable
 from ical.exceptions import CalendarParseError
+from ical.parsing.property import ParsedPropertyParameter
 
 
 from .const import (
@@ -44,8 +45,6 @@ def parse_line(line: str) -> dict:
     """Parse a single line."""
     
     dict_result = {}
-    parameters = []
-
     pos = 0
 
     # parse NAME
@@ -60,6 +59,7 @@ def parse_line(line: str) -> dict:
 
     # parse PARAMS if any
     if line[pos] == ';':
+        params: list[ParsedPropertyParameter] = []
         pos += 1
         params_start = pos
         value_start = 0
@@ -111,11 +111,10 @@ def parse_line(line: str) -> dict:
                         all_values_read = char != ','
                     pos += 1
                 
-            parameters.append(
-                {PARSE_PARAM_NAME: param_name, PARSE_PARAM_VALUE: param_values}
-            )
+            params.append(ParsedPropertyParameter(name=param_name, values=param_values))
             
             if char == ':':
+                dict_result[PARSE_PARAMS] = params
                 break
             params_start = pos
             pos += 1
@@ -126,7 +125,6 @@ def parse_line(line: str) -> dict:
 
     value = line[pos:]
     dict_result[PARSE_VALUE] = value
-    dict_result[PARSE_PARAMS] = parameters
     return dict_result        
 
 
