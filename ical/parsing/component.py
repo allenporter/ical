@@ -79,6 +79,7 @@ def _fold(contentline: str) -> list[str]:
         break_on_hyphens=False,
     )
 
+
 def parse_content(content: str) -> list[ParsedComponent]:
     """Parse content into raw properties.
 
