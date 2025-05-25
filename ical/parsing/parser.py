@@ -68,6 +68,8 @@ def parse_line(line: str) -> dict:
             # Read until we hit name/value separator (=)
             if line[pos] != '=':
                 pos += 1
+                if pos >= len(line):
+                    raise CalendarParseError(f"Unexpected end of line. Expected '='", detailed_error = line)
                 continue
                 
             # param name reached
@@ -131,4 +133,10 @@ def parse_line(line: str) -> dict:
 
 def parse_contentlines(lines: Iterable[str]) -> list[dict]:
     """Parse a set of unfolded lines into parse results."""
-    return [parse_line(line) for line in lines if line]
+
+    try:
+        return [parse_line(line) for line in lines if line]
+    except Exception as err:
+        raise CalendarParseError(
+                f"Failed to parse calendar contents", detailed_error=str(err)
+        ) from err
