@@ -41,7 +41,10 @@
 # name: test_encode_contentlines[params]
   '''
   BEGIN:VCALENDAR
-  NAME;PARAM-NAME=PARAM-VALUE:VALUE
+  NAME;PARAM-NAME=PARAM-VALUE1:VALUE
+  NAME;PARAM-NAME=PARAM+VALUE2:VALUE
+  NAME;PARAM-NAME=PARAM VALUE3:VALUE
+  NAME;PARAM-NAME="PARAM:VALUE4":VALUE
   END:VCALENDAR
   '''
 # ---
@@ -97,6 +100,15 @@
   CATEGORIES:FAMILY,FINANCE
   STATUS:NEEDS-ACTION
   END:VTODO
+  '''
+# ---
+# name: test_encode_contentlines[x-name]
+  '''
+  BEGIN:VEVENT
+  X-DESCRIPTION:This is a description
+  X-ICAL-DESCRIPTION:This is a description
+  X-ICAL-1:This is another x-name
+  END:VEVENT
   '''
 # ---
 # name: test_parse_contentlines[attendee]
@@ -238,7 +250,43 @@
             dict({
               'name': 'PARAM-NAME',
               'values': list([
-                'PARAM-VALUE',
+                'PARAM-VALUE1',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'name',
+          'params': list([
+            dict({
+              'name': 'PARAM-NAME',
+              'values': list([
+                'PARAM+VALUE2',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'name',
+          'params': list([
+            dict({
+              'name': 'PARAM-NAME',
+              'values': list([
+                'PARAM VALUE3',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'name',
+          'params': list([
+            dict({
+              'name': 'PARAM-NAME',
+              'values': list([
+                'PARAM:VALUE4',
               ]),
             }),
           ]),
@@ -436,6 +484,30 @@
           'name': 'status',
           'params': None,
           'value': 'NEEDS-ACTION',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[x-name]
+  list([
+    dict({
+      'name': 'vevent',
+      'properties': list([
+        dict({
+          'name': 'x-description',
+          'params': None,
+          'value': 'This is a description',
+        }),
+        dict({
+          'name': 'x-ical-description',
+          'params': None,
+          'value': 'This is a description',
+        }),
+        dict({
+          'name': 'x-ical-1',
+          'params': None,
+          'value': 'This is another x-name',
         }),
       ]),
     }),

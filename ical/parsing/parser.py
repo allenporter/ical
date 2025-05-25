@@ -42,7 +42,10 @@ from pyparsing import (
     alphanums,
     alphas,
     nums,
+    ParseException,
 )
+
+from ical.exceptions import CalendarParseError
 
 from .const import (
     PARSE_NAME,
@@ -52,6 +55,7 @@ from .const import (
     PARSE_VALUE,
 )
 from .unicode import SAFE_CHAR, VALUE_CHAR
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,4 +112,9 @@ def parse_contentlines(lines: Iterable[str]) -> list[ParseResults]:
     """
     with _parser_lock:
         parser = _create_parser()
-        return [parser.parse_string(line, parse_all=True) for line in lines if line]
+        try:
+            return [parser.parse_string(line, parse_all=True) for line in lines if line]
+        except ParseException as err:
+            raise CalendarParseError(
+                f"Failed to parse calendar contents", detailed_error=str(err)
+            ) from err

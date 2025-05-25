@@ -1,0 +1,5 @@
+BEGIN:VEVENT
+X-DESCRIPTION:This is a description
+X-ICAL-DESCRIPTION:This is a description
+X-ICAL-1:This is another x-name
+END:VEVENT

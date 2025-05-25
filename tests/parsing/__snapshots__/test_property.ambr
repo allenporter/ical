@@ -39,7 +39,10 @@
 # name: test_from_ics[params]
   list([
     ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE1'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM+VALUE2'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM VALUE3'])]),
+    ParsedProperty(name='name', value='VALUE4":VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM'])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---
@@ -95,5 +98,14 @@
     ParsedProperty(name='categories', value='FAMILY,FINANCE', params=None),
     ParsedProperty(name='status', value='NEEDS-ACTION', params=None),
     ParsedProperty(name='end', value='VTODO', params=None),
+  ])
+# ---
+# name: test_from_ics[x-name]
+  list([
+    ParsedProperty(name='begin', value='VEVENT', params=None),
+    ParsedProperty(name='x-description', value='This is a description', params=None),
+    ParsedProperty(name='x-ical-description', value='This is a description', params=None),
+    ParsedProperty(name='x-ical-1', value='This is another x-name', params=None),
+    ParsedProperty(name='end', value='VEVENT', params=None),
   ])
 # ---
