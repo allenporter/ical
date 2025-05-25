@@ -43,7 +43,7 @@ def parse_line(line: str) -> dict:
     """Parse a single line."""
     
     dict_result = {}
-    dict_result.setdefault(PARSE_PARAMS, [])
+    parameters = []
 
     pos = 0
 
@@ -102,7 +102,7 @@ def parse_line(line: str) -> dict:
                         all_values_read = char != ','
                     pos += 1
                 
-            dict_result[PARSE_PARAMS].append(
+            parameters.append(
                 {PARSE_PARAM_NAME: param_name, PARSE_PARAM_VALUE: param_values}
             )
             
@@ -116,6 +116,7 @@ def parse_line(line: str) -> dict:
 
     value = line[pos:]
     dict_result[PARSE_VALUE] = value
+    dict_result[PARSE_PARAMS] = parameters
     return dict_result        
 
 
