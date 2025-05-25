@@ -45,6 +45,8 @@
   NAME;PARAM-NAME=PARAM+VALUE2:VALUE
   NAME;PARAM-NAME=PARAM VALUE3:VALUE
   NAME;PARAM-NAME="PARAM:VALUE4":VALUE
+  DESCRIPTION:
+  DESCRIPTION;TYPE=:
   END:VCALENDAR
   '''
 # ---
@@ -291,6 +293,23 @@
             }),
           ]),
           'value': 'VALUE',
+        }),
+        dict({
+          'name': 'description',
+          'params': None,
+          'value': '',
+        }),
+        dict({
+          'name': 'description',
+          'params': list([
+            dict({
+              'name': 'TYPE',
+              'values': list([
+                '',
+              ]),
+            }),
+          ]),
+          'value': '',
         }),
       ]),
     }),
