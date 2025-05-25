@@ -26,6 +26,7 @@ Note: This specific example may be a bit confusing because one of the property p
 
 import logging
 from typing import Iterable
+from ical.exceptions import CalendarParseError
 
 
 from .const import (
@@ -49,7 +50,8 @@ def parse_line(line: str) -> dict:
 
     # parse NAME
     while True:
-        assert pos < len(line), "Unexpected end of line"
+        if pos >= len(line):
+            raise CalendarParseError(f"Unexpected end of line. Expected ';' or ':'", detailed_error = line)
         char = line[pos]
         if char == ';' or char == ':':
             dict_result[PARSE_NAME] = line[0:pos]
@@ -86,7 +88,12 @@ def parse_line(line: str) -> dict:
 
                 value_read = False
                 while not value_read:
-                    assert pos < len(line), "Unexpected end of line"
+                    if pos >= len(line):
+                        if quoted:
+                            raise CalendarParseError(f"Unexpected end of line. Expected end of qouted string", detailed_error = line)
+                        else:
+                            raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error = line)
+                    
                     char = line[pos]
                     
                     if (quoted and char == '"') or (not quoted and (char == ',' or char == ';' or char == ':')):
@@ -111,7 +118,8 @@ def parse_line(line: str) -> dict:
             params_start = pos
             pos += 1
     else:
-        assert line[pos] == ':', "Expected ':' after property name"
+        if line[pos] != ':':
+            raise CalendarParseError(f"Expected ':' after property name", detailed_error = line)
         pos += 1
 
     value = line[pos:]
@@ -122,8 +130,5 @@ def parse_line(line: str) -> dict:
 
 
 def parse_contentlines(lines: Iterable[str]) -> list[dict]:
-    """Parse a set of unfolded lines into parse results.
-
-    Note, this method is not threadsafe and may be called from only one method at a time.
-    """
+    """Parse a set of unfolded lines into parse results."""
     return [parse_line(line) for line in lines if line]
