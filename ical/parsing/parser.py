@@ -44,7 +44,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0A-\x1F\x7F]")
-_RE_NAME = re.compile("[A-Z0-9\-]+")
+_RE_NAME = re.compile("[A-Z0-9-]+")
 
 @cache
 def parse_line(line: str) -> dict:
