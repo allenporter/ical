@@ -25,6 +25,8 @@ Note: This specific example may be a bit confusing because one of the property p
 """
 
 import logging
+from functools import cache
+import re
 from typing import Iterable
 from ical.exceptions import CalendarParseError
 from ical.parsing.property import ParsedPropertyParameter
@@ -41,6 +43,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+_RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0A-\x1F\x7F]")
+_RE_NAME = re.compile("[A-Z0-9\-]+")
+
+@cache
 def parse_line(line: str) -> dict:
     """Parse a single line."""
     
@@ -53,7 +59,10 @@ def parse_line(line: str) -> dict:
             raise CalendarParseError(f"Unexpected end of line. Expected ';' or ':'", detailed_error = line)
         char = line[pos]
         if char == ';' or char == ':':
-            dict_result[PARSE_NAME] = line[0:pos]
+            name = line[0:pos]
+            if not _RE_NAME.fullmatch(name):
+                raise CalendarParseError(f"Invalid property name '{name}'", detailed_error = line)
+            dict_result[PARSE_NAME] = name
             break
         pos += 1
 
@@ -74,6 +83,8 @@ def parse_line(line: str) -> dict:
                 
             # param name reached
             param_name = line[params_start:pos]
+            if not _RE_NAME.fullmatch(param_name):
+                raise CalendarParseError(f"Invalid parameter name '{param_name}'", detailed_error = line)
             pos += 1
             
             # Now read values. (list separated by comma)
@@ -97,18 +108,27 @@ def parse_line(line: str) -> dict:
                             raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error = line)
                     
                     char = line[pos]
-                    
-                    if (quoted and char == '"') or (not quoted and (char == ',' or char == ';' or char == ':')):
-                        if quoted:
-                            param_value = line[value_start + 1:pos]
-                            pos += 1
-                            char = line[pos]
-                        else:
-                            param_value = line[value_start:pos]
 
-                        param_values.append(param_value)
+                    if char == '"':
+                        if not quoted:
+                            raise CalendarParseError(f"Unexpected quote character outside parameter value.", detailed_error = line)
+                        param_value = line[value_start + 1:pos]
                         value_read = True
+                        pos += 1
+                        char = line[pos]
+                    elif not quoted and (char == ',' or char == ';' or char == ':'):
+                        param_value = line[value_start:pos]
+                        value_read = True
+
+                    if value_read:
+                        if not (char == ',' or char == ';' or char == ':'):
+                            raise CalendarParseError(
+                                f"Expected ',' or ';' or ':' after parameter value, got '{char}'",
+                                detailed_error=line,
+                            )
+                        param_values.append(param_value)
                         all_values_read = char != ','
+
                     pos += 1
                 
             params.append(ParsedPropertyParameter(name=param_name, values=param_values))
@@ -124,6 +144,11 @@ def parse_line(line: str) -> dict:
         pos += 1
 
     value = line[pos:]
+    if _RE_CONTROL_CHARS.search(value):
+        raise CalendarParseError(
+            f"Property value contains control characters: {value}",
+            detailed_error=line,
+        )
     dict_result[PARSE_VALUE] = value
     return dict_result        
 
