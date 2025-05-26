@@ -74,11 +74,9 @@
   DTSTAMP:19980130T134500Z
   SEQUENCE:2
   UID:uid4@example.com
-  ORGANIZER:mailto:unclesam@example.com
-  ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
   DUE:19980415T000000
   STATUS:NEEDS-ACTION
-  SUMMARY:Submit Income Taxes
+  SUMMARY:Birthday
   BEGIN:VALARM
   ACTION:AUDIO
   TRIGGER:19980403T120000Z
@@ -458,23 +456,6 @@
               'value': 'uid4@example.com',
             }),
             dict({
-              'name': 'organizer',
-              'params': None,
-              'value': 'mailto:unclesam@example.com',
-            }),
-            dict({
-              'name': 'attendee',
-              'params': list([
-                dict({
-                  'name': 'PARTSTAT',
-                  'values': list([
-                    'ACCEPTED',
-                  ]),
-                }),
-              ]),
-              'value': 'mailto:jqpublic@example.com',
-            }),
-            dict({
               'name': 'due',
               'params': None,
               'value': '19980415T000000',
@@ -487,7 +468,7 @@
             dict({
               'name': 'summary',
               'params': None,
-              'value': 'Submit Income Taxes',
+              'value': 'Birthday',
             }),
           ]),
         }),
