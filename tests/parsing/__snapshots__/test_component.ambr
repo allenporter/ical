@@ -65,6 +65,29 @@
   END:VCALENDAR
   '''
 # ---
+# name: test_encode_contentlines[unicode]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//ABC Corporation//NONSGML My Product//EN
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:19980130T134500Z
+  SEQUENCE:2
+  UID:uid4@example.com
+  DUE:19980415T000000
+  STATUS:NEEDS-ACTION
+  SUMMARY:Birthday
+  BEGIN:VALARM
+  ACTION:AUDIO
+  TRIGGER:19980403T120000Z
+  ATTACH;FILENAME=Fødselsdag_40.pdf:https://someurl.com
+  REPEAT:4
+  DURATION:PT1H
+  END:VALARM
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
 # name: test_encode_contentlines[vcalendar_emoji]
   '''
   BEGIN:VEVENT
@@ -364,6 +387,103 @@
             }),
           ]),
           'value': '19970304,19970504,19970704,19970904',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[unicode]
+  list([
+    dict({
+      'components': list([
+        dict({
+          'components': list([
+            dict({
+              'components': list([
+              ]),
+              'name': 'valarm',
+              'properties': list([
+                dict({
+                  'name': 'action',
+                  'params': None,
+                  'value': 'AUDIO',
+                }),
+                dict({
+                  'name': 'trigger',
+                  'params': None,
+                  'value': '19980403T120000Z',
+                }),
+                dict({
+                  'name': 'attach',
+                  'params': list([
+                    dict({
+                      'name': 'FILENAME',
+                      'values': list([
+                        'Fødselsdag_40.pdf',
+                      ]),
+                    }),
+                  ]),
+                  'value': 'https://someurl.com',
+                }),
+                dict({
+                  'name': 'repeat',
+                  'params': None,
+                  'value': '4',
+                }),
+                dict({
+                  'name': 'duration',
+                  'params': None,
+                  'value': 'PT1H',
+                }),
+              ]),
+            }),
+          ]),
+          'name': 'vtodo',
+          'properties': list([
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19980130T134500Z',
+            }),
+            dict({
+              'name': 'sequence',
+              'params': None,
+              'value': '2',
+            }),
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': 'uid4@example.com',
+            }),
+            dict({
+              'name': 'due',
+              'params': None,
+              'value': '19980415T000000',
+            }),
+            dict({
+              'name': 'status',
+              'params': None,
+              'value': 'NEEDS-ACTION',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'Birthday',
+            }),
+          ]),
+        }),
+      ]),
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'prodid',
+          'params': None,
+          'value': '-//ABC Corporation//NONSGML My Product//EN',
+        }),
+        dict({
+          'name': 'version',
+          'params': None,
+          'value': '2.0',
         }),
       ]),
     }),

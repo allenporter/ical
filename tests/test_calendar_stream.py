@@ -119,16 +119,8 @@ def test_todo_list_iteration(filename: pathlib.Path) -> None:
             END:VCALENDAR
             """
         ),
-        # This is a bug and should be fixed.
-        textwrap.dedent(
-            """\
-            BEGIN:VCALENDAR
-            ATTACH;FILENAME=Fødselsdag_40.pdf:https://someurl.com
-            END:VCALENDAR
-            """
-        ),
     ],
-    ids=["invalid", "control-char-value", "control-char-name", "non-us-ascii-unicode"],
+    ids=["invalid", "control-char-value", "control-char-name"],
 )
 def test_invalid_ics(content: str) -> None:
     """Test parsing failures for ics content.
