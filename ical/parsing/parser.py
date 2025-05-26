@@ -29,28 +29,18 @@ from functools import cache
 import re
 from typing import Iterable
 from ical.exceptions import CalendarParseError
-from ical.parsing.property import ParsedPropertyParameter
-
-
-from .const import (
-    PARSE_NAME,
-    PARSE_PARAM_NAME,
-    PARSE_PARAM_VALUE,
-    PARSE_PARAMS,
-    PARSE_VALUE,
-)
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 _LOGGER = logging.getLogger(__name__)
-
 
 _RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0A-\x1F\x7F]")
 _RE_NAME = re.compile("[A-Z0-9-]+")
 
 @cache
-def parse_line(line: str) -> dict:
+def parse_line(line: str) -> ParsedProperty:
     """Parse a single line."""
     
-    dict_result = {}
+    result = ParsedProperty(name="", value="", params=None)
     line_len = len(line)
     pos = 0
 
@@ -62,13 +52,13 @@ def parse_line(line: str) -> dict:
             name = line[0:pos]
             if not _RE_NAME.fullmatch(name):
                 raise CalendarParseError(f"Invalid property name '{name}'", detailed_error=line)
-            dict_result[PARSE_NAME] = name
+            result.name = name.lower()
             break
         pos += 1
 
     # parse PARAMS if any
     if line[pos] == ';':
-        params: list[ParsedPropertyParameter] = []
+        result.params = []
         pos += 1
         params_start = pos
         all_params_read = False
@@ -135,11 +125,9 @@ def parse_line(line: str) -> dict:
 
                     pos += 1
                 
-            params.append(ParsedPropertyParameter(name=param_name, values=param_values))
+            result.params.append(ParsedPropertyParameter(name=param_name, values=param_values))
             
-            if all_params_read:
-                dict_result[PARSE_PARAMS] = params
-            else:
+            if not all_params_read:
                 # reset for next parameter
                 params_start = pos
                 pos += 1
@@ -148,18 +136,17 @@ def parse_line(line: str) -> dict:
             raise CalendarParseError(f"Expected ':' after property name", detailed_error=line)
         pos += 1
 
-    value = line[pos:]
-    if _RE_CONTROL_CHARS.search(value):
+    result.value = line[pos:]
+    if _RE_CONTROL_CHARS.search(result.value):
         raise CalendarParseError(
-            f"Property value contains control characters: {value}",
+            f"Property value contains control characters: {result.value}",
             detailed_error=line,
         )
-    dict_result[PARSE_VALUE] = value
-    return dict_result        
+    return result
 
 
 
-def parse_contentlines(lines: Iterable[str]) -> list[dict]:
+def parse_contentlines(lines: Iterable[str]) -> list[ParsedProperty]:
     """Parse a set of unfolded lines into parse results."""
 
     try:

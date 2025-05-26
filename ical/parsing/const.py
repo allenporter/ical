@@ -8,9 +8,5 @@ WSP = [" ", "\t"]
 ATTR_BEGIN = "BEGIN"
 ATTR_END = "END"
 
-# Key/value pairs for the pyparsing result object and related dicts
-PARSE_NAME = "name"
-PARSE_VALUE = "value"
-PARSE_PARAMS = "params"
-PARSE_PARAM_NAME = "param_name"
-PARSE_PARAM_VALUE = "param_value"
+ATTR_BEGIN_LOWER = "begin"
+ATTR_END_LOWER = "end"
