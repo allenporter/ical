@@ -19,6 +19,14 @@ From within your virtual environment:
 $ pytest
 ```
 
+## Running pre-commit
+
+Before sending a PR ensure the formatting is correct:
+
+```
+$ pre-commit
+```
+
 ## Contributing
 
 Committing the change will run all necessary formatting, type checking, and
