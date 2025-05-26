@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 from typing import cast
 
 from pyparsing import unicode_set
-from pyparsing.unicode import UnicodeRangeList
+from pyparsing.unicode import UnicodeRangeList, pyparsing_unicode
 
 from .emoji import EMOJI
 
@@ -40,29 +41,6 @@ class Control(CharRange):
     ]
 
 
-class NonUsAscii(CharRange):
-    """Range of characters in the NON-US-ASCII spec of rfc5545."""
-
-    _ranges: UnicodeRangeList = [
-        # UTF8-2
-        (0xC2, 0xDF),
-        (0x80, 0xBF),  # utf8-tail
-        # UTF8-3
-        (0xE0,),
-        (0xA0, 0xBF),
-        (0xE1, 0xEC),
-        (0xED,),
-        (0x80, 0x9F),
-        (0xEE, 0xEF),
-        # UTF8-4
-        (0xF0,),
-        (0x90, 0xBF),
-        (0xF1, 0xF3),
-        (0xF4,),
-        (0x80, 0x8F),
-    ]
-
-
 class BasicMultilingualPlane(CharRange):
     """Unicode set for the Basic Multilingual Plane."""
 
@@ -71,7 +49,7 @@ class BasicMultilingualPlane(CharRange):
     ]
 
 
-NON_US_ASCII = NonUsAscii.all() + EMOJI
+NON_US_ASCII =  unicode_set.identchars + "".join(EMOJI)
 
 # Characters that should be encoded in quotes
 UNSAFE_CHAR_RE = re.compile(r"[,:;]")
@@ -88,7 +66,7 @@ class SafeChar(CharRange):
     ]
 
 
-SAFE_CHAR = "".join(WSP + SafeChar.all() + NON_US_ASCII)
+SAFE_CHAR = "".join(WSP + SafeChar.all()) + NON_US_ASCII
 
 
 class ValueChar(CharRange):
@@ -100,5 +78,5 @@ class ValueChar(CharRange):
 
 
 VALUE_CHAR = "".join(
-    WSP + ValueChar.all() + NON_US_ASCII + BasicMultilingualPlane.all()
-)
+    WSP + ValueChar.all() + BasicMultilingualPlane.all()
+) + NON_US_ASCII
