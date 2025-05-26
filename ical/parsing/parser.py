@@ -71,7 +71,6 @@ def parse_line(line: str) -> dict:
         params: list[ParsedPropertyParameter] = []
         pos += 1
         params_start = pos
-        param_value_start = 0
         all_params_read = False
 
         while pos < line_len and not all_params_read:
@@ -91,7 +90,9 @@ def parse_line(line: str) -> dict:
             
             # Now read values. (list separated by comma)
             param_values = []
+            param_value_start = 0
             all_values_read = False
+            
             while not all_values_read:
                 param_value_start = pos
                 quoted = False
