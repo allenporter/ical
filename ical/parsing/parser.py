@@ -51,17 +51,17 @@ def parse_line(line: str) -> dict:
     """Parse a single line."""
     
     dict_result = {}
+    line_len = len(line)
     pos = 0
 
     # parse NAME
     while True:
-        if pos >= len(line):
-            raise CalendarParseError(f"Unexpected end of line. Expected ';' or ':'", detailed_error = line)
-        char = line[pos]
-        if char == ';' or char == ':':
+        if pos >= line_len:
+            raise CalendarParseError(f"Unexpected end of line. Expected ';' or ':'", detailed_error=line)
+        if line[pos] in (';', ':'):
             name = line[0:pos]
             if not _RE_NAME.fullmatch(name):
-                raise CalendarParseError(f"Invalid property name '{name}'", detailed_error = line)
+                raise CalendarParseError(f"Invalid property name '{name}'", detailed_error=line)
             dict_result[PARSE_NAME] = name
             break
         pos += 1
@@ -71,76 +71,80 @@ def parse_line(line: str) -> dict:
         params: list[ParsedPropertyParameter] = []
         pos += 1
         params_start = pos
-        value_start = 0
-        while pos < len(line):
+        param_value_start = 0
+        all_params_read = False
+
+        while pos < line_len and not all_params_read:
             
             # Read until we hit name/value separator (=)
             if line[pos] != '=':
                 pos += 1
-                if pos >= len(line):
-                    raise CalendarParseError(f"Unexpected end of line. Expected '='", detailed_error = line)
+                if pos >= line_len:
+                    raise CalendarParseError(f"Unexpected end of line. Expected '='", detailed_error=line)
                 continue
                 
             # param name reached
             param_name = line[params_start:pos]
             if not _RE_NAME.fullmatch(param_name):
-                raise CalendarParseError(f"Invalid parameter name '{param_name}'", detailed_error = line)
+                raise CalendarParseError(f"Invalid parameter name '{param_name}'", detailed_error=line)
             pos += 1
             
             # Now read values. (list separated by comma)
             param_values = []
             all_values_read = False
             while not all_values_read:
-                value_start = pos
+                param_value_start = pos
                 quoted = False
 
                 if line[pos] == '"':
-                    # read all in quotes
+                    # parameter value is quoted
                     quoted = True
                     pos += 1
 
-                value_read = False
-                while not value_read:
-                    if pos >= len(line):
+                param_value_read = False
+                while not param_value_read:
+                    if pos >= line_len:
                         if quoted:
-                            raise CalendarParseError(f"Unexpected end of line. Expected end of qouted string", detailed_error = line)
+                            raise CalendarParseError(f"Unexpected end of line. Expected end of qouted string", detailed_error=line)
                         else:
-                            raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error = line)
+                            raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error=line)
                     
                     char = line[pos]
 
                     if char == '"':
                         if not quoted:
-                            raise CalendarParseError(f"Unexpected quote character outside parameter value.", detailed_error = line)
-                        param_value = line[value_start + 1:pos]
-                        value_read = True
+                            raise CalendarParseError(f"Unexpected quote character outside parameter value.", detailed_error=line)
+                        param_value = line[param_value_start + 1:pos]
+                        param_value_read = True
                         pos += 1
                         char = line[pos]
-                    elif not quoted and (char == ',' or char == ';' or char == ':'):
-                        param_value = line[value_start:pos]
-                        value_read = True
+                    elif not quoted and char in (',', ';', ':'):
+                        param_value = line[param_value_start:pos]
+                        param_value_read = True
 
-                    if value_read:
-                        if not (char == ',' or char == ';' or char == ':'):
+                    if param_value_read:
+                        if not char in (',', ';', ':'):
                             raise CalendarParseError(
                                 f"Expected ',' or ';' or ':' after parameter value, got '{char}'",
                                 detailed_error=line,
                             )
                         param_values.append(param_value)
                         all_values_read = char != ','
+                        all_params_read = char == ':'
 
                     pos += 1
                 
             params.append(ParsedPropertyParameter(name=param_name, values=param_values))
             
-            if char == ':':
+            if all_params_read:
                 dict_result[PARSE_PARAMS] = params
-                break
-            params_start = pos
-            pos += 1
+            else:
+                # reset for next parameter
+                params_start = pos
+                pos += 1
     else:
         if line[pos] != ':':
-            raise CalendarParseError(f"Expected ':' after property name", detailed_error = line)
+            raise CalendarParseError(f"Expected ':' after property name", detailed_error=line)
         pos += 1
 
     value = line[pos:]
