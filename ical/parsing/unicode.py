@@ -19,7 +19,7 @@ from .emoji import EMOJI
 _LOGGER = logging.getLogger(__name__)
 
 
-WSP = [" ", "\t"]
+WSP: list[str] = [" ", "\t"]
 
 
 class CharRange(unicode_set):
@@ -49,7 +49,7 @@ class BasicMultilingualPlane(CharRange):
     ]
 
 
-NON_US_ASCII =  unicode_set.identchars + "".join(EMOJI)
+NON_US_ASCII: str = unicode_set.identchars + "".join(EMOJI)
 
 # Characters that should be encoded in quotes
 UNSAFE_CHAR_RE = re.compile(r"[,:;]")
@@ -66,7 +66,7 @@ class SafeChar(CharRange):
     ]
 
 
-SAFE_CHAR = "".join(WSP + SafeChar.all()) + NON_US_ASCII
+SAFE_CHAR: str = "".join(WSP + SafeChar.all()) + NON_US_ASCII
 
 
 class ValueChar(CharRange):
@@ -77,6 +77,6 @@ class ValueChar(CharRange):
     ]
 
 
-VALUE_CHAR = "".join(
-    WSP + ValueChar.all() + BasicMultilingualPlane.all()
-) + NON_US_ASCII
+VALUE_CHAR: str = (
+    "".join(WSP + ValueChar.all() + BasicMultilingualPlane.all()) + NON_US_ASCII
+)
