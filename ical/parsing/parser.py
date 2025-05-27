@@ -38,9 +38,9 @@ _RE_NAME = re.compile("[A-Z0-9-]+")
 
 @cache
 def parse_line(line: str) -> ParsedProperty:
-    """Parse a single line."""
+    """Parse a single property line."""
     
-    result = ParsedProperty(name="", value="", params=None)
+    params : list[ParsedPropertyParameter] = None
     line_len = len(line)
     pos = 0
 
@@ -52,13 +52,13 @@ def parse_line(line: str) -> ParsedProperty:
             name = line[0:pos]
             if not _RE_NAME.fullmatch(name):
                 raise CalendarParseError(f"Invalid property name '{name}'", detailed_error=line)
-            result.name = name.lower()
+            property_name = name.lower()
             break
         pos += 1
 
     # parse PARAMS if any
     if line[pos] == ';':
-        result.params = []
+        params = []
         pos += 1
         params_start = pos
         all_params_read = False
@@ -78,9 +78,8 @@ def parse_line(line: str) -> ParsedProperty:
                 raise CalendarParseError(f"Invalid parameter name '{param_name}'", detailed_error=line)
             pos += 1
             
-            # Now read values. (list separated by comma)
+            # Now read parameter values. (comma separated)
             param_values = []
-            param_value_start = 0
             all_values_read = False
             
             while not all_values_read:
@@ -125,7 +124,7 @@ def parse_line(line: str) -> ParsedProperty:
 
                     pos += 1
                 
-            result.params.append(ParsedPropertyParameter(name=param_name, values=param_values))
+            params.append(ParsedPropertyParameter(name=param_name, values=param_values))
             
             if not all_params_read:
                 # reset for next parameter
@@ -134,13 +133,14 @@ def parse_line(line: str) -> ParsedProperty:
     else:
         pos += 1
 
-    result.value = line[pos:]
-    if _RE_CONTROL_CHARS.search(result.value):
+    property_value = line[pos:]
+    if _RE_CONTROL_CHARS.search(property_value):
         raise CalendarParseError(
-            f"Property value contains control characters: {result.value}",
+            f"Property value contains control characters: {property_value}",
             detailed_error=line,
         )
-    return result
+    
+    return ParsedProperty(name=property_name, value=property_value, params=params)
 
 
 
