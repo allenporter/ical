@@ -132,8 +132,6 @@ def parse_line(line: str) -> ParsedProperty:
                 params_start = pos
                 pos += 1
     else:
-        if line[pos] != ':':
-            raise CalendarParseError(f"Expected ':' after property name", detailed_error=line)
         pos += 1
 
     result.value = line[pos:]
