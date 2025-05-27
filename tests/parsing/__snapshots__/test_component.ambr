@@ -50,6 +50,14 @@
   END:VCALENDAR
   '''
 # ---
+# name: test_encode_contentlines[params_empty]
+  '''
+  BEGIN:VCALENDAR
+  NAME;PARAM-NAME=:VALUE
+  NAME;PARAM-NAME=,Value2,,VALUE4,VALUE5:VALUE
+  END:VCALENDAR
+  '''
+# ---
 # name: test_encode_contentlines[params_quoted]
   '''
   BEGIN:VCALENDAR
@@ -333,6 +341,43 @@
             }),
           ]),
           'value': '',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[params_empty]
+  list([
+    dict({
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'name',
+          'params': list([
+            dict({
+              'name': 'PARAM-NAME',
+              'values': list([
+                '',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'name',
+          'params': list([
+            dict({
+              'name': 'PARAM-NAME',
+              'values': list([
+                '',
+                'Value2',
+                '',
+                'VALUE4',
+                'VALUE5',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
         }),
       ]),
     }),

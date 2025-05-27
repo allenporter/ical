@@ -48,6 +48,14 @@
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---
+# name: test_from_ics[params_empty]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['""'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"",Value2,"",VALUE4,"VALUE5"'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
 # name: test_from_ics[params_quoted]
   list([
     ParsedProperty(name='begin', value='VCALENDAR', params=None),
