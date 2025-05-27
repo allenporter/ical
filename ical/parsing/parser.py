@@ -83,7 +83,6 @@ def parse_line(line: str) -> ParsedProperty:
             all_values_read = False
             
             while not all_values_read:
-                param_value_start = pos
 
                 if quoted := (line[pos] == '"'):
                     # parameter value is quoted
@@ -91,6 +90,8 @@ def parse_line(line: str) -> ParsedProperty:
                     pos += 1
 
                 param_value_read = False
+                param_value_start = pos
+
                 while not param_value_read:
                     if pos >= line_len:
                         if quoted:
@@ -101,12 +102,10 @@ def parse_line(line: str) -> ParsedProperty:
                     if (char := line[pos]) == '"':
                         if not quoted:
                             raise CalendarParseError(f"Unexpected quote character outside parameter value.", detailed_error=line)
-                        param_value = line[param_value_start + 1:pos]
                         param_value_read = True
                         pos += 1
                         char = line[pos]
                     elif not quoted and char in (',', ';', ':'):
-                        param_value = line[param_value_start:pos]
                         param_value_read = True
 
                     if param_value_read:
@@ -115,6 +114,7 @@ def parse_line(line: str) -> ParsedProperty:
                                 f"Expected ',' or ';' or ':' after parameter value, got '{char}'",
                                 detailed_error=line,
                             )
+                        param_value = line[param_value_start:pos - (1 if quoted else 0)]
                         param_values.append(param_value)
                         all_values_read = char != ','
                         all_params_read = char == ':'
