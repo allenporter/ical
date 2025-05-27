@@ -84,9 +84,8 @@ def parse_line(line: str) -> ParsedProperty:
             
             while not all_values_read:
                 param_value_start = pos
-                quoted = False
 
-                if line[pos] == '"':
+                if quoted := (line[pos] == '"'):
                     # parameter value is quoted
                     quoted = True
                     pos += 1
@@ -98,10 +97,8 @@ def parse_line(line: str) -> ParsedProperty:
                             raise CalendarParseError(f"Unexpected end of line. Expected end of qouted string", detailed_error=line)
                         else:
                             raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error=line)
-                    
-                    char = line[pos]
 
-                    if char == '"':
+                    if (char := line[pos]) == '"':
                         if not quoted:
                             raise CalendarParseError(f"Unexpected quote character outside parameter value.", detailed_error=line)
                         param_value = line[param_value_start + 1:pos]
