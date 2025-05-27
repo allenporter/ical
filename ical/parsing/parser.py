@@ -94,7 +94,7 @@ def parse_line(line: str) -> ParsedProperty:
                 while not param_value_read:
                     if pos >= line_len:
                         if quoted:
-                            raise CalendarParseError(f"Unexpected end of line. Expected end of qouted string", detailed_error=line)
+                            raise CalendarParseError(f"Unexpected end of line. Expected end of quoted string", detailed_error=line)
                         else:
                             raise CalendarParseError(f"Unexpected end of line. Expected ',', ';' or ':'", detailed_error=line)
 
