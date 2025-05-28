@@ -127,6 +127,7 @@ class ParsedProperty:
             params=parsed_property_parameters or None,
         )
 
+
 def parse_basic_ics_properties(
     contentlines: Iterable[str],
 ) -> Generator[ParsedProperty, None, None]:

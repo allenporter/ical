@@ -109,7 +109,6 @@ def parse_content(content: str) -> list[ParsedComponent]:
     return stack[0].components
 
 
-
 def encode_content(components: list[ParsedComponent]) -> str:
     """Encode a set of parsed properties into content."""
     return "\n".join([component.ics() for component in components])
