@@ -40,7 +40,7 @@ _RE_NAME = re.compile("[A-Z0-9-]+")
 def parse_line(line: str) -> ParsedProperty:
     """Parse a single property line."""
     
-    params : list[ParsedPropertyParameter] = None  # todo: this should probably be an empty list. However, this breaks unit tests that expect None...
+    params : list[ParsedPropertyParameter] = []
     line_len = len(line)
     pos = 0
 
@@ -139,7 +139,7 @@ def parse_line(line: str) -> ParsedProperty:
             detailed_error=line,
         )
     
-    return ParsedProperty(name=property_name, value=property_value, params=params)
+    return ParsedProperty(name=property_name, value=property_value, params=params if params else None)
 
 
 
