@@ -29,8 +29,10 @@ import logging
 from functools import cache
 import re
 from typing import Iterable
+
 from ical.exceptions import CalendarParseError
-from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+
+from .property import ParsedProperty, ParsedPropertyParameter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +40,6 @@ _RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0a-\x1f\x7f]")
 _RE_NAME = re.compile("[A-Z0-9-]+")
 
 
-@cache
 def parse_line(line: str) -> ParsedProperty:
     """Parse a single property line."""
 
