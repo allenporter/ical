@@ -23,12 +23,11 @@ from .const import (
     FOLD,
     FOLD_INDENT,
     FOLD_LEN,
-    PARSE_NAME,
-    PARSE_PARAMS,
-    PARSE_VALUE,
+    ATTR_BEGIN_LOWER,
+    ATTR_END_LOWER,
 )
 from .parser import parse_contentlines
-from .property import ParsedProperty, parse_property_params, parse_basic_ics_properties
+from .property import ParsedProperty
 
 FOLD_RE = re.compile(FOLD, flags=re.MULTILINE)
 LINES_RE = re.compile(r"\r?\n")
@@ -91,36 +90,22 @@ def parse_content(content: str) -> list[ParsedComponent]:
     All the more detailed parsing of the objects is handled by pydantic, elsewhere.
     """
     lines = unfolded_lines(content)
-    token_results = parse_contentlines(lines)
+    properties = parse_contentlines(lines)
 
     stack: list[ParsedComponent] = [ParsedComponent(name="stream")]
-    for result in token_results:
-        result_dict = result.as_dict()
-        if PARSE_NAME not in result_dict:
-            raise ValueError(
-                f"Missing fields {PARSE_NAME} or {PARSE_VALUE} in {result_dict}"
-            )
-        name = result_dict[PARSE_NAME]
-        value = result_dict.get(PARSE_VALUE, "")
-        if name == ATTR_BEGIN:
-            stack.append(ParsedComponent(name=value.lower()))
-        elif name == ATTR_END:
-            value = value.lower()
+    for prop in properties:
+        if prop.name == ATTR_BEGIN_LOWER:
+            stack.append(ParsedComponent(name=prop.value.lower()))
+        elif prop.name == ATTR_END_LOWER:
             component = stack.pop()
-            if value != component.name:
+            if prop.value.lower() != component.name:
                 raise ValueError(
-                    f"Unexpected '{result}', expected {ATTR_END}:{component.name}"
+                    f"Unexpected '{prop}', expected {ATTR_END}:{component.name}"
                 )
             stack[-1].components.append(component)
         else:
-            name = name.lower()
-            property_dict = {
-                PARSE_NAME: name,
-                PARSE_VALUE: value,
-            }
-            if property_params := parse_property_params(result_dict):
-                property_dict[PARSE_PARAMS] = property_params
-            stack[-1].properties.append(ParsedProperty(**property_dict))
+            stack[-1].properties.append(prop)
+
     return stack[0].components
 
 
