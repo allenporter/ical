@@ -26,9 +26,8 @@ Note: This specific example may be a bit confusing because one of the property p
 
 from datetime import tzinfo
 import logging
-from functools import cache
 import re
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from ical.exceptions import CalendarParseError
 
@@ -38,121 +37,125 @@ _LOGGER = logging.getLogger(__name__)
 
 _RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0a-\x1f\x7f]")
 _RE_NAME = re.compile("[A-Z0-9-]+")
+_NAME_DELIMITERS = (";", ":")
+_PARAM_DELIMITERS = (",", ";", ":")
+_QUOTE = '"'
+
+
+def _find_first(
+    line: str, chars: Sequence[str], start: int | None = None
+) -> int | None:
+    """Find the earliest occurrence of any of the given characters in the line."""
+    if not chars:
+        raise ValueError("At least one character must be provided to search for.")
+    earliest: int | None = None
+    for char in chars:
+        pos = line.find(char, start)
+        if pos != -1 and (earliest is None or pos < earliest):
+            earliest = pos
+    return earliest
 
 
 def parse_line(line: str) -> ParsedProperty:
     """Parse a single property line."""
 
-    params: list[ParsedPropertyParameter] = []
-    line_len = len(line)
-    pos = 0
-
     # parse NAME
-    while True:
-        if pos >= line_len:
-            raise CalendarParseError(
-                f"Unexpected end of line. Expected ';' or ':'", detailed_error=line
-            )
-        if line[pos] in (";", ":"):
-            name = line[0:pos]
-            if not _RE_NAME.fullmatch(name):
-                raise CalendarParseError(
-                    f"Invalid property name '{name}'", detailed_error=line
-                )
-            property_name = name.lower()
-            break
-        pos += 1
+    if (name_end_pos := _find_first(line, _NAME_DELIMITERS)) is None:
+        raise CalendarParseError(
+            f"Invalid property line, expected {_NAME_DELIMITERS} after property name",
+            detailed_error=line,
+        )
+    property_name = line[0:name_end_pos]
+    has_params = line[name_end_pos] == ";"
+    pos = name_end_pos + 1
+    line_len = len(line)
 
     # parse PARAMS if any
-    if line[pos] == ";":
-        params = []
-        pos += 1
-        params_start = pos
-        all_params_read = False
+    params: list[ParsedPropertyParameter] = []
+    if has_params:
+        while pos < line_len:
+            if (param_name_end_pos := line.find("=", pos)) == -1:
+                raise CalendarParseError(
+                    f"Invalid parameter format: missing '=' after parameter name part '{line[pos:]}'",
+                    detailed_error=line,
+                )
+            param_name = line[pos:param_name_end_pos]
+            pos = param_name_end_pos + 1
 
-        while pos < line_len and not all_params_read:
-
-            # Read until we hit name/value separator (=)
-            if line[pos] != "=":
-                pos += 1
+            # parse one or more comma-separated PARAM-VALUES
+            param_values: list[str] = []
+            delimiter: str | None = None
+            while delimiter is None or delimiter == ",":
                 if pos >= line_len:
                     raise CalendarParseError(
-                        f"Unexpected end of line. Expected '='", detailed_error=line
+                        "Unexpected end of line. Expected parameter value or delimiter.",
+                        detailed_error=line,
                     )
-                continue
+                param_value: str
+                if line[pos] == _QUOTE:
+                    if (end_quote_pos := line.find(_QUOTE, pos + 1)) == -1:
+                        raise CalendarParseError(
+                            "Unexpected end of line: unclosed quoted parameter value.",
+                            detailed_error=line,
+                        )
+                    param_value = line[pos + 1 : end_quote_pos]
+                    pos = end_quote_pos + 1
+                else:
+                    if (end_pos := _find_first(line, _PARAM_DELIMITERS, pos)) is None:
+                        raise CalendarParseError(
+                            "Unexpected end of line: missing parameter value delimiter.",
+                            detailed_error=line,
+                        )
+                    param_value = line[pos:end_pos]
+                    pos = end_pos
 
-            # param name reached
-            param_name = line[params_start:pos]
-            if not _RE_NAME.fullmatch(param_name):
-                raise CalendarParseError(
-                    f"Invalid parameter name '{param_name}'", detailed_error=line
-                )
-            pos += 1
+                param_values.append(param_value)
 
-            # Now read parameter values. (comma separated)
-            param_values: list[str | tzinfo] = []
-            all_values_read = False
+                # After extracting value, pos is at the delimiter or EOL.
+                if pos >= line_len:
+                    # E.g., quoted value ended right at EOL, or unquoted value consumed up to EOL.
+                    # A delimiter is always expected after a value within parameters.
+                    raise CalendarParseError(
+                        f"Unexpected end of line after parameter value '{param_value}'. Expected delimiter {_PARAM_DELIMITERS}.",
+                        detailed_error=line,
+                    )
 
-            while not all_values_read:
-
-                if quoted := (line[pos] == '"'):
-                    # parameter value is quoted
-                    quoted = True
-                    pos += 1
-
-                param_value_read = False
-                param_value_start = pos
-
-                while not param_value_read:
-                    if pos >= line_len:
-                        if quoted:
-                            raise CalendarParseError(
-                                f"Unexpected end of line. Expected end of quoted string",
-                                detailed_error=line,
-                            )
-                        else:
-                            raise CalendarParseError(
-                                f"Unexpected end of line. Expected ',', ';' or ':'",
-                                detailed_error=line,
-                            )
-
-                    if (char := line[pos]) == '"':
-                        if not quoted:
-                            raise CalendarParseError(
-                                f"Unexpected quote character outside parameter value",
-                                detailed_error=line,
-                            )
-
-                        param_value_read = True
-                        pos += 1
-
-                        if not (char := line[pos]) in (",", ";", ":"):
-                            raise CalendarParseError(
-                                f"Expected ',' or ';' or ':' after parameter value, got '{char}'",
-                                detailed_error=line,
-                            )
-
-                    elif not quoted and char in (",", ";", ":"):
-                        param_value_read = True
-
-                    if param_value_read:
-                        param_value = line[
-                            param_value_start : pos - (1 if quoted else 0)
-                        ]
-                        param_values.append(param_value)
-                        all_values_read = char != ","
-                        all_params_read = char == ":"
-
-                    pos += 1
+                if (delimiter := line[pos]) not in _PARAM_DELIMITERS:
+                    raise CalendarParseError(
+                        f"Expected {_PARAM_DELIMITERS} after parameter value, got '{delimiter}'",
+                        detailed_error=line,
+                    )
+                pos += 1
 
             params.append(ParsedPropertyParameter(name=param_name, values=param_values))
 
-            if not all_params_read:
-                # reset for next parameter
-                params_start = pos
-                pos += 1
-    else:
-        pos += 1
+            if delimiter == ":":
+                break  # We are done with all parameters.
+
+    if not _RE_NAME.fullmatch(property_name):
+        raise CalendarParseError(
+            f"Invalid property name '{property_name}'", detailed_error=line
+        )
+    for param in params:
+        if not _RE_NAME.fullmatch(param.name):
+            raise CalendarParseError(
+                f"Invalid parameter name '{param.name}'", detailed_error=line
+            )
+        for value in param.values:
+            if not isinstance(value, str):
+                raise ValueError(
+                    f"Invalid parameter value type: {type(value).__name__}"
+                )
+            if value.find(_QUOTE) != -1:
+                raise CalendarParseError(
+                    f"Parameter value '{value}' for parameter '{param.name}' is improperly quotes",
+                    detailed_error=line,
+                )
+            if _RE_CONTROL_CHARS.search(value):
+                raise CalendarParseError(
+                    f"Invalid parameter value '{value}' for parameter '{param.name}'",
+                    detailed_error=line,
+                )
 
     property_value = line[pos:]
     if _RE_CONTROL_CHARS.search(property_value):
@@ -162,7 +165,9 @@ def parse_line(line: str) -> ParsedProperty:
         )
 
     return ParsedProperty(
-        name=property_name, value=property_value, params=params if params else None
+        name=property_name.lower(),
+        value=property_value,
+        params=params if params else None,
     )
 
 
@@ -171,7 +176,7 @@ def parse_contentlines(lines: Iterable[str]) -> list[ParsedProperty]:
 
     try:
         return [parse_line(line) for line in lines if line]
-    except Exception as err:
+    except CalendarParseError as err:
         raise CalendarParseError(
             f"Failed to parse calendar contents", detailed_error=str(err)
         ) from err

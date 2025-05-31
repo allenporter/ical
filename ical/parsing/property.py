@@ -16,7 +16,7 @@ import re
 import datetime
 from dataclasses import dataclass
 from collections.abc import Iterator, Generator, Iterable
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 
 from .unicode import UNSAFE_CHAR_RE
 
@@ -27,7 +27,7 @@ class ParsedPropertyParameter:
 
     name: str
 
-    values: list[Union[str, datetime.tzinfo]]
+    values: Sequence[Union[str, datetime.tzinfo]]
     """Values are typically strings, with a hack for TZID.
 
     The values may be overridden in the parse tree so that we can directly
@@ -117,7 +117,7 @@ class ParsedProperty:
             parsed_property_parameters.append(
                 ParsedPropertyParameter(
                     name=param_parts[0],
-                    values=param_parts[1:],  # type: ignore[arg-type]
+                    values=param_parts[1:],
                 )
             )
 
