@@ -147,7 +147,7 @@
 # name: test_invalid_contentlines[invalid]
   tuple(
     'Failed to parse calendar contents',
-    "Unexpected end of line. Expected ';' or ':'",
+    "Invalid property line, expected (';', ':') after property name",
   )
 # ---
 # name: test_invalid_contentlines[invalid_iana-token]
@@ -159,13 +159,13 @@
 # name: test_invalid_contentlines[invalid_param_eol copy]
   tuple(
     'Failed to parse calendar contents',
-    'Unexpected end of line. Expected end of quoted string',
+    'Unexpected end of line: unclosed quoted parameter value.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_eol_quoted]
   tuple(
     'Failed to parse calendar contents',
-    "Unexpected end of line. Expected ',', ';' or ':'",
+    'Unexpected end of line: missing parameter value delimiter.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_name-1]
@@ -183,13 +183,19 @@
 # name: test_invalid_contentlines[invalid_param_value]
   tuple(
     'Failed to parse calendar contents',
-    "Unexpected end of line. Expected '='",
+    "Invalid parameter format: missing '=' after parameter name part ';:VALUE'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_params_list]
   tuple(
     'Failed to parse calendar contents',
-    'string index out of range',
+    'Unexpected end of line. Expected parameter value or delimiter.',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_quoted_missing_value]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line after parameter value 'PARAM-VAL'. Expected delimiter (',', ';', ':').",
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_name]
@@ -201,19 +207,19 @@
 # name: test_invalid_contentlines[invalid_quoted_param_extra_end]
   tuple(
     'Failed to parse calendar contents',
-    "Expected ',' or ';' or ':' after parameter value, got 'e'",
+    "Expected (',', ';', ':') after parameter value, got 'e'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_param_extra_start]
   tuple(
     'Failed to parse calendar contents',
-    'Unexpected quote character outside parameter value',
+    'Parameter value \'extra"QUOTED-VALUE"\' for parameter \'PARAM-NAME\' is improperly quoted',
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_params]
   tuple(
     'Failed to parse calendar contents',
-    'Unexpected end of line. Expected end of quoted string',
+    'Unexpected end of line: unclosed quoted parameter value.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_x-name-1]
@@ -231,7 +237,7 @@
 # name: test_invalid_contentlines[missing_colon]
   tuple(
     'Failed to parse calendar contents',
-    "Unexpected end of line. Expected '='",
+    "Invalid parameter format: missing '=' after parameter name part 'This is a description'",
   )
 # ---
 # name: test_parse_contentlines[attendee]

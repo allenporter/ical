@@ -48,6 +48,7 @@ def test_invalid_contentlines(
         parse_content(filename.read_text())
     assert (str(exc_info.value), exc_info.value.detailed_error) == snapshot
 
+
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_parse_contentlines_benchmark(
     filename: pathlib.Path, json_encoder: json.JSONEncoder, benchmark: Any
