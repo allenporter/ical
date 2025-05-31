@@ -24,6 +24,7 @@ DST: std offset dst [offset],start[/time],end[/time]
 from __future__ import annotations
 
 import datetime
+from functools import cache
 import logging
 from typing import Any, Optional, Union
 
@@ -199,8 +200,9 @@ class Rule(BaseModel):
         return values
 
 
-def parse_tz_rule(tz_str: str) -> Rule:
-    """Parse the TZ string into a Rule object."""
+@cache
+def _create_parser(start_gator: bool, is_julian_date: bool) -> ParserElement:
+    """Create a pyparsing parser for the given TZ string."""
 
     hour = Combine(Opt(Word("+-")) + Word(nums))
     tz_time = hour.set_results_name("hour") + Opt(
@@ -211,7 +213,7 @@ def parse_tz_rule(tz_str: str) -> Rule:
 
     name: ParserElement
     # Hack for inability to deal with both start word options
-    if tz_str.startswith("<"):
+    if start_gator:
         name = Combine(Char("<") + Opt(Word("+-")) + Word(nums) + Char(">"))
     else:
         name = Word(alphas)
@@ -227,10 +229,9 @@ def parse_tz_rule(tz_str: str) -> Rule:
         + "."
         + Word(nums).set_results_name("day_of_week")
     )
-    julian_date = "J" + Word(nums).set_results_name("day_of_year")
     # Hack for inabiliy to have a single rule with both date types
-    if ",J" in tz_str:
-        tz_days = julian_date
+    if is_julian_date:
+        tz_days = "J" + Word(nums).set_results_name("day_of_year")
     else:
         tz_days = month_date
     tz_date = tz_days + Opt("/" + Group(tz_time).set_results_name("time"))
@@ -245,8 +246,15 @@ def parse_tz_rule(tz_str: str) -> Rule:
             + Group(tz_date).set_results_name("dst_end")
         )
     )
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        tz_rule.set_debug(flag=True)
+    return tz_rule
+
+
+def parse_tz_rule(tz_str: str) -> Rule:
+    """Parse the TZ string into a Rule object."""
+
+    start_gator = tz_str.startswith("<")
+    is_julian_date = ",J" in tz_str
+    tz_rule = _create_parser(start_gator, is_julian_date)
     try:
         result = tz_rule.parse_string(tz_str, parse_all=True)
     except ParseException as err:
