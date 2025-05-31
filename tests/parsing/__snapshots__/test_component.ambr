@@ -144,6 +144,96 @@
   END:VEVENT
   '''
 # ---
+# name: test_invalid_contentlines[invalid]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line. Expected ';' or ':'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_iana-token]
+  tuple(
+    'Failed to parse calendar contents',
+    "Invalid property name 'DES.RIPTION'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_param_eol copy]
+  tuple(
+    'Failed to parse calendar contents',
+    'Unexpected end of line. Expected end of quoted string',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_param_eol_quoted]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line. Expected ',', ';' or ':'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_param_name-1]
+  tuple(
+    'Failed to parse calendar contents',
+    "Invalid parameter name 'PARAM NAME'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_param_name-2]
+  tuple(
+    'Failed to parse calendar contents',
+    "Invalid parameter name 'PARAM+NAME'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_param_value]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line. Expected '='",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_params_list]
+  tuple(
+    'Failed to parse calendar contents',
+    'string index out of range',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_quoted_name]
+  tuple(
+    'Failed to parse calendar contents',
+    'Invalid property name \'"NAME"\'',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_quoted_param_extra_end]
+  tuple(
+    'Failed to parse calendar contents',
+    "Expected ',' or ';' or ':' after parameter value, got 'e'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_quoted_param_extra_start]
+  tuple(
+    'Failed to parse calendar contents',
+    'Unexpected quote character outside parameter value',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_quoted_params]
+  tuple(
+    'Failed to parse calendar contents',
+    'Unexpected end of line. Expected end of quoted string',
+  )
+# ---
+# name: test_invalid_contentlines[invalid_x-name-1]
+  tuple(
+    'Failed to parse calendar contents',
+    "Invalid property name 'X-DES.RIPTION'",
+  )
+# ---
+# name: test_invalid_contentlines[invalid_x-name-2]
+  tuple(
+    'Failed to parse calendar contents',
+    "Invalid property name 'X-,'",
+  )
+# ---
+# name: test_invalid_contentlines[missing_colon]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line. Expected '='",
+  )
+# ---
 # name: test_parse_contentlines[attendee]
   list([
     dict({
