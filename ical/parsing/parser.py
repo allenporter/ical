@@ -148,7 +148,7 @@ def parse_line(line: str) -> ParsedProperty:
                 )
             if value.find(_QUOTE) != -1:
                 raise CalendarParseError(
-                    f"Parameter value '{value}' for parameter '{param.name}' is improperly quotes",
+                    f"Parameter value '{value}' for parameter '{param.name}' is improperly quoted",
                     detailed_error=line,
                 )
             if _RE_CONTROL_CHARS.search(value):

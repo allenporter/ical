@@ -213,7 +213,7 @@
 # name: test_invalid_contentlines[invalid_quoted_param_extra_start]
   tuple(
     'Failed to parse calendar contents',
-    'Parameter value \'extra"QUOTED-VALUE"\' for parameter \'PARAM-NAME\' is improperly quotes',
+    'Parameter value \'extra"QUOTED-VALUE"\' for parameter \'PARAM-NAME\' is improperly quoted',
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_params]
