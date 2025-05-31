@@ -10,10 +10,11 @@ import pathlib
 import pytest
 from syrupy import SnapshotAssertion
 
+from ical.exceptions import CalendarParseError
 from ical.parsing.property import (
     ParsedProperty,
     ParsedPropertyParameter,
-    parse_basic_ics_properties,
+    parse_contentlines,
 )
 from ical.parsing.component import unfolded_lines
 
@@ -26,7 +27,7 @@ TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
     """Fixture to read golden file and compare to golden output."""
-    properties = list(parse_basic_ics_properties(unfolded_lines(filename.read_text())))
+    properties = list(parse_contentlines(unfolded_lines(filename.read_text())))
     assert properties == snapshot
 
 
@@ -42,8 +43,8 @@ def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
 )
 def test_invalid_format(ics: str) -> None:
     """Test parsing invalid property format."""
-    with pytest.raises(ValueError):
-        list(parse_basic_ics_properties([ics]))
+    with pytest.raises(CalendarParseError):
+        list(parse_contentlines([ics]))
 
 
 @pytest.mark.parametrize(
@@ -57,7 +58,7 @@ def test_invalid_format(ics: str) -> None:
 )
 def test_blank_parameters(ics: str) -> None:
     """Test parsing invalid property format."""
-    properties = list(parse_basic_ics_properties([ics]))
+    properties = list(parse_contentlines([ics]))
     assert len(properties) == 1
     prop = properties[0]
     assert prop.name == "x-test-blank"

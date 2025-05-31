@@ -17,9 +17,7 @@ from dateutil import rrule
 from pydantic.v1 import BaseModel, Field
 
 from .parsing.property import (
-    ParsedProperty,
-    ParsedPropertyParameter,
-    parse_basic_ics_properties,
+    parse_contentlines,
 )
 from .parsing.component import ParsedComponent
 
@@ -59,7 +57,7 @@ class Recurrences(ComponentModel):
         from a calendar component only.
         """
         try:
-            properties = list(parse_basic_ics_properties(contentlines))
+            properties = list(parse_contentlines(contentlines))
         except ValueError as err:
             raise CalendarParseError(
                 "Failed to parse recurrence", detailed_error=str(err)
