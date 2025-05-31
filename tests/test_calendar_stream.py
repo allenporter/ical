@@ -119,8 +119,28 @@ def test_todo_list_iteration(filename: pathlib.Path) -> None:
             END:VCALENDAR
             """
         ),
+        textwrap.dedent(
+            """\
+            BEGIN:VCALENDAR
+            ATTENDEE;MEM\x007ER="mailto:DEV-GROUP@example.com":mailto:joecool@example.com
+            END:VCALENDAR
+            """
+        ),
+        textwrap.dedent(
+            """\
+            BEGIN:VCALENDAR
+            ATTENDEE;MEMBER="mailto:DEV-GROUP\x00example.com":mailto:joecool@example.com
+            END:VCALENDAR
+            """
+        ),
     ],
-    ids=["invalid", "control-char-value", "control-char-name"],
+    ids=[
+        "invalid",
+        "control-char-value",
+        "control-char-name",
+        "control-param-name",
+        "control-param-value",
+    ],
 )
 def test_invalid_ics(content: str) -> None:
     """Test parsing failures for ics content.

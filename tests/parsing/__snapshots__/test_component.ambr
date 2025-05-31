@@ -192,6 +192,12 @@
     'Unexpected end of line. Expected parameter value or delimiter.',
   )
 # ---
+# name: test_invalid_contentlines[invalid_quoted_missing_value]
+  tuple(
+    'Failed to parse calendar contents',
+    "Unexpected end of line after parameter value 'PARAM-VAL'. Expected delimiter (',', ';', ':').",
+  )
+# ---
 # name: test_invalid_contentlines[invalid_quoted_name]
   tuple(
     'Failed to parse calendar contents',
