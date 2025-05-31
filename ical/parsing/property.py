@@ -18,7 +18,9 @@ from dataclasses import dataclass
 from collections.abc import Iterator, Generator, Iterable
 from typing import Optional, Union, Sequence
 
-from .unicode import UNSAFE_CHAR_RE
+
+# Characters that should be encoded in quotes
+_UNSAFE_CHAR_RE = re.compile(r"[,:;]")
 
 
 @dataclass
@@ -78,7 +80,7 @@ class ParsedProperty:
                         continue  # Shouldn't happen; only strings are set by parsing
                     # Property parameters with values contain a colon, simicolon,
                     # or a comma character must be placed in quoted text
-                    if UNSAFE_CHAR_RE.search(value):
+                    if _UNSAFE_CHAR_RE.search(value):
                         result_param_values.append(f'"{value}"')
                     else:
                         result_param_values.append(value)
