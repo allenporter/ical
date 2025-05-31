@@ -3,14 +3,14 @@
   list([
     ParsedProperty(name='begin', value='VEVENT', params=None),
     ParsedProperty(name='attendee', value='mailto: jsmith@example.com', params=[ParsedPropertyParameter(name='RSVP', values=['TRUE']), ParsedPropertyParameter(name='ROLE', values=['REQ-PARTICIPANT'])]),
-    ParsedProperty(name='attendee', value='jdoe@example.com","mailto:jqpublic @example.com":mailto:jsmith@example.com', params=[ParsedPropertyParameter(name='DELEGATED-TO', values=['"mailto'])]),
+    ParsedProperty(name='attendee', value='mailto:jsmith@example.com', params=[ParsedPropertyParameter(name='DELEGATED-TO', values=['mailto:jdoe@example.com', 'mailto:jqpublic @example.com'])]),
     ParsedProperty(name='end', value='VEVENT', params=None),
   ])
 # ---
 # name: test_from_ics[comma]
   list([
     ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='description', value='part1.0001@example.org":The Fall\'98 Wild Wizards Conference - - Las Vegas\\, NV\\, USA', params=[ParsedPropertyParameter(name='ALTREP', values=['"cid'])]),
+    ParsedProperty(name='description', value="The Fall'98 Wild Wizards Conference - - Las Vegas\\, NV\\, USA", params=[ParsedPropertyParameter(name='ALTREP', values=['cid:part1.0001@example.org'])]),
     ParsedProperty(name='end', value='VEVENT', params=None),
   ])
 # ---
@@ -128,7 +128,7 @@
     ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE1'])]),
     ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM+VALUE2'])]),
     ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM VALUE3'])]),
-    ParsedProperty(name='name', value='VALUE4":VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM:VALUE4'])]),
     ParsedProperty(name='description', value='', params=None),
     ParsedProperty(name='description', value='', params=[ParsedPropertyParameter(name='TYPE', values=[''])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
@@ -137,16 +137,16 @@
 # name: test_from_ics[params_empty]
   list([
     ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['""'])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"",Value2,"",VALUE4,"VALUE5"'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=[''])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['', 'Value2', '', 'VALUE4', 'VALUE5'])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---
 # name: test_from_ics[params_quoted]
   list([
     ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM-VALUE"'])]),
-    ParsedProperty(name='name', value='VALUE":VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['"PARAM'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE'])]),
+    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM:VALUE'])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---

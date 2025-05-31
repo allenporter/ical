@@ -26,8 +26,7 @@ from .const import (
     ATTR_BEGIN_LOWER,
     ATTR_END_LOWER,
 )
-from .parser import parse_contentlines
-from .property import ParsedProperty
+from .property import ParsedProperty, parse_contentlines
 
 FOLD_RE = re.compile(FOLD, flags=re.MULTILINE)
 LINES_RE = re.compile(r"\r?\n")
