@@ -264,6 +264,7 @@ def _parse_line(line: str) -> ParsedProperty:
 def parse_contentlines(
     contentlines: Iterable[str],
 ) -> Generator[ParsedProperty, None, None]:
+    """Parse a contentlines into ParsedProperty objects."""
     for contentline in contentlines:
         if not contentline:
             continue
