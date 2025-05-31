@@ -44,9 +44,9 @@ def test_invalid_contentlines(
     filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
 ) -> None:
     """Fixture to read file inputs that should fail parsing."""
-    with pytest.raises(CalendarParseError):
+    with pytest.raises(CalendarParseError) as exc_info:
         parse_content(filename.read_text())
-
+    assert (str(exc_info.value), exc_info.value.detailed_error) == snapshot
 
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_parse_contentlines_benchmark(
