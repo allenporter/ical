@@ -16,6 +16,21 @@
   END:VEVENT
   '''
 # ---
+# name: test_encode_contentlines[emoji]
+  '''
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19971225
+  DTEND:19971226
+  SUMMARY:🎄
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
 # name: test_encode_contentlines[fold]
   '''
   BEGIN:VEVENT
@@ -34,6 +49,77 @@
   DTSTART:19970714T170000Z
   DTEND:19970715T040000Z
   SUMMARY:Bastille Day Party
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_encode_contentlines[languages]
+  '''
+  BEGIN:VCALENDAR
+  VERSION:2.0
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B2@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:žmogus
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B3@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:中文
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B4@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:кириллица
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B5@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:Ελληνικά
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B6@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:עִברִית
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B7@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:日本語
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B8@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:한국어
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B9@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:ไทย
+  END:VEVENT
+  BEGIN:VEVENT
+  UID:19970610T172345Z-AF23B10@example.com
+  DTSTAMP:19970610T172345Z
+  DTSTART:19970714T170000Z
+  DTEND:19970715T040000Z
+  SUMMARY:देवनागरी
   END:VEVENT
   END:VCALENDAR
   '''
@@ -301,6 +387,59 @@
     }),
   ])
 # ---
+# name: test_parse_contentlines[emoji]
+  list([
+    dict({
+      'components': list([
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B2@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19971225',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19971226',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': '🎄',
+            }),
+          ]),
+        }),
+      ]),
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'version',
+          'params': None,
+          'value': '2.0',
+        }),
+        dict({
+          'name': 'prodid',
+          'params': None,
+          'value': '-//hacksw/handcal//NONSGML v1.0//EN',
+        }),
+      ]),
+    }),
+  ])
+# ---
 # name: test_parse_contentlines[fold]
   list([
     dict({
@@ -348,6 +487,315 @@
               'name': 'summary',
               'params': None,
               'value': 'Bastille Day Party',
+            }),
+          ]),
+        }),
+      ]),
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'version',
+          'params': None,
+          'value': '2.0',
+        }),
+        dict({
+          'name': 'prodid',
+          'params': None,
+          'value': '-//hacksw/handcal//NONSGML v1.0//EN',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[languages]
+  list([
+    dict({
+      'components': list([
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B2@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'žmogus',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B3@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': '中文',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B4@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'кириллица',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B5@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'Ελληνικά',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B6@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'עִברִית',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B7@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': '日本語',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B8@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': '한국어',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B9@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'ไทย',
+            }),
+          ]),
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': '19970610T172345Z-AF23B10@example.com',
+            }),
+            dict({
+              'name': 'dtstamp',
+              'params': None,
+              'value': '19970610T172345Z',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '19970714T170000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '19970715T040000Z',
+            }),
+            dict({
+              'name': 'summary',
+              'params': None,
+              'value': 'देवनागरी',
             }),
           ]),
         }),
