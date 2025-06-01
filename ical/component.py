@@ -32,7 +32,7 @@ except ImportError:
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 from .types.data_types import DATA_TYPE
-from .exceptions import CalendarParseError
+from .exceptions import CalendarParseError, ParameterValueError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -219,6 +219,9 @@ class ComponentModel(BaseModel):
         for sub_type in field_types:
             try:
                 return cls._parse_single_property(sub_type, prop)
+            except ParameterValueError as err:
+                _LOGGER.debug("Invalid property value of type %s: %s", sub_type, err)
+                raise err
             except ValueError as err:
                 _LOGGER.debug(
                     "Unable to parse property value as type %s: %s", sub_type, err
