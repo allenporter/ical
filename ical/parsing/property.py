@@ -81,7 +81,7 @@ class ParsedPropertyParameter:
     The values may be overridden in the parse tree so that we can directly
     set the timezone information when parsing a date-time rather than
     combining with the calendar at runtime. That is, we update the tree
-    with timezone infrmation replacing a string TZID with the zoneinfo.
+    with timezone information replacing a string TZID with the zoneinfo.
     """
 
 
@@ -124,7 +124,7 @@ class ParsedProperty:
                 for value in parameter.values:
                     if not isinstance(value, str):
                         continue  # Shouldn't happen; only strings are set by parsing
-                    # Property parameters with values contain a colon, simicolon,
+                    # Property parameters with values contain a colon, semicolon,
                     # or a comma character must be placed in quoted text
                     if _UNSAFE_CHAR_RE.search(value):
                         result_param_values.append(f'"{value}"')

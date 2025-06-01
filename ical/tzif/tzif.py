@@ -38,7 +38,7 @@ _LOCAL_TIME_TYPE_STRUCT_FORMAT = "".join(
         ">",  # Use standard size of packed value bytes
         "l",  # utoff (4 bytes): Number of seconds to add to UTC to determine local time
         "?",  # dst (1 byte): Indicates the time is DST (1) or standard (0)
-        "B",  # idx (1 byte): Offset index into the time zone designiation octets (0-charcnt-1)
+        "B",  # idx (1 byte): Offset index into the time zone designation octets (0-charcnt-1)
     ]
 )
 _LOCAL_TIME_RECORD_SIZE = 6
@@ -142,7 +142,7 @@ _TransitionBlock = namedtuple(
 # A series of records specifying the local time type:
 #  - utoff (4 bytes): Number of seconds to add to UTC to determine local time
 #  - dst (1 byte): Indicates the time is DST (1) or standard (0)
-#  - idx (1 byte):  Offset index into the time zone designiation octets (0-charcnt-1)
+#  - idx (1 byte):  Offset index into the time zone designation octets (0-charcnt-1)
 # is the utoff (4 bytes), dst (1 byte), idx (1 byte).
 _LocalTimeType = namedtuple("_LocalTimeType", ["utoff", "dst", "idx"])
 

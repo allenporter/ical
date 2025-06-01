@@ -2,7 +2,7 @@
 
 An iCal timezone is a complete description of a timezone, separate
 from the built-in timezones used by python datetime objects. You can
-think of this like fully persisting all timezone informating referenced
+think of this like fully persisting all timezone information referenced
 in the calendar for dates to reference. Timezones are captured to
 unambiguously describe time information to aid in interoperability between
 different calendaring systems.
@@ -237,7 +237,7 @@ class Timezone(ComponentModel):
         return iters
 
     def get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:
-        """Return the specified observence for the specified date."""
+        """Return the specified observance for the specified date."""
         if value.tzinfo is not None:
             raise ValueError("Start time must be in local time format")
         last_observance_info: _ObservanceInfo | None = None

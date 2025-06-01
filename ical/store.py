@@ -217,7 +217,7 @@ class GenericStore(Generic[_T]):
         either the whole item or instances of an item may be deleted. To
         delete the complete range of a recurring item, the `uid` property
         for the item must be specified and the `recurrence_id` should not
-        be specified. To delete an individual instances of the item the
+        be specified. To delete an individual instance of the item the
         `recurrence_id` must be specified.
 
         When deleting individual instances, the range property may specify

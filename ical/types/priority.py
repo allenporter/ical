@@ -1,4 +1,4 @@
-"""Parser for the the PRIORITY type."""
+"""Parser for the PRIORITY type."""
 
 from collections.abc import Callable
 from typing import Generator

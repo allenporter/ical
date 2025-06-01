@@ -12,7 +12,7 @@ from .text import TextEncoder
 @DATA_TYPE.register("GEO")
 @dataclass
 class Geo:
-    """Information related tot he global position for an activity."""
+    """Information related to the global position for an activity."""
 
     lat: float
     lng: float

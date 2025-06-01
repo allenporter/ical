@@ -83,7 +83,7 @@ class DateTimeEncoder:
 
     @classmethod
     def __encode_property_json__(cls, value: datetime.datetime) -> str | dict[str, str]:
-        """Encode an ICS value during json serializaton."""
+        """Encode an ICS value during json serialization."""
         if value.tzinfo is None:
             return value.strftime("%Y%m%dT%H%M%S")
         # Does not yet handle timezones and encoding property parameters

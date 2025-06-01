@@ -7,11 +7,11 @@ recurrence rules together as a single view of recurring date/times.
 
 Some of the iterators here are primarily used to extend functionality of `dateutil.rrule`
 and work around some of the limitations when building real world calendar applications
-such as the ability to make recurrint all day events.
+such as the ability to make recurring all day events.
 
 Most of the things in this library should not be consumed directly by calendar users,
 but instead for implementing another calendar library as they support behind the
-scenes tings like timelines. These internals may be subject to a higher degree of
+scenes things like timelines. These internals may be subject to a higher degree of
 backwards incompatibility due to the internal nature.
 """
 
@@ -55,7 +55,6 @@ ItemAdapter = Callable[[Union[datetime.datetime, datetime.date]], T]
 The adapter is invoked with the date/time of the current instance and
 the callback returns an object at that time (e.g. event with updated time)
 """
-
 
 
 class SortableItem(Generic[K, T], ABC):
@@ -277,7 +276,7 @@ class MergedIterable(Iterable[T]):
 
 
 class SortedItemIterable(Iterable[SortableItem[K, T]]):
-    """Iterable that returns sortable items in sortered order.
+    """Iterable that returns sortable items in sorted order.
 
     This is useful when iterating over a subset of non-recurring events.
     """
@@ -405,7 +404,7 @@ def as_rrule(
 
     A recurring event is typically evaluated specially on the timeline. The
     data model has a single event, but the timeline evaluates the recurrence
-    to expand and copy the the event to multiple places on the timeline.
+    to expand and copy the event to multiple places on the timeline.
 
     This is only valid for events where `recurring` is True.
     """

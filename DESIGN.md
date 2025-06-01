@@ -17,7 +17,7 @@ have parameters such as a timezone or alternative text display. Components
 have a hierarchy (e.g. a calendar component has an event sub-component).
 
 The ical library uses [pyparsing](https://github.com/pyparsing/pyparsing) to
-create a very simple gammar for rfc5545, converting the individual lines of an
+create a very simple grammar for rfc5545, converting the individual lines of an
 ics file (called "contentlines") into a structured `ParseResult` object which
 has a dictionary of fields. The ical library then iterates through each
 contentline and builds a stack to manage components and subcomponents, parses
@@ -43,8 +43,8 @@ internal json encoding as well as custom encoding built on top to handle
 everything. The custom logic is needed since a single field in a pydantic
 model may be a complex value in the ics output (e.g. containing property
 parameters). The json encoding using pydantic encoders could be removed
-in the future, relying on entirely custom components, but for now its kind
-of nice to reuse even if there are extera layers on top adding complexity.
+in the future, relying on entirely custom components, but for now it is kind
+of nice to reuse even if there are extra layers on top adding complexity.
 
 ## Recurrence
 
@@ -83,7 +83,7 @@ module with a lightweight and complete implementation of recurrence rules.
 Events are generated using a timeline fed by bunch of iterators. There is
 one iterator for all non-recurring events, then a separate iterator for
 each recurring event. A merged iterator peeks into the input of each
-iterator to decide which one to pull from when determinig the next item
+iterator to decide which one to pull from when determining the next item
 in the iterator.
 
 An individual instance of a recurring event is generated with the same `UID`,

@@ -158,7 +158,7 @@ class Event(ComponentModel):
     """The organizer of a group-scheduled calendar entity."""
 
     priority: Optional[Priority] = None
-    """Defines the relative priorirty of the calendar event."""
+    """Defines the relative priority of the calendar event."""
 
     recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id", default=None)
     """Defines a specific instance of a recurring event.
@@ -216,7 +216,7 @@ class Event(ComponentModel):
     """The revision sequence number in the calendar component.
 
     When an event is created, its sequence number is 0. It is monotonically incremented
-    by the organizers calendar user agent every time a significant revision is made to
+    by the organizer's calendar user agent every time a significant revision is made to
     the calendar event.
     """
 
@@ -228,7 +228,7 @@ class Event(ComponentModel):
     """
 
     transparency: Optional[str] = Field(alias="transp", default=None)
-    """Defines whether or not an event is transparenty to busy time searches."""
+    """Defines whether or not an event is transparent to busy time searches."""
 
     url: Optional[Uri] = None
     """Defines a url associated with the event.
@@ -346,7 +346,7 @@ class Event(ComponentModel):
 
         A recurring event is typically evaluated specially on the timeline. The
         data model has a single event, but the timeline evaluates the recurrence
-        to expand and copy the the event to multiple places on the timeline
+        to expand and copy the event to multiple places on the timeline
         using `as_rrule`.
         """
         if self.rrule or self.rdate:
@@ -358,7 +358,7 @@ class Event(ComponentModel):
 
         A recurring event is typically evaluated specially on the timeline. The
         data model has a single event, but the timeline evaluates the recurrence
-        to expand and copy the the event to multiple places on the timeline.
+        to expand and copy the event to multiple places on the timeline.
 
         This is only valid for events where `recurring` is True.
         """

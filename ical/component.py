@@ -154,7 +154,7 @@ class ComponentModel(BaseModel):
         """Create a new object with updated values and validate it."""
         # Make a deep copy since deletion may update this objects recurrence rules
         new_item_copy = self.copy(update=update, deep=True)
-        # Create a new object using the constructore to ensure we're performing
+        # Create a new object using the constructor to ensure we're performing
         # validation on the new object.
         return self.__class__(**new_item_copy.dict())
 
@@ -289,7 +289,7 @@ class ComponentModel(BaseModel):
         # The overall data model hierarchy is created by pydantic and properties
         # are encoded using the json encoders specific for each type. These are
         # marshalled through as string values. There are then additional passes
-        # to ge the data in to the right final format for ics encoding.
+        # to get the data in to the right final format for ics encoding.
         model_data = json.loads(
             self.json(by_alias=True, exclude_none=True, exclude_defaults=True)
         )
@@ -354,7 +354,7 @@ class ComponentModel(BaseModel):
         raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
     class Config:
-        """Pyandtic model configuration."""
+        """Pydantic model configuration."""
 
         validate_assignment = True
         allow_population_by_field_name = True
