@@ -30,7 +30,7 @@ def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo:
     next todo that is incomplete and has the latest due date.
     """
     # For a recurring todo, the dtstart is after the last due date. Therefore
-    # we can stort items by dtstart and pick the last one that hasn't happened
+    # we can sort items by dtstart and pick the last one that hasn't happened
     root_iter = merge_and_expand_items(todos, dtstart.tzinfo or local_timezone())
 
     it = iter(root_iter)

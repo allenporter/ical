@@ -229,7 +229,7 @@ def _create_parser(start_gator: bool, is_julian_date: bool) -> ParserElement:
         + "."
         + Word(nums).set_results_name("day_of_week")
     )
-    # Hack for inabiliy to have a single rule with both date types
+    # Hack for inability to have a single rule with both date types
     if is_julian_date:
         tz_days = "J" + Word(nums).set_results_name("day_of_year")
     else:

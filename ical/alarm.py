@@ -57,7 +57,7 @@ class Alarm(ComponentModel):
     repeat: Optional[int] = None
     """The number of times an alarm should be repeated.
 
-    If repeate is specified then duration must also be specified.
+    If repeat is specified then duration must also be specified.
     """
 
     #

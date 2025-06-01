@@ -33,7 +33,7 @@ class FreeBusy(ComponentModel):
     """The persistent globally unique identifier."""
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
-    """The user who's free/busy time is represented."""
+    """The user whose free/busy time is represented."""
 
     comment: list[str] = Field(default_factory=list)
     """Non-processing information intended to provide comments to the calendar user."""

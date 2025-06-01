@@ -91,7 +91,7 @@ class Calendar(ComponentModel):
         changed live, the DATE-TIME objects are not updated.
 
         We first update the timezone objects using another pydantic model just
-        for parsing and propagaint here (TimezoneModel). We then walk through
+        for parsing and propagating here (TimezoneModel). We then walk through
         all DATE-TIME objects referenced by components and lookup any TZID
         property parameters, converting them to a datetime.tzinfo object. The
         DATE-TIME parser will use this instead of the TZID string. We prefer

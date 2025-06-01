@@ -25,9 +25,9 @@ class RecurrenceError(CalendarError):
     """Exception raised when evaluating a recurrence rule.
 
     Recurrence rules have complex logic and it is common for there to be
-    invalid date or bugs, so this special exception exists to help
+    invalid dates or bugs, so this special exception exists to help
     provide additional debug data to find the source of the issue. Often
-    `dateutil.rrule` has limitataions and ical has to work around them
+    `dateutil.rrule` has limitations and ical has to work around them
     by providing special wrapping libraries.
     """
 

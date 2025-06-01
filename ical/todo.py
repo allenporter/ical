@@ -119,7 +119,7 @@ class Todo(ComponentModel):
     percent: Optional[int] = None
 
     priority: Optional[Priority] = None
-    """Defines the relative priorirty of the todo item."""
+    """Defines the relative priority of the todo item."""
 
     recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
     """Defines a specific instance of a recurring item.
@@ -172,7 +172,7 @@ class Todo(ComponentModel):
     """The revision sequence number in the calendar component.
 
     When an event is created, its sequence number is 0. It is monotonically incremented
-    by the organizers calendar user agent every time a significant revision is made to
+    by the organizer's calendar user agent every time a significant revision is made to
     the calendar event.
     """
 
@@ -261,7 +261,7 @@ class Todo(ComponentModel):
 
         A recurring event is typically evaluated specially on the list. The
         data model has a single todo, but the timeline evaluates the recurrence
-        to expand and copy the the event to multiple places on the timeline
+        to expand and copy the event to multiple places on the timeline
         using `as_rrule`.
         """
         if self.rrule or self.rdate:
@@ -273,7 +273,7 @@ class Todo(ComponentModel):
 
         A recurring todo is typically evaluated specially on the todo list. The
         data model has a single todo item, but the timeline evaluates the recurrence
-        to expand and copy the the item to multiple places on the timeline.
+        to expand and copy the item to multiple places on the timeline.
 
         This is only valid for events where `recurring` is True.
         """

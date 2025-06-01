@@ -115,6 +115,6 @@ class CalAddress(BaseModel):
         return encode_model_property_params(cls.__fields__.values(), model_data)
 
     class Config:
-        """Pyandtic model configuration."""
+        """Pydantic model configuration."""
 
         allow_population_by_field_name = True

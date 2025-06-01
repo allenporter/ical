@@ -67,7 +67,7 @@ class Period(BaseModel):
 
     @property
     def end_value(self) -> datetime.datetime:
-        """A computed end value based on either or duration."""
+        """A computed end value based on either end or duration."""
         if self.end:
             return self.end
         if not self.duration:
@@ -76,7 +76,7 @@ class Period(BaseModel):
 
     @root_validator(pre=True, allow_reuse=True)
     def parse_period_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse a rfc5545 prioriry value."""
+        """Parse a rfc5545 priority value."""
         if not (value := values.pop("value", None)):
             return values
         parts = value.split("/")
@@ -143,6 +143,6 @@ class Period(BaseModel):
         )
 
     class Config:
-        """Pyandtic model configuration."""
+        """Pydantic model configuration."""
 
         allow_population_by_field_name = True
