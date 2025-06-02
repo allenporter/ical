@@ -209,7 +209,7 @@ def test_union_parser() -> None:
 
     with pytest.raises(
         CalendarParseError,
-        match=".*Failed to validate: .*errors: .*Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
+        match=".*Failed to validate: .* as datetime or date, due to: .*Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
     ):
         model = TestModel.parse_obj(
             {
