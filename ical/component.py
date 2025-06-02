@@ -228,7 +228,9 @@ class ComponentModel(BaseModel):
                 )
                 errors.append(str(err))
                 continue
-        raise ValueError(f"Failed to validate: {prop.value}, errors: ({errors})")
+        raise ValueError(
+            f"Failed to validate: {prop.value} as {' or '.join(sub_type.__name__ for sub_type in field_types)}, due to: ({errors})"
+        )
 
     @classmethod
     def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
