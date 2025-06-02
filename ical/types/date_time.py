@@ -11,6 +11,7 @@ from typing import Any
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.compat import timezone_compat
 from ical.tzif import timezoneinfo
+from ical.exceptions import ParameterValueError
 from .data_types import DATA_TYPE
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def parse_property_value(
                         if allow_invalid_timezone:
                             timezone = None
                         else:
-                            raise ValueError(
+                            raise ParameterValueError(
                                 f"Expected DATE-TIME TZID value '{value}' to be valid timezone"
                             )
     elif match.group(3):  # Example: 19980119T070000Z

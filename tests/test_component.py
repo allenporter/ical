@@ -1,11 +1,14 @@
 """Tests for component encoding and decoding."""
 
+import pytest
 import datetime
+import zoneinfo
 from typing import Optional, Union
 
 from ical.component import ComponentModel
+from ical.exceptions import CalendarParseError, ParameterValueError
 from ical.parsing.component import ParsedComponent
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types.data_types import DATA_TYPE
 
 
@@ -134,3 +137,84 @@ def test_optional_field_parser() -> None:
         {"dt": [ParsedProperty(name="dt", value="20220724T120000")]}
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
+
+
+def test_union_parser() -> None:
+    """Test for a union value."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        dt: Union[datetime.datetime, datetime.date]
+
+    with pytest.raises(CalendarParseError, match=".*Expected one value for field: dt"):
+        model = TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(name="dt", value="20220724T120000"),
+                    ParsedProperty(name="dt", value="20220725"),
+                ],
+            }
+        )
+
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(name="dt", value="20220724T120000"),
+            ],
+        }
+    )
+    assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
+
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(name="dt", value="20220725"),
+            ],
+        }
+    )
+    assert model.dt == datetime.date(2022, 7, 25)
+
+    model = TestModel.parse_obj(
+        {
+            "dt": [
+                ParsedProperty(
+                    name="dt",
+                    value="20220724T120000",
+                    params=[ParsedPropertyParameter("TZID", ["America/New_York"])],
+                ),
+            ],
+        }
+    )
+    assert model.dt == datetime.datetime(
+        2022, 7, 24, 12, 0, 0, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+    )
+    assert model.dt != datetime.datetime(2022, 7, 24, 12, 0, 0)
+
+    with pytest.raises(
+        CalendarParseError,
+        match="Expected DATE-TIME TZID value 'America/New_Mork' to be valid timezone.*",
+    ):
+        model = TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724T120000",
+                        params=[ParsedPropertyParameter("TZID", ["America/New_Mork"])],
+                    ),
+                ],
+            }
+        )
+
+    with pytest.raises(
+        CalendarParseError,
+        match=".*Failed to validate: .*errors: .*Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
+    ):
+        model = TestModel.parse_obj(
+            {
+                "dt": [
+                    ParsedProperty(name="dt", value="2025NotADateOrADateTime"),
+                ],
+            }
+        )
