@@ -222,6 +222,7 @@ def _parse_line(line: str) -> ParsedProperty:
             if delimiter == ":":
                 break  # We are done with all parameters.
 
+    property_name = property_name.upper()
     if not _RE_NAME.fullmatch(property_name):
         raise CalendarParseError(
             f"Invalid property name '{property_name}'", detailed_error=line
