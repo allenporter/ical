@@ -68,3 +68,22 @@ def test_blank_parameters(ics: str) -> None:
     assert prop.params[0].values == ["URI"]
     assert prop.params[1].name == "X-TEST-BLANK-PARAM"
     assert prop.params[1].values == [""]
+
+
+@pytest.mark.parametrize(
+    "ics",
+    [
+        "BEGIN:VEVENT",
+        "begin:VEVENT",
+        "Begin:VEVENT",
+        "bEgiN:VEVENT",
+    ],
+)
+def test_mixed_case_property_name(ics: str) -> None:
+    """Test property name is case-insensitive."""
+    properties = list(parse_contentlines([ics]))
+    assert len(properties) == 1
+    prop = properties[0]
+    assert prop.name == "begin"
+    assert prop.value == "VEVENT"
+    assert prop.params is None
