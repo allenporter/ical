@@ -29,26 +29,17 @@ import logging
 from typing import Any, Optional, Union
 
 from dateutil import rrule
+import re
 
 try:
     from pydantic.v1 import BaseModel, root_validator, validator
 except ImportError:
     from pydantic import BaseModel, root_validator, validator  # type: ignore[no-redef, assignment]
-from pyparsing import (
-    Char,
-    Combine,
-    Group,
-    Opt,
-    ParseException,
-    ParserElement,
-    Word,
-    alphas,
-    nums,
-)
 
 _LOGGER = logging.getLogger(__name__)
 
 _ZERO = datetime.timedelta(seconds=0)
+_DEFAULT_TIME_DELTA = datetime.timedelta(hours=2)
 
 
 def _parse_time(values: Any) -> int | str | datetime.timedelta:
@@ -62,15 +53,18 @@ def _parse_time(values: Any) -> int | str | datetime.timedelta:
         return values
     if not isinstance(values, dict):
         raise ValueError("time was not parse tree dict, timedelta, string, or int")
+    
     hour = values["hour"]
+    if hour is None:
+        return 0
     sign = 1
     if hour.startswith("+"):
         hour = hour[1:]
     elif hour.startswith("-"):
         sign = -1
         hour = hour[1:]
-    minutes = values.get("minutes", "0")
-    seconds = values.get("seconds", "0")
+    minutes = values.get("minutes") or "0"
+    seconds = values.get("seconds") or "0"
     return sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
 
 
@@ -162,11 +156,11 @@ class RuleOccurrence(BaseModel):
         return result
 
 
-def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
-    """Set a default time value when none is specified."""
-    if "time" not in values:
-        values["time"] = {"hour": "2"}
-    return values
+# def _default_time_value(values: dict[str, Any]) -> dict[str, Any]:
+#     """Set a default time value when none is specified."""
+#     if isinstance(values, dict) and "time" not in values:
+#         values["time"] = {"hour": "2"}
+#     return values
 
 
 class Rule(BaseModel):
@@ -184,12 +178,12 @@ class Rule(BaseModel):
     dst_end: Union[RuleDate, RuleDay, None] = None
     """Describes when dst ends (std starts)."""
 
-    _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
-        _default_time_value
-    )
-    _default_end_time = validator("dst_end", pre=True, allow_reuse=True)(
-        _default_time_value
-    )
+    # _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
+    #     _default_time_value
+    # )
+    # _default_end_time = validator("dst_end", pre=True, allow_reuse=True)(
+    #     _default_time_value
+    # )
 
     @root_validator(allow_reuse=True)
     def default_dst_offset(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -199,65 +193,99 @@ class Rule(BaseModel):
             values["dst"].offset = values["std"].offset + datetime.timedelta(hours=1)
         return values
 
+class TzParser:
+    """xxx."""
+
+    _str: str
+    _pos: int = 0
+    _onset_pattern: re.Pattern
+    _time_pattern: re.Pattern
+
+    def __init__(self, str: str) -> None:
+        self._str = str
+
+        self._onset_pattern = create_reg_ex_onset()
+        self._time_pattern = create_regex_start_end()
+
+    def parse(self) -> Rule:
+        """Parse the TZ string into a Rule object."""
+        std = self.parse_tz_rule_occurrence()
+        if not std:
+            raise ValueError(f"Unable to parse TZ string: {self._str}")
+        
+        dst = self.parse_tz_rule_occurrence()
+        
+        std_start = self.parse_tz_rule_date()
+
+        std_end = self.parse_tz_rule_date()
+
+        # either both dates are set or both are None
+        if (std_start is None) != (std_end is None):
+            raise ValueError(f"Unable to parse TZ string: {self._str}")
+        
+        # make sure we have reached the end of the string
+        if self._pos < len(self._str):
+            raise ValueError(f"Unable to parse TZ string: {self._str}. Unexpected end of string at position {self._pos}.")
+
+        rule = Rule(std = std, dst = dst, dst_start = std_start, dst_end = std_end)
+        
+        return rule
+
+    def parse_tz_rule_occurrence(self) -> RuleOccurrence | None:
+        """Parse the TZ string into a RuleOccurrence object."""
+        match = self._onset_pattern.match(self._str, self._pos)
+        if not match:
+            return None
+        
+        self._pos = match.end()
+
+        return RuleOccurrence(
+            name = match.group("name"),
+            offset = _parse_time(match.groupdict()),
+        )
+    
+    def parse_tz_rule_date(self) -> Union[RuleDate, RuleDay, None]:
+        """Parse the TZ string into a RuleDate or RuleDay object."""
+        match = self._time_pattern.match(self._str, self._pos)
+        if not match:
+            return None
+        
+        self._pos = match.end()
+        
+        if match["day_of_year"] is not None:
+            return RuleDay(
+                day_of_year=int(match.group("day_of_year")),
+                time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA
+            )
+        
+        return RuleDate(
+            month=int(match.group("month")),
+            week_of_month=int(match.group("week_of_month")),
+            day_of_week=int(match.group("day_of_week")),
+            time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA
+        )
+
 
 @cache
-def _create_parser(start_gator: bool, is_julian_date: bool) -> ParserElement:
-    """Create a pyparsing parser for the given TZ string."""
+def create_reg_ex_onset() -> re.Pattern:
+    """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
+    re_name = r'(\<[+\-]?\d+\>|[a-zA-Z]+)'
+    result = f'(?P<name>{re_name})'
+    result += r'((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?'
 
-    hour = Combine(Opt(Word("+-")) + Word(nums))
-    tz_time = hour.set_results_name("hour") + Opt(
-        ":"
-        + Word(nums).set_results_name("minutes")
-        + Opt(":" + Word(nums).set_results_name("seconds"))
-    )
+    return re.compile(result)
 
-    name: ParserElement
-    # Hack for inability to deal with both start word options
-    if start_gator:
-        name = Combine(Char("<") + Opt(Word("+-")) + Word(nums) + Char(">"))
-    else:
-        name = Word(alphas)
+@cache
+def create_regex_start_end() -> re.Pattern:
 
-    onset = name.set_results_name("name") + Group(Opt(tz_time)).set_results_name(
-        "offset"
-    )
-    month_date = (
-        "M"
-        + Word(nums).set_results_name("month")
-        + "."
-        + Word(nums).set_results_name("week_of_month")
-        + "."
-        + Word(nums).set_results_name("day_of_week")
-    )
-    # Hack for inability to have a single rule with both date types
-    if is_julian_date:
-        tz_days = "J" + Word(nums).set_results_name("day_of_year")
-    else:
-        tz_days = month_date
-    tz_date = tz_days + Opt("/" + Group(tz_time).set_results_name("time"))
+    # days
+    result = r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
 
-    tz_rule = (
-        Group(onset).set_results_name("std")
-        + Opt(Group(onset).set_results_name("dst"))
-        + Opt(
-            ","
-            + Group(tz_date).set_results_name("dst_start")
-            + ","
-            + Group(tz_date).set_results_name("dst_end")
-        )
-    )
-    return tz_rule
+    result += r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
 
+    return re.compile(result)
 
 def parse_tz_rule(tz_str: str) -> Rule:
     """Parse the TZ string into a Rule object."""
-
-    start_gator = tz_str.startswith("<")
-    is_julian_date = ",J" in tz_str
-    tz_rule = _create_parser(start_gator, is_julian_date)
-    try:
-        result = tz_rule.parse_string(tz_str, parse_all=True)
-    except ParseException as err:
-        raise ValueError(f"Unable to parse TZ string: {tz_str}") from err
-
-    return Rule.parse_obj(result.as_dict())
+    parser = TzParser(tz_str)
+    return parser.parse()
