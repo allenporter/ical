@@ -24,7 +24,6 @@ DST: std offset dst [offset],start[/time],end[/time]
 from __future__ import annotations
 
 import datetime
-from functools import cache
 import logging
 from typing import Any, Optional, Self, Union
 
@@ -38,21 +37,21 @@ _ZERO = datetime.timedelta(seconds=0)
 _DEFAULT_TIME_DELTA = datetime.timedelta(hours=2)
 
 
-def _parse_time(values: Any) -> int | str | datetime.timedelta:
+def _parse_time(values: Any) -> datetime.timedelta | None:
     """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format.
 
     The parse tree dict expects fields of hour, minutes, seconds (see tz_time rule in parser).
     """
-    if not values:
-        return 0
-    if isinstance(values, (int, str, datetime.timedelta)):
+    if isinstance(values, datetime.timedelta):
         return values
+    if not values:
+        return None
     if not isinstance(values, dict):
-        raise ValueError("time was not parse tree dict, timedelta, string, or int")
-    
+        raise ValueError("time was not parse tree dict or timedelta")
+
     hour = values["hour"]
     if hour is None:
-        return 0
+        return None
     sign = 1
     if hour.startswith("+"):
         hour = hour[1:]
@@ -61,7 +60,9 @@ def _parse_time(values: Any) -> int | str | datetime.timedelta:
         hour = hour[1:]
     minutes = values.get("minutes") or "0"
     seconds = values.get("seconds") or "0"
-    return sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
+    return datetime.timedelta(
+        seconds=sign * (int(hour) * 60 * 60 + int(minutes) * 60 + int(seconds))
+    )
 
 
 class RuleDay(BaseModel):
@@ -176,99 +177,99 @@ class Rule(BaseModel):
             self.dst.offset = self.std.offset + datetime.timedelta(hours=1)
         return self
 
+
 class TzParser:
-    """xxx."""
+    """Parser for TZ strings into Rule objects."""
 
     _str: str
-    _pos: int = 0
-    _onset_pattern: re.Pattern
-    _time_pattern: re.Pattern
+    _pos: int
 
     def __init__(self, str: str) -> None:
         self._str = str
-
-        self._onset_pattern = create_reg_ex_onset()
-        self._time_pattern = create_regex_start_end()
+        self._pos = 0
 
     def parse(self) -> Rule:
         """Parse the TZ string into a Rule object."""
-        std = self.parse_tz_rule_occurrence()
+        std = self._parse_tz_rule_occurrence()
         if not std:
             raise ValueError(f"Unable to parse TZ string: {self._str}")
-        
-        dst = self.parse_tz_rule_occurrence()
-        
-        std_start = self.parse_tz_rule_date()
 
-        std_end = self.parse_tz_rule_date()
+        dst = self._parse_tz_rule_occurrence()
+        std_start = self._parse_tz_rule_date()
+        std_end = self._parse_tz_rule_date()
 
         # either both dates are set or both are None
         if (std_start is None) != (std_end is None):
             raise ValueError(f"Unable to parse TZ string: {self._str}")
-        
+
         # make sure we have reached the end of the string
         if self._pos < len(self._str):
-            raise ValueError(f"Unable to parse TZ string: {self._str}. Unexpected end of string at position {self._pos}.")
+            raise ValueError(
+                f"Unable to parse TZ string: {self._str}. Unexpected end of string at position {self._pos}."
+            )
 
-        rule = Rule(std = std, dst = dst, dst_start = std_start, dst_end = std_end)
-        
-        return rule
+        return Rule(std=std, dst=dst, dst_start=std_start, dst_end=std_end)
 
-    def parse_tz_rule_occurrence(self) -> RuleOccurrence | None:
+    def _parse_tz_rule_occurrence(self) -> RuleOccurrence | None:
         """Parse the TZ string into a RuleOccurrence object."""
-        match = self._onset_pattern.match(self._str, self._pos)
+        match = _OFFSET_RE_PATTERN.match(self._str, self._pos)
         if not match:
             return None
-        
+
         self._pos = match.end()
 
         return RuleOccurrence(
-            name = match.group("name"),
-            offset = _parse_time(match.groupdict()),
+            name=match.group("name"), offset=_parse_time(match.groupdict()) or _ZERO
         )
-    
-    def parse_tz_rule_date(self) -> Union[RuleDate, RuleDay, None]:
+
+    def _parse_tz_rule_date(self) -> Union[RuleDate, RuleDay, None]:
         """Parse the TZ string into a RuleDate or RuleDay object."""
-        match = self._time_pattern.match(self._str, self._pos)
+        match = _START_END_RE_PATTERN.match(self._str, self._pos)
         if not match:
             return None
-        
+
         self._pos = match.end()
-        
+
         if match["day_of_year"] is not None:
             return RuleDay(
                 day_of_year=int(match.group("day_of_year")),
-                time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA
+                time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
             )
-        
+
         return RuleDate(
             month=int(match.group("month")),
             week_of_month=int(match.group("week_of_month")),
             day_of_week=int(match.group("day_of_week")),
-            time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA
+            time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
         )
 
 
-@cache
-def create_reg_ex_onset() -> re.Pattern:
+def build_offset_regex() -> re.Pattern[str]:
     """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
-    re_name = r'(\<[+\-]?\d+\>|[a-zA-Z]+)'
-    result = f'(?P<name>{re_name})'
-    result += r'((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?'
-
+    # name
+    result = r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"
+    # offset
+    result += (
+        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+    )
     return re.compile(result)
 
-@cache
-def create_regex_start_end() -> re.Pattern:
 
-    # days
+def build_start_end_regex() -> re.Pattern[str]:
+    # days in either julian (J prefix) or month.week.day (M prefix) format
     result = r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
-
-    result += r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
-
+    # time
+    result += (
+        r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+    )
     return re.compile(result)
+
 
 def parse_tz_rule(tz_str: str) -> Rule:
     """Parse the TZ string into a Rule object."""
     parser = TzParser(tz_str)
     return parser.parse()
+
+
+_OFFSET_RE_PATTERN = build_offset_regex()
+_START_END_RE_PATTERN = build_start_end_regex()
