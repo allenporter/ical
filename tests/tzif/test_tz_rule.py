@@ -1,7 +1,7 @@
 """Tests for the tzif library."""
 
 import datetime
-from typing import cast
+from typing import cast, Any
 
 import pytest
 
@@ -224,3 +224,14 @@ def test_invalid_time() -> None:
                 "time": 0.12345,
             }
         )
+
+
+def test_parse_tz_rule_benchmark(benchmark: Any) -> None:
+    """Benchmark to measure the speed of parsing."""
+
+    def parse() -> None:
+        tz_rule.parse_tz_rule("EST5")
+        tz_rule.parse_tz_rule("EST+5EDT,M3.2.0,M11.1.0")
+        tz_rule.parse_tz_rule("<-03>3<-02>,M3.5.0/-2,M10.5.0/-1")
+
+    benchmark(parse)
