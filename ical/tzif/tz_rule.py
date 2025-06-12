@@ -23,6 +23,8 @@ DST: std offset dst [offset],start[/time],end[/time]
 
 from __future__ import annotations
 
+
+from dataclasses import dataclass
 import datetime
 from functools import cache
 import logging
