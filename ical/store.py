@@ -88,6 +88,13 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
         "Expanding item %s %s to look for match of %s", uid, item.dtstart, recurrence_id
     )
     dtstart = RecurrenceId.to_value(recurrence_id)
+    if isinstance(dtstart, datetime.datetime) and isinstance(
+        item.dtstart, datetime.datetime
+    ):
+        # The recurrence_id does not support timezone information, so put it in the
+        # same timezone as the item to compare.
+        if item.dtstart.tzinfo is not None:
+            dtstart = dtstart.replace(tzinfo=item.dtstart.tzinfo)
     for dt in item.as_rrule() or ():
         if isinstance(dt, datetime.datetime):
             if dt.date() > _MAX_SCAN_DATE:
@@ -276,6 +283,14 @@ class GenericStore(Generic[_T]):
             return
 
         exdate = RecurrenceId.to_value(recurrence_id)
+        # RecurrenceId does not support timezone information. The exclusion
+        # must have the same timezone as the item to compare.
+        if (
+            isinstance(exdate, datetime.datetime)
+            and isinstance(store_item.dtstart, datetime.datetime)
+            and store_item.dtstart.tzinfo
+        ):
+            exdate = exdate.replace(tzinfo=store_item.dtstart.tzinfo)
         if recurrence_range == Range.NONE:
             # A single recurrence instance is removed. Add an exclusion to
             # to the event.
