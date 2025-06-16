@@ -89,7 +89,11 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
     )
     dtstart = RecurrenceId.to_value(recurrence_id)
     for dt in item.as_rrule() or ():
-        if dt.date() > _MAX_SCAN_DATE:
+        if isinstance(dt, datetime.datetime):
+            if dt.date() > _MAX_SCAN_DATE:
+                _LOGGER.debug("Aborting scan, date %s is beyond max scan date", dt)
+                break
+        elif dt > _MAX_SCAN_DATE:
             _LOGGER.debug("Aborting scan, date %s is beyond max scan date", dt)
             break
         if dt == dtstart:
