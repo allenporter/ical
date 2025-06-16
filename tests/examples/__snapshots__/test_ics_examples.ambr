@@ -39,6 +39,15 @@
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 8), dtend=datetime.date(2025, 5, 9), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250508', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
   ])
 # ---
+# name: test_iterate_events[store_edit_bugs]
+  list([
+    Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 4, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 4, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210904T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 11, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 11, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210911T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 18, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 18, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210918T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 25, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 25, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210925T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 10, 2, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 10, 2, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20211002T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
+  ])
+# ---
 # name: test_parse[apple_ical]
   '''
   BEGIN:VCALENDAR
@@ -1982,6 +1991,27 @@
   SEQUENCE:0
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[store_edit_bugs]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//homeassistant.io//local_calendar 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20210805T163353Z
+  UID:HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me
+  DTSTART;TZID=Europe/Amsterdam:20210904T110000
+  DTEND;TZID=Europe/Amsterdam:20210904T120000
+  SUMMARY:My Event
+  DESCRIPTION:Example
+  RRULE:FREQ=WEEKLY
+  SEQUENCE:0
+  STATUS:CONFIRMED
   END:VEVENT
   END:VCALENDAR
   '''
