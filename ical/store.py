@@ -39,6 +39,9 @@ __all__ = [
 ]
 
 _T = TypeVar("_T", bound="Event | Todo")
+# We won't be able to edit dates more than 100 years in the future, but this
+# should be sufficient for most use cases.
+_MAX_SCAN_DATE = datetime.date.today() + datetime.timedelta(days=365 * 100)
 
 
 def _ensure_timezone(
@@ -86,6 +89,9 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
     )
     dtstart = RecurrenceId.to_value(recurrence_id)
     for dt in item.as_rrule() or ():
+        if dt.date() > _MAX_SCAN_DATE:
+            _LOGGER.debug("Aborting scan, date %s is beyond max scan date", dt)
+            break
         if dt == dtstart:
             _LOGGER.debug("Found expanded recurrence_id: %s", dt)
             return True
