@@ -9,6 +9,8 @@ import zoneinfo
 from collections.abc import Callable, Generator
 from typing import Any
 from unittest.mock import patch
+import itertools
+import pathlib
 
 import pytest
 from freezegun import freeze_time
@@ -1492,3 +1494,65 @@ def test_dtstart_timezone(
     todo = todos[0]
     assert todo.due is None
     assert todo.dtstart.tzinfo == TZ
+
+
+@pytest.mark.parametrize(
+    ("calendar"),
+    [
+        IcsCalendarStream.calendar_from_ics(
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+        ),
+    ]
+)
+def test_store_edit_year_override(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Exercise a bug where the year gets overridden when editing an event."""
+
+    assert len(calendar.events) == 1
+
+    viewer_tz = zoneinfo.ZoneInfo("America/New_York")
+    calendar_tz = zoneinfo.ZoneInfo("Europe/Amsterdam")
+
+
+    timeline = calendar.timeline_tz(tzinfo=viewer_tz)
+    # Pick an arbitrary event in the series
+    iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    event1 = next(iter)
+    assert event1.recurrence_id == "20241005T110000"
+    assert event1.dtstart == datetime.datetime(2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz)
+    event2 = next(iter)
+    assert event2.recurrence_id == "20241012T110000"
+    assert event2.dtstart == datetime.datetime(2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz)
+    event3 = next(iter)
+    assert event3.recurrence_id == "20241019T110000"
+    assert event3.dtstart == datetime.datetime(2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz)
+
+    # Move event2 one hour earlier
+    update_dtstart = event2.dtstart.astimezone(viewer_tz)
+    assert update_dtstart == datetime.datetime(2024, 10, 12, 5, 0, 0, tzinfo=viewer_tz)
+    update_dtstart -= datetime.timedelta(hours=1)
+
+    with pytest.raises(StoreError, match=r"No existing item with uid/recurrence_id"):
+        store.edit(
+            event2.uid,
+            # Move event to 9am
+            Event(
+                dtstart=update_dtstart,
+                end=update_dtstart + datetime.timedelta(hours=1),
+            ),
+            recurrence_id=event2.recurrence_id,
+        )
+
+    # Verify that event2 was updated to begin 2 hours earlier.
+    # iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    # event1 = next(iter)
+    # assert event1.recurrence_id == "20241005T110000"
+    # assert event1.dtstart == datetime.datetime(2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz)
+    # event2 = next(iter)
+    # assert event2.recurrence_id == "20241012T110000"
+    # assert event2.dtstart == datetime.datetime(2024, 10, 12, 9, 0, 0, tzinfo=calendar_tz)
+    # event3 = next(iter)
+    # assert event3.recurrence_id == "20241019T110000"
+    # assert event3.dtstart == datetime.datetime(2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz)
