@@ -283,17 +283,17 @@ class GenericStore(Generic[_T]):
             return
 
         exdate = RecurrenceId.to_value(recurrence_id)
-        # RecurrenceId does not support timezone information. The exclusion
-        # must have the same timezone as the item to compare.
-        if (
-            isinstance(exdate, datetime.datetime)
-            and isinstance(store_item.dtstart, datetime.datetime)
-            and store_item.dtstart.tzinfo
-        ):
-            exdate = exdate.replace(tzinfo=store_item.dtstart.tzinfo)
         if recurrence_range == Range.NONE:
             # A single recurrence instance is removed. Add an exclusion to
             # to the event.
+            # RecurrenceId does not support timezone information. The exclusion
+            # must have the same timezone as the item to compare.
+            if (
+                isinstance(exdate, datetime.datetime)
+                and isinstance(store_item.dtstart, datetime.datetime)
+                and store_item.dtstart.tzinfo
+            ):
+                exdate = exdate.replace(tzinfo=store_item.dtstart.tzinfo)
             store_item.exdate.append(exdate)
             return
 
@@ -303,6 +303,12 @@ class GenericStore(Generic[_T]):
         # is the lowest frequency supported so subtracting one day is
         # safe and works for both dates and datetimes.
         store_item.rrule.count = None
+        if (
+            isinstance(exdate, datetime.datetime)
+            and isinstance(store_item.dtstart, datetime.datetime)
+            and store_item.dtstart.tzinfo
+        ):
+            exdate = exdate.astimezone(datetime.timezone.utc)
         store_item.rrule.until = exdate - datetime.timedelta(days=1)
         now = self._dtstamp_fn()
         store_item.dtstamp = now
