@@ -136,6 +136,15 @@ class AllDayConverter(Iterable[Union[datetime.date, datetime.datetime]]):
             yield datetime.date.fromordinal(value.toordinal())
 
 
+def _defloat(
+    dt: datetime.datetime | datetime.date,
+) -> datetime.datetime | datetime.date:
+    """Convert a datetime to a floating time."""
+    if isinstance(dt, datetime.datetime) and dt.tzinfo is not None:
+        return dt.replace(tzinfo=None)
+    return dt
+
+
 class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     """A wrapper around the dateutil ruleset library to workaround limitations.
 
@@ -149,6 +158,9 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     _converter: Callable[
         [Iterable[Union[datetime.date, datetime.datetime]]],
         Iterable[Union[datetime.date, datetime.datetime]],
+    ]
+    _defloat: Callable[
+        [datetime.datetime | datetime.date], datetime.datetime | datetime.date
     ]
 
     def __init__(
@@ -171,6 +183,13 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
             self._converter = AllDayConverter
         else:
             self._converter = lambda x: x
+        if (
+            isinstance(self._dtstart, datetime.datetime)
+            and self._dtstart.tzinfo is None
+        ):
+            self._defloat = _defloat
+        else:
+            self._defloat = lambda x: x
 
     def _ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Create a dateutil.rruleset."""
@@ -178,9 +197,9 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]
         for rdate in self._rdate:
-            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
+            ruleset.rdate(self._defloat(rdate))  # type: ignore[no-untyped-call]
         for exdate in self._exdate:
-            ruleset.exdate(exdate)  # type: ignore[no-untyped-call]
+            ruleset.exdate(self._defloat(exdate))  # type: ignore[no-untyped-call]
         return ruleset
 
     def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:

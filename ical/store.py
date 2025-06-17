@@ -16,6 +16,7 @@ from collections.abc import Callable, Iterable, Generator
 from typing import Any, TypeVar, Generic, cast
 
 from .calendar import Calendar
+from .component import validate_recurrence_dates
 from .event import Event
 from .exceptions import StoreError, TodoStoreError, EventStoreError
 from .iter import RulesetIterable
