@@ -1552,7 +1552,6 @@ def test_store_edit_year_overrun_edit_once(
         recurrence_range=Range.NONE,
     )
 
-    store = EventStore(calendar)
     # The edited event has its own entry in the calendar
     assert len(calendar.events) == 2
 
@@ -1573,6 +1572,52 @@ def test_store_edit_year_overrun_edit_once(
     assert event3.recurrence_id == "20241019T110000"
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event4 = next(iter)
+    assert event4.recurrence_id == "20241026T110000"
+    assert event4.dtstart == datetime.datetime(
+        2024, 10, 26, 11, 0, 0, tzinfo=calendar_tz
+    )
+
+    # Edit all events after event3
+    update_dtstart = event3.dtstart.astimezone(viewer_tz)
+    update_dtstart -= datetime.timedelta(minutes=30)
+
+    store.edit(
+        event3.uid,
+        Event(
+            dtstart=update_dtstart,
+            end=update_dtstart + datetime.timedelta(hours=1),
+        ),
+        recurrence_id=event3.recurrence_id,
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+
+    # The edited event has its own entry in the calendar
+    assert len(calendar.events) == 3
+
+    # Verify event3 and beyond are now updated.
+    timeline = calendar.timeline_tz(tzinfo=viewer_tz)
+    iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    event1 = next(iter)
+    assert event1.recurrence_id == "20241005T110000"
+    assert event1.dtstart == datetime.datetime(
+        2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event2 = next(iter)
+    assert event2.recurrence_id == "20241012T110000"
+    assert event2.dtstart == datetime.datetime(
+        2024, 10, 12, 10, 0, 0, tzinfo=calendar_tz
+    )
+    event3 = next(iter)
+    assert event3.recurrence_id == "20241019T043000"
+    assert event3.dtstart == datetime.datetime(
+        2024, 10, 19, 10, 30, 0, tzinfo=calendar_tz
+    )
+    event4 = next(iter)
+    assert event4.recurrence_id == "20241026T043000"
+    assert event4.dtstart == datetime.datetime(
+        2024, 10, 26, 10, 30, 0, tzinfo=calendar_tz
     )
 
 
@@ -1654,3 +1699,133 @@ def test_store_edit_year_overrun_edit_this_and_future(
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 10, 0, 0, tzinfo=calendar_tz
     )
+
+
+@pytest.mark.parametrize(
+    ("calendar"),
+    [
+        IcsCalendarStream.calendar_from_ics(
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+        ),
+    ],
+)
+def test_store_edit_year_override_set_floating_dates(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Exercise a bug where the year gets overrun when editing an event.
+
+    This makes the edits using floating dates.
+    """
+
+    assert len(calendar.events) == 1
+
+    viewer_tz = zoneinfo.ZoneInfo("America/New_York")
+    calendar_tz = zoneinfo.ZoneInfo("Europe/Amsterdam")
+
+    timeline = calendar.timeline_tz(tzinfo=viewer_tz)
+    # Pick an arbitrary event in the series
+    iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    event1 = next(iter)
+    assert event1.recurrence_id == "20241005T110000"
+    assert event1.dtstart == datetime.datetime(
+        2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event2 = next(iter)
+    assert event2.recurrence_id == "20241012T110000"
+    assert event2.dtstart == datetime.datetime(
+        2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event3 = next(iter)
+    assert event3.recurrence_id == "20241019T110000"
+    assert event3.dtstart == datetime.datetime(
+        2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
+    )
+
+    # Move event2 one hour earlier (9am in calendar tz)
+    update_dtstart = event2.dtstart.astimezone(viewer_tz)
+    assert update_dtstart == datetime.datetime(
+        2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz
+    )
+    assert update_dtstart == datetime.datetime(2024, 10, 12, 5, 0, 0, tzinfo=viewer_tz)
+    update_dtstart -= datetime.timedelta(hours=1)
+    update_dtstart = update_dtstart.replace(tzinfo=None)
+    assert update_dtstart == datetime.datetime(2024, 10, 12, 4, 0, 0)
+
+    store.edit(
+        event2.uid,
+        Event(
+            dtstart=update_dtstart,
+            end=update_dtstart + datetime.timedelta(hours=1),
+        ),
+        recurrence_id=event2.recurrence_id,
+        recurrence_range=Range.NONE,
+    )
+
+    # The edited event has its own entry in the calendar
+    assert len(calendar.events) == 2
+
+    # Verify that event2 was updated to begin 1 hour earlier.
+    timeline = calendar.timeline_tz(tzinfo=viewer_tz)
+    iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    event1 = next(iter)
+    assert event1.recurrence_id == "20241005T110000"
+    assert event1.dtstart == datetime.datetime(
+        2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event2 = next(iter)
+    assert event2.recurrence_id == "20241012T110000"
+    assert event2.dtstart == datetime.datetime(
+        2024,
+        10,
+        12,
+        4,
+        0,
+        0,
+    )
+    event3 = next(iter)
+    assert event3.recurrence_id == "20241019T110000"
+    assert event3.dtstart == datetime.datetime(
+        2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event4 = next(iter)
+    assert event4.recurrence_id == "20241026T110000"
+    assert event4.dtstart == datetime.datetime(
+        2024, 10, 26, 11, 0, 0, tzinfo=calendar_tz
+    )
+
+    # Edit all events after event3
+    update_dtstart = event3.dtstart.astimezone(viewer_tz)
+    update_dtstart -= datetime.timedelta(minutes=30)
+    update_dtstart = update_dtstart.replace(tzinfo=None)
+
+    store.edit(
+        event3.uid,
+        Event(
+            dtstart=update_dtstart,
+            end=update_dtstart + datetime.timedelta(hours=1),
+        ),
+        recurrence_id=event3.recurrence_id,
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+
+    # The edited event has its own entry in the calendar
+    assert len(calendar.events) == 3
+
+    # Verify event3 and beyond are now updated.
+    timeline = calendar.timeline_tz(tzinfo=viewer_tz)
+    iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
+    event1 = next(iter)
+    assert event1.recurrence_id == "20241005T110000"
+    assert event1.dtstart == datetime.datetime(
+        2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
+    )
+    event2 = next(iter)
+    assert event2.recurrence_id == "20241012T110000"
+    assert event2.dtstart == datetime.datetime(2024, 10, 12, 4, 0, 0)
+    event3 = next(iter)
+    assert event3.recurrence_id == "20241019T043000"
+    assert event3.dtstart == datetime.datetime(2024, 10, 19, 4, 30, 0)
+    event4 = next(iter)
+    assert event4.recurrence_id == "20241026T043000"
+    assert event4.dtstart == datetime.datetime(2024, 10, 26, 4, 30, 0)
