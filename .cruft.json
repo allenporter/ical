@@ -1,6 +1,6 @@
 {
   "template": "http://github.com/allenporter/cookiecutter-python",
-  "commit": "f942b3d50b2cf83907c7f5260cb870dbbec0037b",
+  "commit": "c7d1638915ef2f3ac58ca3fbeda655b234cb8f0d",
   "checkout": null,
   "context": {
     "cookiecutter": {
@@ -10,7 +10,8 @@
       "project_name": "ical",
       "description": "Python iCalendar implementation (rfc 2445)",
       "version": "8.0.1",
-      "_template": "http://github.com/allenporter/cookiecutter-python"
+      "_template": "http://github.com/allenporter/cookiecutter-python",
+      "_commit": "c7d1638915ef2f3ac58ca3fbeda655b234cb8f0d"
     }
   },
   "directory": null
