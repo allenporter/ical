@@ -193,18 +193,24 @@ class RecurrenceId(BaseModel):
             if key == "date":
                 if isinstance(value, str):
                     return value
+                if isinstance(value, dict):
+                    prop_value = DateTimeEncoder.__encode_property_value__(value)
+                    if prop_value:
+                        return prop_value
                 if isinstance(value, datetime.datetime):
                     prop = DateTimeEncoder.__encode_property_json__(value)
                     prop_value = DateTimeEncoder.__encode_property_value__(prop)
                     if prop_value:
                         return prop_value
-                else:
-                    return DateEncoder.__encode_property_json__(value)
+                return DateEncoder.__encode_property_json__(value)
         raise ValueError("No date provided to RecurrenceId")
 
     @classmethod
     def __encode_property_params__(
-        cls, value: str | dict[str, str | datetime.date | datetime.datetime]
+        cls,
+        value: (
+            str | dict[str, str | dict[str, str] | datetime.date | datetime.datetime]
+        ),
     ) -> list[ParsedPropertyParameter]:
         if not isinstance(value, dict):
             return []
@@ -212,7 +218,10 @@ class RecurrenceId(BaseModel):
         params = []
         for key, param in value.items():
             if key == "date":
-                if isinstance(param, datetime.datetime):
+                if isinstance(param, dict):
+                    params.extend(DateTimeEncoder.__encode_property_params__(param))
+                    params.append(ParsedPropertyParameter("VALUE", ["DATE-TIME"]))
+                elif isinstance(param, datetime.datetime):
                     prop = DateTimeEncoder.__encode_property_json__(param)
                     params.extend(DateTimeEncoder.__encode_property_params__(prop))
                     params.append(ParsedPropertyParameter("VALUE", ["DATE-TIME"]))
