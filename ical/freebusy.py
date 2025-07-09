@@ -8,10 +8,7 @@ import datetime
 import logging
 from typing import Any, Optional, Union
 
-try:
-    from pydantic.v1 import Field, validator
-except ImportError:
-    from pydantic import Field, validator  # type: ignore[assignment]
+from pydantic.v1 import Field, validator
 
 from .component import ComponentModel
 from .parsing.property import ParsedProperty

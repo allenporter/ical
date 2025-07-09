@@ -6,10 +6,7 @@ from collections.abc import Callable, Generator
 from typing import Any
 import logging
 
-try:
-    from pydantic.v1 import root_validator
-except ImportError:
-    from pydantic import root_validator  # type: ignore[no-redef]
+from pydantic.v1 import root_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 

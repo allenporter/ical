@@ -22,12 +22,8 @@ import json
 import logging
 from typing import Any, Union, get_args, get_origin
 
-try:
-    from pydantic.v1 import BaseModel, root_validator, ValidationError
-    from pydantic.v1.fields import SHAPE_LIST
-except ImportError:
-    from pydantic import BaseModel, root_validator, ValidationError  # type: ignore[no-redef, assignment]
-    from pydantic.fields import SHAPE_LIST  # type: ignore[attr-defined, no-redef]
+from pydantic.v1 import BaseModel, ValidationError, root_validator
+from pydantic.v1.fields import SHAPE_LIST
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty

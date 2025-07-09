@@ -21,11 +21,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Optional, Union
 
 from dateutil.rrule import rruleset
-
-try:
-    from pydantic.v1 import Field, root_validator, validator
-except ImportError:
-    from pydantic import Field, root_validator, validator  # type: ignore[no-redef, assignment]
+from pydantic.v1 import Field, root_validator, validator
 
 from .component import ComponentModel
 from .iter import MergedIterable, RecurIterable
