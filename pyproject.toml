@@ -1,3 +1,29 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=77.0"]
+
+[project]
+name = "ical"
+version = "10.0.4"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+description = "Python iCalendar implementation (rfc 2445)"
+readme = "README.md"
+authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
+requires-python = ">=3.11"
+dependencies = [
+  "python-dateutil>=2.8.2",
+  "tzdata>=2023.3",
+  "pydantic>=2.10.4",
+  "pyparsing>=3.0.9",
+]
+
+[project.urls]
+Source = "https://github.com/allenporter/ical"
+
+[tool.setuptools.packages.find]
+include = ["ical*"]
+
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = [
