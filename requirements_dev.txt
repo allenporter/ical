@@ -10,7 +10,7 @@ pytest==8.4.1
 ruff==0.12.3
 
 python-dateutil==2.9.0.post0
-freezegun==1.5.2
+freezegun==1.5.3
 pydantic==2.11.7
 pyparsing==3.2.3
 pytest-benchmark==5.1.0
