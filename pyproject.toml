@@ -11,6 +11,7 @@ description = "Python iCalendar implementation (rfc 2445)"
 readme = "README.md"
 authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
 requires-python = ">=3.11"
+classifiers = []
 dependencies = [
   "python-dateutil>=2.8.2",
   "tzdata>=2023.3",
@@ -27,7 +28,6 @@ include = ["ical*"]
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = [
-  "setup.py",
   "venv/",
   "tests/",
 ]
