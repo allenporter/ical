@@ -42,10 +42,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Union
 
 from dateutil import rrule
-try:
-    from pydantic.v1 import BaseModel, Field
-except ImportError:
-    from pydantic import BaseModel, Field # type: ignore[assignment]
+from pydantic.v1 import BaseModel, Field
 
 from ical.parsing.property import ParsedProperty
 

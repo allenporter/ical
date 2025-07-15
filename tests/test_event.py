@@ -8,11 +8,7 @@ from unittest.mock import patch
 import zoneinfo
 
 import pytest
-
-try:
-    from pydantic.v1 import ValidationError
-except ImportError:
-    from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from ical.event import Event
 from ical.exceptions import CalendarParseError

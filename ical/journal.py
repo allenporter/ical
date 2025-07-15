@@ -10,10 +10,7 @@ import logging
 from collections.abc import Iterable
 from typing import Any, Optional, Union
 
-try:
-    from pydantic.v1 import Field, root_validator
-except ImportError:
-    from pydantic import Field, root_validator  # type: ignore[no-redef, assignment]
+from pydantic.v1 import Field, root_validator
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .parsing.property import ParsedProperty

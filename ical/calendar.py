@@ -8,10 +8,7 @@ import logging
 from typing import Optional, Any
 import zoneinfo
 
-try:
-    from pydantic.v1 import Field, root_validator
-except ImportError:
-    from pydantic import Field, root_validator  # type: ignore[no-redef, assignment]
+from pydantic.v1 import Field, root_validator
 
 from .component import ComponentModel
 from .event import Event

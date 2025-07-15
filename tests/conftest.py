@@ -7,12 +7,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-
-try:
-    from pydantic.v1.json import pydantic_encoder
-except ImportError:
-    from pydantic.json import pydantic_encoder  # type: ignore[no-redef]
-
+from pydantic.v1.json import pydantic_encoder
 
 PRODID = "-//example//1.2.3"
 

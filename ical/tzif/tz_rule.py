@@ -29,11 +29,7 @@ import logging
 from typing import Any, Optional, Union
 
 from dateutil import rrule
-
-try:
-    from pydantic.v1 import BaseModel, root_validator, validator
-except ImportError:
-    from pydantic import BaseModel, root_validator, validator  # type: ignore[no-redef, assignment]
+from pydantic.v1 import BaseModel, root_validator, validator
 from pyparsing import (
     Char,
     Combine,

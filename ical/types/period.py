@@ -7,10 +7,7 @@ import enum
 import logging
 from typing import Any, Optional
 
-try:
-    from pydantic.v1 import BaseModel, Field, root_validator
-except ImportError:
-    from pydantic import BaseModel, Field, root_validator  # type: ignore[no-redef, assignment]
+from pydantic.v1 import BaseModel, Field, root_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
