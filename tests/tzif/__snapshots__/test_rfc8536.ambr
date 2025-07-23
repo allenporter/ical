@@ -121,7 +121,7 @@
       'dst_start': None,
       'std': dict({
         'name': 'HST',
-        'offset': -36000.0,
+        'offset': '-PT10H',
       }),
     }),
     'transitions': list([

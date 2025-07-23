@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
 import dataclasses
 import enum
 import logging
 from typing import Any, Optional
 
-from pydantic.v1 import BaseModel, Field, root_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ical.parsing.property import ParsedPropertyParameter
 
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
-from .enum import create_enum_validator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,7 +92,7 @@ class CalAddress(BaseModel):
 
     language: Optional[str] = Field(alias="LANGUAGE", default=None)
 
-    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
+    _parse_parameter_values = model_validator(mode="before")(
         parse_parameter_values
     )
 
@@ -108,9 +106,6 @@ class CalAddress(BaseModel):
     def __encode_property_params__(
         cls, model_data: dict[str, Any]
     ) -> list[ParsedPropertyParameter]:
-        return encode_model_property_params(cls.__fields__.values(), model_data)
+        return encode_model_property_params(cls.model_fields, model_data)
 
-    class Config:
-        """Pydantic model configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)

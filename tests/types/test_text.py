@@ -21,12 +21,11 @@ def test_text() -> None:
             value="Project XYZ Final Review\\nConference Room - 3B\\nCome Prepared.",
         )
     )
-    model = Model.parse_obj(component.as_dict())
-    assert model == {
-        "text_value": "\n".join(
+    model = Model.model_validate(component.as_dict())
+    assert model == Model(text_value="\n".join(
             ["Project XYZ Final Review", "Conference Room - 3B", "Come Prepared."]
         )
-    }
+    )
     assert model.__encode_component_root__() == ParsedComponent(
         name="Model",
         properties=[
@@ -40,7 +39,5 @@ def test_text() -> None:
 
 def test_text_from_obj() -> None:
     """Test text when creating from an object."""
-    model = Model.parse_obj({"text_value": "some-value"})
-    assert model == {
-        "text_value": "some-value",
-    }
+    model = Model.model_validate({"text_value": "some-value"})
+    assert model == Model(text_value="some-value")

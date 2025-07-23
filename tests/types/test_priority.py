@@ -17,14 +17,14 @@ class FakeModel(ComponentModel):
 def test_priority() -> None:
     """Test for priority fields."""
 
-    model = FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="1")]})
+    model = FakeModel.model_validate({"pri": [ParsedProperty(name="dt", value="1")]})
     assert model.pri == 1
 
-    model = FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="9")]})
+    model = FakeModel.model_validate({"pri": [ParsedProperty(name="dt", value="9")]})
     assert model.pri == 9
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="-1")]})
+        FakeModel.model_validate({"pri": [ParsedProperty(name="dt", value="-1")]})
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj({"pri": [ParsedProperty(name="dt", value="10")]})
+        FakeModel.model_validate({"pri": [ParsedProperty(name="dt", value="10")]})

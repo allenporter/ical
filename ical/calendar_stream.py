@@ -30,13 +30,14 @@ from __future__ import annotations
 
 import logging
 import pyparsing
-from pydantic.v1 import Field
+from pydantic import Field, field_serializer
 
 from .calendar import Calendar
 from .component import ComponentModel
 from .parsing.component import encode_content, parse_content
-from .types.data_types import DATA_TYPE
+from .types.data_types import serialize_field
 from .exceptions import CalendarParseError
+from pydantic import ConfigDict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,9 +86,8 @@ class IcsCalendarStream(CalendarStream):
         stream = cls(vcalendar=[calendar])
         return stream.ics()
 
-    class Config:
-        """Configuration for IcsCalendarStream pydantic model."""
-
-        json_encoders = DATA_TYPE.encode_property_json
-        validate_assignment = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(
+        validate_assignment=True,
+        populate_by_name=True,
+    )
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

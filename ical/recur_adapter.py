@@ -70,7 +70,7 @@ class RecurAdapter(Generic[ItemType]):
                 updates["dtend"] = dtend
             if isinstance(self._item, Todo) and self._item.due and dtend:
                 updates["due"] = dtend
-            return cast(ItemType, self._item.copy(update=updates))
+            return cast(ItemType, self._item.model_copy(update=updates))
 
         ts = Timespan.of(dtstart, dtend, self._tzinfo)
         return LazySortableItem(ts, build)

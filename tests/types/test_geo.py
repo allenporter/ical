@@ -16,11 +16,11 @@ def test_geo() -> None:
 
         geo: Geo
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {"geo": [ParsedProperty(name="geo", value="120.0;-30.1")]}
     )
     assert model.geo.lat == 120.0
     assert model.geo.lng == -30.1
 
     with pytest.raises(CalendarParseError):
-        TestModel.parse_obj({"geo": [ParsedProperty(name="geo", value="10")]})
+        TestModel.model_validate({"geo": [ParsedProperty(name="geo", value="10")]})

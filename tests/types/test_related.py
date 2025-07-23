@@ -1,5 +1,6 @@
 """Tests for RELATED-TO data types."""
 
+from pydantic import field_serializer
 import pytest
 from ical.exceptions import CalendarParseError
 
@@ -7,7 +8,7 @@ from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types import RelatedTo, RelationshipType
-from ical.types.data_types import DATA_TYPE
+from ical.types.data_types import serialize_field
 
 
 class FakeModel(ComponentModel):
@@ -15,15 +16,12 @@ class FakeModel(ComponentModel):
 
     example: RelatedTo
 
-    class Config:
-        """Pydantic model configuration."""
-
-        json_encoders = DATA_TYPE.encode_property_json
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 def test_default_reltype() -> None:
     """Test for no explicit reltype specified."""
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {
             "example": [
                 ParsedProperty(
@@ -50,7 +48,7 @@ def test_default_reltype() -> None:
 def test_reltype(reltype: str) -> None:
     """Test for no explicit reltype specified."""
 
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {
             "example": [
                 ParsedProperty(
@@ -67,29 +65,27 @@ def test_reltype(reltype: str) -> None:
 
 
 def test_invalid_reltype() -> None:
-    model = FakeModel.parse_obj(
-        {
-            "example": [
-                ParsedProperty(
-                    name="example",
-                    value="example-uid@example.com",
-                    params=[
-                        ParsedPropertyParameter(
-                            name="reltype", values=["invalid-reltype"]
-                        )
-                    ],
-                )
-            ]
-        },
-    )
-    assert model.example
-    assert model.example.uid == "example-uid@example.com"
-    assert not model.example.reltype
+    with pytest.raises(CalendarParseError):
+        model = FakeModel.model_validate(
+            {
+                "example": [
+                    ParsedProperty(
+                        name="example",
+                        value="example-uid@example.com",
+                        params=[
+                            ParsedPropertyParameter(
+                                name="reltype", values=["invalid-reltype"]
+                            )
+                        ],
+                    )
+                ]
+            },
+        )
 
 
 def test_too_many_reltype_values() -> None:
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj(
+        FakeModel.model_validate(
             {
                 "example": [
                     ParsedProperty(

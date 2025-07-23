@@ -2,11 +2,12 @@
 
 import datetime
 
+from pydantic import field_serializer
 import pytest
 
 from ical.component import ComponentModel
 from ical.parsing.property import ParsedProperty
-from ical.types.data_types import DATA_TYPE
+from ical.types.data_types import serialize_field
 
 
 class FakeModel(ComponentModel):
@@ -14,10 +15,7 @@ class FakeModel(ComponentModel):
 
     duration: datetime.timedelta
 
-    class Config:
-        """Pydantic model configuration."""
-
-        json_encoders = DATA_TYPE.encode_property_json
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 @pytest.mark.parametrize(
@@ -36,7 +34,7 @@ class FakeModel(ComponentModel):
 def test_duration(value: str, duration: datetime.timedelta, encoded_value: str) -> None:
     """Test for duration fields."""
 
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {"duration": [ParsedProperty(name="duration", value=value)]}
     )
     assert model.duration == duration

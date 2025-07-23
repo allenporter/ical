@@ -42,7 +42,7 @@ def test_duration() -> None:
     # Both due and Duration can't be set
     with pytest.raises(
         CalendarParseError,
-        match="Failed to parse calendar TODO component: Only one of dtend or duration may be set.",
+        match="Failed to parse calendar TODO component: Value error, Only one of dtend or duration may be set.",
     ):
         Todo(
             start=datetime.date(2022, 8, 7),
@@ -53,7 +53,7 @@ def test_duration() -> None:
     # Duration requires start date
     with pytest.raises(
         CalendarParseError,
-        match="^Failed to parse calendar TODO component: Duration requires that dtstart is specified$",
+        match="^Failed to parse calendar TODO component: Value error, Duration requires that dtstart is specified$",
     ):
         Todo(duration=datetime.timedelta(days=1))
 

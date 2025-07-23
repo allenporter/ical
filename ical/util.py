@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import datetime
 from importlib import metadata
+from types import NoneType
+from typing import Any, Union, get_args, get_origin
 import uuid
 
 __all__ = [
@@ -51,3 +54,14 @@ def normalize_datetime(
             tzinfo = local_timezone()
         value = value.replace(tzinfo=tzinfo)
     return value
+
+
+def get_field_type(annotation: Any) -> Any:
+    """Filter Optional type."""
+    if get_origin(annotation) is Union:
+        args: Sequence[Any] = get_args(annotation)
+        if len(args) == 2:
+            args = [arg for arg in args if arg is not NoneType]
+            if len(args) == 1:
+                return args[0]
+    return annotation

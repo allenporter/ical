@@ -8,7 +8,9 @@ import logging
 from typing import Optional, Any
 import zoneinfo
 
-from pydantic.v1 import Field, root_validator
+from pydantic import Field, field_serializer, model_validator
+
+from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
 from .event import Event
@@ -79,7 +81,8 @@ class Calendar(ComponentModel):
         """
         return calendar_timeline(self.events, tzinfo=tzinfo or local_timezone())
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _propagate_timezones(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Propagate timezone information down to date-time objects.
 
@@ -99,7 +102,7 @@ class Calendar(ComponentModel):
             return values
 
         # First parse the timezones out of the calendar, ignoring everything else
-        timezone_model = TimezoneModel.parse_obj(values)
+        timezone_model = TimezoneModel.model_validate(values)
         system_tzids = timezoneinfo.available_timezones()
         tzinfos: dict[str, datetime.tzinfo] = {
             timezone.tz_id: IcsTimezoneInfo.from_timezone(timezone)
@@ -129,3 +132,5 @@ class Calendar(ComponentModel):
                     ):
                         tzid_param.values = [tzinfo]
         return values
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

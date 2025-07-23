@@ -13,10 +13,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
-from typing import Any, Optional, Union
+from typing import Any, Optional, Self, Union
 import logging
 
-from pydantic.v1 import Field, root_validator
+from pydantic import Field, field_serializer, model_validator
+
+from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
@@ -53,7 +55,7 @@ class TodoStatus(str, enum.Enum):
 class Todo(ComponentModel):
     """A calendar todo component."""
 
-    dtstamp: Union[datetime.datetime, datetime.date] = Field(
+    dtstamp: Union[datetime.date, datetime.datetime] = Field(
         default_factory=dtstamp_factory
     )
     """Specifies the date and time the item was created."""
@@ -92,10 +94,10 @@ class Todo(ComponentModel):
     """A more complete description of the item than provided by the summary."""
 
     # Has alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date, None] = None
+    dtstart: Union[datetime.date, datetime.datetime, None] = None
     """The start time or start day of the item."""
 
-    due: Union[datetime.datetime, datetime.date, None] = None
+    due: Union[datetime.date, datetime.datetime, None] = None
 
     duration: Optional[datetime.timedelta] = None
     """The duration of the item as an alternative to an explicit end date/time."""
@@ -107,7 +109,7 @@ class Todo(ComponentModel):
         alias="last-modified", default=None
     )
 
-    location: str = ""
+    location: Optional[str] = None
     """Defines the intended venue for the activity defined by this item."""
 
     organizer: Optional[CalAddress] = None
@@ -118,7 +120,7 @@ class Todo(ComponentModel):
     priority: Optional[Priority] = None
     """Defines the relative priority of the todo item."""
 
-    recurrence_id: Optional[RecurrenceId] = Field(alias="recurrence-id")
+    recurrence_id: Optional[RecurrenceId] = Field(default=None, alias="recurrence-id")
     """Defines a specific instance of a recurring item.
 
     The full range of items specified by a recurrence set is referenced
@@ -130,8 +132,8 @@ class Todo(ComponentModel):
     """Used to represent a relationship or reference between events."""
 
     request_status: Optional[RequestStatus] = Field(
+        default=None,
         alias="request-status",
-        default_value=None,
     )
 
     rrule: Optional[Recur] = None
@@ -147,7 +149,7 @@ class Todo(ComponentModel):
     sure all instances have the same start time regardless of time zone changing.
     """
 
-    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
     """Defines the list of date/time values for recurring events.
 
     Can appear along with the rrule property to define a set of repeating occurrences of the
@@ -156,7 +158,7 @@ class Todo(ComponentModel):
     and rdate properties then excluding any times specified by exdate.
     """
 
-    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    exdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
     """Defines the list of exceptions for recurring events.
 
     The exception dates are used in computing the recurrence set. The recurrence set is
@@ -280,29 +282,32 @@ class Todo(ComponentModel):
             raise CalendarParseError("Event must have a due date to be recurring")
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
-    @root_validator
-    def _validate_one_due_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
+    _validate_recurrence_dates = model_validator(mode="after")(
+        validate_recurrence_dates
+    )
+
+    @model_validator(mode="after")
+    def _validate_one_due_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
-        if values.get("due") and values.get("duration"):
+        if self.due and self.duration:
             raise ValueError("Only one of dtend or duration may be set." "")
-        return values
+        return self
 
-    @root_validator
-    def _validate_duration_requires_start(
-        cls, values: dict[str, Any]
-    ) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_duration_requires_start(self) -> Self:
         """Validate that a duration requires the dtstart."""
-        if values.get("duration") and not values.get("dtstart"):
+        if self.duration and not self.dtstart:
             raise ValueError("Duration requires that dtstart is specified")
-        return values
+        return self
 
-    @root_validator(allow_reuse=True)
-    def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_date_types(self) -> Self:
         """Validate and repair due vs start values to ensure they are the same date or datetime type."""
-        dtstart = values.get("dtstart")
-        due = values.get("due")
+        dtstart = self.dtstart
+        due = self.due
         if not dtstart or not due:
-            return values
+            return self
         if isinstance(due, datetime.datetime):
             if not isinstance(dtstart, datetime.datetime):
                 _LOGGER.debug(
@@ -310,7 +315,7 @@ class Todo(ComponentModel):
                     dtstart,
                     due,
                 )
-                values["dtstart"] = datetime.datetime.combine(
+                self.dtstart = datetime.datetime.combine(
                     dtstart, datetime.time.min, tzinfo=due.tzinfo
                 )
         elif isinstance(due, datetime.date):
@@ -320,39 +325,39 @@ class Todo(ComponentModel):
                     dtstart,
                     due,
                 )
-                values["dtstart"] = dtstart.date()
-                _LOGGER.debug("values=%s", values)
-        return values
+                self.dtstart = dtstart.date()
+                _LOGGER.debug("values=%s", self)
+        return self
 
-    @root_validator(allow_reuse=True)
-    def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_datetime_timezone(self) -> Self:
         """Validate that start and due values have the same timezone information."""
         if (
-            not (dtstart := values.get("dtstart"))
-            or not (due := values.get("due"))
+            not (dtstart := self.dtstart)
+            or not (due := self.due)
             or not isinstance(dtstart, datetime.datetime)
             or not isinstance(due, datetime.datetime)
         ):
-            return values
+            return self
         if dtstart.tzinfo is None and due.tzinfo is not None:
             raise ValueError(f"Expected due datetime value in localtime but was {due}")
         if dtstart.tzinfo is not None and due.tzinfo is None:
             raise ValueError(f"Expected due datetime with timezone but was {due}")
-        return values
+        return self
 
-    @root_validator
-    def _validate_due_later(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_due_later(self) -> Self:
         """Validate that the due property is later than dtstart."""
-        if not (due := values.get("due")) or not (dtstart := values.get("dtstart")):
-            return values
+        if not (due := self.due) or not (dtstart := self.dtstart):
+            return self
         if due <= dtstart:
             _LOGGER.debug(
                 "Due date %s is earlier than start date %s, adjusting start date",
                 due,
                 dtstart,
             )
-            values["dtstart"] = due - datetime.timedelta(days=1)
-        return values
+            self.dtstart = due - datetime.timedelta(days=1)
+        return self
 
     @classmethod
     def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
@@ -371,7 +376,4 @@ class Todo(ComponentModel):
                 return None
             raise err
 
-    _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
-    _validate_recurrence_dates = root_validator(allow_reuse=True)(
-        validate_recurrence_dates
-    )
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

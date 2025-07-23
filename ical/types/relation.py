@@ -2,19 +2,18 @@
 
 import enum
 from dataclasses import dataclass
-from collections.abc import Callable, Generator
-from typing import Any
+from typing import Any, Self
 import logging
 
-from pydantic.v1 import root_validator
+from pydantic import model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 from .data_types import DATA_TYPE
 from .parsing import parse_parameter_values
-from .enum import create_enum_validator
 
 
+@DATA_TYPE.register("RELATIONSHIP-TYPE")
 class RelationshipType(str, enum.Enum):
     """Type of hierarchical relationship associated with the calendar component."""
 
@@ -28,9 +27,12 @@ class RelationshipType(str, enum.Enum):
     """Sibling relationship."""
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], Any], None, None]:
-        """Return a generator that validates the value against the enum."""
-        yield create_enum_validator(RelationshipType)
+    def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
+        """Parse value into enum."""
+        try:
+            return cls(prop.value)
+        except ValueError:
+            return None
 
 
 @DATA_TYPE.register("RELATED-TO")
@@ -57,7 +59,7 @@ class RelatedTo:
             return data
         return {"uid": prop}
 
-    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
+    _parse_parameter_values = model_validator(mode="before")(
         parse_parameter_values
     )
 

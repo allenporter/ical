@@ -1,25 +1,24 @@
 """Library for parsing and encoding PERIOD values."""
 
-from collections.abc import Callable, Generator
 import dataclasses
 import datetime
 import enum
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
-from pydantic.v1 import BaseModel, Field, root_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE, encode_model_property_params
+from .data_types import DATA_TYPE, encode_model_property_params, serialize_field
 from .date_time import DateTimeEncoder
 from .duration import DurationEncoder
 from .parsing import parse_parameter_values
-from .enum import create_enum_validator
 
 _LOGGER = logging.getLogger(__name__)
 
 
+@DATA_TYPE.register("FBTYPE")
 class FreeBusyType(str, enum.Enum):
     """Specifies the free/busy time type."""
 
@@ -36,9 +35,12 @@ class FreeBusyType(str, enum.Enum):
     """One or more events have been tentatively scheduled for the interval."""
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], Any], None, None]:
-        """Return a generator that validates the value against the enum."""
-        yield create_enum_validator(FreeBusyType)
+    def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
+        """Parse value into enum."""
+        try:
+            return cls(prop.value)
+        except ValueError:
+            return None
 
 
 @DATA_TYPE.register("PERIOD")
@@ -58,7 +60,7 @@ class Period(BaseModel):
     free_busy_type: Optional[FreeBusyType] = Field(alias="FBTYPE", default=None)
     """Specifies the free or busy time type."""
 
-    _parse_parameter_values = root_validator(pre=True, allow_reuse=True)(
+    _parse_parameter_values = model_validator(mode="before")(
         parse_parameter_values
     )
 
@@ -71,7 +73,8 @@ class Period(BaseModel):
             raise ValueError("Invalid period missing both end and duration")
         return self.start + self.duration
 
-    @root_validator(pre=True, allow_reuse=True)
+    @model_validator(mode="before")
+    @classmethod
     def parse_period_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Parse a rfc5545 priority value."""
         if not (value := values.pop("value", None)):
@@ -131,15 +134,12 @@ class Period(BaseModel):
         cls, model_data: dict[str, Any]
     ) -> list[ParsedPropertyParameter]:
         return encode_model_property_params(
-            cls.__fields__.values(),
+            cls.model_fields,
             {
                 k: v
                 for k, v in model_data.items()
                 if k not in ("end", "duration", "start")
             },
         )
-
-    class Config:
-        """Pydantic model configuration."""
-
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

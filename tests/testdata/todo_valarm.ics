@@ -7,7 +7,7 @@ SEQUENCE:2
 UID:uid4@example.com
 ORGANIZER:mailto:unclesam@example.com
 ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
-DUE:19980415T000000
+DUE:19980415
 STATUS:NEEDS-ACTION
 SUMMARY:Submit Income Taxes
 BEGIN:VALARM

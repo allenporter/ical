@@ -126,7 +126,7 @@ def _prepare_update(
     recurrence_range: Range = Range.NONE,
 ) -> dict[str, Any]:
     """Prepare an update to an existing event."""
-    partial_update = item.dict(
+    partial_update = item.model_dump(
         exclude_unset=True,
         exclude={"dtstamp", "uid", "sequence", "created", "last_modified"},
     )
@@ -139,7 +139,7 @@ def _prepare_update(
         "dtstamp": item.dtstamp,
     }
     if rrule := update.get("rrule"):
-        update["rrule"] = Recur.parse_obj(rrule)
+        update["rrule"] = Recur.model_validate(rrule)
     if recurrence_id and store_item.rrule:
         # Forking a new event off the old event preserves the original uid and
         # recurrence_id.

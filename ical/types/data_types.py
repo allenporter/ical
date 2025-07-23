@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Iterable, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, get_origin
 
-from pydantic.v1.fields import SHAPE_LIST, ModelField
+from pydantic import BaseModel, SerializationInfo
+from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.util import get_field_type
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,18 +148,40 @@ DATA_TYPE: Registry = Registry()
 
 
 def encode_model_property_params(
-    fields: Iterable[ModelField], model_data: dict[str, Any]
+    fields: dict[str, FieldInfo], model_data: dict[str, Any]
 ) -> list[ParsedPropertyParameter]:
     """Encode a pydantic model's parameters as property params."""
     params = []
-    for field in fields:
-        key = field.alias
+    for name, field in fields.items():
+        key = field.alias or name
         if key == "value" or (values := model_data.get(key)) is None:
             continue
-        if field.shape != SHAPE_LIST:
+        annotation = get_field_type(field.annotation)
+        origin = get_origin(annotation)
+        if origin is not list:
             values = [values]
-        if field.type_ is bool:
+        if annotation is bool:
             encoder = DATA_TYPE.encode_property_value[bool]
             values = [encoder(value) for value in values]
         params.append(ParsedPropertyParameter(name=key, values=values))
     return params
+
+
+def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any:
+    if not info.context or not info.context.get("ics"):
+        return value
+    if isinstance(value, list):
+        res = []
+        for val in value:
+            for base in val.__class__.__mro__[:-1]:
+                if (func := DATA_TYPE.encode_property_json.get(base)) is not None:
+                    res.append(func(val))
+                    break
+            else:
+                res.append(val)
+        return res
+
+    for base in value.__class__.__mro__[:-1]:
+        if (func := DATA_TYPE.encode_property_json.get(base)) is not None:
+            return func(value)
+    return value

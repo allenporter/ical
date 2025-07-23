@@ -8,7 +8,9 @@ import datetime
 import logging
 from typing import Any, Optional, Union
 
-from pydantic.v1 import Field, validator
+from pydantic import Field, field_serializer, field_validator
+
+from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
 from .parsing.property import ParsedProperty
@@ -21,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 class FreeBusy(ComponentModel):
     """A single free/busy entry on a calendar."""
 
-    dtstamp: Union[datetime.datetime, datetime.date] = Field(
+    dtstamp: Union[datetime.date, datetime.datetime] = Field(
         default_factory=lambda: dtstamp_factory()
     )
     """Last revision date."""
@@ -39,13 +41,13 @@ class FreeBusy(ComponentModel):
     """Contact information associated with this component."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(
+    dtstart: Union[datetime.date, datetime.datetime, None] = Field(
         default=None,
     )
     """Start of the time range covered by this component."""
 
     # Has an alias of 'end'
-    dtend: Optional[Union[datetime.datetime, datetime.date]] = None
+    dtend: Union[datetime.date, datetime.datetime, None] = None
     """End of the time range covered by this component."""
 
     freebusy: list[Period] = Field(default_factory=list)
@@ -55,7 +57,8 @@ class FreeBusy(ComponentModel):
     """The calendar user who requested free/busy information."""
 
     request_status: Optional[RequestStatus] = Field(
-        alias="request-status", default_value=None
+        default=None,
+        alias="request-status",
     )
     """Return code for the scheduling request."""
 
@@ -77,7 +80,7 @@ class FreeBusy(ComponentModel):
         super().__init__(**data)
 
     @property
-    def start(self) -> datetime.datetime | datetime.date:
+    def start(self) -> datetime.datetime | datetime.date | None:
         """Return the start time for the event."""
         return self.dtstart
 
@@ -103,11 +106,12 @@ class FreeBusy(ComponentModel):
     @property
     def computed_duration(self) -> datetime.timedelta | None:
         """Return the event duration."""
-        if not self.end:
+        if not self.end or not self.start:
             return None
         return self.end - self.start
 
-    @validator("freebusy", allow_reuse=True)
+    @field_validator("freebusy")
+    @classmethod
     def verify_freebusy_utc(cls, values: list[Period]) -> list[Period]:
         """Validate that the free/busy periods must be in UTC."""
         _LOGGER.info("verify_freebusy_utc")
@@ -120,3 +124,5 @@ class FreeBusy(ComponentModel):
                 raise ValueError(f"Freebusy time must be in UTC format: {value}")
 
         return values
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

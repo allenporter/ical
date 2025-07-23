@@ -6,8 +6,8 @@ import json
 from typing import Any
 from unittest.mock import patch
 
+from pydantic_core import to_jsonable_python
 import pytest
-from pydantic.v1.json import pydantic_encoder
 
 PRODID = "-//example//1.2.3"
 
@@ -21,7 +21,7 @@ class DataclassEncoder(json.JSONEncoder):
             return {k: v for (k, v) in dataclasses.asdict(o).items() if v}
         if isinstance(o, dict):
             return {k: v for (k, v) in o.items() if v}
-        return pydantic_encoder(o)
+        return to_jsonable_python(o)
 
 
 @pytest.fixture

@@ -18,10 +18,12 @@ import datetime
 import enum
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Self, Union
 
 from dateutil.rrule import rruleset
-from pydantic.v1 import Field, root_validator, validator
+from pydantic import Field, field_serializer, field_validator, model_validator
+
+from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
 from .iter import MergedIterable, RecurIterable
@@ -49,7 +51,7 @@ class Observance(ComponentModel):
     """A sub-component with properties for a set of timezone observances."""
 
     # Has an alias of 'start'
-    dtstart: datetime.datetime = Field(default_factory=None)
+    dtstart: Optional[datetime.datetime] = Field(default=None)
     """The first onset datetime (local time) for the observance."""
 
     tz_offset_to: UtcOffset = Field(alias="tzoffsetto")
@@ -64,7 +66,7 @@ class Observance(ComponentModel):
     rrule: Optional[Recur] = None
     """The recurrence rule for the onset of observances defined in this sub-component."""
 
-    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
     """A rule to determine the onset of the observances defined in this sub-component."""
 
     tz_name: list[str] = Field(alias="tzname", default_factory=list)
@@ -84,23 +86,27 @@ class Observance(ComponentModel):
     @property
     def start_datetime(self) -> datetime.datetime:
         """Return the start of the observance."""
+        assert self.dtstart is not None
         return self.dtstart
 
     def as_ruleset(self) -> rruleset:
         """Represent the occurrence as a rule of repeated dates or datetimes."""
         ruleset = rruleset()
         if self.rrule:
-            ruleset.rrule(self.rrule.as_rrule(self.dtstart))
+            ruleset.rrule(self.rrule.as_rrule(self.start_datetime))
         for rdate in self.rdate:
             ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
         return ruleset
 
-    @validator("dtstart", allow_reuse=True)
+    @field_validator("dtstart")
+    @classmethod
     def verify_dtstart_local_time(cls, value: datetime.datetime) -> datetime.datetime:
         """Validate that dtstart is specified in a local time."""
         if value.utcoffset() is not None:
             raise ValueError(f"Start time must be in local time format: {value}")
         return value
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 class _ObservanceType(str, enum.Enum):
@@ -178,7 +184,7 @@ class Timezone(ComponentModel):
             and rule.dst_end
             and isinstance(rule.dst_end, tz_rule.RuleDate)
         ):
-            std_timezone_info.rrule = Recur.parse_obj(
+            std_timezone_info.rrule = Recur.model_validate(
                 Recur.__parse_property_value__(rule.dst_end.rrule_str)
             )
             std_timezone_info.dtstart = rule.dst_end.rrule_dtstart(start)
@@ -187,15 +193,13 @@ class Timezone(ComponentModel):
                     tz_name=[rule.dst.name],
                     tz_offset_to=UtcOffset(offset=rule.dst.offset),
                     tz_offset_from=UtcOffset(offset=rule.std.offset),
-                    rrule=Recur.parse_obj(
+                    rrule=Recur.model_validate(
                         Recur.__parse_property_value__(rule.dst_start.rrule_str)
                     ),
                     dtstart=rule.dst_start.rrule_dtstart(start),
                 )
             )
-        # https://github.com/pydantic/pydantic/issues/3923 is not working even
-        # when the model config allows population by name. Try again on v2.
-        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)  # type: ignore[call-arg]
+        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)
 
     def _observances(
         self,
@@ -243,14 +247,16 @@ class Timezone(ComponentModel):
             last_observance_info = observance_info
         return last_observance_info
 
-    @root_validator
-    def parse_required_timezoneinfo(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def parse_required_timezoneinfo(self) -> Self:
         """Require at least one standard or daylight definition."""
-        standard = values.get("standard")
-        daylight = values.get("daylight")
+        standard = self.standard
+        daylight = self.daylight
         if not standard and not daylight:
             raise ValueError("At least one standard or daylight definition is required")
-        return values
+        return self
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 class IcsTimezoneInfo(datetime.tzinfo):

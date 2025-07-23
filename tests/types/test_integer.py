@@ -16,7 +16,7 @@ class FakeModel(ComponentModel):
 def test_integer() -> None:
     """Test for int fields."""
 
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {
             "example": [
                 ParsedProperty(name="example", value="45"),
@@ -28,4 +28,4 @@ def test_integer() -> None:
     assert model.example == [45, -46, 47]
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="a")]})

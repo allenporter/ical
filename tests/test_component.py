@@ -1,5 +1,6 @@
 """Tests for component encoding and decoding."""
 
+from pydantic import field_serializer
 import pytest
 import datetime
 import zoneinfo
@@ -9,7 +10,7 @@ from ical.component import ComponentModel
 from ical.exceptions import CalendarParseError, ParameterValueError
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.types.data_types import DATA_TYPE
+from ical.types.data_types import serialize_field
 
 
 def test_encode_component() -> None:
@@ -30,12 +31,9 @@ def test_encode_component() -> None:
         single_component: OtherComponent
         dt: datetime.datetime
 
-        class Config:
-            """Pydantic model configuration."""
+        serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
-            json_encoders = DATA_TYPE.encode_property_json
-
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "text_value": "Example text",
             "repeated_text_value": ["a", "b", "c"],
@@ -89,7 +87,7 @@ def test_list_parser() -> None:
 
         dt: list[datetime.datetime]
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(name="dt", value="20220724T120000"),
@@ -111,7 +109,7 @@ def test_list_union_parser() -> None:
 
         dt: list[Union[datetime.datetime, datetime.date]]
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(name="dt", value="20220724T120000"),
@@ -133,7 +131,7 @@ def test_optional_field_parser() -> None:
 
         dt: Optional[datetime.datetime] = None
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {"dt": [ParsedProperty(name="dt", value="20220724T120000")]}
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
@@ -148,16 +146,16 @@ def test_union_parser() -> None:
         dt: Union[datetime.datetime, datetime.date]
 
     with pytest.raises(CalendarParseError, match=".*Expected one value for field: dt"):
-        model = TestModel.parse_obj(
+        model = TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(name="dt", value="20220724T120000"),
                     ParsedProperty(name="dt", value="20220725"),
                 ],
-            }
+            },
         )
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(name="dt", value="20220724T120000"),
@@ -166,7 +164,7 @@ def test_union_parser() -> None:
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(name="dt", value="20220725"),
@@ -175,7 +173,7 @@ def test_union_parser() -> None:
     )
     assert model.dt == datetime.date(2022, 7, 25)
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(
@@ -195,7 +193,7 @@ def test_union_parser() -> None:
         CalendarParseError,
         match="Expected DATE-TIME TZID value 'America/New_Mork' to be valid timezone.*",
     ):
-        model = TestModel.parse_obj(
+        model = TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(
@@ -211,7 +209,7 @@ def test_union_parser() -> None:
         CalendarParseError,
         match=".*Failed to validate: .* as datetime or date, due to: .*Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
     ):
-        model = TestModel.parse_obj(
+        model = TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(name="dt", value="2025NotADateOrADateTime"),

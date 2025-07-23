@@ -73,12 +73,12 @@ def test_journal_timeline() -> None:
     ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
         timeline = generic_timeline([journal], TZ)
         assert list(timeline) == [
-            Journal.copy(journal, update={"recurrence_id": "20220807"}),
-            Journal.copy(
+            Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.model_copy(
                 journal,
                 update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
             ),
-            Journal.copy(
+            Journal.model_copy(
                 journal,
                 update={"dtstart": datetime.date(2022, 8, 9), "recurrence_id": "20220809"},
             ),
@@ -86,8 +86,8 @@ def test_journal_timeline() -> None:
         assert list(
             timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
         ) == [
-            Journal.copy(journal, update={"recurrence_id": "20220807"}),
-            Journal.copy(
+            Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.model_copy(
                 journal,
                 update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
             ),
