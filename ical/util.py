@@ -57,7 +57,7 @@ def normalize_datetime(
 
 
 def get_field_type(annotation: Any) -> Any:
-    """Filter Optional type."""
+    """Filter Optional type, e.g. for 'Optional[int]' return 'int'."""
     if get_origin(annotation) is Union:
         args: Sequence[Any] = get_args(annotation)
         if len(args) == 2:
