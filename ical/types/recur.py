@@ -39,13 +39,21 @@ import enum
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from dateutil import rrule
-from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, field_serializer
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    GetCoreSchemaHandler,
+    field_serializer,
+)
 from pydantic_core import CoreSchema, core_schema
 
 from ical.parsing.property import ParsedProperty
+from ical.util import parse_date_and_datetime
 
 from .data_types import DATA_TYPE, serialize_field
 from .date import DateEncoder
@@ -235,7 +243,10 @@ class Recur(BaseModel):
 
     freq: Frequency
 
-    until: Union[datetime.date, datetime.datetime, None] = None
+    until: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The inclusive end date of the recurrence, or the last instance."""
 
     count: Optional[int] = None

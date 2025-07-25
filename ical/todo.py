@@ -13,10 +13,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
-from typing import Any, Optional, Self, Union
+from typing import Annotated, Any, Optional, Self, Union
 import logging
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
 from ical.types.data_types import serialize_field
 
@@ -37,7 +37,14 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
+from .util import (
+    dtstamp_factory,
+    normalize_datetime,
+    parse_date_and_datetime,
+    parse_date_and_datetime_list,
+    uid_factory,
+    local_timezone,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,10 +101,16 @@ class Todo(ComponentModel):
     """A more complete description of the item than provided by the summary."""
 
     # Has alias of 'start'
-    dtstart: Union[datetime.date, datetime.datetime, None] = None
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The start time or start day of the item."""
 
-    due: Union[datetime.date, datetime.datetime, None] = None
+    due: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
 
     duration: Optional[datetime.timedelta] = None
     """The duration of the item as an alternative to an explicit end date/time."""
@@ -149,7 +162,10 @@ class Todo(ComponentModel):
     sure all instances have the same start time regardless of time zone changing.
     """
 
-    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of date/time values for recurring events.
 
     Can appear along with the rrule property to define a set of repeating occurrences of the
@@ -158,7 +174,10 @@ class Todo(ComponentModel):
     and rdate properties then excluding any times specified by exdate.
     """
 
-    exdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of exceptions for recurring events.
 
     The exception dates are used in computing the recurrence set. The recurrence set is

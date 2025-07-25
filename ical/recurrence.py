@@ -11,10 +11,10 @@ from __future__ import annotations
 import datetime
 import logging
 from collections.abc import Iterable
-from typing import Union, Self
+from typing import Annotated, Union, Self
 
 from dateutil import rrule
-from pydantic import ConfigDict, Field, field_serializer
+from pydantic import BeforeValidator, ConfigDict, Field, field_serializer
 
 from .parsing.property import (
     parse_contentlines,
@@ -28,6 +28,7 @@ from .types.date_time import DateTimeEncoder
 from .component import ComponentModel
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
+from .util import parse_date_and_datetime, parse_date_and_datetime_list
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,16 +37,25 @@ _LOGGER = logging.getLogger(__name__)
 class Recurrences(ComponentModel):
     """A common set of recurrence related properties for calendar components."""
 
-    dtstart: Union[datetime.date, datetime.datetime, None] = None
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The start date for the event."""
 
     rrule: list[Recur] = Field(default_factory=list)
     """The recurrence rule for the event."""
 
-    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Dates for the event."""
 
-    exdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Excluded dates for the event."""
 
     @classmethod

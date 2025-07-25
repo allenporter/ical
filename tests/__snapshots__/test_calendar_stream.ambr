@@ -1326,7 +1326,7 @@
               }),
             ]),
             'dtstamp': '1998-01-30T13:45:00Z',
-            'due': '1998-04-15',
+            'due': '1998-04-15T00:00:00',
             'organizer': dict({
               'uri': 'mailto:unclesam@example.com',
             }),
@@ -2095,7 +2095,7 @@
   DTSTAMP:19980130T134500Z
   UID:uid4@example.com
   ATTENDEE;PARTSTAT=ACCEPTED:mailto:jqpublic@example.com
-  DUE:19980415
+  DUE:19980415T000000
   ORGANIZER:mailto:unclesam@example.com
   SEQUENCE:2
   STATUS:NEEDS-ACTION

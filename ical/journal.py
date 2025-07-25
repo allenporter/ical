@@ -8,9 +8,9 @@ import datetime
 import enum
 import logging
 from collections.abc import Iterable
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
 from ical.types.data_types import serialize_field
 
@@ -25,7 +25,14 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .util import dtstamp_factory, normalize_datetime, uid_factory, local_timezone
+from .util import (
+    dtstamp_factory,
+    normalize_datetime,
+    parse_date_and_datetime,
+    parse_date_and_datetime_list,
+    uid_factory,
+    local_timezone,
+)
 from .iter import RulesetIterable, as_rrule
 from .timespan import Timespan
 
@@ -58,9 +65,10 @@ class Journal(ComponentModel):
     mocking in unit tests.
     """
 
-    dtstamp: Union[datetime.date, datetime.datetime] = Field(
-        default_factory=lambda: dtstamp_factory()
-    )
+    dtstamp: Annotated[
+        Union[datetime.date, datetime.datetime],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default_factory=lambda: dtstamp_factory())
     uid: str = Field(default_factory=lambda: uid_factory())
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     categories: list[str] = Field(default_factory=list)
@@ -70,10 +78,14 @@ class Journal(ComponentModel):
     created: Optional[datetime.datetime] = None
     description: Optional[str] = None
     # Has an alias of 'start'
-    dtstart: Union[datetime.date, datetime.datetime, None] = Field(
-        default=None,
-    )
-    exdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default=None)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
     )
@@ -85,7 +97,10 @@ class Journal(ComponentModel):
 
     related: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
-    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     request_status: Optional[RequestStatus] = Field(
         default=None,
         alias="request-status",

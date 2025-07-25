@@ -18,10 +18,12 @@ import datetime
 import enum
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Self, Union
+from typing import Annotated, Any, Iterable, Optional, Self, Union
 
 from dateutil.rrule import rruleset
-from pydantic import Field, field_serializer, field_validator, model_validator
+from pydantic import (
+    BeforeValidator, Field, field_serializer, field_validator, model_validator
+)
 
 from ical.types.data_types import serialize_field
 
@@ -30,6 +32,7 @@ from .iter import MergedIterable, RecurIterable
 from .parsing.property import ParsedProperty
 from .types import Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
+from .util import parse_date_and_datetime_list
 
 __all__ = [
     "Timezone",
@@ -66,7 +69,10 @@ class Observance(ComponentModel):
     rrule: Optional[Recur] = None
     """The recurrence rule for the onset of observances defined in this sub-component."""
 
-    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """A rule to determine the onset of the observances defined in this sub-component."""
 
     tz_name: list[str] = Field(alias="tzname", default_factory=list)

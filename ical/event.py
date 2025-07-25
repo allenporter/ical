@@ -18,9 +18,9 @@ import datetime
 import enum
 import logging
 from collections.abc import Iterable
-from typing import Any, Optional, Self, Union
+from typing import Annotated, Any, Optional, Self, Union
 
-from pydantic import Field, field_serializer, model_validator
+from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
 from ical.types.data_types import serialize_field
 
@@ -41,7 +41,13 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .util import dtstamp_factory, normalize_datetime, uid_factory
+from .util import (
+    dtstamp_factory,
+    normalize_datetime,
+    parse_date_and_datetime,
+    parse_date_and_datetime_list,
+    uid_factory,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,22 +92,27 @@ class Event(ComponentModel):
     as other parsing methods.
     """
 
-    dtstamp: Union[datetime.date, datetime.datetime] = Field(
-        default_factory=lambda: dtstamp_factory()
-    )
+    dtstamp: Annotated[
+        Union[datetime.date, datetime.datetime],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default_factory=lambda: dtstamp_factory())
     """Specifies the date and time the event was created."""
 
     uid: str = Field(default_factory=lambda: uid_factory())
     """A globally unique identifier for the event."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.date, datetime.datetime, None] = Field(
-        default=None,
-    )
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default=None)
     """The start time or start day of the event."""
 
     # Has an alias of 'end'
-    dtend: Union[datetime.date, datetime.datetime, None] = None
+    dtend: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The end time or end day of the event.
 
     This may be specified as an explicit date. Alternatively, a duration
@@ -189,7 +200,10 @@ class Event(ComponentModel):
     sure all instances have the same start time regardless of time zone changing.
     """
 
-    rdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of date/time values for recurring events.
 
     Can appear along with the rrule property to define a set of repeating occurrences of the
@@ -198,7 +212,10 @@ class Event(ComponentModel):
     and rdate properties then excluding any times specified by exdate.
     """
 
-    exdate: list[Union[datetime.date, datetime.datetime]] = Field(default_factory=list)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of exceptions for recurring events.
 
     The exception dates are used in computing the recurrence set. The recurrence set is

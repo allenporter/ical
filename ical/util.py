@@ -6,7 +6,7 @@ from collections.abc import Sequence
 import datetime
 from importlib import metadata
 from types import NoneType
-from typing import Any, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Union, cast, get_args, get_origin, overload
 import uuid
 
 __all__ = [
@@ -65,3 +65,38 @@ def get_field_type(annotation: Any) -> Any:
             if len(args) == 1:
                 return args[0]
     return annotation
+
+
+@overload
+def parse_date_and_datetime(value: None) -> None: ...
+
+@overload
+def parse_date_and_datetime(value: str | datetime.date) -> datetime.date: ...
+
+def parse_date_and_datetime(value: str | datetime.date | None) -> datetime.date | None:
+    """Coerce str into date and datetime value."""
+    if not isinstance(value, str):
+        return value
+    if "T" in value or " " in value:
+        return datetime.datetime.fromisoformat(value)
+    return datetime.date.fromisoformat(value)
+
+
+def parse_date_and_datetime_list(
+    values: Sequence[str] | Sequence[datetime.date]
+) -> list[datetime.date | datetime.datetime]:
+    """Coerce list[str] into list[date | datetime] values."""
+    if not values:
+        return []
+    if not isinstance(values[0], str):
+        if TYPE_CHECKING:
+            values = cast(list[datetime.date | datetime.datetime], values)
+        return values
+    if TYPE_CHECKING:
+        values = cast(Sequence[str], values)
+    return [
+        datetime.datetime.fromisoformat(val)
+        if "T" in val or " " in val
+        else datetime.date.fromisoformat(val)
+        for val in values
+    ]
