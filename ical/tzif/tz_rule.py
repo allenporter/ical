@@ -44,8 +44,6 @@ def _parse_time(values: Any) -> datetime.timedelta | None:
     """
     if isinstance(values, datetime.timedelta):
         return values
-    if not values:
-        return None
     if not isinstance(values, dict):
         raise ValueError("time was not parse tree dict or timedelta")
 
@@ -177,91 +175,64 @@ class Rule(BaseModel):
         return self
 
 
-
-def _build_offset_regex() -> re.Pattern[str]:
-    """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
-    return re.compile(
-        r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"   # name
-        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"  # offset
-    )
-
-
-def _build_start_end_regex() -> re.Pattern[str]:
+# Regexp for parsing the TZ string
+_OFFSET_RE_PATTERN: re.Pattern[str] = re.compile(
+    r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"  # name
+    r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"  # offset
+)
+_START_END_RE_PATTERN = re.compile(
     # days in either julian (J prefix) or month.week.day (M prefix) format
-    result = r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
+    r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
     # time
-    result += (
-        r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+    r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+)
+
+
+def _rule_occurrence_from_match(match: re.Match[str]) -> RuleOccurrence:
+    """Create a rule occurrence from a regex match."""
+    return RuleOccurrence(
+        name=match.group("name"), offset=_parse_time(match.groupdict()) or _ZERO
     )
-    return re.compile(result)
-
-# Build the regex patterns for parsing TZ rules
-_OFFSET_RE_PATTERN = _build_offset_regex()
-_START_END_RE_PATTERN = _build_start_end_regex()
 
 
-class TzParser:
-    """Parser for TZ strings into Rule objects."""
-
-
-    def __init__(self, str: str) -> None:
-        self._str = str
-        self._pos = 0
-
-    def parse(self) -> Rule:
-        """Parse the TZ string into a Rule object."""
-        if not (std := self._parse_tz_rule_occurrence()):
-            raise ValueError(f"Unable to parse TZ string: {self._str}")
-
-        dst = self._parse_tz_rule_occurrence()
-        std_start = self._parse_tz_rule_date()
-        std_end = self._parse_tz_rule_date()
-
-        # either both dates are set or both are None
-        if (std_start is None) != (std_end is None):
-            raise ValueError(f"Unable to parse TZ string: {self._str}")
-
-        # make sure we have reached the end of the string
-        if self._pos < len(self._str):
-            raise ValueError(
-                f"Unable to parse TZ string: {self._str}. Unexpected end of string at position {self._pos}."
-            )
-
-        return Rule(std=std, dst=dst, dst_start=std_start, dst_end=std_end)
-
-    def _parse_tz_rule_occurrence(self) -> RuleOccurrence | None:
-        """Parse the TZ string into a RuleOccurrence object."""
-        if not (match := _OFFSET_RE_PATTERN.match(self._str, self._pos)):
-            return None
-
-        self._pos = match.end()
-
-        return RuleOccurrence(
-            name=match.group("name"), offset=_parse_time(match.groupdict()) or _ZERO
-        )
-
-    def _parse_tz_rule_date(self) -> Union[RuleDate, RuleDay, None]:
-        """Parse the TZ string into a RuleDate or RuleDay object."""
-        if not (match := _START_END_RE_PATTERN.match(self._str, self._pos)):
-            return None
-
-        self._pos = match.end()
-
-        if match["day_of_year"] is not None:
-            return RuleDay(
-                day_of_year=int(match.group("day_of_year")),
-                time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
-            )
-
-        return RuleDate(
-            month=int(match.group("month")),
-            week_of_month=int(match.group("week_of_month")),
-            day_of_week=int(match.group("day_of_week")),
+def _rule_date_from_match(match: re.Match[str]) -> Union[RuleDay, RuleDate]:
+    """Create a rule date from a regex match."""
+    if match["day_of_year"] is not None:
+        return RuleDay(
+            day_of_year=int(match.group("day_of_year")),
             time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
         )
+    return RuleDate(
+        month=int(match.group("month")),
+        week_of_month=int(match.group("week_of_month")),
+        day_of_week=int(match.group("day_of_week")),
+        time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
+    )
 
 
 def parse_tz_rule(tz_str: str) -> Rule:
     """Parse the TZ string into a Rule object."""
-    parser = TzParser(tz_str)
-    return parser.parse()
+    buffer = tz_str
+    if (std_match := _OFFSET_RE_PATTERN.match(buffer)) is None:
+        raise ValueError(f"Unable to parse TZ string: {tz_str}")
+    buffer = buffer[std_match.end() :]
+    if (dst_match := _OFFSET_RE_PATTERN.match(buffer)) is not None:
+        buffer = buffer[dst_match.end() :]
+    if (std_start := _START_END_RE_PATTERN.match(buffer)) is not None:
+        buffer = buffer[std_start.end() :]
+    if (std_end := _START_END_RE_PATTERN.match(buffer)) is not None:
+        buffer = buffer[std_end.end() :]
+    if (std_start is None) != (std_end is None):
+        raise ValueError(
+            f"Unable to parse TZ string, should have both or neither start and end dates: {tz_str}"
+        )
+    if buffer:
+        raise ValueError(
+            f"Unable to parse TZ string, unexpected trailing data: {tz_str}"
+        )
+    return Rule(
+        std=_rule_occurrence_from_match(std_match),
+        dst=_rule_occurrence_from_match(dst_match) if dst_match else None,
+        dst_start=_rule_date_from_match(std_start) if std_start else None,
+        dst_end=_rule_date_from_match(std_end) if std_end else None,
+    )
