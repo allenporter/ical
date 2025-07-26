@@ -203,7 +203,6 @@ def _rule_date_from_match(match: re.Match[str]) -> Union[RuleDay, RuleDate]:
     )
 
 
-
 def parse_tz_rule(tz_str: str) -> Rule:
     """Parse the TZ string into a Rule object."""
     buffer = tz_str
