@@ -53,8 +53,7 @@ def _parse_time(values: Any) -> datetime.timedelta | None:
     if not isinstance(values, dict):
         raise ValueError("time was not parse tree dict or timedelta")
 
-    hour = values["hour"]
-    if hour is None:
+    if (hour := values["hour"]) is None:
         return None
     sign = 1
     if hour.startswith("+"):
@@ -184,8 +183,6 @@ class Rule(BaseModel):
 class TzParser:
     """Parser for TZ strings into Rule objects."""
 
-    _str: str
-    _pos: int
 
     def __init__(self, str: str) -> None:
         self._str = str
@@ -193,8 +190,7 @@ class TzParser:
 
     def parse(self) -> Rule:
         """Parse the TZ string into a Rule object."""
-        std = self._parse_tz_rule_occurrence()
-        if not std:
+        if not (std := self._parse_tz_rule_occurrence()):
             raise ValueError(f"Unable to parse TZ string: {self._str}")
 
         dst = self._parse_tz_rule_occurrence()
@@ -215,8 +211,7 @@ class TzParser:
 
     def _parse_tz_rule_occurrence(self) -> RuleOccurrence | None:
         """Parse the TZ string into a RuleOccurrence object."""
-        match = _OFFSET_RE_PATTERN.match(self._str, self._pos)
-        if not match:
+        if not (match := _OFFSET_RE_PATTERN.match(self._str, self._pos)):
             return None
 
         self._pos = match.end()
@@ -227,8 +222,7 @@ class TzParser:
 
     def _parse_tz_rule_date(self) -> Union[RuleDate, RuleDay, None]:
         """Parse the TZ string into a RuleDate or RuleDay object."""
-        match = _START_END_RE_PATTERN.match(self._str, self._pos)
-        if not match:
+        if not (match := _START_END_RE_PATTERN.match(self._str, self._pos)):
             return None
 
         self._pos = match.end()
@@ -249,13 +243,10 @@ class TzParser:
 
 def build_offset_regex() -> re.Pattern[str]:
     """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
-    # name
-    result = r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"
-    # offset
-    result += (
-        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+    return re.compile(
+        r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"   # name
+        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"  # offset
     )
-    return re.compile(result)
 
 
 def build_start_end_regex() -> re.Pattern[str]:
