@@ -177,6 +177,29 @@ class Rule(BaseModel):
         return self
 
 
+
+def _build_offset_regex() -> re.Pattern[str]:
+    """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
+    return re.compile(
+        r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"   # name
+        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"  # offset
+    )
+
+
+def _build_start_end_regex() -> re.Pattern[str]:
+    # days in either julian (J prefix) or month.week.day (M prefix) format
+    result = r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
+    # time
+    result += (
+        r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
+    )
+    return re.compile(result)
+
+# Build the regex patterns for parsing TZ rules
+_OFFSET_RE_PATTERN = _build_offset_regex()
+_START_END_RE_PATTERN = _build_start_end_regex()
+
+
 class TzParser:
     """Parser for TZ strings into Rule objects."""
 
@@ -238,29 +261,7 @@ class TzParser:
         )
 
 
-def build_offset_regex() -> re.Pattern[str]:
-    """Create a regular expression for the given TZ string. Alternative implementation to pyparsing."""
-    return re.compile(
-        r"(?P<name>(\<[+\-]?\d+\>|[a-zA-Z]+))"   # name
-        r"((?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"  # offset
-    )
-
-
-def build_start_end_regex() -> re.Pattern[str]:
-    # days in either julian (J prefix) or month.week.day (M prefix) format
-    result = r",(J(?P<day_of_year>\d+)|M(?P<month>\d{1,2})\.(?P<week_of_month>\d)\.(?P<day_of_week>\d))"
-    # time
-    result += (
-        r"(\/(?P<hour>[+-]?\d+)(?::(?P<minutes>\d{1,2})(?::(?P<seconds>\d{1,2}))?)?)?"
-    )
-    return re.compile(result)
-
-
 def parse_tz_rule(tz_str: str) -> Rule:
     """Parse the TZ string into a Rule object."""
     parser = TzParser(tz_str)
     return parser.parse()
-
-
-_OFFSET_RE_PATTERN = build_offset_regex()
-_START_END_RE_PATTERN = build_start_end_regex()
