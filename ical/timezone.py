@@ -101,7 +101,7 @@ class Observance(ComponentModel):
         if self.rrule:
             ruleset.rrule(self.rrule.as_rrule(self.start_datetime))
         for rdate in self.rdate:
-            ruleset.rdate(rdate)  # type: ignore[no-untyped-call]
+            ruleset.rdate(rdate)
         return ruleset
 
     @field_validator("dtstart")
