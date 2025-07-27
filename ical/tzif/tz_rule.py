@@ -23,6 +23,7 @@ DST: std offset dst [offset],start[/time],end[/time]
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import datetime
 import logging
 from typing import Any, Optional, Union
@@ -41,16 +42,11 @@ _ZERO = datetime.timedelta(seconds=0)
 _DEFAULT_TIME_DELTA = datetime.timedelta(hours=2)
 
 
-def _parse_time(values: Any) -> datetime.timedelta | None:
+def _parse_time(values: dict[str, Any]) -> datetime.timedelta | None:
     """Convert an offset from [+/-]hh[:mm[:ss]] to a valid timedelta pydantic format.
 
     The parse tree dict expects fields of hour, minutes, seconds (see tz_time rule in parser).
     """
-    if isinstance(values, datetime.timedelta):
-        return values
-    if not isinstance(values, dict):
-        raise ValueError("time was not parse tree dict or timedelta")
-
     if (hour := values["hour"]) is None:
         return None
     sign = 1
@@ -66,7 +62,8 @@ def _parse_time(values: Any) -> datetime.timedelta | None:
     )
 
 
-class RuleDay(BaseModel):
+@dataclass
+class RuleDay:
     """A date referenced in a timezone rule for a julian day."""
 
     day_of_year: int
@@ -75,10 +72,9 @@ class RuleDay(BaseModel):
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
-    _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
-
-class RuleDate(BaseModel):
+@dataclass
+class RuleDate:
     """A date referenced in a timezone rule."""
 
     month: int
@@ -92,8 +88,6 @@ class RuleDate(BaseModel):
 
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
-
-    _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
 
     def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
         """Return a recurrence rule for this timezone occurrence (no start date)."""
@@ -136,7 +130,8 @@ class RuleDate(BaseModel):
         return self.week_of_month
 
 
-class RuleOccurrence(BaseModel):
+@dataclass
+class RuleOccurrence:
     """A TimeZone rule occurrence."""
 
     name: str
@@ -145,16 +140,13 @@ class RuleOccurrence(BaseModel):
     offset: datetime.timedelta
     """UTC offset for this timezone occurrence (not time added to local time)."""
 
-    _parse_offset = validator("offset", pre=True, allow_reuse=True)(_parse_time)
-
-    @validator("offset", allow_reuse=True)
-    def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
+    def __post_init__(self) -> None:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        result = _ZERO - value
-        return result
+        self.offset = _ZERO - self.offset
 
 
-class Rule(BaseModel):
+@dataclass
+class Rule:
     """A rule for evaluating future timezone transitions."""
 
     std: RuleOccurrence
@@ -169,13 +161,11 @@ class Rule(BaseModel):
     dst_end: Union[RuleDate, RuleDay, None] = None
     """Describes when dst ends (std starts)."""
 
-    @root_validator(allow_reuse=True)
-    def default_dst_offset(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Infer the default DST offset based on STD offset if not specified."""
-        if values.get("dst") and not values["dst"].offset:
+    def __post_init__(self) -> None:
+        """Infer the default DST offset if not specified."""
+        if self.dst and not self.dst.offset:
             # If the dst offset is omitted, it defaults to one hour ahead of standard time.
-            values["dst"].offset = values["std"].offset + datetime.timedelta(hours=1)
-        return values
+            self.dst.offset = self.std.offset + datetime.timedelta(hours=1)
 
 
 # Regexp for parsing the TZ string
