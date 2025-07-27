@@ -29,7 +29,6 @@ with filename.open(mode="w") as ics_file:
 from __future__ import annotations
 
 import logging
-import pyparsing
 from pydantic import Field, field_serializer
 
 from .calendar import Calendar
