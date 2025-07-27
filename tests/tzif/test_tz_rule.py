@@ -216,7 +216,7 @@ def test_iran_rule_offset() -> None:
 def test_invalid_time() -> None:
     """Test validation of fields with an invalid time value."""
     with pytest.raises(ValueError, match="time was not parse tree dict"):
-        tz_rule.RuleDate.parse_obj(
+        tz_rule.RuleDate.model_validate(
             {
                 "month": 3,
                 "week_of_month": 1,

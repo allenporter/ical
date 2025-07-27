@@ -83,7 +83,7 @@ def mock_fetch_events(
     """Fixture to return events on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        return [compact_dict(event.dict(), keys) for event in calendar.timeline]
+        return [compact_dict(event.model_dump(), keys) for event in calendar.timeline]
 
     return _func
 
@@ -95,7 +95,7 @@ def mock_fetch_todos(
     """Fixture to return todos on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        return [compact_dict(todo.dict(), keys) for todo in todo_store.todo_list()]
+        return [compact_dict(todo.model_dump(), keys) for todo in todo_store.todo_list()]
 
     return _func
 

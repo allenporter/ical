@@ -20,15 +20,25 @@ import copy
 import datetime
 import json
 import logging
-from typing import Any, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 
-from pydantic.v1 import BaseModel, ValidationError, root_validator
-from pydantic.v1.fields import SHAPE_LIST
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+
+from ical.util import get_field_type
 
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 from .types.data_types import DATA_TYPE
 from .exceptions import CalendarParseError, ParameterValueError
+
+if TYPE_CHECKING:
+    from typing import TypeVar
+
+    from .event import Event
+    from .journal import Journal
+    from .todo import Todo
+
+    ModelT = TypeVar("ModelT", bound=Union[Event, Journal, Todo])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,16 +86,16 @@ def _adjust_recurrence_date(
     return date_value
 
 
-def validate_until_dtstart(_cls: BaseModel, values: dict[str, Any]) -> dict[str, Any]:
+def validate_until_dtstart(self: ModelT) -> ModelT:
     """Verify the until time and dtstart are the same."""
     if (
-        not (rule := values.get("rrule"))
+        not (rule := self.rrule)
         or not rule.until
-        or not (dtstart := values.get("dtstart"))
+        or not (dtstart := self.dtstart)
     ):
-        return values
+        return self
     rule.until = _adjust_recurrence_date(rule.until, dtstart)
-    return values
+    return self
 
 
 def _as_datetime(
@@ -100,33 +110,31 @@ def _as_datetime(
 
 def _as_date(
     date_value: datetime.datetime | datetime.date,
-    dtstart: datetime.datetime,
+    dtstart: datetime.date,
 ) -> datetime.date:
     if isinstance(date_value, datetime.datetime):
         return datetime.date.fromordinal(date_value.toordinal())
     return date_value
 
 
-def validate_recurrence_dates(
-    _cls: BaseModel, values: dict[str, Any]
-) -> dict[str, Any]:
+def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
     if (
-        not values.get("rrule")
-        or not (dtstart := values.get("dtstart"))
-        or not (
-            isinstance(dtstart, datetime.datetime) or isinstance(dtstart, datetime.date)
-        )
+        not self.rrule
+        or not (dtstart := self.dtstart)
     ):
-        return values
+        return self
     is_datetime = isinstance(dtstart, datetime.datetime)
     validator = _as_datetime if is_datetime else _as_date
     for field in ("exdate", "rdate"):
-        if not (date_values := values.get(field)):
+        if not (date_values := self.__dict__.get(field)):
             continue
 
-        values[field] = [validator(date_value, dtstart) for date_value in date_values]
-    return values
+        self.__dict__[field] = [
+            validator(date_value, dtstart)  # type: ignore[arg-type]
+            for date_value in date_values
+        ]
+    return self
 
 
 class ComponentModel(BaseModel):
@@ -149,19 +157,20 @@ class ComponentModel(BaseModel):
     def copy_and_validate(self, update: dict[str, Any]) -> ComponentModel:
         """Create a new object with updated values and validate it."""
         # Make a deep copy since deletion may update this objects recurrence rules
-        new_item_copy = self.copy(update=update, deep=True)
+        new_item_copy = self.model_copy(update=update, deep=True)
         # Create a new object using the constructor to ensure we're performing
         # validation on the new object.
-        return self.__class__(**new_item_copy.dict())
+        return self.__class__(**new_item_copy.model_dump())
 
-    @root_validator(pre=True, allow_reuse=True)
+    @model_validator(mode="before")
+    @classmethod
     def parse_extra_fields(
         cls, values: dict[str, list[ParsedProperty | ParsedComponent]]
     ) -> dict[str, Any]:
         """Parse extra fields not in the model."""
-        all_fields = set()
-        for field in cls.__fields__.values():
-            all_fields |= {field.alias, field.name}
+        all_fields: set[str | None] = set()
+        for name, field in cls.model_fields.items():
+            all_fields |= {field.alias, name}
 
         extras: list[ParsedProperty | ParsedComponent] = []
         for field_name, value in values.items():
@@ -174,29 +183,32 @@ class ComponentModel(BaseModel):
             values["extras"] = extras
         return values
 
-    @root_validator(pre=True, allow_reuse=True)
+    @model_validator(mode="before")
+    @classmethod
     def parse_property_values(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Parse individual ParsedProperty value fields."""
         _LOGGER.debug("Parsing value data %s", values)
 
-        for field in cls.__fields__.values():
+        for name, field in cls.model_fields.items():
             if field.alias == "extras":
                 continue
-            if not (value := values.get(field.alias)):
+            field_name = field.alias or name
+            if not (value := values.get(field_name)):
                 continue
             if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
                 # The incoming value is not from the parse tree
                 continue
-            if field.alias in EXPAND_REPEATED_VALUES:
+            if field_name in EXPAND_REPEATED_VALUES:
                 value = cls._expand_repeated_property(value)
             # Repeated values will accept a list, otherwise truncate to a single
             # value when repeated is not allowed.
-            allow_repeated = field.shape == SHAPE_LIST
+            annotation = get_field_type(field.annotation)
+            allow_repeated = get_origin(annotation) is list
             if not allow_repeated and len(value) > 1:
-                raise ValueError(f"Expected one value for field: {field.alias}")
-            field_types = cls._get_field_types(field.type_)
+                raise ValueError(f"Expected one value for field: {name}")
+            field_types = cls._get_field_types(annotation)
             validated = [cls._parse_property(field_types, prop) for prop in value]
-            values[field.alias] = validated if allow_repeated else validated[0]
+            values[field_name] = validated if allow_repeated else validated[0]
 
         _LOGGER.debug("Completed parsing value data %s", values)
 
@@ -270,6 +282,11 @@ class ComponentModel(BaseModel):
     def _get_field_types(cls, field_type: type) -> list[type]:
         """Return type to attempt for encoding/decoding based on the field type."""
         origin = get_origin(field_type)
+        if origin is list:
+            if not(args := get_args(field_type)):
+                raise ValueError(f"Unable to determine args of type: {field_type}")
+            field_type = args[0]
+            origin = get_origin(field_type)
         if origin is Union:
             if not (args := get_args(field_type)):
                 raise ValueError(f"Unable to determine args of type: {field_type}")
@@ -292,7 +309,7 @@ class ComponentModel(BaseModel):
         # marshalled through as string values. There are then additional passes
         # to get the data in to the right final format for ics encoding.
         model_data = json.loads(
-            self.json(by_alias=True, exclude_none=True, exclude_defaults=True)
+            self.model_dump_json(by_alias=True, exclude_none=True, context={"ics": True})
         )
         # The component name is ignored as we're really only encoding children components
         return self.__encode_component__(self.__class__.__name__, model_data)
@@ -308,21 +325,22 @@ class ComponentModel(BaseModel):
         as well as overall component objects.
         """
         parent = ParsedComponent(name=name)
-        for field in cls.__fields__.values():
-            key = field.alias
+        for name, field in cls.model_fields.items():
+            key = field.alias or name
             values = model_data.get(key)
             if values is None or key == "extras":
                 continue
             if not isinstance(values, list):
                 values = [values]
+            annotation = get_field_type(field.annotation)
             for value in values:
-                if component_encoder := getattr(
-                    field.type_, "__encode_component__", None
-                ):
-                    parent.components.append(component_encoder(key, value))
-                    continue
-                if prop := cls._encode_property(key, field.type_, value):
-                    parent.properties.append(prop)
+                for field_type in cls._get_field_types(annotation):
+                    if component_encoder := getattr(field_type, "__encode_component__", None):
+                        parent.components.append(component_encoder(key, value))
+                        break
+                else:
+                    if prop := cls._encode_property(key, annotation, value):
+                        parent.properties.append(prop)
         return parent
 
     @classmethod
@@ -354,10 +372,8 @@ class ComponentModel(BaseModel):
 
         raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
-    class Config:
-        """Pydantic model configuration."""
-
-        validate_assignment = True
-        allow_population_by_field_name = True
-        smart_union = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        validate_assignment=True,
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )

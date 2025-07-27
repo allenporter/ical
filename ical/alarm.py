@@ -2,13 +2,14 @@
 
 import datetime
 import enum
-from typing import Any, Optional, Union
+from typing import Optional, Self, Union
 
-from pydantic.v1 import Field, root_validator
+from pydantic import Field, field_serializer, model_validator
 
 from .component import ComponentModel
 from .parsing.property import ParsedProperty
 from .types import CalAddress
+from .types.data_types import serialize_field
 
 
 class Action(str, enum.Enum):
@@ -78,33 +79,35 @@ class Alarm(ComponentModel):
     # Future properties:
     # - attach
 
-    @root_validator
-    def parse_display_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def parse_display_required_fields(self) -> Self:
         """Validate required fields for display actions."""
-        action = values.get("action")
+        action = self.action
         if action != Action.DISPLAY:
-            return values
-        if values.get("description") is None:
+            return self
+        if self.description is None:
             raise ValueError(f"Description value is required for action {action}")
-        return values
+        return self
 
-    @root_validator
-    def parse_email_required_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def parse_email_required_fields(self) -> Self:
         """Validate required fields for email actions."""
-        action = values.get("action")
+        action = self.action
         if action != Action.EMAIL:
-            return values
-        if values.get("description") is None:
+            return self
+        if self.description is None:
             raise ValueError(f"Description value is required for action {action}")
-        if values.get("summary") is None:
+        if self.summary is None:
             raise ValueError(f"Summary value is required for action {action}")
-        return values
+        return self
 
-    @root_validator
-    def parse_repeat_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def parse_repeat_duration(self) -> Self:
         """Assert the relationship between repeat and duration."""
-        if (values.get("duration") is None) != (values.get("repeat") is None):
+        if (self.duration is None) != (self.repeat is None):
             raise ValueError(
                 "Duration and Repeat must both be specified or both omitted"
             )
-        return values
+        return self
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

@@ -18,9 +18,11 @@ import datetime
 import enum
 import logging
 from collections.abc import Iterable
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Self, Union
 
-from pydantic.v1 import Field, root_validator
+from pydantic import BeforeValidator, Field, field_serializer, model_validator
+
+from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
@@ -39,7 +41,13 @@ from .types import (
     Uri,
     RelatedTo,
 )
-from .util import dtstamp_factory, normalize_datetime, uid_factory
+from .util import (
+    dtstamp_factory,
+    normalize_datetime,
+    parse_date_and_datetime,
+    parse_date_and_datetime_list,
+    uid_factory,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,22 +92,27 @@ class Event(ComponentModel):
     as other parsing methods.
     """
 
-    dtstamp: Union[datetime.datetime, datetime.date] = Field(
-        default_factory=lambda: dtstamp_factory()
-    )
+    dtstamp: Annotated[
+        Union[datetime.date, datetime.datetime],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default_factory=lambda: dtstamp_factory())
     """Specifies the date and time the event was created."""
 
     uid: str = Field(default_factory=lambda: uid_factory())
     """A globally unique identifier for the event."""
 
     # Has an alias of 'start'
-    dtstart: Union[datetime.datetime, datetime.date] = Field(
-        default=None,
-    )
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = Field(default=None)
     """The start time or start day of the event."""
 
     # Has an alias of 'end'
-    dtend: Optional[Union[datetime.datetime, datetime.date]] = None
+    dtend: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The end time or end day of the event.
 
     This may be specified as an explicit date. Alternatively, a duration
@@ -109,7 +122,7 @@ class Event(ComponentModel):
     duration: Optional[datetime.timedelta] = None
     """The duration of the event as an alternative to an explicit end date/time."""
 
-    summary: str = ""
+    summary: Optional[str] = None
     """Defines a short summary or subject for the event."""
 
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
@@ -187,7 +200,10 @@ class Event(ComponentModel):
     sure all instances have the same start time regardless of time zone changing.
     """
 
-    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of date/time values for recurring events.
 
     Can appear along with the rrule property to define a set of repeating occurrences of the
@@ -196,7 +212,10 @@ class Event(ComponentModel):
     and rdate properties then excluding any times specified by exdate.
     """
 
-    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Defines the list of exceptions for recurring events.
 
     The exception dates are used in computing the recurrence set. The recurrence set is
@@ -206,7 +225,8 @@ class Event(ComponentModel):
     """
 
     request_status: Optional[RequestStatus] = Field(
-        alias="request-status", default_value=None
+        default=None,
+        alias="request-status",
     )
 
     sequence: Optional[int] = None
@@ -255,19 +275,20 @@ class Event(ComponentModel):
     @property
     def start(self) -> datetime.datetime | datetime.date:
         """Return the start time for the event."""
+        assert self.dtstart is not None
         return self.dtstart
 
     @property
     def end(self) -> datetime.datetime | datetime.date:
         """Return the end time for the event."""
         if self.duration:
-            return self.dtstart + self.duration
+            return self.start + self.duration
         if self.dtend:
             return self.dtend
 
-        if isinstance(self.dtstart, datetime.datetime):
-            return self.dtstart
-        return self.dtstart + datetime.timedelta(days=1)
+        if isinstance(self.start, datetime.datetime):
+            return self.start
+        return self.start + datetime.timedelta(days=1)
 
     @property
     def start_datetime(self) -> datetime.datetime:
@@ -361,7 +382,8 @@ class Event(ComponentModel):
         """
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
-    @root_validator(pre=True, allow_reuse=True)
+    @model_validator(mode="before")
+    @classmethod
     def _inspect_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Debug the date and date/time values of the event."""
         dtstart = values.get("dtstart")
@@ -371,17 +393,22 @@ class Event(ComponentModel):
         _LOGGER.debug("Found initial values dtstart=%s, dtend=%s", dtstart, dtend)
         return values
 
-    @root_validator(allow_reuse=True)
-    def _validate_date_types(cls, values: dict[str, Any]) -> dict[str, Any]:
+    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
+    _validate_recurrence_dates = model_validator(mode="after")(
+        validate_recurrence_dates
+    )
+
+    @model_validator(mode="after")
+    def _validate_date_types(self) -> Self:
         """Validate that start and end values are the same date or datetime type."""
-        dtstart = values.get("dtstart")
-        dtend = values.get("dtend")
+        dtstart = self.dtstart
+        dtend = self.dtend
 
         if not dtstart or not dtend:
-            return values
+            return self
         if isinstance(dtstart, datetime.datetime):
             if not isinstance(dtend, datetime.datetime):
-                _LOGGER.debug("Unexpected data types for values: %s", values)
+                _LOGGER.debug("Unexpected data types for values: %s", self)
                 raise ValueError(
                     f"Unexpected dtstart value '{dtstart}' was datetime but "
                     f"dtend value '{dtend}' was not datetime"
@@ -392,47 +419,44 @@ class Event(ComponentModel):
                     f"Unexpected dtstart value '{dtstart}' was date but "
                     f"dtend value '{dtend}' was datetime"
                 )
-        return values
+        return self
 
-    @root_validator(allow_reuse=True)
-    def _validate_datetime_timezone(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_datetime_timezone(self) -> Self:
         """Validate that start and end values have the same timezone information."""
         if (
-            not (dtstart := values.get("dtstart"))
-            or not (dtend := values.get("dtend"))
+            not (dtstart := self.dtstart)
+            or not (dtend := self.dtend)
             or not isinstance(dtstart, datetime.datetime)
             or not isinstance(dtend, datetime.datetime)
         ):
-            return values
+            return self
         if dtstart.tzinfo is None and dtend.tzinfo is not None:
             raise ValueError(
                 f"Expected end datetime value in localtime but was {dtend}"
             )
         if dtstart.tzinfo is not None and dtend.tzinfo is None:
             raise ValueError(f"Expected end datetime with timezone but was {dtend}")
-        return values
+        return self
 
-    @root_validator(allow_reuse=True)
-    def _validate_one_end_or_duration(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_one_end_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
-        if values.get("dtend") and values.get("duration"):
+        if self.dtend and self.duration:
             raise ValueError("Only one of dtend or duration may be set." "")
-        return values
+        return self
 
-    @root_validator(allow_reuse=True)
-    def _validate_duration_unit(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def _validate_duration_unit(self) -> Self:
         """Validate the duration is the appropriate units."""
-        if not (duration := values.get("duration")):
-            return values
-        dtstart = values["dtstart"]
+        if not (duration := self.duration):
+            return self
+        dtstart = self.dtstart
         if type(dtstart) is datetime.date:
             if duration.seconds != 0:
                 raise ValueError("Event with start date expects duration in days only")
         if duration < datetime.timedelta(seconds=0):
             raise ValueError(f"Expected duration to be positive but was {duration}")
-        return values
+        return self
 
-    _validate_until_dtstart = root_validator(allow_reuse=True)(validate_until_dtstart)
-    _validate_recurrence_dates = root_validator(allow_reuse=True)(
-        validate_recurrence_dates
-    )
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

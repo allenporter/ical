@@ -25,7 +25,7 @@
         'events': list([
           dict({
             'dtend': '1997-07-14T14:00:00-04:00',
-            'dtstamp': '1997-06-10T17:23:45+00:00',
+            'dtstamp': '1997-06-10T17:23:45Z',
             'dtstart': '1997-07-14T13:30:00-04:00',
             'summary': 'Mid July check-in',
             'uid': '19970610T172345Z-AF23B2@example.com',
@@ -43,9 +43,9 @@
       dict({
         'events': list([
           dict({
-            'dtend': '1997-07-15T04:00:00+00:00',
-            'dtstamp': '1997-06-10T17:23:45+00:00',
-            'dtstart': '1997-07-14T17:00:00+00:00',
+            'dtend': '1997-07-15T04:00:00Z',
+            'dtstamp': '1997-06-10T17:23:45Z',
+            'dtstart': '1997-07-14T17:00:00Z',
             'summary': 'Bastille Day Party',
             'uid': '19970610T172345Z-AF23B2@example.com',
           }),
@@ -93,10 +93,10 @@
                   'PDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -28800.0,
+                  'offset': '-PT8H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -25200.0,
+                  'offset': '-PT7H',
                 }),
               }),
             ]),
@@ -119,10 +119,10 @@
                   'PST',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -25200.0,
+                  'offset': '-PT7H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -28800.0,
+                  'offset': '-PT8H',
                 }),
               }),
             ]),
@@ -171,10 +171,10 @@
                   'PDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': 7200.0,
+                  'offset': 'PT2H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': 3600.0,
+                  'offset': 'PT1H',
                 }),
               }),
             ]),
@@ -197,10 +197,10 @@
                   'PST',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': 3600.0,
+                  'offset': 'PT1H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': 7200.0,
+                  'offset': 'PT2H',
                 }),
               }),
             ]),
@@ -219,9 +219,9 @@
         'events': list([
           dict({
             'description': "The Fall'98 Wild Wizards Conference - - Las Vegas, NV, USA",
-            'dtend': '1997-07-15T04:00:00+00:00',
-            'dtstamp': '1997-06-10T17:23:45+00:00',
-            'dtstart': '1997-07-14T17:00:00+00:00',
+            'dtend': '1997-07-15T04:00:00Z',
+            'dtstamp': '1997-06-10T17:23:45Z',
+            'dtstart': '1997-07-14T17:00:00Z',
             'summary': 'Conference',
             'uid': '19970610T172345Z-AF23B2@example.com',
           }),
@@ -241,7 +241,7 @@
             'alarm': list([
               dict({
                 'action': 'AUDIO',
-                'duration': -1177200.0,
+                'duration': '-P13DT15H',
                 'extras': list([
                   dict({
                     'name': 'attach',
@@ -257,11 +257,11 @@
                   }),
                 ]),
                 'repeat': 4,
-                'trigger': '1997-03-17T13:30:00+00:00',
+                'trigger': '1997-03-17T13:30:00Z',
               }),
             ]),
             'dtend': '2007-07-09',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28',
             'summary': 'Festival International de Jazz de Montreal',
             'transparency': 'TRANSPARENT',
@@ -287,7 +287,7 @@
         'events': list([
           dict({
             'dtend': '2007-07-09',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28',
             'summary': 'Festival International de Jazz de Montreal',
             'transparency': 'TRANSPARENT',
@@ -321,7 +321,7 @@
               }),
             ]),
             'dtend': '2007-07-09',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28',
             'organizer': dict({
               'common_name': 'John Smith',
@@ -397,7 +397,7 @@
               }),
             ]),
             'dtend': '2007-07-09',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28',
             'organizer': dict({
               'directory_entry': 'ldap://example.com:6666/o=ABC%20Industries,c=US???(cn=Jim%20Dolittle)',
@@ -427,9 +427,9 @@
               Atlanta World Congress Center
               Atlanta, Georgia
             ''',
-            'dtend': '1996-09-20T22:00:00+00:00',
-            'dtstamp': '1996-07-04T12:00:00+00:00',
-            'dtstart': '1996-09-18T14:30:00+00:00',
+            'dtend': '1996-09-20T22:00:00Z',
+            'dtstamp': '1996-07-04T12:00:00Z',
+            'dtstart': '1996-09-18T14:30:00Z',
             'organizer': dict({
               'uri': 'mailto:jsmith@example.com',
             }),
@@ -450,9 +450,9 @@
       dict({
         'events': list([
           dict({
-            'dtend': '2007-05-14T11:30:00+00:00',
-            'dtstamp': '2007-05-14T10:32:11+00:00',
-            'dtstart': '2007-05-14T11:00:00+00:00',
+            'dtend': '2007-05-14T11:30:00Z',
+            'dtstamp': '2007-05-14T10:32:11Z',
+            'dtstart': '2007-05-14T11:00:00Z',
             'priority': 1,
             'summary': 'Client meeting',
             'uid': '20070514T103211Z-123404@example.com',
@@ -480,7 +480,7 @@
               RSVP to team leader.
             ''',
             'dtend': '2007-06-28T10:00:00',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28T09:00:00',
             'geo': dict({
               'lat': 37.386013,
@@ -504,9 +504,10 @@
         'events': list([
           dict({
             'dtend': '2007-06-28T10:00:00',
-            'dtstamp': '2007-04-23T12:34:32+00:00',
+            'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28T09:00:00',
             'request_status': dict({
+              'exdata': None,
               'statcode': 2.0,
               'statdesc': 'Success',
             }),
@@ -535,9 +536,9 @@
             'contacts': list([
               'Jim Dolittle, ABC Industries, +1-919-555-1234',
             ]),
-            'dtend': '1998-04-10T14:17:11+00:00',
-            'dtstamp': '1998-03-13T06:00:00+00:00',
-            'dtstart': '1998-03-13T14:17:11+00:00',
+            'dtend': '1998-04-10T14:17:11Z',
+            'dtstamp': '1998-03-13T06:00:00Z',
+            'dtstart': '1998-03-13T14:17:11Z',
             'organizer': dict({
               'uri': 'mailto:jsmith@example.com',
             }),
@@ -557,21 +558,21 @@
       dict({
         'freebusy': list([
           dict({
-            'dtend': '1998-04-10T14:17:11+00:00',
-            'dtstamp': '1997-06-10T17:23:45+00:00',
-            'dtstart': '1998-03-13T14:17:11+00:00',
+            'dtend': '1998-04-10T14:17:11Z',
+            'dtstamp': '1997-06-10T17:23:45Z',
+            'dtstart': '1998-03-13T14:17:11Z',
             'freebusy': list([
               dict({
-                'end': '1998-03-15T00:30:00+00:00',
-                'start': '1998-03-14T23:30:00+00:00',
+                'end': '1998-03-15T00:30:00Z',
+                'start': '1998-03-14T23:30:00Z',
               }),
               dict({
-                'end': '1998-03-16T16:30:00+00:00',
-                'start': '1998-03-16T15:30:00+00:00',
+                'end': '1998-03-16T16:30:00Z',
+                'start': '1998-03-16T15:30:00Z',
               }),
               dict({
-                'end': '1998-03-18T04:00:00+00:00',
-                'start': '1998-03-18T03:00:00+00:00',
+                'end': '1998-03-18T04:00:00Z',
+                'start': '1998-03-18T03:00:00Z',
               }),
             ]),
             'organizer': dict({
@@ -581,37 +582,37 @@
             'url': 'http://www.example.com/calendar/busytime/jsmith.ifb',
           }),
           dict({
-            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstamp': '1997-09-01T13:00:00Z',
             'freebusy': list([
               dict({
-                'duration': 30600.0,
+                'duration': 'PT8H30M',
                 'free_busy_type': 'BUSY-UNAVAILABLE',
-                'start': '1997-03-08T16:00:00+00:00',
+                'start': '1997-03-08T16:00:00Z',
               }),
               dict({
-                'duration': 10800.0,
+                'duration': 'PT3H',
                 'free_busy_type': 'FREE',
-                'start': '1997-03-08T16:00:00+00:00',
+                'start': '1997-03-08T16:00:00Z',
               }),
               dict({
-                'duration': 3600.0,
+                'duration': 'PT1H',
                 'free_busy_type': 'FREE',
-                'start': '1997-03-08T20:00:00+00:00',
+                'start': '1997-03-08T20:00:00Z',
               }),
               dict({
-                'duration': 10800.0,
+                'duration': 'PT3H',
                 'free_busy_type': 'FREE',
-                'start': '1997-03-08T16:00:00+00:00',
+                'start': '1997-03-08T16:00:00Z',
               }),
               dict({
-                'duration': 3600.0,
+                'duration': 'PT1H',
                 'free_busy_type': 'FREE',
-                'start': '1997-03-08T20:00:00+00:00',
+                'start': '1997-03-08T20:00:00Z',
               }),
               dict({
-                'end': '1997-03-09T00:00:00+00:00',
+                'end': '1997-03-09T00:00:00Z',
                 'free_busy_type': 'FREE',
-                'start': '1997-03-08T23:00:00+00:00',
+                'start': '1997-03-08T23:00:00Z',
               }),
             ]),
             'uid': '19970901T130000Z-123401@example.com',
@@ -629,12 +630,13 @@
       dict({
         'events': list([
           dict({
-            'dtend': '1996-09-20T22:00:00+00:00',
-            'dtstamp': '1996-07-04T12:00:00+00:00',
-            'dtstart': '1996-09-18T14:30:00+00:00',
+            'dtend': '1996-09-20T22:00:00Z',
+            'dtstamp': '1996-07-04T12:00:00Z',
+            'dtstart': '1996-09-18T14:30:00Z',
             'extras': list([
               dict({
                 'name': 'dresscode',
+                'params': None,
                 'value': 'CASUAL',
               }),
               dict({
@@ -671,7 +673,7 @@
               2. Telephone Conference: ABC Corp. sales representative called to discuss new printer. Promised to get us a demo by Friday.
               3. Henry Miller (Handsoff Insurance): Car was totaled by tree. Is looking into a loaner car. 555-2323 (tel).
             ''',
-            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstamp': '1997-09-01T13:00:00Z',
             'dtstart': '1997-03-17',
             'summary': 'Staff meeting minutes',
             'uid': '19970901T130000Z-123405@example.com',
@@ -690,7 +692,7 @@
         'journal': list([
           dict({
             'classification': 'PUBLIC',
-            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstamp': '1997-09-01T13:00:00Z',
             'dtstart': '1997-03-17',
             'status': 'FINAL',
             'summary': 'Staff meeting minutes',
@@ -715,14 +717,14 @@
               'FINANCE',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'due': '2007-05-01',
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Quebec Income Tax Return for 2006',
             'uid': '20070313T123432Z-456553@example.com',
           }),
           dict({
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'related_to': list([
               dict({
                 'reltype': 'PARENT',
@@ -751,14 +753,14 @@
               'FINANCE',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'due': '2007-05-01',
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Quebec Income Tax Return for 2006',
             'uid': '20070313T123432Z-456553@example.com',
           }),
           dict({
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'related_to': list([
               dict({
                 'reltype': 'PARENT',
@@ -781,12 +783,12 @@
       dict({
         'events': list([
           dict({
-            'created': '2022-07-31T19:02:07+00:00',
+            'created': '2022-07-31T19:02:07Z',
             'description': '',
             'dtend': '2022-08-02T09:30:00-07:00',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-02T09:00:00-07:00',
-            'last_modified': '2022-07-31T19:02:07+00:00',
+            'last_modified': '2022-07-31T19:02:07Z',
             'location': '',
             'rrule': dict({
               'freq': 'DAILY',
@@ -810,12 +812,12 @@
       dict({
         'events': list([
           dict({
-            'created': '2022-07-31T19:02:07+00:00',
+            'created': '2022-07-31T19:02:07Z',
             'description': '',
             'dtend': '2022-08-03',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-02',
-            'last_modified': '2022-07-31T19:02:07+00:00',
+            'last_modified': '2022-07-31T19:02:07Z',
             'location': '',
             'rrule': dict({
               'freq': 'DAILY',
@@ -850,9 +852,11 @@
             'rrule': dict({
               'by_weekday': list([
                 dict({
+                  'occurrence': None,
                   'weekday': 'SU',
                 }),
                 dict({
+                  'occurrence': None,
                   'weekday': 'SA',
                 }),
               ]),
@@ -875,7 +879,7 @@
         'events': list([
           dict({
             'dtend': '2022-08-02',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-01',
             'exdate': list([
               '2022-09-01',
@@ -904,12 +908,12 @@
       dict({
         'events': list([
           dict({
-            'created': '2022-07-31T19:03:27+00:00',
+            'created': '2022-07-31T19:03:27Z',
             'description': '',
             'dtend': '2022-08-02',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-01',
-            'last_modified': '2022-07-31T19:03:39+00:00',
+            'last_modified': '2022-07-31T19:03:39Z',
             'location': '',
             'recurrence_id': '20220901',
             'rrule': dict({
@@ -937,12 +941,12 @@
       dict({
         'events': list([
           dict({
-            'created': '2022-07-31T19:02:07+00:00',
+            'created': '2022-07-31T19:02:07Z',
             'description': '',
             'dtend': '2022-08-03',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-02',
-            'last_modified': '2022-07-31T19:02:07+00:00',
+            'last_modified': '2022-07-31T19:02:07Z',
             'location': '',
             'rrule': dict({
               'freq': 'DAILY',
@@ -967,16 +971,17 @@
       dict({
         'events': list([
           dict({
-            'created': '2022-07-31T19:02:40+00:00',
+            'created': '2022-07-31T19:02:40Z',
             'description': '',
             'dtend': '2022-08-05',
-            'dtstamp': '2022-07-31T19:04:08+00:00',
+            'dtstamp': '2022-07-31T19:04:08Z',
             'dtstart': '2022-08-04',
-            'last_modified': '2022-07-31T19:02:51+00:00',
+            'last_modified': '2022-07-31T19:02:51Z',
             'location': '',
             'rrule': dict({
               'by_weekday': list([
                 dict({
+                  'occurrence': None,
                   'weekday': 'TH',
                 }),
               ]),
@@ -1007,7 +1012,7 @@
               'SPECIAL OCCASION',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '1997-09-01T13:00:00+00:00',
+            'dtstamp': '1997-09-01T13:00:00Z',
             'dtstart': '1997-11-02',
             'rrule': dict({
               'freq': 'YEARLY',
@@ -1044,16 +1049,16 @@
                     }),
                   ]),
                   'freq': 'YEARLY',
-                  'until': '1973-04-29T07:00:00+00:00',
+                  'until': '1973-04-29T07:00:00Z',
                 }),
                 'tz_name': list([
                   'EDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
               }),
               dict({
@@ -1065,10 +1070,10 @@
                   'EDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
               }),
               dict({
@@ -1084,16 +1089,16 @@
                     }),
                   ]),
                   'freq': 'YEARLY',
-                  'until': '1986-04-27T07:00:00+00:00',
+                  'until': '1986-04-27T07:00:00Z',
                 }),
                 'tz_name': list([
                   'EDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
               }),
               dict({
@@ -1109,16 +1114,16 @@
                     }),
                   ]),
                   'freq': 'YEARLY',
-                  'until': '2006-04-02T07:00:00+00:00',
+                  'until': '2006-04-02T07:00:00Z',
                 }),
                 'tz_name': list([
                   'EDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
               }),
               dict({
@@ -1139,14 +1144,14 @@
                   'EDT',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
               }),
             ]),
-            'last_modified': '2005-08-09T05:00:00+00:00',
+            'last_modified': '2005-08-09T05:00:00Z',
             'standard': list([
               dict({
                 'dtstart': '1967-10-29T02:00:00',
@@ -1161,16 +1166,16 @@
                     }),
                   ]),
                   'freq': 'YEARLY',
-                  'until': '2006-10-29T06:00:00+00:00',
+                  'until': '2006-10-29T06:00:00Z',
                 }),
                 'tz_name': list([
                   'EST',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
               }),
               dict({
@@ -1191,10 +1196,10 @@
                   'EST',
                 ]),
                 'tz_offset_from': dict({
-                  'offset': -14400.0,
+                  'offset': '-PT4H',
                 }),
                 'tz_offset_to': dict({
-                  'offset': -18000.0,
+                  'offset': '-PT5H',
                 }),
               }),
             ]),
@@ -1218,16 +1223,16 @@
               'FINANCE',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'due': '2007-05-01T11:00:00-07:00',
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Quebec Income Tax Return for 2006',
             'uid': '20070313T123432Z-456553@example.com',
           }),
           dict({
-            'completed': '2007-07-07T10:00:00+00:00',
-            'dtstamp': '2007-05-14T10:32:11+00:00',
-            'due': '2007-07-09T13:00:00+00:00',
+            'completed': '2007-07-07T10:00:00Z',
+            'dtstamp': '2007-05-14T10:32:11Z',
+            'due': '2007-07-09T13:00:00Z',
             'priority': 1,
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Revised Internet-Draft',
@@ -1239,7 +1244,7 @@
               'FINANCE',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'due': '2007-05-01T11:00:00',
             'status': 'NEEDS-ACTION',
             'summary': 'Floating due datetime',
@@ -1263,17 +1268,17 @@
               'FINANCE',
             ]),
             'classification': 'CONFIDENTIAL',
-            'dtstamp': '2007-03-13T12:34:32+00:00',
+            'dtstamp': '2007-03-13T12:34:32Z',
             'due': '2007-05-01',
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Quebec Income Tax Return for 2006',
             'uid': '20070313T123432Z-456553@example.com',
           }),
           dict({
-            'completed': '2007-07-07T10:00:00+00:00',
-            'dtstamp': '2007-05-14T10:32:11+00:00',
-            'dtstart': '2007-05-14T11:00:00+00:00',
-            'due': '2007-07-09T13:00:00+00:00',
+            'completed': '2007-07-07T10:00:00Z',
+            'dtstamp': '2007-05-14T10:32:11Z',
+            'dtstart': '2007-05-14T11:00:00Z',
+            'due': '2007-07-09T13:00:00Z',
             'priority': 1,
             'status': 'NEEDS-ACTION',
             'summary': 'Submit Revised Internet-Draft',
@@ -1295,7 +1300,7 @@
             'alarms': list([
               dict({
                 'action': 'AUDIO',
-                'duration': 3600.0,
+                'duration': 'PT1H',
                 'extras': list([
                   dict({
                     'name': 'attach',
@@ -1311,7 +1316,7 @@
                   }),
                 ]),
                 'repeat': 4,
-                'trigger': '1998-04-03T12:00:00+00:00',
+                'trigger': '1998-04-03T12:00:00Z',
               }),
             ]),
             'attendees': list([
@@ -1320,7 +1325,7 @@
                 'uri': 'mailto:jqpublic@example.com',
               }),
             ]),
-            'dtstamp': '1998-01-30T13:45:00+00:00',
+            'dtstamp': '1998-01-30T13:45:00Z',
             'due': '1998-04-15T00:00:00',
             'organizer': dict({
               'uri': 'mailto:unclesam@example.com',

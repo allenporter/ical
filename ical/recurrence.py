@@ -11,23 +11,24 @@ from __future__ import annotations
 import datetime
 import logging
 from collections.abc import Iterable
-from typing import Any, Optional, Union, Self
+from typing import Annotated, Union, Self
 
 from dateutil import rrule
-from pydantic.v1 import BaseModel, Field
+from pydantic import BeforeValidator, ConfigDict, Field, field_serializer
 
 from .parsing.property import (
     parse_contentlines,
 )
 from .parsing.component import ParsedComponent
 
-from .types.data_types import DATA_TYPE
+from .types.data_types import serialize_field
 from .types.date import DateEncoder
 from .types.recur import Recur
 from .types.date_time import DateTimeEncoder
 from .component import ComponentModel
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
+from .util import parse_date_and_datetime, parse_date_and_datetime_list
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,16 +37,25 @@ _LOGGER = logging.getLogger(__name__)
 class Recurrences(ComponentModel):
     """A common set of recurrence related properties for calendar components."""
 
-    dtstart: Optional[Union[datetime.datetime | datetime.date]] = None
+    dtstart: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The start date for the event."""
 
     rrule: list[Recur] = Field(default_factory=list)
     """The recurrence rule for the event."""
 
-    rdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    rdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Dates for the event."""
 
-    exdate: list[Union[datetime.datetime, datetime.date]] = Field(default_factory=list)
+    exdate: Annotated[
+        list[Union[datetime.date, datetime.datetime]],
+        BeforeValidator(parse_date_and_datetime_list),
+    ] = Field(default_factory=list)
     """Excluded dates for the event."""
 
     @classmethod
@@ -66,7 +76,7 @@ class Recurrences(ComponentModel):
             name="recurrences",  # Not used in the model
             properties=properties,
         )
-        return cls.parse_obj(component.as_dict())
+        return cls.model_validate(component.as_dict())
 
     def as_rrule(
         self, dtstart: datetime.date | datetime.datetime | None = None
@@ -87,9 +97,8 @@ class Recurrences(ComponentModel):
         """Serialize the recurrence rules as strings."""
         return [prop.ics() for prop in self.__encode_component_root__().properties]
 
-    class Config:
-        """Configuration for IcsCalendarStream pydantic model."""
-
-        json_encoders = DATA_TYPE.encode_property_json
-        validate_assignment = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(
+        validate_assignment=True,
+        populate_by_name=True,
+    )
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

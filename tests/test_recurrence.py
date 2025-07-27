@@ -56,7 +56,7 @@ def test_from_contentlines_rdate() -> None:
     ]
     component = parse_content("\n".join(content))
     assert component
-    orig_recurrences = Recurrences.parse_obj(component[0].as_dict())
+    orig_recurrences = Recurrences.model_validate(component[0].as_dict())
     recurrences = Recurrences.from_basic_contentlines(lines)
     assert recurrences.rrule == [
         Recur(
@@ -133,7 +133,7 @@ def test_from_contentlines_date_values(
     # assert content == 'a'
     component = parse_content("\n".join(content))
     assert component
-    orig_recurrences = Recurrences.parse_obj(component[0].as_dict())
+    orig_recurrences = Recurrences.model_validate(component[0].as_dict())
 
     # Parse using optimized parser
     recurrences = Recurrences.from_basic_contentlines(lines)

@@ -27,14 +27,14 @@ def test_journal() -> None:
 
 def test_status() -> None:
     """Test Journal status."""
-    journal = Journal.parse_obj({"status": "DRAFT"})
+    journal = Journal.model_validate({"status": "DRAFT"})
     assert journal.status == JournalStatus.DRAFT
 
     with pytest.raises(
         CalendarParseError,
-        match="^Failed to parse calendar JOURNAL component: value is not a valid enumeration member; permitted: 'DRAFT', 'FINAL', 'CANCELLED'$",
+        match="^Failed to parse calendar JOURNAL component: Input should be 'DRAFT', 'FINAL' or 'CANCELLED'$",
     ):
-        Journal.parse_obj({"status": "invalid-status"})
+        Journal.model_validate({"status": "invalid-status"})
 
 
 def test_start_datetime() -> None:

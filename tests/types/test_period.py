@@ -2,6 +2,7 @@
 
 import datetime
 
+from pydantic import field_serializer
 import pytest
 from ical.exceptions import CalendarParseError
 
@@ -9,7 +10,7 @@ from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
 from ical.types import Period
-from ical.types.data_types import DATA_TYPE
+from ical.types.data_types import serialize_field
 
 
 class FakeModel(ComponentModel):
@@ -17,17 +18,14 @@ class FakeModel(ComponentModel):
 
     example: Period
 
-    class Config:
-        """Pydantic model configuration."""
-
-        json_encoders = DATA_TYPE.encode_property_json
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 def test_period() -> None:
     """Test for period fields."""
 
     # Time period with end date
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {
             "example": [
                 ParsedProperty(
@@ -46,7 +44,7 @@ def test_period() -> None:
     )
 
     # Time period with duration
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {"example": [ParsedProperty(name="example", value="19970101T180000Z/PT5H30M")]},
     )
     assert model.example.start == datetime.datetime(
@@ -60,20 +58,20 @@ def test_period() -> None:
     )
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="a")]})
+        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="a")]})
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj(
+        FakeModel.model_validate(
             {"example": [ParsedProperty(name="example", value="19970101T180000Z/a")]}
         )
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj(
+        FakeModel.model_validate(
             {"example": [ParsedProperty(name="example", value="a/19970102T070000Z")]}
         )
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj(
+        FakeModel.model_validate(
             {"example": [ParsedProperty(name="example", value="a/PT5H30M")]}
         )
 

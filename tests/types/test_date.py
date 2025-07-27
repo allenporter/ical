@@ -18,7 +18,7 @@ def test_date_parser() -> None:
 
         d: datetime.date
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "d": [ParsedProperty(name="d", value="20220724")],
         }
@@ -26,7 +26,7 @@ def test_date_parser() -> None:
     assert model.d == datetime.date(2022, 7, 24)
 
     with pytest.raises(CalendarParseError):
-        TestModel.parse_obj(
+        TestModel.model_validate(
             {
                 "d": [
                     ParsedProperty(
@@ -50,14 +50,14 @@ def test_union_date_parser() -> None:
 
         d: Union[datetime.datetime, datetime.date]
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "d": [ParsedProperty(name="d", value="20220724")],
         }
     )
     assert model.d == datetime.date(2022, 7, 24)
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "d": [ParsedProperty(name="d", value="20220724T120000")],
         }

@@ -39,14 +39,23 @@ import enum
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 from dateutil import rrule
-from pydantic.v1 import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    GetCoreSchemaHandler,
+    field_serializer,
+)
+from pydantic_core import CoreSchema, core_schema
 
 from ical.parsing.property import ParsedProperty
+from ical.util import parse_date_and_datetime
 
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, serialize_field
 from .date import DateEncoder
 from .date_time import DateTimeEncoder
 
@@ -171,7 +180,7 @@ class RecurrenceId(str):
             value = cls._parse_value(value.value)
         if isinstance(value, str):
             value = cls._parse_value(value)
-        elif isinstance(value, datetime.datetime):
+        if isinstance(value, datetime.datetime):
             value = DateTimeEncoder.__encode_property_json__(value)
         elif isinstance(value, datetime.date):
             value = DateEncoder.__encode_property_json__(value)
@@ -186,6 +195,14 @@ class RecurrenceId(str):
         except ValueError:
             pass
         return str(value)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_before_validator_function(
+            cls.__parse_property_value__, handler(source_type)
+        )
 
 
 RRULE_FREQ = {
@@ -226,7 +243,10 @@ class Recur(BaseModel):
 
     freq: Frequency
 
-    until: Union[datetime.datetime, datetime.date, None] = None
+    until: Annotated[
+        Union[datetime.date, datetime.datetime, None],
+        BeforeValidator(parse_date_and_datetime),
+    ] = None
     """The inclusive end date of the recurrence, or the last instance."""
 
     count: Optional[int] = None
@@ -274,19 +294,16 @@ class Recur(BaseModel):
     def as_rrule_str(self) -> str:
         """Return the Recur instance as an RRULE string."""
         return self.__encode_property_value__(
-            self.dict(by_alias=True, exclude_none=True, exclude_defaults=True)
+            self.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
         )
 
     @classmethod
     def from_rrule(cls, rrule_str: str) -> Recur:
         """Create a Recur object from an RRULE string."""
-        return Recur.parse_obj(cls.__parse_property_value__(rrule_str))
+        return Recur.model_validate(cls.__parse_property_value__(rrule_str))
 
-    class Config:
-        """Pydantic model configuration."""
-
-        validate_assignment = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(validate_assignment=True, populate_by_name=True)
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
     @classmethod
     def __encode_property_value__(cls, data: dict[str, Any]) -> str:
@@ -311,6 +328,9 @@ class Recur(BaseModel):
                 value = DateEncoder.__encode_property_json__(value)
             elif isinstance(value, enum.Enum):
                 value = value.name
+            elif key == "interval" and value == 1:
+                # Filter not None default value
+                continue
             if not value:
                 continue
             result.append(f"{key.upper()}={value}")

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import zoneinfo
 
 import pytest
-from pydantic.v1 import ValidationError
+from pydantic import ValidationError
 
 from ical.event import Event
 from ical.exceptions import CalendarParseError
@@ -362,7 +362,7 @@ def test_parse_event_timezones(
     start_str: str, end_str: str, start: datetime | date, end: datetime | date
 ) -> None:
     """Test parsing date/times from strings."""
-    event = Event.parse_obj(
+    event = Event.model_validate(
         {
             "summary": SUMMARY,
             "start": start_str,
@@ -411,16 +411,27 @@ def test_all_day_timespan_timezone_explicit(dtstart: datetime, dtend: datetime) 
     assert timespan.end == dtend
 
 
-def test_validate_assignment() -> None:
+def test_validate_assignment_1() -> None:
     """Test date type validations."""
-
     event = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
 
     # Validation on assignment ensures the start/end types can't be mismatched
     with pytest.raises(ValidationError):
         event.dtstart = datetime(2022, 9, 6, 6, 0, 0)
+
+
+def test_validate_assignment_2() -> None:
+    """Test date type validations."""
+    event = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
+
+    # Validation on assignment ensures the start/end types can't be mismatched
     with pytest.raises(ValidationError):
         event.dtend = datetime(2022, 9, 10, 6, 0, 0)
+
+
+def test_validate_assignment_3() -> None:
+    """Test date type validations."""
+    event = Event(summary=SUMMARY, start=date(2022, 9, 6), end=date(2022, 9, 7))
 
     # But updates that are valid are OK
     event.dtstart = date(2022, 9, 5)

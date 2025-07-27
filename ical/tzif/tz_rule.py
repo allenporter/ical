@@ -26,10 +26,10 @@ from __future__ import annotations
 import datetime
 from functools import cache
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional, Self, Union
 
 from dateutil import rrule
-from pydantic.v1 import BaseModel, root_validator, validator
+from pydantic import BaseModel, field_validator, model_validator
 from pyparsing import (
     Char,
     Combine,
@@ -79,7 +79,7 @@ class RuleDay(BaseModel):
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
-    _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
+    _parse_time = field_validator("time", mode="before")(_parse_time)
 
 
 class RuleDate(BaseModel):
@@ -97,7 +97,7 @@ class RuleDate(BaseModel):
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
-    _parse_time = validator("time", pre=True, allow_reuse=True)(_parse_time)
+    _parse_time = field_validator("time", mode="before")(_parse_time)
 
     def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
         """Return a recurrence rule for this timezone occurrence (no start date)."""
@@ -149,9 +149,10 @@ class RuleOccurrence(BaseModel):
     offset: datetime.timedelta
     """UTC offset for this timezone occurrence (not time added to local time)."""
 
-    _parse_offset = validator("offset", pre=True, allow_reuse=True)(_parse_time)
+    _parse_offset = field_validator("offset", mode="before")(_parse_time)
 
-    @validator("offset", allow_reuse=True)
+    @field_validator("offset")
+    @classmethod
     def negate_offset(cls, value: datetime.timedelta) -> datetime.timedelta:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
         result = _ZERO - value
@@ -180,20 +181,20 @@ class Rule(BaseModel):
     dst_end: Union[RuleDate, RuleDay, None] = None
     """Describes when dst ends (std starts)."""
 
-    _default_start_time = validator("dst_start", pre=True, allow_reuse=True)(
+    _default_start_time = field_validator("dst_start", mode="before")(
         _default_time_value
     )
-    _default_end_time = validator("dst_end", pre=True, allow_reuse=True)(
+    _default_end_time = field_validator("dst_end", mode="before")(
         _default_time_value
     )
 
-    @root_validator(allow_reuse=True)
-    def default_dst_offset(cls, values: dict[str, Any]) -> dict[str, Any]:
+    @model_validator(mode="after")
+    def default_dst_offset(self) -> Self:
         """Infer the default DST offset based on STD offset if not specified."""
-        if values.get("dst") and not values["dst"].offset:
+        if self.dst and not self.dst.offset:
             # If the dst offset is omitted, it defaults to one hour ahead of standard time.
-            values["dst"].offset = values["std"].offset + datetime.timedelta(hours=1)
-        return values
+            self.dst.offset = self.std.offset + datetime.timedelta(hours=1)
+        return self
 
 
 @cache
@@ -256,4 +257,4 @@ def parse_tz_rule(tz_str: str) -> Rule:
     except ParseException as err:
         raise ValueError(f"Unable to parse TZ string: {tz_str}") from err
 
-    return Rule.parse_obj(result.as_dict())
+    return Rule.model_validate(result.as_dict())

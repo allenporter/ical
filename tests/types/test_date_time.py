@@ -3,6 +3,7 @@
 import datetime
 from typing import Union
 
+from pydantic import field_serializer
 import pytest
 
 
@@ -10,7 +11,7 @@ from ical.exceptions import CalendarParseError
 from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.types.data_types import DATA_TYPE
+from ical.types.data_types import serialize_field
 from ical.tzif import timezoneinfo
 
 
@@ -22,7 +23,7 @@ def test_datedatime_parser() -> None:
 
         dt: datetime.datetime
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [ParsedProperty(name="dt", value="20220724T120000")],
         }
@@ -42,7 +43,7 @@ def test_datedatime_value_parser() -> None:
 
         dt: Union[datetime.datetime, datetime.date]
 
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(
@@ -56,7 +57,7 @@ def test_datedatime_value_parser() -> None:
         }
     )
     assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0)
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(
@@ -72,7 +73,7 @@ def test_datedatime_value_parser() -> None:
     assert model.dt == datetime.date(2022, 7, 24)
 
     with pytest.raises(CalendarParseError):
-        TestModel.parse_obj(
+        TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(
@@ -87,7 +88,7 @@ def test_datedatime_value_parser() -> None:
         )
 
     with pytest.raises(CalendarParseError):
-        TestModel.parse_obj(
+        TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(
@@ -110,12 +111,9 @@ def test_datedatime_parameter_encoder() -> None:
 
         dt: datetime.datetime
 
-        class Config:
-            """Pydantic model configuration."""
+        serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
-            json_encoders = DATA_TYPE.encode_property_json
-
-    model = TestModel.parse_obj(
+    model = TestModel.model_validate(
         {
             "dt": [
                 ParsedProperty(
@@ -147,7 +145,7 @@ def test_datedatime_parameter_encoder() -> None:
     )
 
     with pytest.raises(CalendarParseError, match="valid timezone"):
-        TestModel.parse_obj(
+        TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(

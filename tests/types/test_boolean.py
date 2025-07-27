@@ -16,18 +16,18 @@ class FakeModel(ComponentModel):
 def test_bool() -> None:
     """Test for boolean fields."""
 
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {"example": [ParsedProperty(name="example", value="TRUE")]}
     )
     assert model.example
 
-    model = FakeModel.parse_obj(
+    model = FakeModel.model_validate(
         {"example": [ParsedProperty(name="example", value="FALSE")]}
     )
     assert not model.example
 
     with pytest.raises(CalendarParseError):
-        FakeModel.parse_obj({"example": [ParsedProperty(name="example", value="efd")]})
+        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="efd")]})
 
     # Populate based on bool object
     model = FakeModel(example=True)

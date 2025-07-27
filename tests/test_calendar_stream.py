@@ -48,19 +48,15 @@ def test_parse(
 ) -> None:
     """Fixture to read golden file and compare to golden output."""
     cal = CalendarStream.from_ics(filename.read_text())
-    data = json.loads(
-        cal.json(exclude_unset=True, exclude_none=True, encoder=json_encoder.default)
-    )
+    data = json.loads(cal.model_dump_json(exclude_unset=True, exclude_none=True))
     assert snapshot == data
 
     # Re-parse the data object to verify we get the original data values
     # back. This effectively confirms that all fields can be parsed from the
     # python native format in addition to rfc5545.
-    cal_reparsed = CalendarStream.parse_obj(data)
+    cal_reparsed = CalendarStream.model_validate(data)
     data_reparsed = json.loads(
-        cal_reparsed.json(
-            exclude_unset=True, exclude_none=True, encoder=json_encoder.default
-        )
+        cal_reparsed.model_dump_json(exclude_unset=True, exclude_none=True)
     )
     assert data_reparsed == data
 
@@ -155,7 +151,7 @@ def test_invalid_ics(content: str) -> None:
 def test_component_failure() -> None:
     with pytest.raises(
         CalendarParseError,
-        match="^Failed to parse calendar EVENT component: Unexpected dtstart value '2022-07-24 12:00:00' was datetime but dtend value '2022-07-24' was not datetime$",
+        match="^Failed to parse calendar EVENT component: Value error, Unexpected dtstart value '2022-07-24 12:00:00' was datetime but dtend value '2022-07-24' was not datetime$",
     ):
         IcsCalendarStream.calendar_from_ics(
             textwrap.dedent(
