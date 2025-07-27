@@ -39,7 +39,7 @@ import enum
 import logging
 import re
 from dataclasses import dataclass
-from typing import Annotated, Any, Optional, Union
+from typing import Annotated, Any, Literal, Optional, Union
 
 from dateutil import rrule
 from pydantic import (
@@ -205,7 +205,7 @@ class RecurrenceId(str):
         )
 
 
-RRULE_FREQ = {
+RRULE_FREQ: dict[Frequency, Literal[0, 1, 2, 3]] = {
     Frequency.DAILY: rrule.DAILY,
     Frequency.WEEKLY: rrule.WEEKLY,
     Frequency.MONTHLY: rrule.MONTHLY,
