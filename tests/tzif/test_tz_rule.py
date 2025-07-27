@@ -213,25 +213,6 @@ def test_iran_rule_offset() -> None:
     assert rule.dst_end.time == datetime.timedelta(hours=24)
 
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-def test_invalid_time() -> None:
-    """Test validation of fields with an invalid time value."""
-    with pytest.raises(ValueError, match="time was not parse tree dict"):
-        tz_rule.RuleDate.model_validate(
-            {
-                "month": 3,
-                "week_of_month": 1,
-                "day_of_week": 0,
-                "time": 0.12345,
-            }
-        )
-
-
-=======
->>>>>>> 4ec6934 (Simplify object parsing by also dropping pydantic)
->>>>>>> 8ebfe23 (Simplify object parsing by also dropping pydantic)
 def test_parse_tz_rule_benchmark(benchmark: Any) -> None:
     """Benchmark to measure the speed of parsing."""
 
