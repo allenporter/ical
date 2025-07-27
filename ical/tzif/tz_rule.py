@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import datetime
 import logging
+import re
 from typing import Any, Optional, Self, Union
 
 from dateutil import rrule
