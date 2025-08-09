@@ -10,7 +10,7 @@ pytest==8.4.1
 ruff==0.12.8
 
 python-dateutil==2.9.0.post0
-freezegun==1.5.4
+freezegun==1.5.5
 pydantic==2.11.7
 pytest-benchmark==5.1.0
 types-python-dateutil==2.9.0.20250809
