@@ -7,7 +7,7 @@ pip==25.2
 pre-commit==4.3.0
 pytest-cov==6.2.1
 pytest==8.4.2
-ruff==0.12.11
+ruff==0.12.12
 
 python-dateutil==2.9.0.post0
 freezegun==1.5.5
