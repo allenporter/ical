@@ -273,5 +273,6 @@ def parse_contentlines(
             yield ParsedProperty.from_ics(contentline)
         except CalendarParseError as err:
             raise CalendarParseError(
-                f"Failed to parse calendar contents", detailed_error=str(err)
+                f"Calendar contents are not valid ICS format, see the detailed_error for more information",
+                detailed_error=str(err),
             ) from err
