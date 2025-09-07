@@ -232,97 +232,97 @@
 # ---
 # name: test_invalid_contentlines[invalid]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid property line, expected (';', ':') after property name",
   )
 # ---
 # name: test_invalid_contentlines[invalid_iana-token]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid property name 'DES.RIPTION'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_eol copy]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Unexpected end of line: unclosed quoted parameter value.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_eol_quoted]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Unexpected end of line: missing parameter value delimiter.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_name-1]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid parameter name 'PARAM NAME'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_name-2]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid parameter name 'PARAM+NAME'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_param_value]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid parameter format: missing '=' after parameter name part ';:VALUE'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_params_list]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Unexpected end of line. Expected parameter value or delimiter.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_missing_value]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Unexpected end of line after parameter value 'PARAM-VAL'. Expected delimiter (',', ';', ':').",
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_name]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Invalid property name \'"NAME"\'',
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_param_extra_end]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Expected (',', ';', ':') after parameter value, got 'e'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_param_extra_start]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Parameter value \'extra"QUOTED-VALUE"\' for parameter \'PARAM-NAME\' is improperly quoted',
   )
 # ---
 # name: test_invalid_contentlines[invalid_quoted_params]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     'Unexpected end of line: unclosed quoted parameter value.',
   )
 # ---
 # name: test_invalid_contentlines[invalid_x-name-1]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid property name 'X-DES.RIPTION'",
   )
 # ---
 # name: test_invalid_contentlines[invalid_x-name-2]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid property name 'X-,'",
   )
 # ---
 # name: test_invalid_contentlines[missing_colon]
   tuple(
-    'Failed to parse calendar contents',
+    'Calendar contents are not valid ICS format, see the detailed_error for more information',
     "Invalid parameter format: missing '=' after parameter name part 'This is a description'",
   )
 # ---

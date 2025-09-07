@@ -144,7 +144,10 @@ def test_invalid_ics(content: str) -> None:
     These are tested here so we can add escape sequences. Most other invalid
     encodings are tested in the yaml testdata/ files.
     """
-    with pytest.raises(CalendarParseError, match="^Failed to parse calendar contents"):
+    with pytest.raises(
+        CalendarParseError,
+        match="^Calendar contents are not valid ICS format, see the detailed_error for more information$",
+    ):
         IcsCalendarStream.calendar_from_ics(content)
 
 
