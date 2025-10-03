@@ -986,16 +986,27 @@ def test_unsupported_event_reltype(
         store.edit(event2.uid, event2)
 
 
+@pytest.mark.parametrize(
+    "status",
+    [
+        {},
+        {"status": "NEEDS-ACTION"},
+        {"status": "COMPLETED"},
+        {"status": "COMPLETED", "completed": '2020-01-01T00:00:00+00:00',},
+    ],
+)
 def test_add_and_delete_todo(
     todo_store: TodoStore,
     fetch_todos: Callable[..., list[dict[str, Any]]],
     snapshot: SnapshotAssertion,
+    status: dict[str,Any]
 ) -> None:
-    """Test adding a todoto the store and retrieval."""
+    """Test adding a todo to the store and retrieval."""
     todo_store.add(
         Todo(
             summary="Monday meeting",
             due="2022-08-29T09:00:00",
+            **status
         )
     )
     assert fetch_todos() == snapshot
@@ -1033,6 +1044,23 @@ def test_edit_todo(
     )
     assert fetch_todos() == snapshot
 
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(status="COMPLETED"),
+    )
+
+    assert fetch_todos() == snapshot
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(status="NEEDS-ACTION"),
+    )
+
+    assert fetch_todos() == snapshot    
 
 def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
     """Edit a todo that does not exist."""

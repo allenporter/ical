@@ -22,7 +22,7 @@ from .exceptions import StoreError, TodoStoreError, EventStoreError
 from .iter import RulesetIterable
 from .list import todo_list_view
 from .timezone import Timezone
-from .todo import Todo
+from .todo import Todo, TodoStatus
 from .types import Range, Recur, RecurrenceId, RelationshipType
 from .tzif.timezoneinfo import TimezoneInfoError
 from .util import dtstamp_factory, local_timezone
@@ -138,6 +138,11 @@ def _prepare_update(
         **partial_update,
         "dtstamp": item.dtstamp,
     }
+    if isinstance(item, Todo) and item.status and not item.completed:
+        if store_item.status != TodoStatus.COMPLETED and item.status == TodoStatus.COMPLETED:
+            update["completed"] = item.dtstamp.replace(microsecond=0)
+        if store_item.completed and item.status != TodoStatus.COMPLETED:
+            update["completed"] = None
     if rrule := update.get("rrule"):
         update["rrule"] = Recur.model_validate(rrule)
     if recurrence_id and store_item.rrule:
@@ -209,6 +214,8 @@ class GenericStore(Generic[_T]):
                 update["dtstart"] = item.due - datetime.timedelta(days=1)
             else:
                 update["dtstart"] = datetime.datetime.now(tz=self._tzinfo)
+        if isinstance(item, Todo) and not item.completed and item.status == TodoStatus.COMPLETED:
+                update["completed"] = item.dtstamp.replace(microsecond=0)
         new_item = cast(_T, item.copy_and_validate(update=update))
 
         # The store can only manage cascading deletes for some relationship types

@@ -12,7 +12,7 @@
     }),
   ])
 # ---
-# name: test_add_and_delete_todo
+# name: test_add_and_delete_todo[status0]
   list([
     dict({
       'created': '2022-09-03T09:38:05+00:00',
@@ -25,6 +25,50 @@
     }),
   ])
 # ---
+# name: test_add_and_delete_todo[status1]
+  list([
+    dict({
+      'created': '2022-09-03T09:38:05+00:00',
+      'dtstamp': '2022-09-03T09:38:05+00:00',
+      'dtstart': '2022-08-28T09:00:00',
+      'due': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_add_and_delete_todo[status2]
+  list([
+    dict({
+      'completed': '2022-09-03T09:38:05+00:00',
+      'created': '2022-09-03T09:38:05+00:00',
+      'dtstamp': '2022-09-03T09:38:05+00:00',
+      'dtstart': '2022-08-28T09:00:00',
+      'due': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_add_and_delete_todo[status3]
+  list([
+    dict({
+      'completed': '2020-01-01T00:00:00+00:00',
+      'created': '2022-09-03T09:38:05+00:00',
+      'dtstamp': '2022-09-03T09:38:05+00:00',
+      'dtstart': '2022-08-28T09:00:00',
+      'due': '2022-08-29T09:00:00',
+      'sequence': 0,
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---  
 # name: test_convert_single_instance_to_recurring
   list([
     dict({
@@ -726,6 +770,55 @@
     }),
   ])
 # ---
+# name: test_edit_todo.2
+  list([
+    dict({
+      'completed': '2022-09-03T09:38:25+00:00',
+      'created': '2022-09-03T09:38:15+00:00',
+      'dtstamp': '2022-09-03T09:38:25+00:00',
+      'dtstart': '2022-08-28T09:00:00',
+      'due': '2022-08-29T09:05:00',
+      'last_modified': '2022-09-03T09:38:25+00:00',
+      'sequence': 2,
+      'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
+      'summary': 'Monday morning items (Delayed)',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'created': '2022-09-03T09:38:05+00:00',
+      'dtstamp': '2022-09-03T09:38:05+00:00',
+      'dtstart': '2022-08-29T09:00:00',
+      'due': '2022-08-30T09:00:00',
+      'sequence': 0,
+      'summary': 'Tuesday morning items',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
+# name: test_edit_todo.3
+  list([
+    dict({
+      'created': '2022-09-03T09:38:25+00:00',
+      'dtstamp': '2022-09-03T09:38:35+00:00',
+      'dtstart': '2022-08-28T09:00:00',
+      'due': '2022-08-29T09:05:00',
+      'last_modified': '2022-09-03T09:38:35+00:00',
+      'sequence': 3,
+      'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
+      'summary': 'Monday morning items (Delayed)',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'created': '2022-09-03T09:38:05+00:00',
+      'dtstamp': '2022-09-03T09:38:05+00:00',
+      'dtstart': '2022-08-29T09:00:00',
+      'due': '2022-08-30T09:00:00',
+      'sequence': 0,
+      'summary': 'Tuesday morning items',
+      'uid': 'mock-uid-2',
+    }),
+  ])
+# ---
 # name: test_modify_todo_rrule_for_this_and_future[2024-01-05]
   list([
     dict({
@@ -913,6 +1006,7 @@
   BEGIN:VTODO
   DTSTAMP:20240109T100005Z
   UID:mock-uid-1
+  COMPLETED:20240109T100005Z
   CREATED:20240109T100005Z
   DTSTART:20240109
   DUE:20240110
@@ -1029,6 +1123,7 @@
   BEGIN:VTODO
   DTSTAMP:20240109T100005Z
   UID:mock-uid-1
+  COMPLETED:20240109T100005Z
   CREATED:20240109T100005Z
   DTSTART:20240109
   DUE:20240110
@@ -1062,6 +1157,7 @@
   BEGIN:VTODO
   DTSTAMP:20240109T100005Z
   UID:mock-uid-1
+  COMPLETED:20240109T100005Z
   CREATED:20240109T100005Z
   DTSTART:20240109
   DUE:20240110
@@ -1074,6 +1170,7 @@
   BEGIN:VTODO
   DTSTAMP:20240110T100000Z
   UID:mock-uid-1
+  COMPLETED:20240110T100000Z
   CREATED:20240109T100005Z
   DTSTART:20240109
   DUE:20240110
@@ -1108,6 +1205,7 @@
   BEGIN:VTODO
   DTSTAMP:20240109T100005Z
   UID:mock-uid-1
+  COMPLETED:20240109T100005Z
   CREATED:20240109T100005Z
   DTSTART:20240109
   DUE:20240110
@@ -1120,6 +1218,7 @@
   BEGIN:VTODO
   DTSTAMP:20240110T100000Z
   UID:mock-uid-1
+  COMPLETED:20240110T100000Z
   CREATED:20240110T100000Z
   DTSTART:20240109
   DUE:20240110
