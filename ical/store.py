@@ -138,9 +138,21 @@ def _prepare_update(
         **partial_update,
         "dtstamp": item.dtstamp,
     }
-    if isinstance(item, Todo) and item.status and not item.completed:
-        if store_item.status != TodoStatus.COMPLETED and item.status == TodoStatus.COMPLETED:
-            update["completed"] = item.dtstamp.replace(microsecond=0)
+    if (
+        isinstance(item, Todo)
+        and isinstance(store_item, Todo)
+        and item.status
+        and not item.completed
+    ):
+        if (
+            store_item.status != TodoStatus.COMPLETED
+            and item.status == TodoStatus.COMPLETED
+        ):
+            update["completed"] = (
+                item.dtstamp.replace(microsecond=0)
+                if isinstance(item.dtstamp, datetime.datetime)
+                else item.dtstamp
+            )
         if store_item.completed and item.status != TodoStatus.COMPLETED:
             update["completed"] = None
     if rrule := update.get("rrule"):
@@ -214,8 +226,16 @@ class GenericStore(Generic[_T]):
                 update["dtstart"] = item.due - datetime.timedelta(days=1)
             else:
                 update["dtstart"] = datetime.datetime.now(tz=self._tzinfo)
-        if isinstance(item, Todo) and not item.completed and item.status == TodoStatus.COMPLETED:
-                update["completed"] = item.dtstamp.replace(microsecond=0)
+        if (
+            isinstance(item, Todo)
+            and not item.completed
+            and item.status == TodoStatus.COMPLETED
+        ):
+            update["completed"] = (
+                item.dtstamp.replace(microsecond=0)
+                if isinstance(item.dtstamp, datetime.datetime)
+                else item.dtstamp
+            )
         new_item = cast(_T, item.copy_and_validate(update=update))
 
         # The store can only manage cascading deletes for some relationship types
