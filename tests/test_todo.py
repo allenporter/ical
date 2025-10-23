@@ -92,6 +92,11 @@ def test_dtstart_date_duration_hours_invalid():
         ),
         (
             {
+                "duration": datetime.timedelta(hours=1),
+            }
+        ),
+        (
+            {
                 "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
                 "due": datetime.datetime(
                     2022, 9, 7, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
