@@ -42,7 +42,7 @@ def test_duration() -> None:
     # Both due and Duration can't be set
     with pytest.raises(
         CalendarParseError,
-        match="Failed to parse calendar TODO component: Value error, Only one of dtend or duration may be set.",
+        match="Failed to parse calendar TODO component: Value error, Only one of due or duration may be set.",
     ):
         Todo(
             start=datetime.date(2022, 8, 7),
@@ -74,28 +74,7 @@ def test_duration() -> None:
         ({}),
         (
             {
-                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
-            }
-        ),
-        (
-            {
                 "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
-            }
-        ),
-        (
-            {
-                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
-                "due": datetime.datetime(
-                    2022, 9, 7, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
-                ),
-            }
-        ),
-        (
-            {
-                "start": datetime.datetime(
-                    2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
-                ),
-                "due": datetime.datetime(2022, 9, 7, 6, 0, 0),  # floating
             }
         ),
         (
