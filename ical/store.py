@@ -148,11 +148,7 @@ def _prepare_update(
             store_item.status != TodoStatus.COMPLETED
             and item.status == TodoStatus.COMPLETED
         ):
-            update["completed"] = (
-                item.dtstamp.replace(microsecond=0)
-                if isinstance(item.dtstamp, datetime.datetime)
-                else item.dtstamp
-            )
+            update["completed"] = item.dtstamp
         if store_item.completed and item.status != TodoStatus.COMPLETED:
             update["completed"] = None
     if rrule := update.get("rrule"):
@@ -231,11 +227,7 @@ class GenericStore(Generic[_T]):
             and not item.completed
             and item.status == TodoStatus.COMPLETED
         ):
-            update["completed"] = (
-                item.dtstamp.replace(microsecond=0)
-                if isinstance(item.dtstamp, datetime.datetime)
-                else item.dtstamp
-            )
+            update["completed"] = item.dtstamp
         new_item = cast(_T, item.copy_and_validate(update=update))
 
         # The store can only manage cascading deletes for some relationship types
