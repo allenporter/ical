@@ -254,7 +254,7 @@ class Todo(ComponentModel):
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date."""
         dtstart = self.dtstart
-        dtend = self.due
+        dtend = self.dtstart + self.duration if self.duration else self.due
         if dtstart is None:
             if dtend is None:
                 # A component with the DTSTART and DUE specifies a to-do that

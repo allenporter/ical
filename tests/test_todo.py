@@ -12,9 +12,11 @@ from freezegun import freeze_time
 import pytest
 
 from ical.exceptions import CalendarParseError
+from ical.timespan import Timespan
 from ical.todo import Todo
 from ical.types.recur import Recur
 from ical.calendar_stream import IcsCalendarStream
+from ical.util import local_timezone
 
 _TEST_TZ = datetime.timezone(datetime.timedelta(hours=1))
 
@@ -206,6 +208,16 @@ def test_is_due(due: datetime.date | datetime.datetime, expected: bool) -> None:
         due=due,
     )
     assert todo.is_due(tzinfo=_TEST_TZ) == expected
+
+
+def test_todo_duration_timespan() -> None:
+    """Test that duration is taken into account in timespan calculation"""
+
+    todo = Todo(
+        dtstart=datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=local_timezone()),
+        duration=datetime.timedelta(hours=1),
+    )
+    assert todo.timespan == Timespan(todo.dtstart, todo.dtstart + todo.duration)
 
 
 def test_is_due_default_timezone() -> None:

@@ -93,6 +93,11 @@ class Timespan:
         """Return True if this timespan starts and ends within the other event."""
         return other.start <= self.start and self.end < other.end
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Timespan):
+            return NotImplemented
+        return (self._start, self._end) == (other.start, other.end)
+
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
