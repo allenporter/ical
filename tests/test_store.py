@@ -56,8 +56,9 @@ def mock_uid() -> Generator[None, None, None]:
         counter += 1
         return f"mock-uid-{counter}"
 
-    with patch("ical.event.uid_factory", new=func), patch(
-        "ical.todo.uid_factory", new=func
+    with (
+        patch("ical.event.uid_factory", new=func),
+        patch("ical.todo.uid_factory", new=func),
     ):
         yield
 
@@ -95,7 +96,9 @@ def mock_fetch_todos(
     """Fixture to return todos on the calendar."""
 
     def _func(keys: set[str] | None = None) -> list[dict[str, Any]]:
-        return [compact_dict(todo.model_dump(), keys) for todo in todo_store.todo_list()]
+        return [
+            compact_dict(todo.model_dump(), keys) for todo in todo_store.todo_list()
+        ]
 
     return _func
 
@@ -991,7 +994,7 @@ def test_add_and_delete_todo(
     fetch_todos: Callable[..., list[dict[str, Any]]],
     snapshot: SnapshotAssertion,
 ) -> None:
-    """Test adding a todoto the store and retrieval."""
+    """Test adding a todo to the store and retrieval."""
     todo_store.add(
         Todo(
             summary="Monday meeting",
@@ -1001,6 +1004,32 @@ def test_add_and_delete_todo(
     assert fetch_todos() == snapshot
     todo_store.delete("mock-uid-1")
     assert fetch_todos() == []
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        {"status": "NEEDS-ACTION"},
+        {"status": "COMPLETED"},
+        {"status": "COMPLETED", "completed": "2020-01-01T00:00:00+00:00"},
+    ],
+    ids=["needs_action", "completed", "completed_with_timestamp"],
+)
+def test_add_todo_with_status(
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
+    status: dict[str, Any],
+) -> None:
+    """Test adding a todo to the store with a status."""
+    todo_store.add(
+        Todo(
+            summary="Do chores",
+            due="2022-08-29T09:00:00",
+            **status,
+        )
+    )
+    assert fetch_todos() == snapshot
 
 
 def test_edit_todo(
@@ -1032,6 +1061,58 @@ def test_edit_todo(
         Todo(due="2022-08-29T09:05:00", summary="Monday morning items (Delayed)"),
     )
     assert fetch_todos() == snapshot
+
+
+def test_edit_todo_status(
+    todo_store: TodoStore,
+    fetch_todos: Callable[..., list[dict[str, Any]]],
+    frozen_time: FrozenDateTimeFactory,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test changing todo status updates completed timestamp."""
+    todo_store.add(
+        Todo(
+            summary="Monday morning items",
+            due="2022-08-29T09:00:00",
+        )
+    )
+    assert fetch_todos() == snapshot(name="initial")
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=10))
+
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(status="COMPLETED"),
+    )
+
+    assert fetch_todos() == snapshot(name="completed")
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=20))
+    # Test that modifying other fields does not change the completion time
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(due="2022-08-29T09:05:00", summary="Monday morning items (Delayed)"),
+    )
+
+    assert fetch_todos() == snapshot(name="edit_summary")
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=30))
+    # Test that setting status again does not change the completion time
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(status="COMPLETED"),
+    )
+
+    assert fetch_todos() == snapshot(name="completed_again")
+
+    frozen_time.tick(delta=datetime.timedelta(seconds=40))
+
+    todo_store.edit(
+        "mock-uid-1",
+        Todo(status="NEEDS-ACTION"),
+    )
+
+    assert fetch_todos() == snapshot(name="needs_action")
 
 
 def test_todo_store_invalid_uid(todo_store: TodoStore) -> None:
