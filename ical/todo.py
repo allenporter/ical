@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
-from typing import Annotated, Any, Optional, Self, Union
+from typing import Annotated, Any, Optional, Self, Union, cast
 import logging
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
@@ -253,8 +253,8 @@ class Todo(ComponentModel):
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date."""
-        dtstart = self.dtstart
-        dtend = self.dtstart + self.duration if self.duration else self.due
+        dtstart: datetime.date | datetime.datetime | None = self.dtstart
+        dtend = cast(datetime.date | datetime.datetime, self.dtstart) + self.duration if self.duration else self.due
         if dtstart is None:
             if dtend is None:
                 # A component with the DTSTART and DUE specifies a to-do that
