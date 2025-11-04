@@ -12,11 +12,9 @@ from freezegun import freeze_time
 import pytest
 
 from ical.exceptions import CalendarParseError
-from ical.timespan import Timespan
 from ical.todo import Todo
 from ical.types.recur import Recur
 from ical.calendar_stream import IcsCalendarStream
-from ical.util import local_timezone
 
 _TEST_TZ = datetime.timezone(datetime.timedelta(hours=1))
 
@@ -153,6 +151,34 @@ def test_timestamp_start_due() -> None:
     assert ts.end.isoformat() == "2022-08-07T00:00:00-06:00"
 
 
+def test_timespan_start_duration() -> None:
+    """Test that duration is taken into account in timespan calculation"""
+
+    duration = datetime.timedelta(hours=1)
+    todo = Todo(
+        dtstart=datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ),
+        duration=duration,
+    )
+    timespan = todo.timespan
+    assert timespan.start.isoformat() == '2025-10-27T00:00:00+01:00'
+    assert timespan.end.isoformat() == '2025-10-27T01:00:00+01:00'
+    assert timespan.duration == duration
+
+
+def test_timespan_start_date_duration() -> None:
+    """Test that timestamp for todo with date-typed start and set due spans the whole day"""
+
+    todo = Todo(
+        dtstart=datetime.date(2025, 10, 27),
+        duration=datetime.timedelta(hours=1),
+    )
+
+    timespan = todo.timespan_of(_TEST_TZ)
+    assert timespan.start.isoformat() == '2025-10-27T00:00:00+01:00'
+    assert timespan.end.isoformat() == '2025-10-28T00:00:00+01:00'
+    assert timespan.duration == datetime.timedelta(days=1)
+
+
 def test_timespan_missing_dtstart() -> None:
     """Test a timespan of a Todo without a dtstart."""
     todo = Todo(summary="Example", due=datetime.date(2022, 8, 7))
@@ -208,16 +234,6 @@ def test_is_due(due: datetime.date | datetime.datetime, expected: bool) -> None:
         due=due,
     )
     assert todo.is_due(tzinfo=_TEST_TZ) == expected
-
-
-def test_todo_duration_timespan() -> None:
-    """Test that duration is taken into account in timespan calculation"""
-
-    todo = Todo(
-        dtstart=datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=local_timezone()),
-        duration=datetime.timedelta(hours=1),
-    )
-    assert todo.timespan == Timespan(todo.dtstart, todo.dtstart + todo.duration)
 
 
 def test_is_due_default_timezone() -> None:
