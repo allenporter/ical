@@ -318,3 +318,20 @@ def test_repair_out_of_order_due_and_dtstart() -> None:
     assert len(calendar.todos) == 1
     assert calendar.todos[0].due == datetime.date(2024, 3, 18)
     assert calendar.todos[0].dtstart == datetime.date(2024, 3, 17)
+
+
+@pytest.mark.parametrize('dtstart, duration', (
+        (datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ), datetime.timedelta(hours=1)),
+        (datetime.date(2025, 10, 27), datetime.timedelta(hours=1)),
+        (datetime.date(2025, 10, 27), None),
+        (None, None),
+))
+def test_computed_duration(dtstart: datetime.datetime | datetime.date, duration: datetime.timedelta) -> None:
+    """Test that computed_duration is the same as duration when set"""
+
+    todo = Todo(
+        dtstart=dtstart,
+        duration=duration,
+    )
+
+    assert todo.computed_duration == duration

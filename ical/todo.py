@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 import datetime
 import enum
-from typing import Annotated, Any, Optional, Self, Union, cast
+from typing import Annotated, Any, Optional, Self, Union
 import logging
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
@@ -235,9 +235,11 @@ class Todo(ComponentModel):
     @property
     def computed_duration(self) -> datetime.timedelta | None:
         """Return the event duration."""
-        if self.due is None or self.dtstart is None:
-            return None
-        return self.due - self.dtstart
+        if self.duration:
+            return self.duration
+        if self.due is not None and self.dtstart is not None:
+            return self.due - self.dtstart
+        return None
 
     def is_due(self, tzinfo: datetime.tzinfo | None = None) -> bool:
         """Return true if the todo is due."""
@@ -252,9 +254,24 @@ class Todo(ComponentModel):
         return self.timespan_of(local_timezone())
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
-        """Return a timespan representing the item start and due date."""
+        """Return a timespan representing the item start and due date or start and duration if it's set."""
         dtstart: datetime.date | datetime.datetime | None = self.dtstart
-        dtend = cast(datetime.date | datetime.datetime, self.dtstart) + self.duration if self.duration else self.due
+        dtend: datetime.date | datetime.datetime | None
+
+        if self.duration:
+            assert dtstart
+            if not isinstance(dtstart, datetime.datetime):
+                # if dtstart is a date and duration is set, it's impossible to anchor the todo at a specific
+                # date-time.
+                # It's also against the RFC to set due in this case, so we assume that the todo is scheduled
+                # on the dtstart date and no later, as if it was due midnight that date.
+                dtstart = normalize_datetime(dtstart, tzinfo)
+                dtend = dtstart + datetime.timedelta(days=1)
+            else:
+                dtend = dtstart + self.duration
+        else:
+            dtend = self.due
+
         if dtstart is None:
             if dtend is None:
                 # A component with the DTSTART and DUE specifies a to-do that
