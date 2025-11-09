@@ -12,7 +12,7 @@ ruff==0.14.4
 python-dateutil==2.9.0.post0
 freezegun==1.5.5
 pydantic==2.12.4
-pytest-benchmark==5.2.2
+pytest-benchmark==5.2.3
 types-python-dateutil==2.9.0.20251008
 wheel==0.46.1
 PyYAML==6.0.3
