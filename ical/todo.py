@@ -238,20 +238,44 @@ class Todo(ComponentModel):
         return normalize_datetime(self.dtstart).astimezone(tz=datetime.timezone.utc)
 
     @property
-    def computed_duration(self) -> datetime.timedelta | None:
-        """Return the event duration."""
+    def end(self) -> datetime.datetime | datetime.date | None:
+        """Return due if it's defined, or dtstart + duration if they're defined.
+        RFC5545 doesn't define end time for other cases but this method implements the same rules as the one on VEVENT:
+        if dtstart is a date, the next day is returned, otherwise the dtstart is returned.
+        """
+
+        if self.due:
+            return self.due
+        if self.duration is not None:
+            assert self.dtstart
+            return self.dtstart + self.duration
+        if type(self.dtstart) is datetime.date:
+            return self.dtstart + datetime.timedelta(days=1)
+
+        # whenever dtstart is not None, end is not None
+        return self.dtstart
+
+    @property
+    def computed_duration(self) -> datetime.timedelta:
+        """Return the event duration. If duration is set, return it;
+        if dtstart is set, take due (set or calculated) and return the difference. Otherwise return 1 day.
+
+        If dtstart is a datetime and neither due nor duration is set, due is assumed to be equal to dtstart
+        and the result is zero."""
         if self.duration:
             return self.duration
-        if self.due is not None and self.dtstart is not None:
-            return self.due - self.dtstart
-        return None
+        if self.dtstart:
+            assert self.end
+            return self.end - self.dtstart
+        return datetime.timedelta(days=1)
 
     def is_due(self, tzinfo: datetime.tzinfo | None = None) -> bool:
         """Return true if the todo is due."""
         if tzinfo is None:
             tzinfo = local_timezone()
         now = datetime.datetime.now(tz=tzinfo)
-        return self.due is not None and normalize_datetime(self.due, tzinfo) < now
+        due = self.end
+        return due and normalize_datetime(due, tzinfo) < now
 
     @property
     def timespan(self) -> Timespan:
@@ -260,26 +284,11 @@ class Todo(ComponentModel):
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date or start and duration if it's set."""
-        dtstart: datetime.date | datetime.datetime | None = self.dtstart
-        dtend: datetime.date | datetime.datetime | None
-
-        if self.duration:
-            assert dtstart
-            if not isinstance(dtstart, datetime.datetime):
-                # if dtstart is a date and duration is set, it's impossible to anchor the todo at a specific
-                # date-time.
-                # It's also against the RFC to set due in this case, so we assume that the todo is scheduled
-                # on the dtstart date and no later, as if it was due midnight that date.
-                dtstart = normalize_datetime(dtstart, tzinfo)
-                dtend = dtstart + datetime.timedelta(days=1)
-            else:
-                dtend = dtstart + self.duration
-        else:
-            dtend = self.due
-
+        dtstart = self.dtstart
+        dtend = self.end
         if dtstart is None:
             if dtend is None:
-                # A component with the DTSTART and DUE specifies a to-do that
+                # A component without the DTSTART or DUE specifies a to-do that
                 # will be associated with each successive calendar date, until
                 # it is completed.
                 dtstart = datetime.datetime.now(tzinfo).date()

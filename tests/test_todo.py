@@ -365,8 +365,6 @@ def test_repair_out_of_order_due_and_dtstart() -> None:
             datetime.timedelta(days=1),
         ),
         (datetime.date(2025, 10, 27), datetime.timedelta(days=1)),
-        (datetime.date(2025, 10, 27), None),
-        (None, None),
     ),
 )
 def test_computed_duration(
@@ -380,3 +378,35 @@ def test_computed_duration(
     )
 
     assert todo.computed_duration == duration
+
+@pytest.mark.parametrize(
+    "start, end",
+    (
+        (datetime.date(2025, 10, 27), None),
+        (None, datetime.date(2025, 10, 27)),
+        (None, None),
+    ),
+)
+def test_default_computed_duration(
+    start: datetime.datetime | datetime.date | None,
+    end: datetime.datetime | datetime.date | None,
+) -> None:
+    """Test that computed_duration is no duration or start & end are defined"""
+
+    todo = Todo(
+        dtstart=start,
+        due = end,
+    )
+    assert todo.computed_duration == datetime.timedelta(days=1)
+
+
+def test_end_dtstart_datetime() -> None:
+    start = datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ)
+    todo = Todo(
+        dtstart=start,
+    )
+
+    assert todo.end == start
+
+    # if dtstart is a datetime and no due is set, end time is dtstart, so the default duration is zero
+    assert todo.computed_duration == datetime.timedelta()
