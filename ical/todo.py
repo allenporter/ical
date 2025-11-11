@@ -240,14 +240,16 @@ class Todo(ComponentModel):
     @property
     def end(self) -> datetime.datetime | datetime.date | None:
         """Return due if it's defined, or dtstart + duration if they're defined.
-        RFC5545 doesn't define end time for other cases but this method implements the same rules as the one on VEVENT:
+
+        RFC5545 doesn't define end time for other cases but this method implements the
+        same rules as the one on VEVENT:
         if dtstart is a date, the next day is returned, otherwise the dtstart is returned.
         """
 
         if self.due:
             return self.due
         if self.duration is not None:
-            assert self.dtstart
+            assert self.dtstart is not None
             return self.dtstart + self.duration
         if type(self.dtstart) is datetime.date:
             return self.dtstart + datetime.timedelta(days=1)

@@ -379,6 +379,7 @@ def test_computed_duration(
 
     assert todo.computed_duration == duration
 
+
 @pytest.mark.parametrize(
     "start, end",
     (
@@ -400,7 +401,8 @@ def test_default_computed_duration(
     assert todo.computed_duration == datetime.timedelta(days=1)
 
 
-def test_end_dtstart_datetime() -> None:
+def test_default_computed_duration() -> None:
+    """Test the default duration when no due or end time are set."""
     start = datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ)
     todo = Todo(
         dtstart=start,
@@ -408,5 +410,4 @@ def test_end_dtstart_datetime() -> None:
 
     assert todo.end == start
 
-    # if dtstart is a datetime and no due is set, end time is dtstart, so the default duration is zero
     assert todo.computed_duration == datetime.timedelta()
