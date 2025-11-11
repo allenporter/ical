@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from .todo import Todo
 
     ModelT = TypeVar("ModelT", bound=Union[Event, Journal, Todo])
+    ModelV = TypeVar("ModelV", bound=Union[Event, Todo])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def validate_until_dtstart(self: ModelT) -> ModelT:
     return self
 
 
-def validate_duration_unit(self: ModelT) -> ModelT:
+def validate_duration_unit(self: ModelV) -> ModelV:
     """Validate the duration is the appropriate units."""
     if not (duration := self.duration):
         return self
