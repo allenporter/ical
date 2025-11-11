@@ -210,7 +210,11 @@ def test_as_rrule_with_date() -> None:
             "EXDATE:20220803T060000Z",
         ]
     )
-    assert list(recurrences.as_rrule(datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC))) == [
+    assert list(
+        recurrences.as_rrule(
+            datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC)
+        )
+    ) == [
         datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC),
         datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=datetime.UTC),
     ]
@@ -255,7 +259,6 @@ def test_ics() -> None:
         "RRULE:FREQ=DAILY;COUNT=3",
         "EXDATE:20220803T060000Z",
     ]
-
 
 
 def test_mismatch_date_and_datetime_types() -> None:

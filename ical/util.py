@@ -70,8 +70,10 @@ def get_field_type(annotation: Any) -> Any:
 @overload
 def parse_date_and_datetime(value: None) -> None: ...
 
+
 @overload
 def parse_date_and_datetime(value: str | datetime.date) -> datetime.date: ...
+
 
 def parse_date_and_datetime(value: str | datetime.date | None) -> datetime.date | None:
     """Coerce str into date and datetime value."""
@@ -83,7 +85,7 @@ def parse_date_and_datetime(value: str | datetime.date | None) -> datetime.date 
 
 
 def parse_date_and_datetime_list(
-    values: Sequence[str] | Sequence[datetime.date]
+    values: Sequence[str] | Sequence[datetime.date],
 ) -> list[datetime.date | datetime.datetime]:
     """Coerce list[str] into list[date | datetime] values."""
     if not values:

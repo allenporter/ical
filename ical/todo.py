@@ -344,7 +344,7 @@ class Todo(ComponentModel):
     def _validate_one_due_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
         if self.due and self.duration:
-            raise ValueError("Only one of dtend or duration may be set." "")
+            raise ValueError("Only one of dtend or duration may be set.")
         return self
 
     @model_validator(mode="after")

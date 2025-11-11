@@ -16,7 +16,10 @@ from .component import ComponentModel
 from .parsing.property import ParsedProperty
 from .types import CalAddress, Period, RequestStatus, Uri
 from .util import (
-    dtstamp_factory, normalize_datetime, parse_date_and_datetime, uid_factory
+    dtstamp_factory,
+    normalize_datetime,
+    parse_date_and_datetime,
+    uid_factory,
 )
 
 _LOGGER = logging.getLogger(__name__)

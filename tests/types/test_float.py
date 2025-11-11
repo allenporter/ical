@@ -28,7 +28,9 @@ def test_float() -> None:
     assert model.example == [45, -46.2, 47.32]
 
     with pytest.raises(CalendarParseError):
-        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="a")]})
+        FakeModel.model_validate(
+            {"example": [ParsedProperty(name="example", value="a")]}
+        )
 
     model = FakeModel(example=[1, -2.2, 3.5])
     assert model.example == [1, -2.2, 3.5]

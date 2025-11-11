@@ -38,7 +38,10 @@ def enable_compat_mode(ics: str) -> Generator[str]:
     if prodid and _EXCHANGE_PRODID in prodid:
         _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
         # Enable compatibility mode for Microsoft Exchange Server
-        with timezone_compat.enable_allow_invalid_timezones(), timezone_compat.enable_extended_timezones():
+        with (
+            timezone_compat.enable_allow_invalid_timezones(),
+            timezone_compat.enable_extended_timezones(),
+        ):
             yield ics
     else:
         _LOGGER.debug("No compatibility mode needed")

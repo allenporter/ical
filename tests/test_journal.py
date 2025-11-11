@@ -44,10 +44,14 @@ def test_start_datetime() -> None:
     assert journal.start
     assert journal.start.isoformat() == "2022-08-07"
 
-    with patch(
-        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
-    ), patch(
-        "ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+    with (
+        patch(
+            "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+        ),
+        patch(
+            "ical.journal.local_timezone",
+            return_value=zoneinfo.ZoneInfo("America/Regina"),
+        ),
     ):
         assert journal.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
         assert not journal.recurring

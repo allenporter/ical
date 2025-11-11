@@ -27,7 +27,9 @@ def test_bool() -> None:
     assert not model.example
 
     with pytest.raises(CalendarParseError):
-        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="efd")]})
+        FakeModel.model_validate(
+            {"example": [ParsedProperty(name="example", value="efd")]}
+        )
 
     # Populate based on bool object
     model = FakeModel(example=True)

@@ -58,7 +58,9 @@ def test_period() -> None:
     )
 
     with pytest.raises(CalendarParseError):
-        FakeModel.model_validate({"example": [ParsedProperty(name="example", value="a")]})
+        FakeModel.model_validate(
+            {"example": [ParsedProperty(name="example", value="a")]}
+        )
 
     with pytest.raises(CalendarParseError):
         FakeModel.model_validate(

@@ -447,7 +447,7 @@ class Event(ComponentModel):
     def _validate_one_end_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
         if self.dtend and self.duration:
-            raise ValueError("Only one of dtend or duration may be set." "")
+            raise ValueError("Only one of dtend or duration may be set.")
         return self
 
     _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)

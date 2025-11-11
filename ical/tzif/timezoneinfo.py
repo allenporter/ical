@@ -55,9 +55,11 @@ def _find_tzfile(key: str) -> str | None:
 def _read_tzdata_timezones() -> set[str]:
     """Returns the set of valid timezones from tzdata only."""
     try:
-        with resources.files("tzdata").joinpath("zones").open(
-            "r", encoding="utf-8"
-        ) as zones_file:
+        with (
+            resources.files("tzdata")
+            .joinpath("zones")
+            .open("r", encoding="utf-8") as zones_file
+        ):
             return {line.strip() for line in zones_file.readlines()}
     except ModuleNotFoundError:
         return set()
@@ -212,7 +214,7 @@ def _extended_timezones() -> set[str]:
 
 def available_timezones() -> set[str]:
     """Return a set of all available timezones.
-    
+
     This includes system timezones, tzdata timezones, and extended timezones if
     enabled for compatibility mode.
     """

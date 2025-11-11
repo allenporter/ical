@@ -67,8 +67,7 @@ def _adjust_recurrence_date(
     if isinstance(dtstart, datetime.datetime):
         if not isinstance(date_value, datetime.datetime):
             raise ValueError(
-                "DTSTART was DATE-TIME but UNTIL was DATE: "
-                "must be the same value type"
+                "DTSTART was DATE-TIME but UNTIL was DATE: must be the same value type"
             )
         if dtstart.tzinfo is None:
             if date_value.tzinfo is not None:
@@ -89,11 +88,7 @@ def _adjust_recurrence_date(
 
 def validate_until_dtstart(self: ModelT) -> ModelT:
     """Verify the until time and dtstart are the same."""
-    if (
-        not (rule := self.rrule)
-        or not rule.until
-        or not (dtstart := self.dtstart)
-    ):
+    if not (rule := self.rrule) or not rule.until or not (dtstart := self.dtstart):
         return self
     rule.until = _adjust_recurrence_date(rule.until, dtstart)
     return self
@@ -133,10 +128,7 @@ def _as_date(
 
 def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
-    if (
-        not self.rrule
-        or not (dtstart := self.dtstart)
-    ):
+    if not self.rrule or not (dtstart := self.dtstart):
         return self
     is_datetime = isinstance(dtstart, datetime.datetime)
     validator = _as_datetime if is_datetime else _as_date
@@ -297,7 +289,7 @@ class ComponentModel(BaseModel):
         """Return type to attempt for encoding/decoding based on the field type."""
         origin = get_origin(field_type)
         if origin is list:
-            if not(args := get_args(field_type)):
+            if not (args := get_args(field_type)):
                 raise ValueError(f"Unable to determine args of type: {field_type}")
             field_type = args[0]
             origin = get_origin(field_type)
@@ -323,7 +315,9 @@ class ComponentModel(BaseModel):
         # marshalled through as string values. There are then additional passes
         # to get the data in to the right final format for ics encoding.
         model_data = json.loads(
-            self.model_dump_json(by_alias=True, exclude_none=True, context={"ics": True})
+            self.model_dump_json(
+                by_alias=True, exclude_none=True, context={"ics": True}
+            )
         )
         # The component name is ignored as we're really only encoding children components
         return self.__encode_component__(self.__class__.__name__, model_data)
@@ -349,7 +343,9 @@ class ComponentModel(BaseModel):
             annotation = get_field_type(field.annotation)
             for value in values:
                 for field_type in cls._get_field_types(annotation):
-                    if component_encoder := getattr(field_type, "__encode_component__", None):
+                    if component_encoder := getattr(
+                        field_type, "__encode_component__", None
+                    ):
                         parent.components.append(component_encoder(key, value))
                         break
                 else:

@@ -4,7 +4,7 @@ from pathlib import Path
 import emoji
 
 
-OUTPUT_FILE = Path('ical/parsing/emoji.py')
+OUTPUT_FILE = Path("ical/parsing/emoji.py")
 
 EMOJI = list(emoji.EMOJI_DATA.keys())
 HEADER = [
@@ -14,13 +14,13 @@ HEADER = [
 print("Number of emoji: {}".format(len(EMOJI)))
 
 # Write the emoji characters to a new python file as a dictionary
-with OUTPUT_FILE.open('w') as f:
+with OUTPUT_FILE.open("w") as f:
     f.writelines(HEADER)
-    f.write('EMOJI = [\n')
+    f.write("EMOJI = [\n")
     for s in EMOJI:
-        o = "".join([f'\\U{ord(ch):08x}' for ch in s])
+        o = "".join([f"\\U{ord(ch):08x}" for ch in s])
         f.write(f"  u'{o}',  # {s}\n")
-    f.write(']\n')
+    f.write("]\n")
 
 print("Emoji written to {}".format(OUTPUT_FILE))
 print("File size: {} bytes".format(OUTPUT_FILE.stat().st_size))

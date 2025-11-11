@@ -51,9 +51,9 @@ def test_invalid_format(ics: str) -> None:
     "ics",
     [
         "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
-        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=" ":VALUE",
         "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
-        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=" ":VALUE",
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
+        "X-TEST-BLANK;VALUE=URI;X-TEST-BLANK-PARAM=:VALUE",
     ],
 )
 def test_blank_parameters(ics: str) -> None:
