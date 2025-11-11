@@ -25,9 +25,13 @@ from pydantic import BeforeValidator, Field, field_serializer, model_validator
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
-from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
+from .component import (
+    ComponentModel,
+    validate_duration_unit,
+    validate_until_dtstart,
+    validate_recurrence_dates,
+)
 from .iter import RulesetIterable, as_rrule
-from .exceptions import CalendarParseError
 from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
@@ -446,17 +450,6 @@ class Event(ComponentModel):
             raise ValueError("Only one of dtend or duration may be set." "")
         return self
 
-    @model_validator(mode="after")
-    def _validate_duration_unit(self) -> Self:
-        """Validate the duration is the appropriate units."""
-        if not (duration := self.duration):
-            return self
-        dtstart = self.dtstart
-        if type(dtstart) is datetime.date:
-            if duration.seconds != 0:
-                raise ValueError("Event with start date expects duration in days only")
-        if duration < datetime.timedelta(seconds=0):
-            raise ValueError(f"Expected duration to be positive but was {duration}")
-        return self
+    _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]

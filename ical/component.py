@@ -98,6 +98,19 @@ def validate_until_dtstart(self: ModelT) -> ModelT:
     return self
 
 
+def validate_duration_unit(self: ModelT) -> ModelT:
+    """Validate the duration is the appropriate units."""
+    if not (duration := self.duration):
+        return self
+    dtstart = self.dtstart
+    if type(dtstart) is datetime.date:
+        if duration.seconds != 0:
+            raise ValueError("Event with start date expects duration in days only")
+    if duration < datetime.timedelta(seconds=0):
+        raise ValueError(f"Expected duration to be positive but was {duration}")
+    return self
+
+
 def _as_datetime(
     date_value: datetime.datetime | datetime.date,
     dtstart: datetime.datetime,

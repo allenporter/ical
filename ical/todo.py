@@ -21,7 +21,12 @@ from pydantic import BeforeValidator, Field, field_serializer, model_validator
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
-from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
+from .component import (
+    ComponentModel,
+    validate_duration_unit,
+    validate_until_dtstart,
+    validate_recurrence_dates,
+)
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable, as_rrule
 from .parsing.property import ParsedProperty
@@ -322,6 +327,7 @@ class Todo(ComponentModel):
     _validate_recurrence_dates = model_validator(mode="after")(
         validate_recurrence_dates
     )
+    _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
 
     @model_validator(mode="after")
     def _validate_one_due_or_duration(self) -> Self:

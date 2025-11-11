@@ -68,6 +68,14 @@ def test_duration() -> None:
         assert todo.start_datetime.isoformat() == "2022-08-07T06:00:00+00:00"
 
 
+def test_dtstart_date_duration_hours_invalid():
+    """Test that a Todo with datetime as dtstart and duration with seconds or microseconds
+    (in practice anything smaller than days) fails to validate"""
+
+    with pytest.raises(CalendarParseError):
+        Todo(dtstart=datetime.date(2022, 8, 7), duration=datetime.timedelta(hours=1))
+
+
 @pytest.mark.parametrize(
     ("params"),
     [
@@ -160,23 +168,24 @@ def test_timespan_start_duration() -> None:
         duration=duration,
     )
     timespan = todo.timespan
-    assert timespan.start.isoformat() == '2025-10-27T00:00:00+01:00'
-    assert timespan.end.isoformat() == '2025-10-27T01:00:00+01:00'
+    assert timespan.start.isoformat() == "2025-10-27T00:00:00+01:00"
+    assert timespan.end.isoformat() == "2025-10-27T01:00:00+01:00"
     assert timespan.duration == duration
 
 
 def test_timespan_start_date_duration() -> None:
     """Test that timestamp for todo with date-typed start and set due spans the whole day"""
 
+    duration = datetime.timedelta(days=1)
     todo = Todo(
         dtstart=datetime.date(2025, 10, 27),
-        duration=datetime.timedelta(hours=1),
+        duration=duration,
     )
 
     timespan = todo.timespan_of(_TEST_TZ)
-    assert timespan.start.isoformat() == '2025-10-27T00:00:00+01:00'
-    assert timespan.end.isoformat() == '2025-10-28T00:00:00+01:00'
-    assert timespan.duration == datetime.timedelta(days=1)
+    assert timespan.start.isoformat() == "2025-10-27T00:00:00+01:00"
+    assert timespan.end.isoformat() == "2025-10-28T00:00:00+01:00"
+    assert timespan.duration == duration
 
 
 def test_timespan_missing_dtstart() -> None:
@@ -198,16 +207,24 @@ def test_timespan_missing_dtstart() -> None:
 def test_timespan_fallback() -> None:
     """Test a timespan of a Todo with no explicit dtstart and due date"""
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
-        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    with (
+        freeze_time("2022-09-03T09:38:05", tz_offset=10),
+        patch(
+            "ical.todo.local_timezone",
+            return_value=zoneinfo.ZoneInfo("Pacific/Honolulu"),
+        ),
     ):
         todo = Todo(summary="Example")
         ts = todo.timespan
     assert ts.start.isoformat() == "2022-09-03T00:00:00-10:00"
     assert ts.end.isoformat() == "2022-09-04T00:00:00-10:00"
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
-        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    with (
+        freeze_time("2022-09-03T09:38:05", tz_offset=10),
+        patch(
+            "ical.todo.local_timezone",
+            return_value=zoneinfo.ZoneInfo("Pacific/Honolulu"),
+        ),
     ):
         ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
     assert ts.start.isoformat() == "2022-09-03T00:00:00-06:00"
@@ -336,13 +353,25 @@ def test_repair_out_of_order_due_and_dtstart() -> None:
     assert calendar.todos[0].dtstart == datetime.date(2024, 3, 17)
 
 
-@pytest.mark.parametrize('dtstart, duration', (
-        (datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ), datetime.timedelta(hours=1)),
-        (datetime.date(2025, 10, 27), datetime.timedelta(hours=1)),
+@pytest.mark.parametrize(
+    "dtstart, duration",
+    (
+        (
+            datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ),
+            datetime.timedelta(hours=1),
+        ),
+        (
+            datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ),
+            datetime.timedelta(days=1),
+        ),
+        (datetime.date(2025, 10, 27), datetime.timedelta(days=1)),
         (datetime.date(2025, 10, 27), None),
         (None, None),
-))
-def test_computed_duration(dtstart: datetime.datetime | datetime.date, duration: datetime.timedelta) -> None:
+    ),
+)
+def test_computed_duration(
+    dtstart: datetime.datetime | datetime.date, duration: datetime.timedelta
+) -> None:
     """Test that computed_duration is the same as duration when set"""
 
     todo = Todo(
