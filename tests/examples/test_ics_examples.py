@@ -27,5 +27,5 @@ def test_iterate_events(filename: Path, snapshot: SnapshotAssertion) -> None:
     """Test to read golden files and verify they are parsed."""
     with filename.open() as ics_file:
         calendar = IcsCalendarStream.calendar_from_ics(ics_file.read())
-    
+
     assert list(islice(iter(calendar.timeline), 5)) == snapshot

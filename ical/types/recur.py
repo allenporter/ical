@@ -97,7 +97,6 @@ class WeekdayValue:
         """Return the WeekdayValue as an encoded string."""
         return f"{self.occurrence or ''}{self.weekday}"
 
-
     def as_rrule_weekday(self) -> rrule.weekday:
         """Convert the occurrence to a weekday value."""
         wd = RRULE_WEEKDAY[self.weekday]
@@ -274,10 +273,7 @@ class Recur(BaseModel):
 
         byweekday: list[rrule.weekday] | None = None
         if self.by_weekday:
-            byweekday = [
-                weekday.as_rrule_weekday()
-                for weekday in self.by_weekday
-            ]
+            byweekday = [weekday.as_rrule_weekday() for weekday in self.by_weekday]
         return rrule.rrule(
             freq=freq,
             dtstart=dtstart,

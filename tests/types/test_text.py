@@ -22,7 +22,8 @@ def test_text() -> None:
         )
     )
     model = Model.model_validate(component.as_dict())
-    assert model == Model(text_value="\n".join(
+    assert model == Model(
+        text_value="\n".join(
             ["Project XYZ Final Review", "Conference Room - 3B", "Come Prepared."]
         )
     )

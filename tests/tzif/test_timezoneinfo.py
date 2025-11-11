@@ -168,12 +168,15 @@ def test_all_zoneinfo(key: str) -> None:
 
 def test_read_tzinfo_value_error() -> None:
     """Test TzInfo implementation for known date/times."""
-    with patch(
-        "ical.tzif.timezoneinfo._read_tzdata_timezones", return_value=["X/Y"]
-    ), patch("ical.tzif.timezoneinfo._find_tzfile"), patch(
-        "ical.tzif.timezoneinfo.read_tzif",
-        side_effect=ValueError("zoneinfo file did not contain magic header"),
-    ), pytest.raises(
-        timezoneinfo.TimezoneInfoError, match="Unable to load tzdata file: X/Y"
+    with (
+        patch("ical.tzif.timezoneinfo._read_tzdata_timezones", return_value=["X/Y"]),
+        patch("ical.tzif.timezoneinfo._find_tzfile"),
+        patch(
+            "ical.tzif.timezoneinfo.read_tzif",
+            side_effect=ValueError("zoneinfo file did not contain magic header"),
+        ),
+        pytest.raises(
+            timezoneinfo.TimezoneInfoError, match="Unable to load tzdata file: X/Y"
+        ),
     ):
         timezoneinfo.read_tzinfo("X/Y")

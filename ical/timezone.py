@@ -22,7 +22,11 @@ from typing import Annotated, Any, Iterable, Optional, Self, Union
 
 from dateutil.rrule import rruleset
 from pydantic import (
-    BeforeValidator, Field, field_serializer, field_validator, model_validator
+    BeforeValidator,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
 )
 
 from ical.types.data_types import serialize_field

@@ -92,9 +92,7 @@ class CalAddress(BaseModel):
 
     language: Optional[str] = Field(alias="LANGUAGE", default=None)
 
-    _parse_parameter_values = model_validator(mode="before")(
-        parse_parameter_values
-    )
+    _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     __parse_property_value__ = dataclasses.asdict
 

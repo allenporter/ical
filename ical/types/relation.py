@@ -59,9 +59,7 @@ class RelatedTo:
             return data
         return {"uid": prop}
 
-    _parse_parameter_values = model_validator(mode="before")(
-        parse_parameter_values
-    )
+    _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     @classmethod
     def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:

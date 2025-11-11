@@ -115,7 +115,9 @@ def test_free_busy() -> None:
 
 def test_free_busy_requires_utc() -> None:
     """Test freebusy start date conversions."""
-    with pytest.raises(CalendarParseError, match=r"Freebusy time must be in UTC format.*"):
+    with pytest.raises(
+        CalendarParseError, match=r"Freebusy time must be in UTC format.*"
+    ):
         FreeBusy(
             start=datetime.date(2022, 8, 7),
             end=datetime.date(2022, 8, 10),

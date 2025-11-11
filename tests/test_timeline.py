@@ -68,19 +68,31 @@ def test_journal_timeline() -> None:
     )
     assert journal.recurring
 
-    with patch(
-        "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
-    ), patch("ical.journal.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")):
+    with (
+        patch(
+            "ical.util.local_timezone", return_value=zoneinfo.ZoneInfo("America/Regina")
+        ),
+        patch(
+            "ical.journal.local_timezone",
+            return_value=zoneinfo.ZoneInfo("America/Regina"),
+        ),
+    ):
         timeline = generic_timeline([journal], TZ)
         assert list(timeline) == [
             Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
             Journal.model_copy(
                 journal,
-                update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+                update={
+                    "dtstart": datetime.date(2022, 8, 8),
+                    "recurrence_id": "20220808",
+                },
             ),
             Journal.model_copy(
                 journal,
-                update={"dtstart": datetime.date(2022, 8, 9), "recurrence_id": "20220809"},
+                update={
+                    "dtstart": datetime.date(2022, 8, 9),
+                    "recurrence_id": "20220809",
+                },
             ),
         ]
         assert list(
@@ -89,6 +101,9 @@ def test_journal_timeline() -> None:
             Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
             Journal.model_copy(
                 journal,
-                update={"dtstart": datetime.date(2022, 8, 8), "recurrence_id": "20220808"},
+                update={
+                    "dtstart": datetime.date(2022, 8, 8),
+                    "recurrence_id": "20220808",
+                },
             ),
         ]

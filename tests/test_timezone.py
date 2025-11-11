@@ -27,7 +27,9 @@ TEST_RECUR = Recur(
 
 def test_requires_subcompnent() -> None:
     """Test Timezone constructor."""
-    with pytest.raises(CalendarParseError, match=r"At least one standard or daylight.*"):
+    with pytest.raises(
+        CalendarParseError, match=r"At least one standard or daylight.*"
+    ):
         Timezone(tz_id="America/New_York")
 
 
@@ -78,7 +80,7 @@ def test_timezone_observence_start_time_validation() -> None:
 
 @freeze_time("2022-08-22 12:30:00")
 def test_from_tzif_timezoneinfo_with_dst(
-    mock_prodid: Generator[None, None, None]
+    mock_prodid: Generator[None, None, None],
 ) -> None:
     """Verify a timezone created from a tzif timezone info with DST information."""
 
@@ -139,7 +141,7 @@ def test_from_tzif_timezoneinfo_with_dst(
 
 @freeze_time("2022-08-22 12:30:00")
 def test_from_tzif_timezoneinfo_fixed_offset(
-    mock_prodid: Generator[None, None, None]
+    mock_prodid: Generator[None, None, None],
 ) -> None:
     """Verify a timezone created from a tzif timezone info with a fixed offset"""
 
@@ -175,14 +177,12 @@ def test_invalid_tzif_key() -> None:
         Timezone.from_tzif("invalid")
 
 
-
 @freeze_time("2022-08-22 12:30:00")
-def test_clear_old_dtstamp(
-    mock_prodid: Generator[None, None, None]
-) -> None:
+def test_clear_old_dtstamp(mock_prodid: Generator[None, None, None]) -> None:
     """Verify a timezone created from a tzif timezone info with a fixed offset"""
 
-    stream = IcsCalendarStream.from_ics(inspect.cleandoc("""
+    stream = IcsCalendarStream.from_ics(
+        inspect.cleandoc("""
        BEGIN:VCALENDAR
        PRODID:-//example//1.2.3
        VERSION:2.0
@@ -197,7 +197,8 @@ def test_clear_old_dtstamp(
        END:STANDARD
        END:VTIMEZONE
        END:VCALENDAR
-    """))
+    """)
+    )
     # DTSTAMP is omitted from the output
     assert stream.ics() == inspect.cleandoc("""
        BEGIN:VCALENDAR

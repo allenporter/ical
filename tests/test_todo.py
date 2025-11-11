@@ -170,16 +170,24 @@ def test_timespan_missing_dtstart() -> None:
 def test_timespan_fallback() -> None:
     """Test a timespan of a Todo with no explicit dtstart and due date"""
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
-        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    with (
+        freeze_time("2022-09-03T09:38:05", tz_offset=10),
+        patch(
+            "ical.todo.local_timezone",
+            return_value=zoneinfo.ZoneInfo("Pacific/Honolulu"),
+        ),
     ):
         todo = Todo(summary="Example")
         ts = todo.timespan
     assert ts.start.isoformat() == "2022-09-03T00:00:00-10:00"
     assert ts.end.isoformat() == "2022-09-04T00:00:00-10:00"
 
-    with freeze_time("2022-09-03T09:38:05", tz_offset=10), patch(
-        "ical.todo.local_timezone", return_value=zoneinfo.ZoneInfo("Pacific/Honolulu")
+    with (
+        freeze_time("2022-09-03T09:38:05", tz_offset=10),
+        patch(
+            "ical.todo.local_timezone",
+            return_value=zoneinfo.ZoneInfo("Pacific/Honolulu"),
+        ),
     ):
         ts = todo.timespan_of(zoneinfo.ZoneInfo("America/Regina"))
     assert ts.start.isoformat() == "2022-09-03T00:00:00-06:00"

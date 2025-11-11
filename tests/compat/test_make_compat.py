@@ -27,7 +27,7 @@ def test_make_compat(filename: pathlib.Path, snapshot: SnapshotAssertion) -> Non
 
     new_ics = IcsCalendarStream.calendar_to_ics(calendar)
     assert new_ics == snapshot
-    
+
     # The output content can be parsed back correctly
     IcsCalendarStream.calendar_from_ics(new_ics)
 
@@ -47,7 +47,7 @@ def test_parse_failure(filename: pathlib.Path, snapshot: SnapshotAssertion) -> N
         "invalid",
         "PRODID:not-exchange",
         "BEGIN:VCALENDAR\nPRODID:not-exchange\nVERSION:2.0\nEND:VCALENDAR",
-    ]
+    ],
 )
 def test_make_compat_not_enabled(ics: str) -> None:
     """Test to read golden files and verify they are parsed."""

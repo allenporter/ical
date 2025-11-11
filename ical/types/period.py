@@ -60,9 +60,7 @@ class Period(BaseModel):
     free_busy_type: Optional[FreeBusyType] = Field(alias="FBTYPE", default=None)
     """Specifies the free or busy time type."""
 
-    _parse_parameter_values = model_validator(mode="before")(
-        parse_parameter_values
-    )
+    _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     @property
     def end_value(self) -> datetime.datetime:
@@ -141,5 +139,6 @@ class Period(BaseModel):
                 if k not in ("end", "duration", "start")
             },
         )
+
     model_config = ConfigDict(populate_by_name=True)
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
