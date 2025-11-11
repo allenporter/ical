@@ -277,7 +277,7 @@ class Todo(ComponentModel):
             tzinfo = local_timezone()
         now = datetime.datetime.now(tz=tzinfo)
         due = self.end
-        return due and normalize_datetime(due, tzinfo) < now
+        return due is not None and normalize_datetime(due, tzinfo) < now
 
     @property
     def timespan(self) -> Timespan:
