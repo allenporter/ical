@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from .todo import Todo
 
     ModelT = TypeVar("ModelT", bound=Union[Event, Journal, Todo])
+    ModelV = TypeVar("ModelV", bound=Union[Event, Todo])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +96,19 @@ def validate_until_dtstart(self: ModelT) -> ModelT:
     ):
         return self
     rule.until = _adjust_recurrence_date(rule.until, dtstart)
+    return self
+
+
+def validate_duration_unit(self: ModelV) -> ModelV:
+    """Validate the duration is the appropriate units."""
+    if not (duration := self.duration):
+        return self
+    dtstart = self.dtstart
+    if type(dtstart) is datetime.date:
+        if duration.seconds != 0:
+            raise ValueError("Event with start date expects duration in days only")
+    if duration < datetime.timedelta(seconds=0):
+        raise ValueError(f"Expected duration to be positive but was {duration}")
     return self
 
 

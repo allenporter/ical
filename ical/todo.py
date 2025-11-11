@@ -21,7 +21,12 @@ from pydantic import BeforeValidator, Field, field_serializer, model_validator
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
-from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
+from .component import (
+    ComponentModel,
+    validate_duration_unit,
+    validate_until_dtstart,
+    validate_recurrence_dates,
+)
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable, as_rrule
 from .parsing.property import ParsedProperty
@@ -233,18 +238,46 @@ class Todo(ComponentModel):
         return normalize_datetime(self.dtstart).astimezone(tz=datetime.timezone.utc)
 
     @property
-    def computed_duration(self) -> datetime.timedelta | None:
-        """Return the event duration."""
-        if self.due is None or self.dtstart is None:
-            return None
-        return self.due - self.dtstart
+    def end(self) -> datetime.datetime | datetime.date | None:
+        """Return due if it's defined, or dtstart + duration if they're defined.
+
+        RFC5545 doesn't define end time for other cases but this method implements the
+        same rules as the one on VEVENT:
+        if dtstart is a date, the next day is returned, otherwise the dtstart is returned.
+        """
+
+        if self.due:
+            return self.due
+        if self.duration is not None:
+            assert self.dtstart is not None
+            return self.dtstart + self.duration
+        if type(self.dtstart) is datetime.date:
+            return self.dtstart + datetime.timedelta(days=1)
+
+        # whenever dtstart is not None, end is not None
+        return self.dtstart
+
+    @property
+    def computed_duration(self) -> datetime.timedelta:
+        """Return the event duration. If duration is set, return it;
+        if dtstart is set, take due (set or calculated) and return the difference. Otherwise return 1 day.
+
+        If dtstart is a datetime and neither due nor duration is set, due is assumed to be equal to dtstart
+        and the result is zero."""
+        if self.duration:
+            return self.duration
+        if self.dtstart:
+            assert self.end
+            return self.end - self.dtstart
+        return datetime.timedelta(days=1)
 
     def is_due(self, tzinfo: datetime.tzinfo | None = None) -> bool:
         """Return true if the todo is due."""
         if tzinfo is None:
             tzinfo = local_timezone()
         now = datetime.datetime.now(tz=tzinfo)
-        return self.due is not None and normalize_datetime(self.due, tzinfo) < now
+        due = self.end
+        return due is not None and normalize_datetime(due, tzinfo) < now
 
     @property
     def timespan(self) -> Timespan:
@@ -252,12 +285,12 @@ class Todo(ComponentModel):
         return self.timespan_of(local_timezone())
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
-        """Return a timespan representing the item start and due date."""
+        """Return a timespan representing the item start and due date or start and duration if it's set."""
         dtstart = self.dtstart
-        dtend = self.due
+        dtend = self.end
         if dtstart is None:
             if dtend is None:
-                # A component with the DTSTART and DUE specifies a to-do that
+                # A component without the DTSTART or DUE specifies a to-do that
                 # will be associated with each successive calendar date, until
                 # it is completed.
                 dtstart = datetime.datetime.now(tzinfo).date()
@@ -305,6 +338,7 @@ class Todo(ComponentModel):
     _validate_recurrence_dates = model_validator(mode="after")(
         validate_recurrence_dates
     )
+    _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
 
     @model_validator(mode="after")
     def _validate_one_due_or_duration(self) -> Self:
