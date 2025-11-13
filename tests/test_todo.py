@@ -76,6 +76,13 @@ def test_dtstart_date_duration_hours_invalid():
         Todo(dtstart=datetime.date(2022, 8, 7), duration=datetime.timedelta(hours=1))
 
 
+def test_computed_duration_no_start_duration():
+    """Test that a Todo without start and due or duration takes a whole day"""
+    todo = Todo()
+
+    assert todo.computed_duration == datetime.timedelta(days=1)
+
+
 @pytest.mark.parametrize(
     ("params"),
     [
@@ -401,7 +408,7 @@ def test_default_computed_duration(
     assert todo.computed_duration == datetime.timedelta(days=1)
 
 
-def test_default_computed_duration() -> None:
+def test_default_computed_duration_zero() -> None:
     """Test the default duration when no due or end time are set."""
     start = datetime.datetime(2025, 10, 27, 0, 0, 0, tzinfo=_TEST_TZ)
     todo = Todo(
@@ -411,3 +418,13 @@ def test_default_computed_duration() -> None:
     assert todo.end == start
 
     assert todo.computed_duration == datetime.timedelta()
+
+
+def test_end_start_date() -> None:
+    """Test that when only start is set and it's a date, end is the next day"""
+    start = datetime.date(2025, 10, 27)
+    todo = Todo(
+        dtstart=start,
+    )
+
+    assert todo.end == start + datetime.timedelta(days=1)
