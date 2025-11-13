@@ -420,7 +420,7 @@ def test_default_computed_duration_zero() -> None:
     assert todo.computed_duration == datetime.timedelta()
 
 
-def test_end_start_date() -> None:
+def test_default_end_date() -> None:
     """Test that when only start is set and it's a date, end is the next day"""
     start = datetime.date(2025, 10, 27)
     todo = Todo(
