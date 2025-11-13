@@ -10,7 +10,7 @@ license-files = ["LICENSE"]
 description = "Python iCalendar implementation (rfc 2445)"
 readme = "README.md"
 authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = []
 dependencies = [
   "python-dateutil>=2.8.2",
