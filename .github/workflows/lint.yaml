@@ -38,10 +38,12 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install -r requirements_dev.txt
-      - name: Run Ruff
+
+      - name: Run Ruff Check
         run: |
           ruff check --output-format=github .
-      - name: Run Ruff
+
+      - name: Run Ruff Format
         run: |
           ruff format .
       - name: Static typing with mypy
