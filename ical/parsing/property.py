@@ -48,7 +48,7 @@ from ical.exceptions import CalendarParseError
 
 # Characters that should be encoded in quotes
 _UNSAFE_CHAR_RE = re.compile(r"[,:;]")
-_RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0a-\x1f\x7f]")
+RE_CONTROL_CHARS = re.compile("[\x00-\x08\x0a-\x1f\x7f]")
 _RE_NAME = re.compile("[A-Z0-9-]+")
 _NAME_DELIMITERS = (";", ":")
 _PARAM_DELIMITERS = (",", ";", ":")
@@ -242,14 +242,14 @@ def _parse_line(line: str) -> ParsedProperty:
                     f"Parameter value '{value}' for parameter '{param.name}' is improperly quoted",
                     detailed_error=line,
                 )
-            if _RE_CONTROL_CHARS.search(value):
+            if RE_CONTROL_CHARS.search(value):
                 raise CalendarParseError(
                     f"Invalid parameter value '{value}' for parameter '{param.name}'",
                     detailed_error=line,
                 )
 
     property_value = line[pos:]
-    if _RE_CONTROL_CHARS.search(property_value):
+    if RE_CONTROL_CHARS.search(property_value):
         raise CalendarParseError(
             f"Property value contains control characters: {property_value}",
             detailed_error=line,
