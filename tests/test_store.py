@@ -1935,4 +1935,4 @@ def test_control_characters(
     new_calendar = IcsCalendarStream.calendar_from_ics(ics)
     assert len(new_calendar.events) == 1
     persisted_event = new_calendar.events[0]
-    assert persisted_event.summary == "Hello, Youre seeing an invalid character"
+    assert persisted_event.summary == "Hello, Youre seeing an invalid character"  # codespell:ignore Youre
