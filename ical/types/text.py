@@ -1,6 +1,6 @@
 """Library for parsing TEXT values."""
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, RE_CONTROL_CHARS
 
 from .data_types import DATA_TYPE
 
@@ -32,4 +32,5 @@ class TextEncoder:
             if key not in value:
                 continue
             value = value.replace(key, vin)
+        value = RE_CONTROL_CHARS.sub("", value)
         return value
