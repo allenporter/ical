@@ -236,7 +236,6 @@ class Recur(BaseModel):
     Parts of rfc5545 recurrence spec not supported:
       By second, minute, hour
       By yearday, weekno, month
-      Wkst rules are
       Negative "by" rules.
     """
 
@@ -266,6 +265,9 @@ class Recur(BaseModel):
     by_setpos: list[int] = Field(alias="bysetpos", default_factory=list)
     """Values that corresponds to the nth occurrence within the set of instances."""
 
+    wkst: Optional[Weekday] = None
+    """The day on which the workweek starts."""
+
     def as_rrule(self, dtstart: datetime.datetime | datetime.date) -> rrule.rrule:
         """Create a dateutil rrule for the specified event."""
         if (freq := RRULE_FREQ.get(self.freq)) is None:
@@ -274,6 +276,11 @@ class Recur(BaseModel):
         byweekday: list[rrule.weekday] | None = None
         if self.by_weekday:
             byweekday = [weekday.as_rrule_weekday() for weekday in self.by_weekday]
+
+        wkst = None
+        if self.wkst:
+            wkst = RRULE_WEEKDAY[self.wkst]
+
         return rrule.rrule(
             freq=freq,
             dtstart=dtstart,
@@ -284,6 +291,7 @@ class Recur(BaseModel):
             bymonthday=self.by_month_day if self.by_month_day else None,
             bymonth=self.by_month if self.by_month else None,
             bysetpos=self.by_setpos,
+            wkst=wkst,
             cache=True,
         )
 

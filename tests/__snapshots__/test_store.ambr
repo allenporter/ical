@@ -169,7 +169,7 @@
     tuple(
       '2024-01-09',
       None,
-      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None),
     ),
   ])
 # ---
@@ -185,7 +185,7 @@
     tuple(
       '2024-01-09',
       None,
-      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None),
       list([
         FakeDate(2024, 1, 9),
       ]),
@@ -204,7 +204,7 @@
     tuple(
       '2024-01-09',
       None,
-      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[]),
+      Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=10, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None),
       list([
         FakeDate(2024, 1, 9),
         FakeDate(2024, 1, 10),

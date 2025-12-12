@@ -273,3 +273,58 @@ def test_mismatch_date_and_datetime_types() -> None:
     )
     with pytest.raises(RecurrenceError):
         list(recurrences.as_rrule())
+
+
+@pytest.mark.parametrize(
+    ("wkst", "expected"),
+    [
+        (
+            "WKST=MO",
+            [
+                datetime.datetime(1997, 8, 5, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 10, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 19, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 24, 0, 0, tzinfo=datetime.timezone.utc),
+            ],
+        ),
+        (
+            "WKST=SU",
+            [
+                datetime.datetime(1997, 8, 5, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 17, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 19, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime.datetime(1997, 8, 31, 0, 0, tzinfo=datetime.timezone.utc),
+            ],
+        ),
+    ],
+)
+def test_wkst(wkst: str, expected: list[datetime.datetime | date]) -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART;TZID=America/New_York:19970805T090000",
+            f"RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=4;BYDAY=TU,SU;{wkst}",
+        ]
+    )
+    assert (
+        list(
+            recurrences.as_rrule(
+                datetime.datetime(1997, 8, 5, 0, 0, 0, tzinfo=datetime.UTC)
+            )
+        )
+        == expected
+    )
+
+
+def test_ics_wkst() -> None:
+    """Test parsing a recurrence rule from a string."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220802T060000Z",
+            "RRULE:FREQ=WEEKLY;COUNT=3;WKST=SU",
+        ]
+    )
+    assert recurrences.ics() == [
+        "DTSTART:20220802T060000Z",
+        "RRULE:FREQ=WEEKLY;COUNT=3;WKST=SU",
+    ]
