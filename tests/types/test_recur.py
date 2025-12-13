@@ -808,6 +808,26 @@ def test_recur_by_last_day_as_string(recur: Recur) -> None:
     assert event.rrule.as_rrule_str() == "FREQ=MONTHLY;BYDAY=-1TU"
 
 
+@pytest.mark.parametrize(
+    "recur",
+    [
+        Recur(freq=Frequency.DAILY, interval=2, wkst=Weekday.MONDAY),
+        Recur.from_rrule("FREQ=DAILY;INTERVAL=2;WKST=MO"),
+    ],
+)
+def test_wkst_rrule_as_str(recur: Recur) -> None:
+    """Test converting a recurrence rule back to a string."""
+
+    event = Event(
+        summary="summary",
+        start=datetime.date(2022, 8, 1),
+        end=datetime.date(2022, 8, 2),
+        rrule=recur,
+    )
+    assert event.rrule
+    assert event.rrule.as_rrule_str() == "FREQ=DAILY;INTERVAL=2;WKST=MO"
+
+
 def test_rdate_all_day() -> None:
     """Test how all day events are handled with RDATE."""
 
