@@ -331,7 +331,7 @@ class Recur(BaseModel):
             elif isinstance(value, datetime.date):
                 value = DateEncoder.__encode_property_json__(value)
             elif isinstance(value, enum.Enum):
-                value = value.name
+                value = value.value
             elif key == "interval" and value == 1:
                 # Filter not None default value
                 continue
