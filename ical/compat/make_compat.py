@@ -9,7 +9,7 @@ from collections.abc import Generator
 import logging
 import re
 
-from . import timezone_compat
+from . import same_day_dtend_compat, timezone_compat
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 _PRODID_RE = r"PRODID:(?P<prodid>.*[^\\r\\n]+)"
 
 _EXCHANGE_PRODID = "Microsoft Exchange Server"
+_CALENDAR_LABS_PRODID = "Calendar Labs"
 
 
 def _get_prodid(ics: str) -> str | None:
@@ -42,6 +43,11 @@ def enable_compat_mode(ics: str) -> Generator[str]:
             timezone_compat.enable_allow_invalid_timezones(),
             timezone_compat.enable_extended_timezones(),
         ):
+            yield ics
+    elif prodid and _CALENDAR_LABS_PRODID in prodid:
+        _LOGGER.debug("Enabling compatibility mode for Calendar Labs")
+        # Enable compatibility mode for Calendar Labs same-day DTEND
+        with same_day_dtend_compat.enable_same_day_dtend_compat():
             yield ics
     else:
         _LOGGER.debug("No compatibility mode needed")
