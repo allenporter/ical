@@ -22,6 +22,7 @@ from typing import Annotated, Any, Optional, Self, Union
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
+from ical.compat import same_day_dtend_compat
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
@@ -448,6 +449,15 @@ class Event(ComponentModel):
         """Validate that only one of duration or end date may be set."""
         if self.dtend and self.duration:
             raise ValueError("Only one of dtend or duration may be set.")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_same_day_dtend(self) -> Self:
+        """Fix same-day DTEND for all-day events when compat mode is enabled."""
+        if same_day_dtend_compat.is_same_day_dtend_compat_enabled():
+            if isinstance(self.dtstart, datetime.date) and not isinstance(self.dtstart, datetime.datetime):
+                if self.dtend and self.dtend == self.dtstart:
+                    self.dtend = self.dtstart + datetime.timedelta(days=1)
         return self
 
     _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
