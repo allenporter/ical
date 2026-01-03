@@ -1,12 +1,22 @@
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Calendar Labs//Calendar 1.0//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Spain Holidays
+X-WR-TIMEZONE:UTC
 BEGIN:VEVENT
 UID:q4bugdkb4@calendarlabs.com
 DTSTART;VALUE=DATE:20251208
 DTEND;VALUE=DATE:20251208
+DTSTAMP:20251206T105424Z
+STATUS:CONFIRMED
+TRANSP:TRANSPARENT
+SEQUENCE:0
+PRIORITY:5
+X-MICROSOFT-CDO-IMPORTANCE:1
+CLASS:PUBLIC
 SUMMARY:Immaculate Conception Day
-DESCRIPTION:Visit https://calendarlabs.com/holidays/spain/immaculate-conception-day.php to know more about Immaculate Conception Day.
-LOCATION:Spain
+DESCRIPTION:Visit https://calendarlabs.com/holidays/spain/immaculate-conception-day.php to know more about Immaculate Conception Day. 
 END:VEVENT
 END:VCALENDAR

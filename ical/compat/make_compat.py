@@ -18,7 +18,6 @@ _LOGGER = logging.getLogger(__name__)
 _PRODID_RE = r"PRODID:(?P<prodid>.*[^\\r\\n]+)"
 
 _EXCHANGE_PRODID = "Microsoft Exchange Server"
-_CALENDAR_LABS_PRODID = "Calendar Labs"
 
 
 def _get_prodid(ics: str) -> str | None:
@@ -33,23 +32,18 @@ def _get_prodid(ics: str) -> str | None:
 @contextlib.contextmanager
 def enable_compat_mode(ics: str) -> Generator[str]:
     """Enable compatibility mode to fix known broken calendar content."""
-
-    # Check if the PRODID is from Microsoft Exchange Server
-    prodid = _get_prodid(ics)
-    if prodid and _EXCHANGE_PRODID in prodid:
-        _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
-        # Enable compatibility mode for Microsoft Exchange Server
-        with (
-            timezone_compat.enable_allow_invalid_timezones(),
-            timezone_compat.enable_extended_timezones(),
-        ):
+    # Always enable same-day DTEND compatibility for all calendars
+    # This is a common issue across many calendar providers
+    with same_day_dtend_compat.enable_same_day_dtend_compat():
+        prodid = _get_prodid(ics)
+        
+        if prodid and _EXCHANGE_PRODID in prodid:
+            _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
+            # Enable compatibility mode for Microsoft Exchange Server
+            with (
+                timezone_compat.enable_allow_invalid_timezones(),
+                timezone_compat.enable_extended_timezones(),
+            ):
+                yield ics
+        else:
             yield ics
-    elif prodid and _CALENDAR_LABS_PRODID in prodid:
-        _LOGGER.debug("Enabling compatibility mode for Calendar Labs")
-        # Enable compatibility mode for Calendar Labs same-day DTEND
-        with same_day_dtend_compat.enable_same_day_dtend_compat():
-            yield ics
-    else:
-        _LOGGER.debug("No compatibility mode needed")
-        # No compatibility mode needed
-        yield ics
