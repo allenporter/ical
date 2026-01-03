@@ -35,6 +35,7 @@ def enable_compat_mode(ics: str) -> Generator[str]:
     # Always enable same-day DTEND compatibility for all calendars
     # This is a common issue across many calendar providers
     with same_day_dtend_compat.enable_same_day_dtend_compat():
+        # Check if the PRODID is from Microsoft Exchange Server
         prodid = _get_prodid(ics)
         
         if prodid and _EXCHANGE_PRODID in prodid:
