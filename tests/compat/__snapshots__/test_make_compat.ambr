@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_make_compat[calendar_labs_same_day_dtend]
+# name: test_make_compat_calendar_labs[calendar_labs_same_day_dtend]
   '''
   BEGIN:VCALENDAR
   CALSCALE:GREGORIAN
@@ -15,9 +15,7 @@
   CLASS:PUBLIC
   DESCRIPTION:Visit 
    https://calendarlabs.com/holidays/spain/immaculate-conception-day.php to 
-   know more about Immaculate Conception Day. \n\n Like us on Facebook: 
-   http://fb.com/calendarlabs to get updates
-  LOCATION:Spain
+   know more about Immaculate Conception Day. 
   PRIORITY:5
   SEQUENCE:0
   STATUS:CONFIRMED
@@ -26,7 +24,7 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_make_compat[office_356_custom_timezone]
+# name: test_make_compat_office[office_356_custom_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
@@ -177,7 +175,7 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_make_compat[office_365_extended_timezone]
+# name: test_make_compat_office[office_365_extended_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
@@ -200,7 +198,7 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_make_compat[office_365_invalid_timezone]
+# name: test_make_compat_office[office_365_invalid_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
