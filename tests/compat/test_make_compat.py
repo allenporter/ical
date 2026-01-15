@@ -2,8 +2,12 @@
 
 import pathlib
 import re
+from collections.abc import Generator
+from unittest.mock import patch
 
 import pytest
+from freezegun import freeze_time
+from freezegun.api import FrozenDateTimeFactory
 from syrupy import SnapshotAssertion
 
 from ical.exceptions import CalendarParseError
@@ -19,6 +23,14 @@ OFFICE_IDS = [x.stem for x in OFFICE_FILES]
 
 CALENDAR_LABS_FILES = list(sorted(TESTDATA_PATH.glob("calendar_labs_*.ics")))
 CALENDAR_LABS_IDS = [x.stem for x in CALENDAR_LABS_FILES]
+
+
+@pytest.fixture(name="frozen_time", autouse=True)
+def mock_frozen_time() -> Generator[FrozenDateTimeFactory, None, None]:
+    """Fixture to freeze time to a specific point."""
+    with freeze_time("2026-01-03T21:29:07") as freeze:
+        with patch("ical.event.dtstamp_factory", new=freeze):
+            yield freeze
 
 
 @pytest.mark.parametrize("filename", OFFICE_FILES, ids=OFFICE_IDS)
@@ -47,10 +59,6 @@ def test_make_compat_calendar_labs(filename: pathlib.Path, snapshot: SnapshotAss
             calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
 
     new_ics = IcsCalendarStream.calendar_to_ics(calendar)
-    
-    # Normalize DTSTAMP for calendar_labs files since it's auto-generated
-    new_ics = re.sub(r'DTSTAMP:\d{8}T\d{6}Z', 'DTSTAMP:20260103T212907Z', new_ics)
-    
     assert new_ics == snapshot
 
     # The output content can be parsed back correctly
