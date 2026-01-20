@@ -42,3 +42,17 @@ def test_text_from_obj() -> None:
     """Test text when creating from an object."""
     model = Model.model_validate({"text_value": "some-value"})
     assert model == Model(text_value="some-value")
+
+
+def test_text_control_characters() -> None:
+    """Test that control characters are stripped from text values."""
+    model = Model.model_validate({"text_value": "some\x01value"})
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="Model",
+        properties=[
+            ParsedProperty(
+                name="text_value",
+                value="somevalue",
+            )
+        ],
+    )
