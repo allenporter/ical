@@ -13,7 +13,7 @@ freezegun==1.5.5
 pydantic==2.12.5
 pytest-benchmark==5.2.3
 types-python-dateutil==2.9.0.20251008
-wheel==0.46.2
+wheel==0.46.3
 PyYAML==6.0.3
 types-PyYAML==6.0.12.20250915
 syrupy==5.0.0
