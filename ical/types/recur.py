@@ -200,7 +200,7 @@ class RecurrenceId(str):
         range_value = Range.NONE
 
         # Preserve _range from existing RecurrenceId
-        if isinstance(value, RecurrenceId) and hasattr(value, "_range"):
+        if isinstance(value, RecurrenceId):
             return value
 
         if isinstance(value, ParsedProperty):
@@ -242,13 +242,15 @@ class RecurrenceId(str):
         )
 
     @classmethod
-    def __encode_property_json__(cls, value: "RecurrenceId") -> str | dict[str, str]:
+    def __encode_property_json__(
+        cls, value: "str | RecurrenceId"
+    ) -> str | dict[str, str]:
         """Encode a RecurrenceId during pydantic serialization.
 
         Returns a dict with RANGE parameter if set to THIS_AND_FUTURE,
         otherwise returns just the string value.
         """
-        if hasattr(value, "_range") and value._range == Range.THIS_AND_FUTURE:
+        if isinstance(value, RecurrenceId) and value._range == Range.THIS_AND_FUTURE:
             return {"value": str(value), "range": value._range.value}
         return str(value)
 
