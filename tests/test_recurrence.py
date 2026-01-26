@@ -328,3 +328,223 @@ def test_ics_wkst() -> None:
         "DTSTART:20220802T060000Z",
         "RRULE:FREQ=WEEKLY;COUNT=3;WKST=SU",
     ]
+
+
+# ============================================================================
+# THISANDFUTURE Tests
+# ============================================================================
+
+
+class TestThisAndFutureTimeline:
+    """Tests for RANGE=THISANDFUTURE timeline expansion."""
+
+    def test_thisandfuture_basic(self) -> None:
+        """Test basic THISANDFUTURE modification propagates to subsequent instances."""
+        from ical.types.recur import Range
+
+        # Create a recurring event
+        base_event = Event(
+            uid="test-uid",
+            summary="Original Event",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=7"),
+            location="Room A",
+        )
+
+        # Create a THISANDFUTURE edit for May 8
+        edit_event = Event(
+            uid="test-uid",
+            summary="Modified Event",
+            dtstart=datetime.date(2025, 5, 8),
+            dtend=datetime.date(2025, 5, 9),
+            recurrence_id=RecurrenceId("20250508", range=Range.THIS_AND_FUTURE),
+            location="Room B",
+        )
+
+        calendar = Calendar(events=[base_event, edit_event])
+        events = list(calendar.timeline)
+
+        # Check we have 7 events
+        assert len(events) == 7
+
+        # First 3 events should have original properties
+        for i, event in enumerate(events[:3]):
+            assert event.summary == "Original Event"
+            assert event.location == "Room A"
+            expected_date = datetime.date(2025, 5, 5) + datetime.timedelta(days=i)
+            assert event.dtstart == expected_date
+
+        # Events from May 8 onwards should have modified properties
+        for i, event in enumerate(events[3:]):
+            assert event.summary == "Modified Event"
+            assert event.location == "Room B"
+            expected_date = datetime.date(2025, 5, 8) + datetime.timedelta(days=i)
+            assert event.dtstart == expected_date
+
+    def test_thisandfuture_with_single_instance_override(self) -> None:
+        """Test that single-instance override takes precedence over THISANDFUTURE."""
+        from ical.types.recur import Range
+
+        # Create a recurring event
+        base_event = Event(
+            uid="test-uid",
+            summary="Original Event",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=7"),
+        )
+
+        # Create a THISANDFUTURE edit for May 7
+        thisandfuture_edit = Event(
+            uid="test-uid",
+            summary="THISANDFUTURE Modified",
+            dtstart=datetime.date(2025, 5, 7),
+            dtend=datetime.date(2025, 5, 8),
+            recurrence_id=RecurrenceId("20250507", range=Range.THIS_AND_FUTURE),
+        )
+
+        # Create a single-instance override for May 9 (should override THISANDFUTURE)
+        single_override = Event(
+            uid="test-uid",
+            summary="Single Instance Override",
+            dtstart=datetime.date(2025, 5, 9),
+            dtend=datetime.date(2025, 5, 10),
+            recurrence_id=RecurrenceId("20250509", range=Range.NONE),
+        )
+
+        calendar = Calendar(events=[base_event, thisandfuture_edit, single_override])
+        events = list(calendar.timeline)
+
+        assert len(events) == 7
+
+        # May 5-6: Original
+        assert events[0].summary == "Original Event"
+        assert events[1].summary == "Original Event"
+
+        # May 7-8: THISANDFUTURE modified
+        assert events[2].summary == "THISANDFUTURE Modified"
+        assert events[3].summary == "THISANDFUTURE Modified"
+
+        # May 9: Single instance override (takes precedence)
+        assert events[4].summary == "Single Instance Override"
+
+        # May 10-11: Back to THISANDFUTURE
+        assert events[5].summary == "THISANDFUTURE Modified"
+        assert events[6].summary == "THISANDFUTURE Modified"
+
+    def test_multiple_thisandfuture_edits(self) -> None:
+        """Test that later THISANDFUTURE edits take precedence for their range."""
+        from ical.types.recur import Range
+
+        # Create a recurring event
+        base_event = Event(
+            uid="test-uid",
+            summary="Original",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+
+        # First THISANDFUTURE edit for May 7
+        edit1 = Event(
+            uid="test-uid",
+            summary="First Edit",
+            dtstart=datetime.date(2025, 5, 7),
+            dtend=datetime.date(2025, 5, 8),
+            recurrence_id=RecurrenceId("20250507", range=Range.THIS_AND_FUTURE),
+        )
+
+        # Second THISANDFUTURE edit for May 10
+        edit2 = Event(
+            uid="test-uid",
+            summary="Second Edit",
+            dtstart=datetime.date(2025, 5, 10),
+            dtend=datetime.date(2025, 5, 11),
+            recurrence_id=RecurrenceId("20250510", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit1, edit2])
+        events = list(calendar.timeline)
+
+        assert len(events) == 10
+
+        # May 5-6: Original
+        assert events[0].summary == "Original"
+        assert events[1].summary == "Original"
+
+        # May 7-9: First Edit applies
+        assert events[2].summary == "First Edit"
+        assert events[3].summary == "First Edit"
+        assert events[4].summary == "First Edit"
+
+        # May 10-14: Second Edit takes precedence
+        for event in events[5:]:
+            assert event.summary == "Second Edit"
+
+    def test_thisandfuture_with_time_shift(self) -> None:
+        """Test that time shifts are applied to subsequent instances."""
+        from ical.types.recur import Range
+
+        # Create a recurring event at 9am
+        base_event = Event(
+            uid="test-uid",
+            summary="Morning Meeting",
+            dtstart=datetime.datetime(2025, 5, 5, 9, 0),
+            dtend=datetime.datetime(2025, 5, 5, 10, 0),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE edit moves May 8 to 2pm (shift of +5 hours)
+        edit = Event(
+            uid="test-uid",
+            summary="Afternoon Meeting",
+            dtstart=datetime.datetime(2025, 5, 8, 14, 0),  # 2pm
+            dtend=datetime.datetime(2025, 5, 8, 15, 0),
+            recurrence_id=RecurrenceId("20250508T090000", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # May 5-7: Original time (9am)
+        for event in events[:3]:
+            assert event.dtstart.hour == 9
+            assert event.summary == "Morning Meeting"
+
+        # May 8-9: Shifted to 2pm
+        for event in events[3:]:
+            assert event.dtstart.hour == 14
+            assert event.summary == "Afternoon Meeting"
+
+    def test_thisandfuture_on_first_instance(self) -> None:
+        """Test THISANDFUTURE on first instance affects entire series."""
+        from ical.types.recur import Range
+
+        base_event = Event(
+            uid="test-uid",
+            summary="Original",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE on the very first instance
+        edit = Event(
+            uid="test-uid",
+            summary="Modified All",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            recurrence_id=RecurrenceId("20250505", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # All events should have the modified summary
+        for event in events:
+            assert event.summary == "Modified All"
