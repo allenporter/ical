@@ -548,3 +548,133 @@ class TestThisAndFutureTimeline:
         # All events should have the modified summary
         for event in events:
             assert event.summary == "Modified All"
+
+    def test_thisandfuture_with_duration_change(self) -> None:
+        """Test that duration changes propagate to subsequent instances.
+
+        Per RFC 5545: "if the duration of the given recurrence instance is
+        modified, then all subsequent instances are also modified to have
+        this same duration."
+        """
+        from ical.types.recur import Range
+
+        # Create a recurring 1-hour event
+        base_event = Event(
+            uid="test-uid",
+            summary="Meeting",
+            dtstart=datetime.datetime(2025, 5, 5, 9, 0),
+            dtend=datetime.datetime(2025, 5, 5, 10, 0),  # 1 hour
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE edit changes duration to 2 hours
+        edit = Event(
+            uid="test-uid",
+            summary="Extended Meeting",
+            dtstart=datetime.datetime(2025, 5, 8, 9, 0),
+            dtend=datetime.datetime(2025, 5, 8, 11, 0),  # 2 hours
+            recurrence_id=RecurrenceId("20250508T090000", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # May 5-7: Original 1-hour duration
+        for event in events[:3]:
+            duration = event.dtend - event.dtstart
+            assert duration == datetime.timedelta(hours=1)
+
+        # May 8-9: Modified 2-hour duration
+        for event in events[3:]:
+            duration = event.dtend - event.dtstart
+            assert duration == datetime.timedelta(hours=2)
+
+    def test_thisandfuture_with_timezone(self) -> None:
+        """Test THISANDFUTURE with timezone-aware datetimes.
+
+        Per RFC 5545: The TZID parameter can be specified on RECURRENCE-ID.
+        """
+        from ical.types.recur import Range
+
+        tz = zoneinfo.ZoneInfo("America/New_York")
+
+        # Create a recurring event in New York timezone
+        base_event = Event(
+            uid="test-uid",
+            summary="NYC Meeting",
+            dtstart=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=tz),
+            dtend=datetime.datetime(2025, 5, 5, 10, 0, tzinfo=tz),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE edit (also timezone-aware)
+        edit = Event(
+            uid="test-uid",
+            summary="Modified NYC Meeting",
+            dtstart=datetime.datetime(2025, 5, 8, 14, 0, tzinfo=tz),  # 2pm ET
+            dtend=datetime.datetime(2025, 5, 8, 15, 0, tzinfo=tz),
+            recurrence_id=RecurrenceId("20250508T090000", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # May 5-7: Original time (9am ET)
+        for event in events[:3]:
+            assert event.dtstart.hour == 9
+            assert event.summary == "NYC Meeting"
+
+        # May 8-9: Shifted to 2pm ET
+        for event in events[3:]:
+            assert event.dtstart.hour == 14
+            assert event.summary == "Modified NYC Meeting"
+
+    def test_thisandfuture_recurrence_id_matches_original_dtstart(self) -> None:
+        """Test that RECURRENCE-ID value must match original DTSTART.
+
+        Per RFC 5545: "The DATE-TIME value is set to the time when the
+        original recurrence instance would occur; meaning that if the
+        intent is to change a Friday meeting to Thursday, the DATE-TIME
+        is still set to the original Friday meeting."
+        """
+        from ical.types.recur import Range
+
+        # Friday recurring event (May 9, 2025 is a Friday)
+        base_event = Event(
+            uid="test-uid",
+            summary="Friday Meeting",
+            dtstart=datetime.date(2025, 5, 9),
+            dtend=datetime.date(2025, 5, 10),
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=3"),  # Fridays
+        )
+
+        # Move the second Friday (May 16) to Thursday (May 15)
+        # RECURRENCE-ID is still 20250516 (the original Friday)
+        edit = Event(
+            uid="test-uid",
+            summary="Moved to Thursday",
+            dtstart=datetime.date(2025, 5, 15),  # Thursday
+            dtend=datetime.date(2025, 5, 16),
+            recurrence_id=RecurrenceId("20250516", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 3
+
+        # First Friday (May 9) - original
+        assert events[0].dtstart == datetime.date(2025, 5, 9)
+        assert events[0].summary == "Friday Meeting"
+
+        # Second instance moved to Thursday (May 15)
+        assert events[1].dtstart == datetime.date(2025, 5, 15)
+        assert events[1].summary == "Moved to Thursday"
+
+        # Third instance also moved (May 22 -> May 21)
+        assert events[2].dtstart == datetime.date(2025, 5, 22)
+        assert events[2].summary == "Moved to Thursday"

@@ -127,19 +127,27 @@ class ThisAndFutureEdit(Generic[ItemType]):
 
         # Calculate time shift: difference between new dtstart and original recurrence date
         # This is the shift that should be applied to all subsequent instances
+        time_shift = datetime.timedelta()
         if item.dtstart and effective_date:
-            if isinstance(item.dtstart, datetime.datetime) and isinstance(
-                effective_date, datetime.datetime
+            dtstart = item.dtstart
+            eff_date = effective_date
+
+            if isinstance(dtstart, datetime.datetime) and isinstance(
+                eff_date, datetime.datetime
             ):
-                time_shift = item.dtstart - effective_date
-            elif isinstance(item.dtstart, datetime.date) and isinstance(
-                effective_date, datetime.date
+                # Handle timezone mismatch: RecurrenceId stores floating time (naive)
+                # but dtstart may be timezone-aware
+                if dtstart.tzinfo and not eff_date.tzinfo:
+                    # Make effective_date timezone-aware using dtstart's timezone
+                    eff_date = eff_date.replace(tzinfo=dtstart.tzinfo)
+                elif eff_date.tzinfo and not dtstart.tzinfo:
+                    # Make dtstart timezone-aware (unlikely but handle it)
+                    dtstart = dtstart.replace(tzinfo=eff_date.tzinfo)
+                time_shift = dtstart - eff_date
+            elif isinstance(dtstart, datetime.date) and isinstance(
+                eff_date, datetime.date
             ):
-                time_shift = datetime.timedelta(days=(item.dtstart - effective_date).days)
-            else:
-                time_shift = datetime.timedelta()
-        else:
-            time_shift = datetime.timedelta()
+                time_shift = datetime.timedelta(days=(dtstart - eff_date).days)
 
         return cls(
             item=item,
