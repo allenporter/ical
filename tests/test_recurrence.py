@@ -337,11 +337,15 @@ def test_ics_wkst() -> None:
 
 
 def test_thisandfuture_basic() -> None:
-    """Test basic THISANDFUTURE modification propagates to subsequent instances."""
+    """Test basic THISANDFUTURE modification propagates to subsequent instances.
+
+    Tests propagation of: summary, location, description.
+    """
     # Create a recurring event
     base_event = Event(
         uid="test-uid",
         summary="Original Event",
+        description="Original description",
         dtstart=datetime.date(2025, 5, 5),
         dtend=datetime.date(2025, 5, 6),
         rrule=Recur.from_rrule("FREQ=DAILY;COUNT=7"),
@@ -352,6 +356,7 @@ def test_thisandfuture_basic() -> None:
     edit_event = Event(
         uid="test-uid",
         summary="Modified Event",
+        description="Updated description",
         dtstart=datetime.date(2025, 5, 8),
         dtend=datetime.date(2025, 5, 9),
         recurrence_id=RecurrenceId("20250508", range=Range.THIS_AND_FUTURE),
@@ -368,6 +373,7 @@ def test_thisandfuture_basic() -> None:
     for i, event in enumerate(events[:3]):
         assert event.summary == "Original Event"
         assert event.location == "Room A"
+        assert event.description == "Original description"
         expected_date = datetime.date(2025, 5, 5) + datetime.timedelta(days=i)
         assert event.dtstart == expected_date
 
@@ -375,6 +381,7 @@ def test_thisandfuture_basic() -> None:
     for i, event in enumerate(events[3:]):
         assert event.summary == "Modified Event"
         assert event.location == "Room B"
+        assert event.description == "Updated description"
         expected_date = datetime.date(2025, 5, 8) + datetime.timedelta(days=i)
         assert event.dtstart == expected_date
 
@@ -548,39 +555,60 @@ def test_thisandfuture_with_duration_change() -> None:
     Per RFC 5545: "if the duration of the given recurrence instance is
     modified, then all subsequent instances are also modified to have
     this same duration."
+
+    Also tests: when edit doesn't specify dtend, BASE event's duration is used.
     """
-    # Create a recurring 1-hour event
+    # Create a recurring 2-hour event
     base_event = Event(
         uid="test-uid",
         summary="Meeting",
         dtstart=datetime.datetime(2025, 5, 5, 9, 0),
-        dtend=datetime.datetime(2025, 5, 5, 10, 0),  # 1 hour
-        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        dtend=datetime.datetime(2025, 5, 5, 11, 0),  # 2 hours
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=7"),
     )
 
-    # THISANDFUTURE edit changes duration to 2 hours
-    edit = Event(
+    # First edit: changes duration to 1 hour at May 7
+    edit1 = Event(
         uid="test-uid",
-        summary="Extended Meeting",
-        dtstart=datetime.datetime(2025, 5, 8, 9, 0),
-        dtend=datetime.datetime(2025, 5, 8, 11, 0),  # 2 hours
-        recurrence_id=RecurrenceId("20250508T090000", range=Range.THIS_AND_FUTURE),
+        summary="Short Meeting",
+        dtstart=datetime.datetime(2025, 5, 7, 9, 0),
+        dtend=datetime.datetime(2025, 5, 7, 10, 0),  # 1 hour
+        recurrence_id=RecurrenceId("20250507T090000", range=Range.THIS_AND_FUTURE),
     )
 
-    calendar = Calendar(events=[base_event, edit])
+    # Second edit: at May 10, only changes summary (no dtend)
+    # NOTE: Duration comes from BASE event (2 hours), not from edit1
+    edit2 = Event(
+        uid="test-uid",
+        summary="Renamed Meeting",
+        dtstart=datetime.datetime(2025, 5, 10, 9, 0),
+        # No dtend - inherits BASE event's 2-hour duration
+        recurrence_id=RecurrenceId("20250510T090000", range=Range.THIS_AND_FUTURE),
+    )
+
+    calendar = Calendar(events=[base_event, edit1, edit2])
     events = list(calendar.timeline)
 
-    assert len(events) == 5
+    assert len(events) == 7
 
-    # May 5-7: Original 1-hour duration
-    for event in events[:3]:
-        duration = event.dtend - event.dtstart
-        assert duration == datetime.timedelta(hours=1)
-
-    # May 8-9: Modified 2-hour duration
-    for event in events[3:]:
+    # May 5-6: Original 2-hour duration
+    for event in events[:2]:
         duration = event.dtend - event.dtstart
         assert duration == datetime.timedelta(hours=2)
+        assert event.summary == "Meeting"
+
+    # May 7-9: First edit's 1-hour duration
+    for event in events[2:5]:
+        duration = event.dtend - event.dtstart
+        assert duration == datetime.timedelta(hours=1)
+        assert event.summary == "Short Meeting"
+
+    # May 10-11: Second edit uses BASE event's duration (2 hours)
+    # because edit2 doesn't specify dtend
+    for event in events[5:]:
+        duration = event.dtend - event.dtstart
+        assert duration == datetime.timedelta(hours=2), "Inherits BASE duration when dtend not specified"
+        assert event.summary == "Renamed Meeting"
 
 
 def test_thisandfuture_with_location_change() -> None:
@@ -749,37 +777,67 @@ def test_thisandfuture_todo() -> None:
 
     Per RFC 5545: RECURRENCE-ID is used to identify instances of
     recurring VEVENT, VTODO, or VJOURNAL components.
+
+    Tests: location propagation, due duration change, and due duration preservation.
     """
-    # Create a recurring todo
+    # Create a recurring todo with 8-hour window
     base_todo = Todo(
         uid="test-todo-uid",
         summary="Weekly Review",
-        dtstart=datetime.date(2025, 5, 5),
-        due=datetime.date(2025, 5, 6),
-        rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=4"),
+        location="Office",
+        dtstart=datetime.datetime(2025, 5, 5, 9, 0),
+        due=datetime.datetime(2025, 5, 5, 17, 0),  # 8-hour window
+        rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
     )
 
-    # THISANDFUTURE edit for the third week
-    edit_todo = Todo(
+    # First edit (week 3): changes location AND due (shorter 4-hour window)
+    edit1 = Todo(
         uid="test-todo-uid",
-        summary="Updated Weekly Review",
-        dtstart=datetime.date(2025, 5, 19),
-        due=datetime.date(2025, 5, 20),
-        recurrence_id=RecurrenceId("20250519", range=Range.THIS_AND_FUTURE),
+        summary="Quick Review",
+        location="Home Office",
+        dtstart=datetime.datetime(2025, 5, 19, 10, 0),
+        due=datetime.datetime(2025, 5, 19, 14, 0),  # 4-hour window
+        recurrence_id=RecurrenceId("20250519T090000", range=Range.THIS_AND_FUTURE),
     )
 
-    calendar = Calendar(todos=[base_todo, edit_todo])
+    # Second edit (week 5): changes only summary, no due - should use BASE duration
+    edit2 = Todo(
+        uid="test-todo-uid",
+        summary="Final Review",
+        dtstart=datetime.datetime(2025, 6, 2, 9, 0),
+        # NOTE: No due - inherits BASE event's 8-hour window (not edit1's 4-hour)
+        recurrence_id=RecurrenceId("20250602T090000", range=Range.THIS_AND_FUTURE),
+    )
+
+    calendar = Calendar(todos=[base_todo, edit1, edit2])
     todos = list(generic_timeline(calendar.todos, datetime.timezone.utc))
 
-    assert len(todos) == 4
+    assert len(todos) == 5
 
-    # First two weeks: original
+    # Weeks 1-2: original (8-hour window)
     assert todos[0].summary == "Weekly Review"
-    assert todos[1].summary == "Weekly Review"
+    assert todos[0].location == "Office"
+    duration0 = todos[0].due - todos[0].dtstart
+    assert duration0 == datetime.timedelta(hours=8)
 
-    # Third and fourth weeks: modified
-    assert todos[2].summary == "Updated Weekly Review"
-    assert todos[3].summary == "Updated Weekly Review"
+    assert todos[1].summary == "Weekly Review"
+    assert todos[1].location == "Office"
+
+    # Weeks 3-4: first edit (4-hour window, location changed)
+    assert todos[2].summary == "Quick Review"
+    assert todos[2].location == "Home Office"
+    duration2 = todos[2].due - todos[2].dtstart
+    assert duration2 == datetime.timedelta(hours=4), "Due should use edit's 4-hour window"
+
+    assert todos[3].summary == "Quick Review"
+    assert todos[3].location == "Home Office"
+    duration3 = todos[3].due - todos[3].dtstart
+    assert duration3 == datetime.timedelta(hours=4)
+
+    # Week 5: second edit (uses BASE 8-hour window since no due specified)
+    assert todos[4].summary == "Final Review"
+    duration4 = todos[4].due - todos[4].dtstart
+    assert duration4 == datetime.timedelta(hours=8), "Should inherit BASE duration"
 
 
 def test_thisandfuture_journal() -> None:
@@ -872,3 +930,45 @@ def test_thisandfuture_separate_uids_not_impacted() -> None:
     assert len(series2_events) == 5
     for event in series2_events:
         assert event.summary == "Series 2 Event"
+
+
+def test_thisandfuture_property_inheritance() -> None:
+    """Test that unspecified properties in edit are inherited from base.
+
+    This documents the current behavior: properties not specified in the
+    THISANDFUTURE edit are inherited from the base event (via model_copy).
+    """
+    base_event = Event(
+        uid="test-uid",
+        summary="Original Summary",
+        location="Room A",
+        dtstart=datetime.date(2025, 5, 5),
+        dtend=datetime.date(2025, 5, 6),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+    )
+
+    # Edit only changes location, no summary specified - should inherit
+    # Also tests: location=None doesn't clear (inherits from base)
+    edit = Event(
+        uid="test-uid",
+        # NOTE: No summary - should inherit from base
+        location="Room B",
+        dtstart=datetime.date(2025, 5, 8),
+        dtend=datetime.date(2025, 5, 9),
+        recurrence_id=RecurrenceId("20250508", range=Range.THIS_AND_FUTURE),
+    )
+
+    calendar = Calendar(events=[base_event, edit])
+    events = list(calendar.timeline)
+
+    assert len(events) == 5
+
+    # All events should have the original summary (inherited)
+    for event in events:
+        assert event.summary == "Original Summary"
+
+    # But location should change for May 8 onwards
+    for event in events[:3]:
+        assert event.location == "Room A"
+    for event in events[3:]:
+        assert event.location == "Room B"
