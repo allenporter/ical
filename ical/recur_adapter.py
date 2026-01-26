@@ -223,12 +223,14 @@ class ThisAndFutureRecurAdapter(Generic[ItemType]):
             }
 
             # Copy relevant properties from the THISANDFUTURE edit
+            # These properties are common to Event, Todo, and Journal
             edit_item = edit.item
             if edit_item.summary:
                 updates["summary"] = edit_item.summary
             if edit_item.description:
                 updates["description"] = edit_item.description
-            if edit_item.location:
+            # Location is only on Event and Todo, not Journal
+            if hasattr(edit_item, "location") and edit_item.location:
                 updates["location"] = edit_item.location
 
             if isinstance(self._item, Event):

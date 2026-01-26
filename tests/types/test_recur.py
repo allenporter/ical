@@ -155,6 +155,48 @@ def test_recurrence_id_encoding_without_range() -> None:
     assert params == []
 
 
+def test_recurrence_id_rfc_spec_examples() -> None:
+    """Test the exact examples from RFC 5545 Section 3.8.4.4.
+
+    The spec provides these examples:
+      RECURRENCE-ID;VALUE=DATE:19960401
+      RECURRENCE-ID;RANGE=THISANDFUTURE:19960120T120000Z
+    """
+    from ical.types.recur import Range
+
+    # Example 1: RECURRENCE-ID;VALUE=DATE:19960401
+    model1 = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="19960401",
+                    params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
+                )
+            ]
+        }
+    )
+    assert model1.recurrence_id == "19960401"
+    assert model1.recurrence_id.range == Range.NONE
+
+    # Example 2: RECURRENCE-ID;RANGE=THISANDFUTURE:19960120T120000Z
+    model2 = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="19960120T120000Z",
+                    params=[
+                        ParsedPropertyParameter(name="RANGE", values=["THISANDFUTURE"]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert model2.recurrence_id == "19960120T120000Z"
+    assert model2.recurrence_id.range == Range.THIS_AND_FUTURE
+
+
 def test_invalid_recurrence_id() -> None:
     """Test for a recurrence id that is not a valid DATE or DATE-TIME string."""
     model = FakeModel.model_validate(

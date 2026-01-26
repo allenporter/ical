@@ -12,11 +12,12 @@ from ical.calendar import Calendar
 from ical.component import ComponentModel
 from ical.exceptions import RecurrenceError
 from ical.event import Event
+from ical.journal import Journal
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.parsing.component import parse_content
 from ical.timeline import Timeline
 from ical.todo import Todo
-from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
+from ical.types.recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
 from ical.recurrence import Recurrences
 
 
@@ -678,3 +679,147 @@ class TestThisAndFutureTimeline:
         # Third instance also moved (May 22 -> May 21)
         assert events[2].dtstart == datetime.date(2025, 5, 22)
         assert events[2].summary == "Moved to Thursday"
+
+
+class TestThisAndFutureTodo:
+    """Tests for RANGE=THISANDFUTURE with VTODO components.
+
+    Per RFC 5545: RECURRENCE-ID is used to identify instances of
+    recurring VEVENT, VTODO, or VJOURNAL components.
+    """
+
+    def test_todo_thisandfuture_basic(self) -> None:
+        """Test THISANDFUTURE with recurring Todo items."""
+        from ical.timeline import generic_timeline
+
+        # Create a recurring todo
+        base_todo = Todo(
+            uid="test-todo-uid",
+            summary="Weekly Review",
+            dtstart=datetime.date(2025, 5, 5),
+            due=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=4"),
+        )
+
+        # THISANDFUTURE edit for the third week
+        edit_todo = Todo(
+            uid="test-todo-uid",
+            summary="Updated Weekly Review",
+            dtstart=datetime.date(2025, 5, 19),
+            due=datetime.date(2025, 5, 20),
+            recurrence_id=RecurrenceId("20250519", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(todos=[base_todo, edit_todo])
+        todos = list(generic_timeline(calendar.todos, datetime.timezone.utc))
+
+        assert len(todos) == 4
+
+        # First two weeks: original
+        assert todos[0].summary == "Weekly Review"
+        assert todos[1].summary == "Weekly Review"
+
+        # Third and fourth weeks: modified
+        assert todos[2].summary == "Updated Weekly Review"
+        assert todos[3].summary == "Updated Weekly Review"
+
+
+class TestThisAndFutureJournal:
+    """Tests for RANGE=THISANDFUTURE with VJOURNAL components.
+
+    Per RFC 5545: RECURRENCE-ID is used to identify instances of
+    recurring VEVENT, VTODO, or VJOURNAL components.
+    """
+
+    def test_journal_thisandfuture_basic(self) -> None:
+        """Test THISANDFUTURE with recurring Journal entries."""
+        # Create a recurring journal
+        base_journal = Journal(
+            uid="test-journal-uid",
+            summary="Daily Log",
+            dtstart=datetime.date(2025, 5, 5),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE edit for May 8
+        edit_journal = Journal(
+            uid="test-journal-uid",
+            summary="Updated Daily Log",
+            dtstart=datetime.date(2025, 5, 8),
+            recurrence_id=RecurrenceId("20250508", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(journal=[base_journal, edit_journal])
+
+        # Journal uses generic_timeline for iteration
+        from ical.timeline import generic_timeline
+        journals = list(generic_timeline(calendar.journal, datetime.timezone.utc))
+
+        assert len(journals) == 5
+
+        # First three days: original
+        assert journals[0].summary == "Daily Log"
+        assert journals[1].summary == "Daily Log"
+        assert journals[2].summary == "Daily Log"
+
+        # Last two days: modified
+        assert journals[3].summary == "Updated Daily Log"
+        assert journals[4].summary == "Updated Daily Log"
+
+
+class TestThisAndFutureSeparateComponents:
+    """Test that THISANDFUTURE only affects the same UID.
+
+    Per RFC 5545: "Subsequent instances defined in separate components
+    are not impacted by the given recurrence instance."
+    """
+
+    def test_separate_uids_not_impacted(self) -> None:
+        """Test that editing one recurring series doesn't affect another."""
+        # First recurring event series
+        event1 = Event(
+            uid="series-1",
+            summary="Series 1 Event",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # Second recurring event series (same dates, different UID)
+        event2 = Event(
+            uid="series-2",
+            summary="Series 2 Event",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # THISANDFUTURE edit ONLY for series-1
+        edit = Event(
+            uid="series-1",
+            summary="Series 1 Modified",
+            dtstart=datetime.date(2025, 5, 7),
+            dtend=datetime.date(2025, 5, 8),
+            recurrence_id=RecurrenceId("20250507", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[event1, event2, edit])
+        events = list(calendar.timeline)
+
+        # Should have 10 events total (5 from each series)
+        assert len(events) == 10
+
+        # Series 1: first 2 original, last 3 modified
+        series1_events = [e for e in events if e.uid == "series-1"]
+        assert len(series1_events) == 5
+        assert series1_events[0].summary == "Series 1 Event"
+        assert series1_events[1].summary == "Series 1 Event"
+        assert series1_events[2].summary == "Series 1 Modified"
+        assert series1_events[3].summary == "Series 1 Modified"
+        assert series1_events[4].summary == "Series 1 Modified"
+
+        # Series 2: ALL should be original (not impacted by series-1 edit)
+        series2_events = [e for e in events if e.uid == "series-2"]
+        assert len(series2_events) == 5
+        for event in series2_events:
+            assert event.summary == "Series 2 Event"
