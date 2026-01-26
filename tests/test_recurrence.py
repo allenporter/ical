@@ -767,7 +767,7 @@ def test_thisandfuture_recurrence_id_matches_original_dtstart() -> None:
     assert events[1].dtstart == datetime.date(2025, 5, 15)
     assert events[1].summary == "Moved to Thursday"
 
-    # Third instance also moved (May 22 -> May 21)
+    # Third instance also moved (May 23 -> May 22, shifted by -1 day)
     assert events[2].dtstart == datetime.date(2025, 5, 22)
     assert events[2].summary == "Moved to Thursday"
 
