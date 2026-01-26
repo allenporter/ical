@@ -52,7 +52,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import parse_date_and_datetime
 
 from .data_types import DATA_TYPE, serialize_field
@@ -146,7 +146,29 @@ class RecurrenceId(str):
 
     The full range of a recurrence set is referenced by the "UID". The
     recurrence id can reference a specific instance within the set.
+
+    The RANGE parameter specifies the effective range of recurrence instances.
+    When RANGE=THISANDFUTURE, the modification applies to this instance and
+    all subsequent instances in the recurrence set.
     """
+
+    _range: Range
+
+    def __new__(cls, value: str, range: Range = Range.NONE) -> "RecurrenceId":
+        """Create a new RecurrenceId with optional RANGE parameter."""
+        instance = super().__new__(cls, value)
+        instance._range = range
+        return instance
+
+    @property
+    def range(self) -> Range:
+        """Return the RANGE parameter value for this recurrence id.
+
+        Returns Range.THIS_AND_FUTURE if the modification applies to this
+        instance and all subsequent instances, or Range.NONE for a single
+        instance modification.
+        """
+        return self._range
 
     @classmethod
     def to_value(cls, recurrence_id: str) -> datetime.datetime | datetime.date:
@@ -174,9 +196,22 @@ class RecurrenceId(str):
 
     @classmethod
     def __parse_property_value__(cls, value: Any) -> RecurrenceId:
-        """Parse a calendar user address."""
+        """Parse a recurrence id value and optional RANGE parameter."""
+        range_value = Range.NONE
+
+        # Preserve _range from existing RecurrenceId
+        if isinstance(value, RecurrenceId) and hasattr(value, "_range"):
+            return value
+
         if isinstance(value, ParsedProperty):
+            # Extract RANGE parameter if present
+            if range_param := value.get_parameter_value("RANGE"):
+                try:
+                    range_value = Range(range_param)
+                except ValueError:
+                    pass  # Unknown range value, default to NONE
             value = cls._parse_value(value.value)
+
         if isinstance(value, str):
             value = cls._parse_value(value)
         if isinstance(value, datetime.datetime):
@@ -185,7 +220,7 @@ class RecurrenceId(str):
             value = DateEncoder.__encode_property_json__(value)
         else:
             value = str(value)
-        return RecurrenceId(value)
+        return RecurrenceId(value, range=range_value)
 
     @classmethod
     def _parse_value(cls, value: str) -> datetime.datetime | datetime.date | str:
@@ -199,9 +234,39 @@ class RecurrenceId(str):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> CoreSchema:
-        return core_schema.no_info_before_validator_function(
-            cls.__parse_property_value__, handler(source_type)
+        # Use a plain validator that preserves our RecurrenceId type with _range attribute
+        # We cannot use handler(str) as that would coerce our type back to plain str
+        return core_schema.no_info_plain_validator_function(
+            cls.__parse_property_value__,
+            serialization=core_schema.to_string_ser_schema(),
         )
+
+    @classmethod
+    def __encode_property_json__(cls, value: "RecurrenceId") -> str | dict[str, str]:
+        """Encode a RecurrenceId during pydantic serialization.
+
+        Returns a dict with RANGE parameter if set to THIS_AND_FUTURE,
+        otherwise returns just the string value.
+        """
+        if hasattr(value, "_range") and value._range == Range.THIS_AND_FUTURE:
+            return {"value": str(value), "range": value._range.value}
+        return str(value)
+
+    @classmethod
+    def __encode_property_value__(cls, value: str | dict[str, str]) -> str | None:
+        """Encode the property value for ICS output."""
+        if isinstance(value, dict):
+            return value.get("value")
+        return value
+
+    @classmethod
+    def __encode_property_params__(
+        cls, value: str | dict[str, str]
+    ) -> list[ParsedPropertyParameter]:
+        """Encode the RANGE parameter if present."""
+        if isinstance(value, dict) and (range_value := value.get("range")):
+            return [ParsedPropertyParameter(name="RANGE", values=[range_value])]
+        return []
 
 
 RRULE_FREQ: dict[Frequency, Literal[0, 1, 2, 3]] = {

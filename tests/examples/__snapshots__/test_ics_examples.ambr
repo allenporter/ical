@@ -39,6 +39,15 @@
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 9), dtend=datetime.date(2025, 5, 10), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250509', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
   ])
 # ---
+# name: test_iterate_events[recurring_event_thisandfuture]
+  list([
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='thisandfuture-test@example.com', dtstart=datetime.date(2025, 5, 5), dtend=datetime.date(2025, 5, 6), duration=None, summary='Original Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location='Room A', organizer=None, priority=None, recurrence_id='20250505', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=7, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='thisandfuture-test@example.com', dtstart=datetime.date(2025, 5, 6), dtend=datetime.date(2025, 5, 7), duration=None, summary='Original Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location='Room A', organizer=None, priority=None, recurrence_id='20250506', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=7, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='thisandfuture-test@example.com', dtstart=datetime.date(2025, 5, 7), dtend=datetime.date(2025, 5, 8), duration=None, summary='Original Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location='Room A', organizer=None, priority=None, recurrence_id='20250507', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=7, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='thisandfuture-test@example.com', dtstart=datetime.date(2025, 5, 8), dtend=datetime.date(2025, 5, 9), duration=None, summary='Modified From May 8', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location='Room B', organizer=None, priority=None, recurrence_id='20250508', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=7, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='thisandfuture-test@example.com', dtstart=datetime.date(2025, 5, 9), dtend=datetime.date(2025, 5, 10), duration=None, summary='Modified From May 8', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location='Room B', organizer=None, priority=None, recurrence_id='20250509', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=7, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+  ])
+# ---
 # name: test_iterate_events[store_edit_bugs]
   list([
     Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 4, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 4, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210904T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
@@ -1989,6 +1998,44 @@
   LAST-MODIFIED:20250504T145738Z
   RECURRENCE-ID:20250507
   SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[recurring_event_thisandfuture]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//Test//Test Calendar//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20250504T150136Z
+  UID:thisandfuture-test@example.com
+  DTSTART:20250505
+  DTEND:20250506
+  SUMMARY:Original Event
+  CREATED:20250504T145610Z
+  LAST-MODIFIED:20250504T145729Z
+  LOCATION:Room A
+  RRULE:FREQ=DAILY;COUNT=7
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:TRANSPARENT
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20250504T150136Z
+  UID:thisandfuture-test@example.com
+  DTSTART:20250508
+  DTEND:20250509
+  SUMMARY:Modified From May 8
+  CREATED:20250504T145610Z
+  LAST-MODIFIED:20250504T145738Z
+  LOCATION:Room B
+  RECURRENCE-ID;RANGE=THISANDFUTURE:20250508
+  SEQUENCE:1
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
   END:VEVENT

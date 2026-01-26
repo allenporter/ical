@@ -52,8 +52,9 @@ def test_recurrence_id_date() -> None:
     assert model.recurrence_id == "20220724"
 
 
-def test_recurrence_id_ignore_params() -> None:
-    """Test property parameter values are ignored."""
+def test_recurrence_id_range_parameter() -> None:
+    """Test that RANGE parameter is parsed and preserved."""
+    from ical.types.recur import Range
 
     model = FakeModel.model_validate(
         {
@@ -69,6 +70,18 @@ def test_recurrence_id_ignore_params() -> None:
         }
     )
     assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.range == Range.THIS_AND_FUTURE
+
+
+def test_recurrence_id_no_range() -> None:
+    """Test that recurrence_id without RANGE defaults to NONE."""
+    from ical.types.recur import Range
+
+    model = FakeModel.model_validate(
+        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="20220724T120000")]}
+    )
+    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.range == Range.NONE
 
 
 def test_invalid_recurrence_id() -> None:
