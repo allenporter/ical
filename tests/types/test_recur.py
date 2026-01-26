@@ -52,8 +52,9 @@ def test_recurrence_id_date() -> None:
     assert model.recurrence_id == "20220724"
 
 
-def test_recurrence_id_ignore_params() -> None:
-    """Test property parameter values are ignored."""
+def test_recurrence_id_range_parameter() -> None:
+    """Test that RANGE parameter is parsed and preserved."""
+    from ical.types.recur import Range
 
     model = FakeModel.model_validate(
         {
@@ -69,6 +70,131 @@ def test_recurrence_id_ignore_params() -> None:
         }
     )
     assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.range == Range.THIS_AND_FUTURE
+
+
+def test_recurrence_id_no_range() -> None:
+    """Test that recurrence_id without RANGE defaults to NONE."""
+    from ical.types.recur import Range
+
+    model = FakeModel.model_validate(
+        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="20220724T120000")]}
+    )
+    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.range == Range.NONE
+
+
+def test_recurrence_id_unknown_range() -> None:
+    """Test that unknown RANGE values default to NONE."""
+    from ical.types.recur import Range
+
+    model = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="20220724T120000",
+                    params=[
+                        ParsedPropertyParameter(name="RANGE", values=["UNKNOWN"]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.range == Range.NONE
+
+
+def test_recurrence_id_programmatic_creation() -> None:
+    """Test creating RecurrenceId with RANGE programmatically."""
+    from ical.types.recur import RecurrenceId, Range
+
+    # Create with THISANDFUTURE
+    rid = RecurrenceId("20220724T120000", range=Range.THIS_AND_FUTURE)
+    assert str(rid) == "20220724T120000"
+    assert rid.range == Range.THIS_AND_FUTURE
+
+    # Create without range (defaults to NONE)
+    rid_default = RecurrenceId("20220724T120000")
+    assert rid_default.range == Range.NONE
+
+
+def test_recurrence_id_encoding_with_range() -> None:
+    """Test that RANGE parameter is encoded when serializing."""
+    from ical.types.recur import RecurrenceId, Range
+
+    rid = RecurrenceId("20220724T120000", range=Range.THIS_AND_FUTURE)
+
+    # Test JSON encoding (used during pydantic serialization)
+    encoded = RecurrenceId.__encode_property_json__(rid)
+    assert encoded == {"value": "20220724T120000", "range": "THISANDFUTURE"}
+
+    # Test value encoding
+    value = RecurrenceId.__encode_property_value__(encoded)
+    assert value == "20220724T120000"
+
+    # Test params encoding
+    params = RecurrenceId.__encode_property_params__(encoded)
+    assert len(params) == 1
+    assert params[0].name == "RANGE"
+    assert params[0].values == ["THISANDFUTURE"]
+
+
+def test_recurrence_id_encoding_without_range() -> None:
+    """Test that RANGE parameter is not encoded when NONE."""
+    from ical.types.recur import RecurrenceId, Range
+
+    rid = RecurrenceId("20220724T120000", range=Range.NONE)
+
+    # Test JSON encoding - should be just the string
+    encoded = RecurrenceId.__encode_property_json__(rid)
+    assert encoded == "20220724T120000"
+
+    # Test params encoding - should be empty
+    params = RecurrenceId.__encode_property_params__(encoded)
+    assert params == []
+
+
+def test_recurrence_id_rfc_spec_examples() -> None:
+    """Test the exact examples from RFC 5545 Section 3.8.4.4.
+
+    The spec provides these examples:
+      RECURRENCE-ID;VALUE=DATE:19960401
+      RECURRENCE-ID;RANGE=THISANDFUTURE:19960120T120000Z
+    """
+    from ical.types.recur import Range
+
+    # Example 1: RECURRENCE-ID;VALUE=DATE:19960401
+    model1 = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="19960401",
+                    params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
+                )
+            ]
+        }
+    )
+    assert model1.recurrence_id == "19960401"
+    assert model1.recurrence_id.range == Range.NONE
+
+    # Example 2: RECURRENCE-ID;RANGE=THISANDFUTURE:19960120T120000Z
+    model2 = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="19960120T120000Z",
+                    params=[
+                        ParsedPropertyParameter(name="RANGE", values=["THISANDFUTURE"]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert model2.recurrence_id == "19960120T120000Z"
+    assert model2.recurrence_id.range == Range.THIS_AND_FUTURE
 
 
 def test_invalid_recurrence_id() -> None:
