@@ -22,7 +22,6 @@ from .types.recur import RecurrenceId, Range
 from .event import Event
 from .todo import Todo
 from .journal import Journal
-from .freebusy import FreeBusy
 from .timespan import Timespan
 
 
@@ -81,7 +80,7 @@ def items_by_uid(items: list[ItemType]) -> dict[str, list[ItemType]]:
     items_by_uid: dict[str, list[ItemType]] = {}
     for item in items:
         if item.uid is None:
-            raise ValueError("Todo must have a UID")
+            raise ValueError("Item must have a UID")
         if (values := items_by_uid.get(item.uid)) is None:
             values = []
             items_by_uid[item.uid] = values
@@ -98,6 +97,22 @@ def _normalize_date(dt: datetime.datetime | datetime.date) -> datetime.datetime 
     if isinstance(dt, datetime.datetime) and dt.tzinfo:
         return dt.replace(tzinfo=None)
     return dt
+
+
+def _date_lte(a: _DateOrDatetime, b: _DateOrDatetime) -> bool:
+    """Safely compare dates, handling mixed datetime/date types.
+
+    Comparing datetime.datetime with datetime.date raises TypeError in Python 3.
+    This function safely compares by coercing to the same type when needed.
+    """
+    # Same type - direct comparison is safe
+    if type(a) is type(b):
+        return a <= b
+    # Mixed types - compare as dates only (spec says types should match,
+    # but we handle gracefully if they don't)
+    a_date = a.date() if isinstance(a, datetime.datetime) else a
+    b_date = b.date() if isinstance(b, datetime.datetime) else b
+    return a_date <= b_date
 
 
 @dataclass
@@ -186,7 +201,7 @@ class ThisAndFutureRecurAdapter(Generic[ItemType]):
         normalized_dt = _normalize_date(dt)
         applicable = None
         for edit in self._edits:
-            if edit.effective_date <= normalized_dt:
+            if _date_lte(edit.effective_date, normalized_dt):
                 applicable = edit
             else:
                 break

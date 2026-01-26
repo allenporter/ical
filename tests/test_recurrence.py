@@ -972,3 +972,29 @@ def test_thisandfuture_property_inheritance() -> None:
         assert event.location == "Room A"
     for event in events[3:]:
         assert event.location == "Room B"
+
+
+def test_date_lte_mixed_types() -> None:
+    """Test that mixed datetime/date comparisons don't raise TypeError.
+
+    This tests the _date_lte helper function that handles comparing
+    datetime.datetime with datetime.date (which would raise TypeError
+    if done directly in Python 3).
+    """
+    from ical.recur_adapter import _date_lte
+
+    date_only = datetime.date(2025, 5, 8)
+    datetime_same = datetime.datetime(2025, 5, 8, 10, 0, 0)
+    datetime_before = datetime.datetime(2025, 5, 7, 23, 59, 59)
+    datetime_after = datetime.datetime(2025, 5, 9, 0, 0, 0)
+
+    # Same type comparisons work as expected
+    assert _date_lte(date_only, date_only) is True
+    assert _date_lte(datetime_same, datetime_same) is True
+
+    # Mixed type comparisons don't raise TypeError
+    assert _date_lte(date_only, datetime_same) is True  # same date
+    assert _date_lte(datetime_same, date_only) is True  # same date
+    assert _date_lte(datetime_before, date_only) is True  # before
+    assert _date_lte(date_only, datetime_after) is True  # before
+    assert _date_lte(datetime_after, date_only) is False  # after
