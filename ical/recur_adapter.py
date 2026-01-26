@@ -223,7 +223,6 @@ class ThisAndFutureRecurAdapter(Generic[ItemType]):
             }
 
             # Copy relevant properties from the THISANDFUTURE edit
-            # summary and description are common to Event, Todo, and Journal
             edit_item = edit.item
             if edit_item.summary:
                 updates["summary"] = edit_item.summary
@@ -284,7 +283,7 @@ def merge_and_expand_items(
             if item.recurrence_id and not item.rrule:
                 recurrence_id = item.recurrence_id
                 # Check if this is a THISANDFUTURE edit
-                if hasattr(recurrence_id, "range") and recurrence_id.range == Range.THIS_AND_FUTURE:
+                if recurrence_id.range == Range.THIS_AND_FUTURE:
                     thisandfuture_edits.append(ThisAndFutureEdit.from_item(item))
                 else:
                     # Single-instance override
@@ -296,7 +295,7 @@ def merge_and_expand_items(
             if not (recur := item.as_rrule()):
                 # Non-recurring item (includes edited instances)
                 # Skip THISANDFUTURE edits from direct iteration - they're applied via the adapter
-                if item.recurrence_id and hasattr(item.recurrence_id, "range") and item.recurrence_id.range == Range.THIS_AND_FUTURE:
+                if item.recurrence_id and item.recurrence_id.range == Range.THIS_AND_FUTURE:
                     continue
                 iters.append(
                     [

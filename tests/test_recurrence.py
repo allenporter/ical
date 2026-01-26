@@ -592,6 +592,83 @@ class TestThisAndFutureTimeline:
             duration = event.dtend - event.dtstart
             assert duration == datetime.timedelta(hours=2)
 
+    def test_thisandfuture_with_location_change(self) -> None:
+        """Test that location changes propagate with THISANDFUTURE."""
+        from ical.types.recur import Range
+
+        base_event = Event(
+            uid="test-uid",
+            summary="Team Meeting",
+            location="Conference Room A",
+            dtstart=datetime.date(2025, 5, 5),
+            dtend=datetime.date(2025, 5, 6),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # Change location from May 8 onwards
+        edit = Event(
+            uid="test-uid",
+            summary="Team Meeting",
+            location="Conference Room B",
+            dtstart=datetime.date(2025, 5, 8),
+            dtend=datetime.date(2025, 5, 9),
+            recurrence_id=RecurrenceId("20250508", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # May 5-7: Original location
+        for event in events[:3]:
+            assert event.location == "Conference Room A"
+
+        # May 8-9: Modified location
+        for event in events[3:]:
+            assert event.location == "Conference Room B"
+
+    def test_thisandfuture_utc_recurrence_id_with_naive_dtstart(self) -> None:
+        """Test THISANDFUTURE with UTC recurrence-id and naive dtstart.
+
+        This tests the edge case where the RECURRENCE-ID ends with 'Z' (UTC)
+        but the edit's dtstart is a naive datetime.
+        """
+        from ical.types.recur import Range
+
+        # Base event with naive datetimes
+        base_event = Event(
+            uid="test-uid",
+            summary="Daily Standup",
+            dtstart=datetime.datetime(2025, 5, 5, 9, 0),
+            dtend=datetime.datetime(2025, 5, 5, 9, 30),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+
+        # Edit with naive dtstart but UTC recurrence-id (ends with Z)
+        # This is an unusual case but should be handled gracefully
+        edit = Event(
+            uid="test-uid",
+            summary="Modified Standup",
+            dtstart=datetime.datetime(2025, 5, 8, 10, 0),  # naive, 1 hour later
+            dtend=datetime.datetime(2025, 5, 8, 10, 30),
+            recurrence_id=RecurrenceId("20250508T090000Z", range=Range.THIS_AND_FUTURE),
+        )
+
+        calendar = Calendar(events=[base_event, edit])
+        events = list(calendar.timeline)
+
+        assert len(events) == 5
+
+        # May 5-7: Original time
+        for event in events[:3]:
+            assert event.dtstart.hour == 9
+            assert event.summary == "Daily Standup"
+
+        # May 8-9: Modified (time shift should still be calculated)
+        for event in events[3:]:
+            assert event.summary == "Modified Standup"
+
     def test_thisandfuture_with_timezone(self) -> None:
         """Test THISANDFUTURE with timezone-aware datetimes.
 
