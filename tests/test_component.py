@@ -3,6 +3,7 @@
 from pydantic import field_serializer
 import pytest
 import datetime
+import logging
 import zoneinfo
 from typing import Optional, Union
 
@@ -216,3 +217,115 @@ def test_union_parser() -> None:
                 ],
             }
         )
+
+
+def test_unknown_value_type_proton_mail_example() -> None:
+    """Test the real-world Proton Mail example from issue #567."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        summary: str
+
+    # Use the actual failing case from Proton Mail
+    model = TestModel.model_validate(
+        {
+            "summary": [
+                ParsedProperty(
+                    name="summary",
+                    value="IBE150 NAME NAMESON\\n A285\\n",
+                    params=[
+                        ParsedPropertyParameter(
+                            "VALUE", ["IBE150 NAME NAMESON^n A285^n"]
+                        )
+                    ],
+                ),
+            ],
+        }
+    )
+    assert model.summary == "IBE150 NAME NAMESON\n A285\n"
+
+
+def test_multiple_unknown_value_types() -> None:
+    """Test handling of multiple properties with unknown VALUE types."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        summary: str
+        description: str
+
+    model = TestModel.model_validate(
+        {
+            "summary": [
+                ParsedProperty(
+                    name="summary",
+                    value="Test summary",
+                    params=[ParsedPropertyParameter("VALUE", ["CUSTOM-TYPE-1"])],
+                ),
+            ],
+            "description": [
+                ParsedProperty(
+                    name="description",
+                    value="Test description",
+                    params=[ParsedPropertyParameter("VALUE", ["CUSTOM-TYPE-2"])],
+                ),
+            ],
+        }
+    )
+    assert model.summary == "Test summary"
+    assert model.description == "Test description"
+
+
+def test_unknown_value_type_text_escaping() -> None:
+    """Test that TEXT escape sequences are properly handled in fallback."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        summary: str
+
+    model = TestModel.model_validate(
+        {
+            "summary": [
+                ParsedProperty(
+                    name="summary",
+                    value="Line 1\\nLine 2\\;semicolon\\,comma\\\\backslash",
+                    params=[ParsedPropertyParameter("VALUE", ["X-CUSTOM"])],
+                ),
+            ],
+        }
+    )
+    assert model.summary == "Line 1\nLine 2;semicolon,comma\\backslash"
+
+
+def test_unknown_value_type_warning_logged(caplog) -> None:
+    """Test that a warning is logged when encountering unknown VALUE types."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        summary: str
+
+    with caplog.at_level(logging.WARNING):
+        model = TestModel.model_validate(
+            {
+                "summary": [
+                    ParsedProperty(
+                        name="summary",
+                        value="Test",
+                        params=[ParsedPropertyParameter("VALUE", ["UNKNOWN-TYPE"])],
+                    ),
+                ],
+            }
+        )
+
+    assert model.summary == "Test"
+    # Check that warning was logged
+    assert any(
+        "unsupported VALUE type" in record.message and "UNKNOWN-TYPE" in record.message
+        for record in caplog.records
+    )
+    assert any(
+        "falling back to TEXT" in record.message for record in caplog.records
+    )

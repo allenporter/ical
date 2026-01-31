@@ -256,9 +256,19 @@ class ComponentModel(BaseModel):
             if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
                 _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
                 return func(prop)
-            # Consider graceful degradation instead in the future
-            raise ValueError(
-                f"Property parameter specified unsupported type: {value_type}"
+
+            # Graceful degradation: fall back to TEXT parsing for unknown VALUE types
+            _LOGGER.warning(
+                "Property '%s' has unsupported VALUE type '%s', falling back to TEXT parsing",
+                prop.name,
+                value_type,
+            )
+            if text_parser := DATA_TYPE.parse_parameter_by_name.get("TEXT"):
+                return text_parser(prop)
+            # If TEXT parser is not available (should never happen), fall through
+            _LOGGER.warning(
+                "TEXT parser not available for fallback, using bare property value for '%s'",
+                prop.name,
             )
 
         if decoder := DATA_TYPE.parse_property_value.get(field_type):
