@@ -29,6 +29,7 @@ from ical.util import get_field_type
 from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
 from .types.data_types import DATA_TYPE
+from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
 
 if TYPE_CHECKING:
@@ -256,10 +257,10 @@ class ComponentModel(BaseModel):
             if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
                 _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
                 return func(prop)
-            # Consider graceful degradation instead in the future
-            raise ValueError(
-                f"Property parameter specified unsupported type: {value_type}"
-            )
+
+            # Graceful degradation: fall back to TEXT parsing for unknown VALUE types
+            _LOGGER.debug("Property '%s' has unsupported VALUE type '%s', falling back to TEXT", prop.name, value_type)
+            return TextEncoder.__parse_property_value__(prop)
 
         if decoder := DATA_TYPE.parse_property_value.get(field_type):
             _LOGGER.debug("Decoding '%s' as type '%s'", prop.name, field_type)
