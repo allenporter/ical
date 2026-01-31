@@ -1341,6 +1341,53 @@
     ]),
   })
 # ---
+# name: test_parse[unknown_value_custom]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'description': '''
+              Project discussion
+              Agenda items, updates
+            ''',
+            'dtend': '2024-03-01T15:00:00Z',
+            'dtstamp': '2024-03-01T12:00:00Z',
+            'dtstart': '2024-03-01T14:00:00Z',
+            'location': 'Conference Room A',
+            'summary': 'Meeting with team',
+            'uid': 'custom-value-test@example.com',
+          }),
+        ]),
+        'prodid': '-//Test//Test 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
+# name: test_parse[unknown_value_proton_mail]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '2024-02-01T11:00:00Z',
+            'dtstamp': '2024-02-01T09:00:00Z',
+            'dtstart': '2024-02-01T10:00:00Z',
+            'summary': '''
+              IBE150 NAME NAMESON
+               A285
+  
+            ''',
+            'uid': 'proton-mail-example@example.com',
+          }),
+        ]),
+        'prodid': '-//Proton AG//Proton Calendar 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_serialize[datetime_local]
   '''
   BEGIN:VCALENDAR
@@ -2107,6 +2154,38 @@
   REPEAT:4
   END:VALARM
   END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[unknown_value_custom]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//Test//Test 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20240301T120000Z
+  UID:custom-value-test@example.com
+  DTSTART:20240301T140000Z
+  DTEND:20240301T150000Z
+  SUMMARY:Meeting with team
+  DESCRIPTION:Project discussion\nAgenda items\, updates
+  LOCATION:Conference Room A
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[unknown_value_proton_mail]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//Proton AG//Proton Calendar 1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20240201T090000Z
+  UID:proton-mail-example@example.com
+  DTSTART:20240201T100000Z
+  DTEND:20240201T110000Z
+  SUMMARY:IBE150 NAME NAMESON\n A285\n
+  END:VEVENT
   END:VCALENDAR
   '''
 # ---

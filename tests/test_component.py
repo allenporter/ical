@@ -307,7 +307,7 @@ def test_unknown_value_type_warning_logged(caplog) -> None:
 
         summary: str
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.DEBUG):
         model = TestModel.model_validate(
             {
                 "summary": [
@@ -321,7 +321,7 @@ def test_unknown_value_type_warning_logged(caplog) -> None:
         )
 
     assert model.summary == "Test"
-    # Check that warning was logged
+    # Check that debug log was logged
     assert any(
         "unsupported VALUE type" in record.message and "UNKNOWN-TYPE" in record.message
         for record in caplog.records
