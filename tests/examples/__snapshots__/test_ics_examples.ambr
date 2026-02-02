@@ -39,6 +39,13 @@
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 9), dtend=datetime.date(2025, 5, 10), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250509', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
   ])
 # ---
+# name: test_iterate_events[recurring_with_single_change]
+  list([
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 1, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 1, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Initial Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260201T100000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=3, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 2, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 2, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Edited Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260202T100000', related_to=[], related=[], resources=[], rrule=None, rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 3, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 3, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Initial Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260203T100000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=3, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+  ])
+# ---
 # name: test_iterate_events[store_edit_bugs]
   list([
     Event(dtstamp=datetime.datetime(2021, 8, 5, 16, 33, 53, tzinfo=datetime.timezone.utc), uid='HX7KXxJM9ZyvyH8D00BMVP-K9drT@proton.me', dtstart=datetime.datetime(2021, 9, 4, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), dtend=datetime.datetime(2021, 9, 4, 12, 0, tzinfo=zoneinfo.ZoneInfo(key='Europe/Amsterdam')), duration=None, summary='My Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=None, description='Example', geo=None, last_modified=None, location=None, organizer=None, priority=None, recurrence_id='20210904T110000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.WEEKLY: 'WEEKLY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency=None, url=None, extras=[], alarm=[]),
@@ -1992,6 +1999,59 @@
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
   END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[recurring_with_single_change]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//Google Inc//Google Calendar 70.9054//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:20260202T010020Z
+  UID:5st6kahlb53s6sdmrgkldms9k2@google.com
+  DTSTART;TZID=America/New_York:20260202T100000
+  DTEND;TZID=America/New_York:20260202T110000
+  SUMMARY:Edited Title
+  CREATED:20260202T005749Z
+  LAST-MODIFIED:20260202T005757Z
+  RECURRENCE-ID:20260202T100000
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20260202T010020Z
+  UID:5st6kahlb53s6sdmrgkldms9k2@google.com
+  DTSTART;TZID=America/New_York:20260201T100000
+  DTEND;TZID=America/New_York:20260201T110000
+  SUMMARY:Initial Title
+  CREATED:20260202T005749Z
+  LAST-MODIFIED:20260202T005757Z
+  RRULE:FREQ=DAILY;COUNT=3
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  TZID:America/New_York
+  BEGIN:STANDARD
+  DTSTART:19701101T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19700308T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:EDT
+  END:DAYLIGHT
+  END:VTIMEZONE
   END:VCALENDAR
   '''
 # ---
