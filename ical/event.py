@@ -375,7 +375,10 @@ class Event(ComponentModel):
             return True
         return False
 
-    def as_rrule(self) -> Iterable[datetime.datetime | datetime.date] | None:
+    def as_rrule(
+        self,
+        additional_exdate: list[datetime.datetime | datetime.date] | None = None,
+    ) -> Iterable[datetime.datetime | datetime.date] | None:
         """Return an iterable containing the occurrences of a recurring event.
 
         A recurring event is typically evaluated specially on the timeline. The
@@ -384,7 +387,9 @@ class Event(ComponentModel):
 
         This is only valid for events where `recurring` is True.
         """
-        return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
+        return as_rrule(
+            self.rrule, self.rdate, self.exdate, self.dtstart, additional_exdate
+        )
 
     @model_validator(mode="before")
     @classmethod

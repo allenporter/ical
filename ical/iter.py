@@ -418,6 +418,7 @@ def as_rrule(
     rdate: list[datetime.datetime | datetime.date],
     exdate: list[datetime.datetime | datetime.date],
     start: datetime.datetime | datetime.date | None,
+    additional_exdate: list[datetime.datetime | datetime.date] | None = None,
 ) -> Iterable[datetime.datetime | datetime.date] | None:
     """Return an iterable containing the occurrences of a recurring event.
 
@@ -426,14 +427,19 @@ def as_rrule(
     to expand and copy the event to multiple places on the timeline.
 
     This is only valid for events where `recurring` is True.
+
+    The additional_exdate parameter allows passing extra exclusion dates that
+    are not part of the event's exdate list (e.g., dates overridden by edited
+    instances with RECURRENCE-ID).
     """
     if not rrule and not rdate:
         return None
     if not start:
         raise CalendarParseError("Event must have a start date to be recurring")
+    all_exdate = exdate + (additional_exdate or [])
     return RulesetIterable(
         start,
         [rrule.as_rrule(start)] if rrule else [],
         rdate,
-        exdate,
+        all_exdate,
     )

@@ -91,18 +91,52 @@ def items_by_uid(items: list[ItemType]) -> dict[str, list[ItemType]]:
 def merge_and_expand_items(
     items: list[ItemType], tzinfo: datetime.tzinfo
 ) -> Iterable[SpanOrderedItem[ItemType]]:
-    """Merge and expand items that are recurring."""
+    """Merge and expand items that are recurring.
+
+    This function handles the case where a recurring event has been modified
+    by creating a separate event with a RECURRENCE-ID. The modified instance
+    should replace the original instance from the recurrence expansion, not
+    appear as a duplicate.
+    """
+    # Group by UID to find edited instances that override recurrence dates
+    grouped = items_by_uid(items)
+
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
-    for item in items:
-        if not (recur := item.as_rrule()):
-            iters.append(
-                [
-                    SortableItemValue(
-                        item.timespan_of(tzinfo),
-                        item,
-                    )
-                ]
-            )
-            continue
-        iters.append(RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, recur))
+    for uid_items in grouped.values():
+        # Find the parent recurring event to get its timezone
+        parent = next((i for i in uid_items if i.rrule and not i.recurrence_id), None)
+        parent_tzinfo = (
+            parent.dtstart.tzinfo
+            if parent and isinstance(parent.dtstart, datetime.datetime)
+            else None
+        )
+
+        # Collect override dates from edited instances.
+        # An edited instance has a recurrence_id (identifying which instance
+        # it replaces) but no rrule (it's a single instance, not a series).
+        override_dates: list[datetime.datetime | datetime.date] = []
+        for item in uid_items:
+            if item.recurrence_id and not item.rrule:
+                override_date = RecurrenceId.to_value(item.recurrence_id)
+                # Normalize timezone to match parent's dtstart for comparison
+                if isinstance(override_date, datetime.datetime) and parent_tzinfo:
+                    override_date = override_date.replace(tzinfo=parent_tzinfo)
+                override_dates.append(override_date)
+
+        for item in uid_items:
+            if not (recur := item.as_rrule(additional_exdate=override_dates)):
+                # Non-recurring item (includes edited instances)
+                iters.append(
+                    [
+                        SortableItemValue(
+                            item.timespan_of(tzinfo),
+                            item,
+                        )
+                    ]
+                )
+            else:
+                iters.append(
+                    RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, recur)
+                )
+
     return MergedIterable(iters)
