@@ -163,10 +163,7 @@ class Journal(ComponentModel):
             return True
         return False
 
-    def as_rrule(
-        self,
-        additional_exdate: list[datetime.datetime | datetime.date] | None = None,
-    ) -> Iterable[datetime.datetime | datetime.date] | None:
+    def as_rrule(self) -> Iterable[datetime.datetime | datetime.date] | None:
         """Return an iterable containing the occurrences of a recurring todo.
 
         A recurring todo is typically evaluated specially on the todo list. The
@@ -175,9 +172,7 @@ class Journal(ComponentModel):
 
         This is only valid for events where `recurring` is True.
         """
-        return as_rrule(
-            self.rrule, self.rdate, self.exdate, self.dtstart, additional_exdate
-        )
+        return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
     _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
     _validate_recurrence_dates = model_validator(mode="after")(
