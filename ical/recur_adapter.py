@@ -88,66 +88,21 @@ def items_by_uid(items: list[ItemType]) -> dict[str, list[ItemType]]:
     return items_by_uid
 
 
-def _normalize_date(dt: datetime.datetime | datetime.date) -> datetime.datetime | datetime.date:
-    """Normalize a datetime to floating time for comparison.
-
-    This matches how recurrence_id values are stored (without timezone info)
-    so we can compare them against dates from recurrence expansion.
-    """
-    if isinstance(dt, datetime.datetime) and dt.tzinfo:
-        return dt.replace(tzinfo=None)
-    return dt
-
-
 def merge_and_expand_items(
     items: list[ItemType], tzinfo: datetime.tzinfo
 ) -> Iterable[SpanOrderedItem[ItemType]]:
-    """Merge and expand items that are recurring.
-
-    This function handles the case where a recurring event has been modified
-    by creating a separate event with a RECURRENCE-ID. The modified instance
-    should replace the original instance from the recurrence expansion, not
-    appear as a duplicate.
-    """
-    # Group by UID to find edited instances that override recurrence dates
-    grouped = items_by_uid(items)
-
+    """Merge and expand items that are recurring."""
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
-    for uid_items in grouped.values():
-        # Collect override dates from edited instances.
-        # An edited instance has a recurrence_id (identifying which instance it replaces)
-        # but no rrule (it's a single instance, not a recurring series).
-        override_dates: set[datetime.datetime | datetime.date] = set()
-        for item in uid_items:
-            if item.recurrence_id and not item.rrule:
-                override_dates.add(
-                    _normalize_date(RecurrenceId.to_value(item.recurrence_id))
-                )
-
-        for item in uid_items:
-            if not (recur := item.as_rrule()):
-                # Non-recurring item (includes edited instances)
-                iters.append(
-                    [
-                        SortableItemValue(
-                            item.timespan_of(tzinfo),
-                            item,
-                        )
-                    ]
-                )
-            else:
-                # Recurring item - filter out dates that have been overridden
-                # by edited instances with RECURRENCE-ID
-                if override_dates:
-                    filtered_recur = (
-                        dt for dt in recur if _normalize_date(dt) not in override_dates
+    for item in items:
+        if not (recur := item.as_rrule()):
+            iters.append(
+                [
+                    SortableItemValue(
+                        item.timespan_of(tzinfo),
+                        item,
                     )
-                    iters.append(
-                        RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, filtered_recur)
-                    )
-                else:
-                    iters.append(
-                        RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, recur)
-                    )
-
+                ]
+            )
+            continue
+        iters.append(RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, recur))
     return MergedIterable(iters)
