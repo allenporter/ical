@@ -28,24 +28,15 @@ ItemType = TypeVar("ItemType", bound="Event | Todo | Journal")
 _DateOrDatetime = datetime.datetime | datetime.date
 
 
-def _normalize_for_comparison(
-    dt: _DateOrDatetime, target_tzinfo: datetime.tzinfo | None
-) -> _DateOrDatetime:
-    """Normalize a date/datetime for comparison with recurrence dates.
+def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
+    """Compute the RecurrenceId for a recurrence date.
 
-    RECURRENCE-ID values are stored as floating time (no timezone), but the
-    recurrence expansion produces timezone-aware datetimes. To compare them,
-    we need to normalize both to the same form.
+    This converts a date/datetime from a recurrence expansion into the
+    floating-time RecurrenceId string used to identify that instance.
     """
-    if not isinstance(dt, datetime.datetime):
-        return dt
-    # If we have a target tz and the datetime is naive, assume it's in that tz
-    if target_tzinfo and dt.tzinfo is None:
-        return dt.replace(tzinfo=target_tzinfo)
-    # If we have a target tz and datetime is aware, convert to target
-    if target_tzinfo and dt.tzinfo:
-        return dt.astimezone(target_tzinfo)
-    return dt
+    if isinstance(dt, datetime.datetime) and dt.tzinfo:
+        dt = dt.replace(tzinfo=None)
+    return RecurrenceId.__parse_property_value__(dt)
 
 
 class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
@@ -58,20 +49,16 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
     def __init__(
         self,
         recur: Iterable[_DateOrDatetime],
-        exclude_dates: frozenset[_DateOrDatetime],
-        parent_tzinfo: datetime.tzinfo | None,
+        exclude_ids: frozenset[RecurrenceId],
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
-        self._exclude_dates = exclude_dates
-        self._parent_tzinfo = parent_tzinfo
+        self._exclude_ids = exclude_ids
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
         for dt in self._recur:
-            # Normalize recurrence date to match how we stored exclude dates
-            normalized = _normalize_for_comparison(dt, self._parent_tzinfo)
-            if normalized not in self._exclude_dates:
+            if _recurrence_id_for(dt) not in self._exclude_ids:
                 yield dt
 
 
@@ -98,14 +85,8 @@ class RecurAdapter(Generic[ItemType]):
     ) -> SortableItem[Timespan, ItemType]:
         """Return a lazy sortable item."""
 
-        recur_id_dt = dtstart
         dtend = dtstart + self._duration if self._duration else dtstart
-        # Make recurrence_id floating time to avoid dealing with serializing
-        # TZID. This value will still be unique within the series and is in
-        # the context of dtstart which may have a timezone.
-        if isinstance(recur_id_dt, datetime.datetime) and recur_id_dt.tzinfo:
-            recur_id_dt = recur_id_dt.replace(tzinfo=None)
-        recurrence_id = RecurrenceId.__parse_property_value__(recur_id_dt)
+        recurrence_id = _recurrence_id_for(dtstart)
 
         def build() -> ItemType:
             updates = {
@@ -123,15 +104,15 @@ class RecurAdapter(Generic[ItemType]):
 
 
 def items_by_uid(items: list[ItemType]) -> dict[str, list[ItemType]]:
-    result: dict[str, list[ItemType]] = {}
+    items_by_uid: dict[str, list[ItemType]] = {}
     for item in items:
         if item.uid is None:
             raise ValueError("Todo must have a UID")
-        if (values := result.get(item.uid)) is None:
+        if (values := items_by_uid.get(item.uid)) is None:
             values = []
-            result[item.uid] = values
+            items_by_uid[item.uid] = values
         values.append(item)
-    return result
+    return items_by_uid
 
 
 def merge_and_expand_items(
@@ -149,29 +130,14 @@ def merge_and_expand_items(
 
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
     for uid_items in grouped.values():
-        # Find the parent recurring event to get its timezone
-        parent = next(
-            (i for i in uid_items if i.rrule and not i.recurrence_id), None
-        )
-        parent_tzinfo = (
-            parent.dtstart.tzinfo
-            if parent and isinstance(parent.dtstart, datetime.datetime)
-            else None
-        )
-
-        # Collect override dates from edited instances as a frozenset for O(1)
-        # lookup. An edited instance has a recurrence_id (identifying which
+        # Collect recurrence_ids from edited instances for O(1) lookup.
+        # An edited instance has a recurrence_id (identifying which
         # instance it replaces) but no rrule (it's a single instance).
-        override_dates: set[_DateOrDatetime] = set()
-        for item in uid_items:
-            if item.recurrence_id and not item.rrule:
-                override_date = RecurrenceId.to_value(item.recurrence_id)
-                # Normalize to parent's tz for consistent comparison
-                normalized = _normalize_for_comparison(
-                    override_date, parent_tzinfo
-                )
-                override_dates.add(normalized)
-        exclude_dates = frozenset(override_dates)
+        exclude_ids = frozenset(
+            item.recurrence_id
+            for item in uid_items
+            if item.recurrence_id and not item.rrule
+        )
 
         for item in uid_items:
             if not (recur := item.as_rrule()):
@@ -184,17 +150,11 @@ def merge_and_expand_items(
                         )
                     ]
                 )
-            elif exclude_dates:
-                # Recurring item with overrides - wrap in filter
-                filtered = FilteredRecurrenceIterable(
-                    recur, exclude_dates, parent_tzinfo
-                )
-                adapter = RecurAdapter(item, tzinfo=tzinfo)
-                iters.append(RecurIterable(adapter.get, filtered))
             else:
-                # Recurring item without overrides - use directly
+                # Recurring item - filter out overridden instances if any
+                dates = FilteredRecurrenceIterable(recur, exclude_ids) if exclude_ids else recur
                 iters.append(
-                    RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, recur)
+                    RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, dates)
                 )
 
     return MergedIterable(iters)
