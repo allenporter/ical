@@ -19,8 +19,8 @@ from .iter import (
 )
 from .types.recur import RecurrenceId
 from .event import Event
-from .journal import Journal
 from .todo import Todo
+from .journal import Journal
 from .timespan import Timespan
 
 
@@ -65,9 +65,9 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
 class RecurAdapter(Generic[ItemType]):
     """An adapter that expands an Event instance for a recurrence rule.
 
-    This adapter is given an event, then invoked with a specific date/time
-    instance that the event occurs on due to a recurrence rule. The event is
-    copied with necessary updated fields to act as a flattened instance.
+    This adapter is given an event, then invoked with a specific date/time instance
+    that the event occurs on due to a recurrence rule. The event is copied with
+    necessary updated fields to act as a flattened instance of the event.
     """
 
     def __init__(
