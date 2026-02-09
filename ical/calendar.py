@@ -19,6 +19,7 @@ from .journal import Journal
 from .types.date_time import TZID
 from .types import RecurrenceId
 from .parsing.property import ParsedProperty
+from .recur_adapter import items_by_uid
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
@@ -153,25 +154,37 @@ class Calendar(ComponentModel):
         items: list[Event] | list[Todo] | list[Journal],
     ) -> None:
         """Reconcile recurrence overrides for a list of components."""
-        # Group by UID
-        by_uid: dict[str, list[Event | Todo | Journal]] = {}
-        for item in items:
-            if item.uid:
-                by_uid.setdefault(item.uid, []).append(item)
+        # Only items with rrule or recurrence_id participate in override
+        # reconciliation. Items without a uid are also excluded.
+        relevant = [
+            item for item in items
+            if item.uid and (item.rrule or item.recurrence_id)
+        ]
+        if not relevant:
+            return
+
+        by_uid = items_by_uid(relevant)
 
         for uid_items in by_uid.values():
-            # Find the parent recurring event (has rrule, no recurrence_id)
+            # Find the parent recurring event (has rrule, no recurrence_id).
+            # Note: a THISANDFUTURE fork has both rrule AND recurrence_id,
+            # so it won't match here — it's a separate recurring series
+            # that doesn't need exdate fixup.
             parent = next(
                 (i for i in uid_items if i.rrule and not i.recurrence_id), None
             )
             if not parent:
                 continue
 
-            # Find edited instances (has recurrence_id, no rrule)
+            # Find edited single instances (has recurrence_id, no rrule).
+            # Items with both rrule and recurrence_id are THISANDFUTURE
+            # forks, not single-instance overrides.
             for item in uid_items:
                 if item.recurrence_id and not item.rrule:
                     exdate = RecurrenceId.to_value(item.recurrence_id)
-                    # Match timezone to parent's dtstart for proper comparison
+                    # Align timezone with parent's dtstart so dateutil
+                    # can match the exdate during rruleset expansion.
+                    # Same pattern as store.py _apply_delete.
                     if (
                         isinstance(exdate, datetime.datetime)
                         and isinstance(parent.dtstart, datetime.datetime)
