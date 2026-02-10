@@ -23,5 +23,5 @@ def test_empty() -> None:
 )
 def test_redact_date_timezone(filename: str, snapshot: SnapshotAssertion) -> None:
     """Test redaction of an empty ics file."""
-    ics = pathlib.Path(filename).read_text()
+    ics = pathlib.Path(filename).read_text(encoding="utf-8")
     assert "\n".join(list(redact_ics(ics))) == snapshot
