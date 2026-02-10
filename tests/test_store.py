@@ -1581,7 +1581,7 @@ def test_dtstart_timezone(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(encoding="utf-8")
         ),
     ],
 )
@@ -1706,7 +1706,7 @@ def test_store_edit_year_overrun_edit_once(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(encoding="utf-8")
         ),
     ],
 )
@@ -1786,7 +1786,7 @@ def test_store_edit_year_overrun_edit_this_and_future(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(encoding="utf-8")
         ),
     ],
 )

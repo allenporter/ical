@@ -47,7 +47,7 @@ def test_parse(
     filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
 ) -> None:
     """Fixture to read golden file and compare to golden output."""
-    cal = CalendarStream.from_ics(filename.read_text())
+    cal = CalendarStream.from_ics(filename.read_text(encoding="utf-8"))
     data = json.loads(cal.model_dump_json(exclude_unset=True, exclude_none=True))
     assert snapshot == data
 
@@ -84,7 +84,7 @@ def test_timeline_iteration(filename: pathlib.Path) -> None:
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_todo_list_iteration(filename: pathlib.Path) -> None:
     """Fixture to read golden file and compare to golden output."""
-    cal = CalendarStream.from_ics(filename.read_text())
+    cal = CalendarStream.from_ics(filename.read_text(encoding="utf-8"))
     if not cal.calendars:
         return
     calendar = cal.calendars[0]

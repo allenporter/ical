@@ -35,7 +35,7 @@ def test_parse(
     filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
 ) -> None:
     """Test that reads RFC examples from golden files."""
-    content = rfc_to_binary(filename.read_text())
+    content = rfc_to_binary(filename.read_text(encoding="utf-8"))
     print(content)
     result = read_tzif(content)
     obj_data = json.loads(json.dumps(result, default=json_encoder.default))

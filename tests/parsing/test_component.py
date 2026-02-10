@@ -24,7 +24,7 @@ def test_parse_contentlines(
     filename: pathlib.Path, snapshot: SnapshotAssertion, json_encoder: json.JSONEncoder
 ) -> None:
     """Fixture to read golden file and compare to golden output."""
-    values = parse_content(filename.read_text())
+    values = parse_content(filename.read_text(encoding="utf-8"))
     values = json.loads(json_encoder.encode(values))
     assert values == snapshot
 
@@ -34,7 +34,7 @@ def test_encode_contentlines(
     filename: pathlib.Path, snapshot: SnapshotAssertion
 ) -> None:
     """Fixture to read golden file and serialize back to same format."""
-    values = parse_content(filename.read_text())
+    values = parse_content(filename.read_text(encoding="utf-8"))
     ics = encode_content(values)
     assert ics == snapshot
 
@@ -45,7 +45,7 @@ def test_invalid_contentlines(
 ) -> None:
     """Fixture to read file inputs that should fail parsing."""
     with pytest.raises(CalendarParseError) as exc_info:
-        parse_content(filename.read_text())
+        parse_content(filename.read_text(encoding="utf-8"))
     assert (str(exc_info.value), exc_info.value.detailed_error) == snapshot
 
 
@@ -56,7 +56,7 @@ def test_parse_contentlines_benchmark(
     """Benchmark to measure the speed of parsing."""
 
     def parse() -> None:
-        values = parse_content(filename.read_text())
+        values = parse_content(filename.read_text(encoding="utf-8"))
         json.loads(json_encoder.encode(values))
 
     benchmark(parse)
