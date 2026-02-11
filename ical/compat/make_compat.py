@@ -9,7 +9,7 @@ from collections.abc import Generator
 import logging
 import re
 
-from . import timezone_compat
+from . import same_day_dtend_compat, timezone_compat
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,18 +32,19 @@ def _get_prodid(ics: str) -> str | None:
 @contextlib.contextmanager
 def enable_compat_mode(ics: str) -> Generator[str]:
     """Enable compatibility mode to fix known broken calendar content."""
-
-    # Check if the PRODID is from Microsoft Exchange Server
-    prodid = _get_prodid(ics)
-    if prodid and _EXCHANGE_PRODID in prodid:
-        _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
-        # Enable compatibility mode for Microsoft Exchange Server
-        with (
-            timezone_compat.enable_allow_invalid_timezones(),
-            timezone_compat.enable_extended_timezones(),
-        ):
+    # Always enable same-day DTEND compatibility for all calendars
+    # This is a common issue across many calendar providers
+    with same_day_dtend_compat.enable_same_day_dtend_compat():
+        # Check if the PRODID is from Microsoft Exchange Server
+        prodid = _get_prodid(ics)
+        
+        if prodid and _EXCHANGE_PRODID in prodid:
+            _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
+            # Enable compatibility mode for Microsoft Exchange Server
+            with (
+                timezone_compat.enable_allow_invalid_timezones(),
+                timezone_compat.enable_extended_timezones(),
+            ):
+                yield ics
+        else:
             yield ics
-    else:
-        _LOGGER.debug("No compatibility mode needed")
-        # No compatibility mode needed
-        yield ics
