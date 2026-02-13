@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import itertools
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Self
 import zoneinfo
 
 from pydantic import Field, field_serializer, model_validator
@@ -17,7 +17,9 @@ from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal
 from .types.date_time import TZID
+from .types import RecurrenceId
 from .parsing.property import ParsedProperty
+from .recur_adapter import items_by_uid
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
 from .todo import Todo
@@ -132,5 +134,65 @@ class Calendar(ComponentModel):
                     ):
                         tzid_param.values = [tzinfo]
         return values
+
+    @model_validator(mode="after")
+    def _reconcile_recurrence_overrides(self) -> Self:
+        """Add RECURRENCE-ID dates to parent event's exdate list.
+
+        When an ICS file has edited instances of recurring events (VEVENTs
+        with RECURRENCE-ID but no RRULE), the parent event's recurrence
+        expansion would otherwise produce duplicates. This adds the override
+        dates to the parent's exdate list so dateutil handles exclusion
+        efficiently.
+        """
+        for component_list in (self.events, self.todos, self.journal):
+            self._reconcile_component_overrides(component_list)
+        return self
+
+    @staticmethod
+    def _reconcile_component_overrides(
+        items: list[Event] | list[Todo] | list[Journal],
+    ) -> None:
+        """Reconcile recurrence overrides for a list of components."""
+        # Only items with rrule or recurrence_id participate in override
+        # reconciliation. Items without a uid are also excluded.
+        relevant = [
+            item for item in items
+            if item.uid and (item.rrule or item.recurrence_id)
+        ]
+        if not relevant:
+            return
+
+        by_uid = items_by_uid(relevant)
+
+        for uid_items in by_uid.values():
+            # Find the parent recurring event (has rrule, no recurrence_id).
+            # Note: a THISANDFUTURE fork has both rrule AND recurrence_id,
+            # so it won't match here — it's a separate recurring series
+            # that doesn't need exdate fixup.
+            parent = next(
+                (i for i in uid_items if i.rrule and not i.recurrence_id), None
+            )
+            if not parent:
+                continue
+
+            # Find edited single instances (has recurrence_id, no rrule).
+            # Items with both rrule and recurrence_id are THISANDFUTURE
+            # forks, not single-instance overrides.
+            for item in uid_items:
+                if item.recurrence_id and not item.rrule:
+                    exdate = RecurrenceId.to_value(item.recurrence_id)
+                    # Align timezone with parent's dtstart so dateutil
+                    # can match the exdate during rruleset expansion.
+                    # Same pattern as store.py _apply_delete.
+                    if (
+                        isinstance(exdate, datetime.datetime)
+                        and isinstance(parent.dtstart, datetime.datetime)
+                        and parent.dtstart.tzinfo
+                    ):
+                        exdate = exdate.replace(tzinfo=parent.dtstart.tzinfo)
+                    # Avoid duplicates (validator may run multiple times)
+                    if exdate not in parent.exdate:
+                        parent.exdate.append(exdate)
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
