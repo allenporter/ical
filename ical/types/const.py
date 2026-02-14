@@ -31,6 +31,4 @@ class Classification(str, enum.Enum):
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
         """Parse value into enum (accepts any string)."""
-        if prop.value is None:
-            return None
         return cls(prop.value)
