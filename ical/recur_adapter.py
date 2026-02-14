@@ -34,6 +34,9 @@ def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
     This converts a date/datetime from a recurrence expansion into the
     floating-time RecurrenceId string used to identify that instance.
     """
+    # Make recurrence_id floating time to avoid dealing with serializing
+    # TZID. This value will still be unique within the series and is in
+    # the context of dtstart which may have a timezone.
     if isinstance(dt, datetime.datetime) and dt.tzinfo:
         dt = dt.replace(tzinfo=None)
     return RecurrenceId.__parse_property_value__(dt)
