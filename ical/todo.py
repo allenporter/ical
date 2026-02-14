@@ -331,7 +331,9 @@ class Todo(ComponentModel):
         if not self.rrule and not self.rdate:
             return None
         if not self.due and not self.duration:
-            raise CalendarParseError("Event must have a due date or duration to be recurring")
+            raise CalendarParseError(
+                "Event must have a due date or duration to be recurring"
+            )
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
     _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)

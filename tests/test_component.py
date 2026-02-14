@@ -326,6 +326,4 @@ def test_unknown_value_type_warning_logged(caplog) -> None:
         "unsupported VALUE type" in record.message and "UNKNOWN-TYPE" in record.message
         for record in caplog.records
     )
-    assert any(
-        "falling back to TEXT" in record.message for record in caplog.records
-    )
+    assert any("falling back to TEXT" in record.message for record in caplog.records)

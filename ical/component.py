@@ -259,7 +259,11 @@ class ComponentModel(BaseModel):
                 return func(prop)
 
             # Graceful degradation: fall back to TEXT parsing for unknown VALUE types
-            _LOGGER.debug("Property '%s' has unsupported VALUE type '%s', falling back to TEXT", prop.name, value_type)
+            _LOGGER.debug(
+                "Property '%s' has unsupported VALUE type '%s', falling back to TEXT",
+                prop.name,
+                value_type,
+            )
             return TextEncoder.__parse_property_value__(prop)
 
         if decoder := DATA_TYPE.parse_property_value.get(field_type):

@@ -155,7 +155,11 @@ def merge_and_expand_items(
                 )
             else:
                 # Recurring item - filter out overridden instances if any
-                dates = FilteredRecurrenceIterable(recur, exclude_ids) if exclude_ids else recur
+                dates = (
+                    FilteredRecurrenceIterable(recur, exclude_ids)
+                    if exclude_ids
+                    else recur
+                )
                 iters.append(
                     RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, dates)
                 )
