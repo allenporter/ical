@@ -18,7 +18,7 @@ TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_make_compat(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Test to read golden files and verify they are parsed."""
-    with filename.open() as ics_file:
+    with filename.open(encoding="utf-8") as ics_file:
         ics = ics_file.read()
         with enable_compat_mode(ics) as compat_ics:
             assert timezone_compat.is_allow_invalid_timezones_enabled()

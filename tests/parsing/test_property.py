@@ -27,7 +27,7 @@ TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
 def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
     """Fixture to read golden file and compare to golden output."""
-    properties = list(parse_contentlines(unfolded_lines(filename.read_text())))
+    properties = list(parse_contentlines(unfolded_lines(filename.read_text("utf-8"))))
     assert properties == snapshot
 
 
