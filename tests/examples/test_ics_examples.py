@@ -44,6 +44,7 @@ def test_recurring_with_single_change() -> None:
 
     # Feb 1 - original title
     assert events[0].summary == "Initial Title"
+    assert events[0].recurrence_id == "20260201T100000"
     assert events[0].dtstart == datetime.datetime(2026, 2, 1, 10, 0, tzinfo=tz)
 
     # Feb 2 - edited instance with RECURRENCE-ID
@@ -53,4 +54,5 @@ def test_recurring_with_single_change() -> None:
 
     # Feb 3 - original title
     assert events[2].summary == "Initial Title"
+    assert events[2].recurrence_id == "20260203T100000"
     assert events[2].dtstart == datetime.datetime(2026, 2, 3, 10, 0, tzinfo=tz)
