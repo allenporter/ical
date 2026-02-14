@@ -6,9 +6,7 @@ setting up a development environment.
 ## Setup a virtual environment
 
 ```
-$ uv venv --python=3.13
-$ source .venv/bin/activate
-$ uv pip install -r requirements_dev.txt
+$ script/setup
 ```
 
 ## Running the tests
@@ -16,7 +14,7 @@ $ uv pip install -r requirements_dev.txt
 From within your virtual environment:
 
 ```
-$ pytest
+$ script/test
 ```
 
 ## Running pre-commit
@@ -24,7 +22,7 @@ $ pytest
 Before sending a PR ensure the formatting is correct:
 
 ```
-$ pre-commit
+$ script/lint
 ```
 
 ## Contributing
