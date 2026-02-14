@@ -1926,7 +1926,7 @@ def test_control_characters(
 ) -> None:
     """Test adding an event to the store and retrieval."""
     event = Event(
-        summary="Hello, You\x08re seeing an invalid character",
+        summary="Hello, you are seeing an invalid character \x08 here",
         start="2022-08-29T09:00:00",
         end="2022-08-29T09:30:00",
     )
@@ -1935,6 +1935,4 @@ def test_control_characters(
     new_calendar = IcsCalendarStream.calendar_from_ics(ics)
     assert len(new_calendar.events) == 1
     persisted_event = new_calendar.events[0]
-    assert (
-        persisted_event.summary == "Hello, Youre seeing an invalid character"
-    )  # codespell:ignore
+    assert persisted_event.summary == "Hello, you are seeing an invalid character  here"
