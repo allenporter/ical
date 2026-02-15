@@ -212,16 +212,6 @@ class Registry:
         return decorator
 
     @property
-    def parse_property_value(self) -> dict[type, Callable[[ParsedProperty], Any]]:
-        """Registry of python types to functions to parse into pydantic model."""
-        return self._parse_property_value
-
-    @property
-    def parse_parameter_by_name(self) -> dict[str, Callable[[ParsedProperty], Any]]:
-        """Registry based on data value type string name."""
-        return self._parse_parameter_by_name
-
-    @property
     def encode_property_json(self) -> dict[type, Callable[[Any], str | dict[str, str]]]:
         """Registry of encoders run during pydantic json serialization."""
         return self._encode_property_json
@@ -230,23 +220,6 @@ class Registry:
     def encode_property_value(self) -> dict[type, Callable[[Any], str | None]]:
         """Registry of encoders that run on the output data model to ics."""
         return self._encode_property_value
-
-    @property
-    def encode_property_params(
-        self,
-    ) -> dict[type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]]:
-        """Registry of property parameter encoders run on output data model."""
-        return self._encode_property_params
-
-    @property
-    def disable_value_param(self) -> set[type]:
-        """Return set of types that do not allow VALUE overrides by component parsing."""
-        return self._disable_value_param
-
-    @property
-    def parse_order(self) -> dict[type, int]:
-        """Return the parse ordering of the specified type."""
-        return self._parse_order
 
 
 DATA_TYPE: Registry = Registry()
