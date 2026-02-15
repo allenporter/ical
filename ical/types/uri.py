@@ -32,8 +32,3 @@ class Uri(str):
         return core_schema.no_info_before_validator_function(
             cls.__parse_property_value__, handler(source_type)
         )
-
-    @classmethod
-    def __encode_property__(cls, value: str) -> ParsedProperty:
-        """Serialize as an ICS value."""
-        return ParsedProperty(name="", value=str(value))
