@@ -1341,6 +1341,23 @@
     ]),
   })
 # ---
+# name: test_parse[unknown_property]
+  dict({
+    'calendars': list([
+      dict({
+        'extras': list([
+          dict({
+            'name': 'x-unknown-property',
+            'params': None,
+            'value': 'Unknown Value',
+          }),
+        ]),
+        'prodid': '-//Test//Test 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[unknown_value_custom]
   dict({
     'calendars': list([
@@ -2158,6 +2175,15 @@
   ATTACH;FMTTYPE=audio/basic:http://example.com/pub/audio-files/ssbanner.aud
   END:VALARM
   END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[unknown_property]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//Test//Test 1.0//EN
+  VERSION:2.0
+  X-UNKNOWN-PROPERTY:Unknown Value
   END:VCALENDAR
   '''
 # ---
