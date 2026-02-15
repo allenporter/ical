@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Protocol, TypeVar, get_origin
+from typing import Any, Protocol, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, SerializationInfo
 from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import get_field_type
+from ical.exceptions import ParameterValueError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +67,110 @@ class Registry:
         self._disable_value_param: set[type] = set()
         self._parse_order: dict[type, int] = {}
 
+    def get_field_types(self, field_type: type) -> list[type]:
+        """Return type to attempt for encoding/decoding based on the field type."""
+        origin = get_origin(field_type)
+        if origin is list:
+            if not (args := get_args(field_type)):
+                raise ValueError(f"Unable to determine args of type: {field_type}")
+            field_type = args[0]
+            origin = get_origin(field_type)
+        if origin is Union:
+            if not (args := get_args(field_type)):
+                raise ValueError(f"Unable to determine args of type: {field_type}")
+
+            # get_args does not have a deterministic order, so use the order supplied
+            # in the registry. Ignore None as its not a parseable type.
+            sortable_args = [
+                (self._parse_order.get(arg, 0), arg)
+                for arg in args
+                if arg is not type(None)  # noqa: E721
+            ]
+            sortable_args.sort(reverse=True)
+            return [arg for (order, arg) in sortable_args]
+        return [field_type]
+
+    def parse_property(self, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field value from a ParsedProperty as the specified types."""
+        field_types = self.get_field_types(field_type)
+        _LOGGER.debug(
+            "Parsing field '%s' with value '%s' as types %s",
+            prop.name,
+            prop.value,
+            field_types,
+        )
+        errors = []
+        for sub_type in field_types:
+            try:
+                return self._parse_single_property(sub_type, prop)
+            except ParameterValueError as err:
+                _LOGGER.debug("Invalid property value of type %s: %s", sub_type, err)
+                raise err
+            except ValueError as err:
+                _LOGGER.debug(
+                    "Unable to parse property value as type %s: %s", sub_type, err
+                )
+                errors.append(str(err))
+                continue
+        raise ValueError(
+            f"Failed to validate: {prop.value} as {' or '.join(sub_type.__name__ for sub_type in field_types)}, due to: ({errors})"
+        )
+
+    def _parse_single_property(self, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field as a single type."""
+        if (
+            value_type := prop.get_parameter_value("VALUE")
+        ) and field_type not in self._disable_value_param:
+            # Property parameter specified a strong type
+            if func := self._parse_parameter_by_name.get(value_type):
+                _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
+                return func(prop)
+
+            # Graceful degradation: fall back to TEXT parsing for unknown VALUE types
+            _LOGGER.debug(
+                "Property '%s' has unsupported VALUE type '%s', falling back to TEXT",
+                prop.name,
+                value_type,
+            )
+            # We assume TextEncoder is already registered in Registry
+            if func := self._parse_parameter_by_name.get("TEXT"):
+                return func(prop)
+
+        if decoder := self._parse_property_value.get(field_type):
+            _LOGGER.debug("Decoding '%s' as type '%s'", prop.name, field_type)
+            return decoder(prop)
+
+        _LOGGER.debug("Using '%s' bare property value '%s'", prop.name, prop.value)
+        return prop.value
+
+    def encode_property(self, key: str, field_type: type, value: Any) -> ParsedProperty:
+        """Encode an individual property for the specified field."""
+        # A property field may have multiple possible types, like for
+        # a Union. Pick the first type that is able to encode the value.
+        errors = []
+        for sub_type in self.get_field_types(field_type):
+            encoded_value: Any | None = None
+            if value_encoder := self._encode_property_value.get(sub_type):
+                try:
+                    encoded_value = value_encoder(value)
+                except ValueError as err:
+                    _LOGGER.debug("Encoding failed for property: %s", err)
+                    errors.append(str(err))
+                    continue
+            else:
+                encoded_value = value
+
+            if encoded_value is not None:
+                if isinstance(encoded_value, ParsedProperty):
+                    return encoded_value
+                prop = ParsedProperty(name=key, value=encoded_value)
+                if params_encoder := self._encode_property_params.get(sub_type, None):
+                    if params := params_encoder(value):
+                        prop.params = params
+                return prop
+
+        raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
+
     def register(
         self,
         name: str | None = None,
@@ -107,16 +212,6 @@ class Registry:
         return decorator
 
     @property
-    def parse_property_value(self) -> dict[type, Callable[[ParsedProperty], Any]]:
-        """Registry of python types to functions to parse into pydantic model."""
-        return self._parse_property_value
-
-    @property
-    def parse_parameter_by_name(self) -> dict[str, Callable[[ParsedProperty], Any]]:
-        """Registry based on data value type string name."""
-        return self._parse_parameter_by_name
-
-    @property
     def encode_property_json(self) -> dict[type, Callable[[Any], str | dict[str, str]]]:
         """Registry of encoders run during pydantic json serialization."""
         return self._encode_property_json
@@ -125,23 +220,6 @@ class Registry:
     def encode_property_value(self) -> dict[type, Callable[[Any], str | None]]:
         """Registry of encoders that run on the output data model to ics."""
         return self._encode_property_value
-
-    @property
-    def encode_property_params(
-        self,
-    ) -> dict[type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]]:
-        """Registry of property parameter encoders run on output data model."""
-        return self._encode_property_params
-
-    @property
-    def disable_value_param(self) -> set[type]:
-        """Return set of types that do not allow VALUE overrides by component parsing."""
-        return self._disable_value_param
-
-    @property
-    def parse_order(self) -> dict[type, int]:
-        """Return the parse ordering of the specified type."""
-        return self._parse_order
 
 
 DATA_TYPE: Registry = Registry()
