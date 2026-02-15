@@ -33,6 +33,10 @@ class DataType(Protocol):
         """Parse the specified property value as a python type."""
 
     @classmethod
+    def __encode_property__(cls, value: Any) -> ParsedProperty | None:
+        """Encode the property from the object model to a ParsedProperty."""
+
+    @classmethod
     def __encode_property_json__(cls, value: Any) -> str | dict[str, str]:
         """Encode the property during pydantic serialization to object model."""
 
@@ -57,6 +61,7 @@ class Registry:
         self._items: dict[str, type] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
+        self._encode_property: dict[type, Callable[[Any], ParsedProperty | None]] = {}
         self._encode_property_json: dict[
             type, Callable[[Any], str | dict[str, str]]
         ] = {}
@@ -149,12 +154,25 @@ class Registry:
         # a Union. Pick the first type that is able to encode the value.
         errors = []
         for sub_type in self.get_field_types(field_type):
+            if encoder := self._encode_property.get(sub_type):
+                try:
+                    if prop := encoder(value):
+                        if not prop.name:
+                            prop.name = key
+                        return prop
+                except ValueError as err:
+                    _LOGGER.debug(
+                        "Encoding failed for property type %s: %s", sub_type, err
+                    )
+                    errors.append(str(err))
+                    continue
+
             encoded_value: Any | None = None
             if value_encoder := self._encode_property_value.get(sub_type):
                 try:
                     encoded_value = value_encoder(value)
                 except ValueError as err:
-                    _LOGGER.debug("Encoding failed for property: %s", err)
+                    _LOGGER.debug("Encoding failed for property value: %s", err)
                     errors.append(str(err))
                     continue
             else:
@@ -193,6 +211,8 @@ class Registry:
                 self._parse_property_value[data_type] = parse_property_value
                 if name:
                     self._parse_parameter_by_name[name] = parse_property_value
+            if encode_property := getattr(func, "__encode_property__", None):
+                self._encode_property[data_type] = encode_property
             if encode_property_json := getattr(func, "__encode_property_json__", None):
                 self._encode_property_json[data_type] = encode_property_json
             if encode_property_value := getattr(
@@ -239,8 +259,9 @@ def encode_model_property_params(
         if origin is not list:
             values = [values]
         if annotation is bool:
-            encoder = DATA_TYPE.encode_property_value[bool]
-            values = [encoder(value) for value in values]
+            values = [
+                DATA_TYPE.encode_property("", bool, value).value for value in values
+            ]
         params.append(ParsedPropertyParameter(name=key, values=values))
     return params
 

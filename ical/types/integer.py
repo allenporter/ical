@@ -21,3 +21,8 @@ class IntEncoder:
         if isinstance(prop, ParsedProperty):
             return int(prop.value)
         return int(prop)
+
+    @classmethod
+    def __encode_property__(cls, value: int) -> ParsedProperty:
+        """Serialize integer as an ICS value."""
+        return ParsedProperty(name="", value=str(value))
