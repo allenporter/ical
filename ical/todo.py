@@ -28,7 +28,7 @@ from .component import (
     validate_until_dtstart,
     validate_recurrence_dates,
 )
-from .exceptions import CalendarParseError
+from .exceptions import CalendarParseError, ParameterValueError
 from .iter import RulesetIterable, as_rrule
 from .timespan import Timespan
 from .types import (
@@ -416,20 +416,16 @@ class Todo(ComponentModel):
         return self
 
     @classmethod
-    def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
-        """Parse an individual field as a single type."""
+    def _parse_property(cls, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field value from a ParsedProperty."""
         try:
-            return super()._parse_single_property(field_type, prop)
-        except ValueError as err:
-            if (
-                prop.name == "dtstart"
-                and field_type == datetime.datetime
-                and prop.params is not None
-            ):
+            return super()._parse_property(field_type, prop)
+        except ParameterValueError:
+            if prop.name == "dtstart" and prop.params:
                 _LOGGER.debug(
                     "Applying todo dtstart repair for invalid timezone; Removing dtstart",
                 )
                 return None
-            raise err
+            raise
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
