@@ -297,7 +297,7 @@ class Recur(BaseModel):
 
     def as_rrule_str(self) -> str:
         """Return the Recur instance as an RRULE string."""
-        return self.__encode_property_value__(
+        return self._as_rrule_str(
             self.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
         )
 
@@ -310,7 +310,7 @@ class Recur(BaseModel):
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
     @classmethod
-    def __encode_property_value__(cls, data: dict[str, Any]) -> str:
+    def _as_rrule_str(cls, data: dict[str, Any]) -> str:
         """Encode the recurrence rule in ICS format."""
         result = []
         for key, value in data.items():
@@ -339,6 +339,11 @@ class Recur(BaseModel):
                 continue
             result.append(f"{key.upper()}={value}")
         return ";".join(result)
+
+    @classmethod
+    def __encode_property__(cls, data: dict[str, Any]) -> ParsedProperty:
+        """Encode the recurrence rule in ICS format."""
+        return ParsedProperty(name="", value=cls._as_rrule_str(data))
 
     @classmethod
     def __parse_property_value__(  # pylint: disable=too-many-branches

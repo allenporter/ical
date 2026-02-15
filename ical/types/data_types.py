@@ -41,16 +41,6 @@ class DataType(Protocol):
     def __encode_property_json__(cls, value: Any) -> str | dict[str, str]:
         """Encode the property during pydantic serialization to object model."""
 
-    @classmethod
-    def __encode_property_value__(cls, value: Any) -> str | None:
-        """Encoded the property from the object model to the ics string value."""
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        """Encode the property parameters from the object model."""
-
 
 class Registry:
     """Registry of data types."""
@@ -65,10 +55,6 @@ class Registry:
         self._encode_property: dict[type, Callable[[Any], ParsedProperty | None]] = {}
         self._encode_property_json: dict[
             type, Callable[[Any], str | dict[str, str]]
-        ] = {}
-        self._encode_property_value: dict[type, Callable[[Any], str | None]] = {}
-        self._encode_property_params: dict[
-            type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]
         ] = {}
         self._disable_value_param: set[type] = set()
         self._parse_order: dict[type, int] = {}
@@ -161,6 +147,8 @@ class Registry:
                         if not prop.name:
                             prop.name = key
                         return prop
+                    # Encoder returned None, meaning it couldn't encode this value.
+                    # We continue to the fallback below or the next sub_type.
                 except ValueError as err:
                     _LOGGER.debug(
                         "Encoding failed for property type %s: %s", sub_type, err
@@ -168,25 +156,15 @@ class Registry:
                     errors.append(str(err))
                     continue
 
-            encoded_value: Any | None = None
-            if value_encoder := self._encode_property_value.get(sub_type):
-                try:
-                    encoded_value = value_encoder(value)
-                except ValueError as err:
-                    _LOGGER.debug("Encoding failed for property value: %s", err)
-                    errors.append(str(err))
-                    continue
-            else:
-                encoded_value = value
-
-            if encoded_value is not None:
-                if isinstance(encoded_value, ParsedProperty):
-                    return encoded_value
-                prop = ParsedProperty(name=key, value=encoded_value)
-                if params_encoder := self._encode_property_params.get(sub_type, None):
-                    if params := params_encoder(value):
-                        prop.params = params
-                return prop
+            if value is not None:
+                # If we had an encoder and it returned None, should we still fall back to the bare value?
+                # Most simple types (int, bool) now HAVE encoders.
+                # If a complex type has an encoder and it returns None, it's usually a skip.
+                # However, for types that rely on string fallback, they DON'T have an encoder in the map.
+                if not encoder:
+                    if isinstance(value, ParsedProperty):
+                        return value
+                    return ParsedProperty(name=key, value=value)
 
         raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
@@ -216,14 +194,6 @@ class Registry:
                 self._encode_property[data_type] = encode_property
             if encode_property_json := getattr(func, "__encode_property_json__", None):
                 self._encode_property_json[data_type] = encode_property_json
-            if encode_property_value := getattr(
-                func, "__encode_property_value__", None
-            ):
-                self._encode_property_value[data_type] = encode_property_value
-            if encode_property_params := getattr(
-                func, "__encode_property_params__", None
-            ):
-                self._encode_property_params[data_type] = encode_property_params
             if disable_value_param:
                 self._disable_value_param |= set({data_type})
             if parse_order:
@@ -237,18 +207,13 @@ class Registry:
         """Registry of encoders run during pydantic json serialization."""
         return self._encode_property_json
 
-    @property
-    def encode_property_value(self) -> dict[type, Callable[[Any], str | None]]:
-        """Registry of encoders that run on the output data model to ics."""
-        return self._encode_property_value
-
 
 DATA_TYPE: Registry = Registry()
 
 
 def encode_model_property_params(
     fields: dict[str, FieldInfo], model_data: dict[str, Any]
-) -> list[ParsedPropertyParameter]:
+) -> list[ParsedPropertyParameter] | None:
     """Encode a pydantic model's parameters as property params."""
     params = []
     for name, field in fields.items():
@@ -264,7 +229,7 @@ def encode_model_property_params(
                 DATA_TYPE.encode_property("", bool, value).value for value in values
             ]
         params.append(ParsedPropertyParameter(name=key, values=values))
-    return params
+    return params or None
 
 
 def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any:

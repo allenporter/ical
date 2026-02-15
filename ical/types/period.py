@@ -112,8 +112,8 @@ class Period(BaseModel):
         return dataclasses.asdict(prop)
 
     @classmethod
-    def __encode_property_value__(cls, model_data: dict[str, Any]) -> str:
-        """Encode property value."""
+    def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
+        """Encode the property."""
         if not (start := model_data.pop("start", None)):
             raise ValueError(f"Invalid period object missing start: {model_data}")
         end = model_data.pop("end", None)
@@ -124,20 +124,21 @@ class Period(BaseModel):
             )
         # End and duration are already encoded values
         if end:
-            return "/".join([start, end])
-        return "/".join([start, duration])
+            value = "/".join([start, end])
+        else:
+            value = "/".join([start, duration])
 
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        return encode_model_property_params(
-            cls.model_fields,
-            {
-                k: v
-                for k, v in model_data.items()
-                if k not in ("end", "duration", "start")
-            },
+        return ParsedProperty(
+            name="",
+            value=value,
+            params=encode_model_property_params(
+                cls.model_fields,
+                {
+                    k: v
+                    for k, v in model_data.items()
+                    if k not in ("end", "duration", "start")
+                },
+            ),
         )
 
     model_config = ConfigDict(populate_by_name=True)
