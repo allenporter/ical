@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ical.parsing.property import ParsedProperty
 from .data_types import DATA_TYPE
 from .text import TextEncoder
 

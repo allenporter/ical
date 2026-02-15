@@ -35,6 +35,7 @@ class DataType(Protocol):
     @classmethod
     def __encode_property__(cls, value: Any) -> ParsedProperty | None:
         """Encode the property from the object model to a ParsedProperty."""
+        return ParsedProperty(name="", value=value)
 
     @classmethod
     def __encode_property_json__(cls, value: Any) -> str | dict[str, str]:

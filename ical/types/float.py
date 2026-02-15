@@ -17,3 +17,8 @@ class FloatEncoder:
     def __parse_property_value__(cls, prop: ParsedProperty) -> float:
         """Parse a rfc5545 property into a text value."""
         return float(prop.value)
+
+    @classmethod
+    def __encode_property__(cls, value: float) -> ParsedProperty:
+        """Serialize a float as an ICS value."""
+        return ParsedProperty(name="", value=str(value))
