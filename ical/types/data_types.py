@@ -156,15 +156,8 @@ class Registry:
                     errors.append(str(err))
                     continue
 
-            if value is not None:
-                # If we had an encoder and it returned None, should we still fall back to the bare value?
-                # Most simple types (int, bool) now HAVE encoders.
-                # If a complex type has an encoder and it returns None, it's usually a skip.
-                # However, for types that rely on string fallback, they DON'T have an encoder in the map.
-                if not encoder:
-                    if isinstance(value, ParsedProperty):
-                        return value
-                    return ParsedProperty(name=key, value=value)
+            if value is not None and not encoder:
+                return ParsedProperty(name=key, value=value)
 
         raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
