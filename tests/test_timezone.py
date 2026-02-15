@@ -206,6 +206,7 @@ def test_clear_old_dtstamp(mock_prodid: Generator[None, None, None]) -> None:
        VERSION:2.0
        BEGIN:VTIMEZONE
        TZID:Asia/Tokyo
+       DTSTAMP:20220822T123000
        BEGIN:STANDARD
        DTSTART:20100101T000000
        TZOFFSETTO:+0900

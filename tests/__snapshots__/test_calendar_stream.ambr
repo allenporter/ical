@@ -1341,6 +1341,23 @@
     ]),
   })
 # ---
+# name: test_parse[unknown_property]
+  dict({
+    'calendars': list([
+      dict({
+        'extras': list([
+          dict({
+            'name': 'x-unknown-property',
+            'params': None,
+            'value': 'Unknown Value',
+          }),
+        ]),
+        'prodid': '-//Test//Test 1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[unknown_value_custom]
   dict({
     'calendars': list([
@@ -1534,6 +1551,7 @@
   TRIGGER:19970317T133000Z
   DURATION:-P1W6DT15H
   REPEAT:4
+  ATTACH;FMTTYPE=audio/basic:ftp://example.com/pub/sounds/bell-01.aud
   END:VALARM
   END:VEVENT
   END:VCALENDAR
@@ -1743,6 +1761,8 @@
   DTSTART:19960918T143000Z
   DTEND:19960920T220000Z
   SUMMARY:Event Summary
+  DRESSCODE:CASUAL
+  NON-SMOKING;VALUE=BOOLEAN:TRUE
   END:VEVENT
   END:VCALENDAR
   '''
@@ -2152,8 +2172,18 @@
   TRIGGER:19980403T120000Z
   DURATION:PT1H
   REPEAT:4
+  ATTACH;FMTTYPE=audio/basic:http://example.com/pub/audio-files/ssbanner.aud
   END:VALARM
   END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[unknown_property]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//Test//Test 1.0//EN
+  VERSION:2.0
+  X-UNKNOWN-PROPERTY:Unknown Value
   END:VCALENDAR
   '''
 # ---

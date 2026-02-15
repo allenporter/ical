@@ -26,8 +26,9 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from ical.util import get_field_type
 
-from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
+from .parsing.component import ParsedComponent
+from .types.extra import ExtraPropertyEncoder, ExtraProperty
 from .types.data_types import DATA_TYPE
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
@@ -171,21 +172,23 @@ class ComponentModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def parse_extra_fields(
-        cls, values: dict[str, list[ParsedProperty | ParsedComponent]]
-    ) -> dict[str, Any]:
+    def parse_extra_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Parse extra fields not in the model."""
         all_fields: set[str | None] = set()
         for name, field in cls.model_fields.items():
             all_fields |= {field.alias, name}
 
-        extras: list[ParsedProperty | ParsedComponent] = []
+        extras: list[ExtraProperty] = []
         for field_name, value in values.items():
             if field_name in all_fields:
                 continue
-            for prop in value:
-                if isinstance(prop, ParsedProperty):
-                    extras.append(prop)
+            extras.extend(
+                [
+                    ExtraPropertyEncoder.__parse_property_value__(prop)
+                    for prop in value
+                    if isinstance(prop, ParsedProperty)
+                ]
+            )
         if extras:
             values["extras"] = extras
         return values
@@ -197,7 +200,7 @@ class ComponentModel(BaseModel):
         _LOGGER.debug("Parsing value data %s", values)
 
         for name, field in cls.model_fields.items():
-            if field.alias == "extras":
+            if name == "extras" or field.alias == "extras":
                 continue
             field_name = field.alias or name
             if not (value := values.get(field_name)):
@@ -341,7 +344,7 @@ class ComponentModel(BaseModel):
         for name, field in cls.model_fields.items():
             key = field.alias or name
             values = model_data.get(key)
-            if values is None or key == "extras":
+            if values is None:
                 continue
             if not isinstance(values, list):
                 values = [values]
@@ -377,6 +380,8 @@ class ComponentModel(BaseModel):
                 encoded_value = value
 
             if encoded_value is not None:
+                if isinstance(encoded_value, ParsedProperty):
+                    return encoded_value
                 prop = ParsedProperty(name=key, value=encoded_value)
                 if params_encoder := DATA_TYPE.encode_property_params.get(
                     sub_type, None
