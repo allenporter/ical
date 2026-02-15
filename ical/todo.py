@@ -420,12 +420,12 @@ class Todo(ComponentModel):
         """Parse an individual field value from a ParsedProperty."""
         try:
             return super()._parse_property(field_type, prop)
-        except ParameterValueError:
+        except ParameterValueError as err:
             if prop.name == "dtstart" and prop.params:
                 _LOGGER.debug(
                     "Applying todo dtstart repair for invalid timezone; Removing dtstart",
                 )
                 return None
-            raise
+            raise err
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
