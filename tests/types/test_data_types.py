@@ -18,7 +18,7 @@ def test_encode_property_failed_encoder() -> None:
     @registry.register()
     class BadType:
         @classmethod
-        def __encode_property_value__(cls, value: Any) -> str:
+        def __encode_property__(cls, value: Any) -> ParsedProperty:
             raise ValueError("Encoding failed deliberately")
 
     with pytest.raises(
@@ -35,7 +35,7 @@ def test_encode_property_no_encoder() -> None:
     @registry.register()
     class NoneType:
         @classmethod
-        def __encode_property_value__(cls, value: Any) -> None:
+        def __encode_property__(cls, value: Any) -> None:
             return None
 
     with pytest.raises(ValueError, match="Unable to encode property"):

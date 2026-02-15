@@ -33,7 +33,7 @@ class ExtraPropertyEncoder:
         return ExtraProperty
 
     @classmethod
-    def __encode_property_value__(cls, value: Any) -> ParsedProperty:
+    def __encode_property__(cls, value: Any) -> ParsedProperty:
         """Encoded the property from the object model to the ics string value."""
         if not isinstance(value, dict):
             raise ValueError(f"Invalid extra property: {value}")

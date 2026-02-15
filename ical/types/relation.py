@@ -62,13 +62,11 @@ class RelatedTo:
     _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     @classmethod
-    def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:
-        return model_data.pop("uid")
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        if "reltype" not in model_data:
-            return []
-        return [ParsedPropertyParameter(name="RELTYPE", values=[model_data["reltype"]])]
+    def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
+        """Encode the property."""
+        prop = ParsedProperty(name="", value=model_data.pop("uid"))
+        if reltype := model_data.get("reltype"):
+            prop.params = [
+                ParsedPropertyParameter(name="RELTYPE", values=[str(reltype)])
+            ]
+        return prop
