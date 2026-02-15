@@ -4,6 +4,7 @@
 from . import integer  # noqa: F401
 from . import boolean, date, date_time, duration  # noqa: F401
 from . import float as float_pkg  # noqa: F401
+from .extra import ExtraProperty, ExtraPropertyParameter
 from .cal_address import CalAddress, Role, CalendarUserType, ParticipationStatus
 from .const import Classification
 from .geo import Geo
@@ -36,4 +37,6 @@ __all__ = [
     "Uri",
     "Weekday",
     "WeekdayValue",
+    "ExtraProperty",
+    "ExtraPropertyParameter",
 ]

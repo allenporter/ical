@@ -13,8 +13,7 @@ from pydantic import BeforeValidator, Field, field_serializer, field_validator
 from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
-from .parsing.property import ParsedProperty
-from .types import CalAddress, Period, RequestStatus, Uri
+from .types import CalAddress, ExtraProperty, Period, RequestStatus, Uri
 from .util import (
     dtstamp_factory,
     normalize_datetime,
@@ -79,7 +78,7 @@ class FreeBusy(ComponentModel):
     """The URL associated with this component."""
 
     # Unknown or unsupported properties
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     def __init__(self, **data: Any) -> None:
         """Initialize Event."""

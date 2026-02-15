@@ -17,6 +17,7 @@ from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal
 from .types.date_time import TZID
+from .types import ExtraProperty
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
@@ -62,7 +63,7 @@ class Calendar(ComponentModel):
     """Timezones associated with this calendar."""
 
     # Unknown or unsupported properties
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     @property
     def timeline(self) -> Timeline:
