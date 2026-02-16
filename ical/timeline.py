@@ -18,6 +18,7 @@ from .iter import (
     SortableItemValue,
     SpanOrderedItem,
 )
+from .util import normalize_datetime
 from .recur_adapter import merge_and_expand_items, ItemType
 
 __all__ = ["Timeline", "generic_timeline"]
@@ -48,23 +49,42 @@ def generic_timeline(
 
 
 def materialize_timeline(
-    timeline: Timeline,
+    timeline: SortableItemTimeline[ItemType],
     start: datetime.date | datetime.datetime,
-    stop: datetime.date | datetime.datetime,
-) -> Timeline:
-    """Materialize a timeline of events between start and stop.
+    stop: datetime.date | datetime.datetime | None = None,
+    max_number_of_events: int | None = None,
+) -> SortableItemTimeline[ItemType]:
+    """Materialize a timeline of events between start and optionally stop.
 
     This functions returns a new Timeline that contains all events
-    between start and stop, but with all recurrence rules expanded
-    and instances materialized. This is useful for performance when
+    between start and stop (if specified), but with all recurrence rules
+    expanded and instances materialized. This is useful for performance when
     iterating over the same timeline multiple times or for caching
     the results of expensive recurrence calculations.
+
+    Either stop or max_number_of_events must be specified to provide an
+    upper bound on the materialized timeline.
     """
-    timespan = Timespan.of(start, stop)
-    items = []
+    start_dt = normalize_datetime(start)
+    if stop:
+        timespan = Timespan.of(start, stop)
+    elif max_number_of_events is not None:
+        timespan = None
+    else:
+        raise ValueError("Either stop or max_number_of_events must be specified")
+
+    items: list[SortableItemValue[Timespan, ItemType]] = []
     for item in timeline._iterable:
-        if item.key.intersects(timespan):
-            items.append(SortableItemValue(item.key, item.item))
-        elif item.key > timespan:
+        if max_number_of_events is not None and len(items) >= max_number_of_events:
             break
-    return Timeline(items)
+        if timespan:
+            if item.key.intersects(timespan):
+                items.append(SortableItemValue(item.key, item.item))
+            elif item.key > timespan:
+                break
+        else:
+            # No stop specified, so include all events active after start.
+            if item.key.end > start_dt:
+                items.append(SortableItemValue(item.key, item.item))
+
+    return SortableItemTimeline[ItemType](items)
