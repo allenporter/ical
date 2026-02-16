@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import copy
 import logging
+from functools import cache
 from collections.abc import Callable
 from types import NoneType
 from contextvars import ContextVar
+import dataclasses
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -23,12 +25,25 @@ from pydantic import BaseModel, SerializationInfo, ConfigDict
 from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.util import get_field_type
 from ical.exceptions import ParameterValueError
 
 _LOGGER = logging.getLogger(__name__)
 
 T_TYPE = TypeVar("T_TYPE", bound=type)
+
+
+@dataclasses.dataclass
+class FieldTypeInfo:
+    """Information about a field type."""
+
+    annotation: type[Any]
+    """The base type of the field (e.g. without Optional or list)."""
+
+    is_repeated: bool = False
+    """Whether the field is a list."""
+
+    is_optional: bool = False
+    """Whether the field is Optional."""
 
 
 # Repeated values can either be specified as multiple separate values, but
@@ -85,16 +100,11 @@ class Registry:
         self._disable_value_param: set[type] = set()
         self._parse_order: dict[type, int] = {}
 
-    def get_field_types(self, field_type: type) -> list[type]:
+    def get_ordered_field_types(self, field_type: type) -> list[type]:
         """Return type to attempt for encoding/decoding based on the field type."""
-        origin = get_origin(field_type)
-        if origin is list:
-            if not (args := get_args(field_type)):
-                raise ValueError(f"Unable to determine args of type: {field_type}")
-            field_type = args[0]
-            origin = get_origin(field_type)
-        if origin is Union:
-            if not (args := get_args(field_type)):
+        type_info = get_field_type_info(field_type)
+        if get_origin(type_info.annotation) is Union:
+            if not (args := get_args(type_info.annotation)):
                 raise ValueError(f"Unable to determine args of type: {field_type}")
 
             # get_args does not have a deterministic order, so use the order supplied
@@ -106,11 +116,11 @@ class Registry:
             ]
             sortable_args.sort(reverse=True)
             return [arg for (order, arg) in sortable_args]
-        return [field_type]
+        return [type_info.annotation]
 
     def parse_property(self, field_type: type, prop: ParsedProperty) -> Any:
         """Parse an individual field value from a ParsedProperty as the specified types."""
-        field_types = self.get_field_types(field_type)
+        field_types = self.get_ordered_field_types(field_type)
         _LOGGER.debug(
             "Parsing field '%s' with value '%s' as types %s",
             prop.name,
@@ -166,7 +176,7 @@ class Registry:
         # A property field may have multiple possible types, like for
         # a Union. Pick the first type that is able to encode the value.
         errors = []
-        for sub_type in self.get_field_types(field_type):
+        for sub_type in self.get_ordered_field_types(field_type):
             if encoder := self._encode_property.get(sub_type):
                 try:
                     if prop := encoder(value):
@@ -194,17 +204,21 @@ class Registry:
         items: list[ParsedProperty],
     ) -> Any:
         """Parse a list of ParsedProperty items for a specific model field."""
-        annotation, allow_repeated = _get_field_type_info(field)
-        if not annotation:
+        type_info = get_field_type_info(field.annotation)
+        if not type_info.annotation:
             raise ValueError(f"Unable to determine field type for field: {name}")
-        if len(items) > 1 and not allow_repeated:
+        if len(items) > 1 and not type_info.is_repeated:
             raise ValueError(f"Expected one value for field: {name}")
 
         if name in EXPAND_REPEATED_VALUES:
             items = _expand_repeated_property(items)
 
-        validated = [self.parse_property(annotation, prop) for prop in items]
-        return validated if allow_repeated else (validated[0] if validated else None)
+        validated = [self.parse_property(type_info.annotation, prop) for prop in items]
+        return (
+            validated
+            if type_info.is_repeated
+            else (validated[0] if validated else None)
+        )
 
     def register(
         self,
@@ -258,11 +272,10 @@ def encode_model_property_params(
         key = field.alias or name
         if key == "value" or (values := model_data.get(key)) is None:
             continue
-        annotation = get_field_type(field.annotation)
-        origin = get_origin(annotation)
-        if origin is not list:
+        type_info = get_field_type_info(field.annotation)
+        if not type_info.is_repeated:
             values = [values]
-        if annotation is bool:
+        if type_info.annotation is bool:
             values = [
                 DATA_TYPE.encode_property("", bool, value).value for value in values
             ]
@@ -304,18 +317,53 @@ def _expand_repeated_property(value: list[ParsedProperty]) -> list[ParsedPropert
     return result
 
 
-def _get_field_type_info(field: FieldInfo) -> tuple[type | None, bool]:
-    """Get the field type."""
-    annotation: type[Any] | None = field.annotation
-    # Unwrap Annotated/Optional to find if it is a list
+def get_field_type_info(annotation: Any) -> FieldTypeInfo:
+    """Get information about the field type."""
+    return _get_field_type_info(annotation)
+
+
+@cache
+def _get_field_type_info(annotation: Any) -> FieldTypeInfo:
+    """Get information about the field type."""
+    is_optional = False
     while get_origin(annotation) is Annotated:
         annotation = get_args(annotation)[0]
 
     if get_origin(annotation) is Union:
-        args = [arg for arg in get_args(annotation) if arg is not NoneType]
-        if len(args) == 1:
-            annotation = args[0]
-    allow_repeated = get_origin(annotation) is list
-    if allow_repeated:
+        union_args = get_args(annotation)
+        # Filter None out of the Union
+        valid_args = [arg for arg in union_args if arg is not NoneType]
+        if len(valid_args) < len(union_args):
+            is_optional = True
+        if len(valid_args) == 1:
+            annotation = valid_args[0]
+        elif is_optional:
+            annotation = Union[tuple(valid_args)]
+
+    is_repeated = get_origin(annotation) is list
+    if is_repeated:
+        if not (list_args := get_args(annotation)):
+            raise ValueError(f"Unable to determine args of type: {annotation}")
+        annotation = list_args[0]
+
+    # Handle the case where the list item type is also Optional or Annotated
+    while get_origin(annotation) is Annotated:
         annotation = get_args(annotation)[0]
-    return annotation, allow_repeated
+
+    if get_origin(annotation) is Union:
+        union_args = get_args(annotation)
+        valid_args = [arg for arg in union_args if arg is not NoneType]
+        if len(valid_args) < len(union_args):
+            is_optional = True
+        if not valid_args:
+            raise ValueError(f"Unable to determine args of type: {annotation}")
+        if len(valid_args) == 1:
+            annotation = valid_args[0]
+        elif is_optional:
+            annotation = Union[tuple(valid_args)]
+
+    return FieldTypeInfo(
+        annotation=annotation,
+        is_repeated=is_repeated,
+        is_optional=is_optional,
+    )

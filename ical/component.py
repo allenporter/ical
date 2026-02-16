@@ -26,12 +26,10 @@ from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic.fields import FieldInfo
 
-from ical.util import get_field_type
-
 from .parsing.property import ParsedProperty
 from .parsing.component import ParsedComponent
-from .types.extra import ExtraPropertyEncoder, ExtraProperty
-from .types.data_types import DATA_TYPE
+from .types.extra import ExtraProperty
+from .types.data_types import DATA_TYPE, get_field_type_info
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
 
@@ -228,9 +226,9 @@ class ComponentModel(BaseModel):
                 continue
             if not isinstance(values, list):
                 values = [values]
-            annotation = get_field_type(field.annotation)
+            annotation = get_field_type_info(field.annotation).annotation
             for value in values:
-                for field_type in DATA_TYPE.get_field_types(annotation):
+                for field_type in DATA_TYPE.get_ordered_field_types(annotation):
                     if component_encoder := getattr(
                         field_type, "__encode_component__", None
                     ):

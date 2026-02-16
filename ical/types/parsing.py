@@ -8,7 +8,7 @@ from typing import Any, get_origin
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
-from ical.util import get_field_type
+from ical.types.data_types import get_field_type_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ def parse_parameter_values(
         for param in params:
             if not (field := all_fields.get(param["name"])):
                 continue
-            annotation = get_field_type(field.annotation)
-            if get_origin(annotation) is list:
+            type_info = get_field_type_info(field.annotation)
+            if type_info.is_repeated:
                 values[param["name"]] = param["values"]
             else:
                 if len(param["values"]) > 1:

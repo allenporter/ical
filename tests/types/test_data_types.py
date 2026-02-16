@@ -4,11 +4,11 @@ from ical.types.data_types import Registry
 from ical.parsing.property import ParsedProperty
 
 
-def test_get_field_types_unsupported_list() -> None:
-    """Test get_field_types with a list that has no arguments."""
+def test_get_ordered_field_types_unsupported_list() -> None:
+    """Test get_ordered_field_types with a list that has no arguments."""
     registry = Registry()
     with pytest.raises(ValueError, match="Unable to determine args of type"):
-        registry.get_field_types(List)
+        registry.get_ordered_field_types(List)
 
 
 def test_encode_property_failed_encoder() -> None:
