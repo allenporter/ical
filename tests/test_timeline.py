@@ -209,3 +209,114 @@ def test_benchmark_materialize_timeline() -> None:
         datetime.date(2022, 1, 1),
         datetime.date(2022, 4, 1),
     )
+
+
+def test_materialize_timeline_max_events() -> None:
+    """Test materializing a timeline with a maximum number of events."""
+    cal = Calendar()
+    for i in range(10):
+        cal.events.append(
+            Event(
+                summary=f"Event {i}",
+                start=datetime.datetime(
+                    2022, 1, 1, 8 + i, 0, tzinfo=datetime.timezone.utc
+                ),
+                end=datetime.datetime(
+                    2022, 1, 1, 9 + i, 0, tzinfo=datetime.timezone.utc
+                ),
+            )
+        )
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+
+    # Test with limit of 5
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2022, 1, 2, tzinfo=datetime.timezone.utc),
+        max_number_of_events=5,
+    )
+    events = list(materialized)
+    assert len(events) == 5
+    assert [e.summary for e in events] == [f"Event {i}" for i in range(5)]
+
+    # Test with limit of 15 (more than available)
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2022, 1, 2, tzinfo=datetime.timezone.utc),
+        max_number_of_events=15,
+    )
+    events = list(materialized)
+    assert len(events) == 10
+
+
+def test_materialize_timeline_no_stop() -> None:
+    """Test materializing a timeline without a stop time."""
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Event 1",
+            start=datetime.datetime(2022, 1, 1, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 1, 9, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Event 2",
+            start=datetime.datetime(2022, 1, 2, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 9, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+
+    # No stop specified should return all events active after start
+    # (max_number_of_events is required when stop is None)
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, 12, 0, tzinfo=datetime.timezone.utc),
+        max_number_of_events=1,
+    )
+    events = list(materialized)
+    assert len(events) == 1
+    assert events[0].summary == "Event 2"
+
+
+def test_materialize_timeline_no_exit_condition() -> None:
+    """Test that materialize_timeline raises ValueError without an exit condition."""
+    cal = Calendar()
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+    with pytest.raises(
+        ValueError, match="Either stop or max_number_of_events must be specified"
+    ):
+        materialize_timeline(
+            timeline,
+            datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        )
+
+
+def test_materialize_timeline_no_stop_max_events() -> None:
+    """Test materializing a timeline without a stop time and a limit."""
+    cal = Calendar()
+    for i in range(10):
+        cal.events.append(
+            Event(
+                summary=f"Event {i}",
+                start=datetime.datetime(
+                    2022, 1, 1 + i, 8, 0, tzinfo=datetime.timezone.utc
+                ),
+                end=datetime.datetime(
+                    2022, 1, 1 + i, 9, 0, tzinfo=datetime.timezone.utc
+                ),
+            )
+        )
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+
+    # No stop specified, limit 3
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        max_number_of_events=3,
+    )
+    events = list(materialized)
+    assert len(events) == 3
+    assert [e.summary for e in events] == ["Event 0", "Event 1", "Event 2"]
