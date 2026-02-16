@@ -161,6 +161,13 @@ class ComponentModel(BaseModel):
         return self.__class__(**new_item_copy.model_dump())
 
     @classmethod
+    def _parse_property(
+        cls, field_type: FieldInfo, name: str, props: list[ParsedProperty]
+    ) -> Any:
+        """Parse an individual field value from a ParsedProperty as the specified types."""
+        return DATA_TYPE.parse_field(field_type, name, props)
+
+    @classmethod
     @cache
     def _all_fields(cls) -> dict[str, str]:
         """Return a mapping of all field names and aliases to their field names."""
@@ -188,13 +195,6 @@ class ComponentModel(BaseModel):
                 new_values[key] = value
 
         return new_values
-
-    @classmethod
-    def _parse_property(
-        cls, field_type: FieldInfo, name: str, props: list[ParsedProperty]
-    ) -> Any:
-        """Parse an individual field value from a ParsedProperty as the specified types."""
-        return DATA_TYPE.parse_field(field_type, name, props)
 
     def __encode_component_root__(self) -> ParsedComponent:
         """Encode the calendar stream as an rfc5545 iCalendar content."""
