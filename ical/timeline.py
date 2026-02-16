@@ -12,8 +12,10 @@ from collections.abc import Iterable, Iterator
 from typing import TypeVar, Generic, Protocol
 
 from .event import Event
+from .timespan import Timespan
 from .iter import (
     SortableItemTimeline,
+    SortableItemValue,
     SpanOrderedItem,
 )
 from .recur_adapter import merge_and_expand_items, ItemType
@@ -43,3 +45,26 @@ def generic_timeline(
             tzinfo,
         )
     )
+
+
+def materialize_timeline(
+    timeline: Timeline,
+    start: datetime.date | datetime.datetime,
+    stop: datetime.date | datetime.datetime,
+) -> Timeline:
+    """Materialize a timeline of events between start and stop.
+
+    This functions returns a new Timeline that contains all events
+    between start and stop, but with all recurrence rules expanded
+    and instances materialized. This is useful for performance when
+    iterating over the same timeline multiple times or for caching
+    the results of expensive recurrence calculations.
+    """
+    timespan = Timespan.of(start, stop)
+    items = []
+    for item in timeline._iterable:
+        if item.key.intersects(timespan):
+            items.append(SortableItemValue(item.key, item.item))
+        elif item.key > timespan:
+            break
+    return Timeline(items)

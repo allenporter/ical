@@ -12,7 +12,7 @@ from ical.calendar import Calendar
 from ical.event import Event
 from ical.journal import Journal
 from ical.types.recur import Recur
-from ical.timeline import generic_timeline
+from ical.timeline import generic_timeline, materialize_timeline, calendar_timeline
 
 TZ = zoneinfo.ZoneInfo("America/Regina")
 
@@ -107,3 +107,105 @@ def test_journal_timeline() -> None:
                 },
             ),
         ]
+
+
+def test_materialize_timeline_empty() -> None:
+    """Test materializing an empty timeline."""
+    cal = Calendar()
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2022, 1, 2, tzinfo=datetime.timezone.utc),
+    )
+    assert list(materialized) == []
+
+
+def test_materialize_timeline_events() -> None:
+    """Test materializing a timeline with events."""
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Event 1",
+            start=datetime.datetime(2022, 1, 1, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 1, 9, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Event 2",
+            start=datetime.datetime(2022, 1, 2, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 9, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Event 3",
+            start=datetime.datetime(2022, 1, 3, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 3, 9, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2022, 1, 3, tzinfo=datetime.timezone.utc),
+    )
+    events = list(materialized)
+    assert len(events) == 2
+    assert events[0].summary == "Event 1"
+    assert events[1].summary == "Event 2"
+
+    # Verify that the events are the same object when iterating multiple times
+    assert list(materialized) == events
+    assert list(materialized)[0] is events[0]
+    assert list(materialized)[1] is events[1]
+
+
+def test_materialize_recurring_timeline() -> None:
+    """Test materializing a timeline with recurring events."""
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Event 1",
+            start=datetime.datetime(2022, 1, 1, 8, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 1, 9, 0, tzinfo=datetime.timezone.utc),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    timeline = generic_timeline(cal.events, datetime.timezone.utc)
+    materialized = materialize_timeline(
+        timeline,
+        datetime.datetime(2022, 1, 1, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2022, 1, 3, tzinfo=datetime.timezone.utc),
+    )
+    events = list(materialized)
+    assert len(events) == 2
+    assert events[0].summary == "Event 1"
+    assert events[0].start == datetime.datetime(
+        2022, 1, 1, 8, 0, tzinfo=datetime.timezone.utc
+    )
+    assert events[1].summary == "Event 1"
+    assert events[1].start == datetime.datetime(
+        2022, 1, 2, 8, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_benchmark_materialize_timeline() -> None:
+    """Benchmark materializing a timeline."""
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="Event 1",
+            start=datetime.date(2022, 1, 1),
+            end=datetime.date(2022, 1, 2),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=1000"),
+        )
+    )
+    timeline = calendar_timeline(cal.events, zoneinfo.ZoneInfo("UTC"))
+
+    materialize_timeline(
+        timeline,
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 4, 1),
+    )
