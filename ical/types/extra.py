@@ -24,7 +24,7 @@ class ExtraProperty:
     params: list[ExtraPropertyParameter] | None = None
 
 
-@DATA_TYPE.register(name="ExtraProperty")
+@DATA_TYPE.register(name="ExtraProperty", disable_value_param=True)
 class ExtraPropertyEncoder:
     """Encoder for ExtraProperty."""
 
