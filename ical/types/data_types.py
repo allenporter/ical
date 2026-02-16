@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 from collections.abc import Callable
-from typing import Any, Protocol, TypeVar, Union, get_args, get_origin
+from types import NoneType
+from contextvars import ContextVar
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Protocol,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+    runtime_checkable,
+)
 
-from pydantic import BaseModel, SerializationInfo
+from pydantic import BaseModel, SerializationInfo, ConfigDict
 from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -16,6 +29,19 @@ from ical.exceptions import ParameterValueError
 _LOGGER = logging.getLogger(__name__)
 
 T_TYPE = TypeVar("T_TYPE", bound=type)
+
+
+# Repeated values can either be specified as multiple separate values, but
+# also some values support repeated values within a single value with a
+# comma delimiter, listed here.
+EXPAND_REPEATED_VALUES = {
+    "categories",
+    "classification",
+    "exdate",
+    "rdate",
+    "resources",
+    "freebusy",
+}
 
 
 class DataType(Protocol):
@@ -161,6 +187,25 @@ class Registry:
 
         raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
+    def parse_field(
+        self,
+        field: FieldInfo,
+        name: str,
+        items: list[ParsedProperty],
+    ) -> Any:
+        """Parse a list of ParsedProperty items for a specific model field."""
+        annotation, allow_repeated = _get_field_type_info(field)
+        if not annotation:
+            raise ValueError(f"Unable to determine field type for field: {name}")
+        if len(items) > 1 and not allow_repeated:
+            raise ValueError(f"Expected one value for field: {name}")
+
+        if name in EXPAND_REPEATED_VALUES:
+            items = _expand_repeated_property(items)
+
+        validated = [self.parse_property(annotation, prop) for prop in items]
+        return validated if allow_repeated else (validated[0] if validated else None)
+
     def register(
         self,
         name: str | None = None,
@@ -243,3 +288,34 @@ def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any
         if (func := DATA_TYPE.encode_property_json.get(base)) is not None:
             return func(value)
     return value
+
+
+def _expand_repeated_property(value: list[ParsedProperty]) -> list[ParsedProperty]:
+    """Expand properties with repeated values into separate properties."""
+    result: list[ParsedProperty] = []
+    for prop in value:
+        if "," in prop.value:
+            for sub_value in prop.value.split(","):
+                sub_prop = copy.deepcopy(prop)
+                sub_prop.value = sub_value
+                result.append(sub_prop)
+        else:
+            result.append(prop)
+    return result
+
+
+def _get_field_type_info(field: FieldInfo) -> tuple[type | None, bool]:
+    """Get the field type."""
+    annotation: type[Any] | None = field.annotation
+    # Unwrap Annotated/Optional to find if it is a list
+    while get_origin(annotation) is Annotated:
+        annotation = get_args(annotation)[0]
+
+    if get_origin(annotation) is Union:
+        args = [arg for arg in get_args(annotation) if arg is not NoneType]
+        if len(args) == 1:
+            annotation = args[0]
+    allow_repeated = get_origin(annotation) is list
+    if allow_repeated:
+        annotation = get_args(annotation)[0]
+    return annotation, allow_repeated

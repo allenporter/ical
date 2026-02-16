@@ -17,6 +17,7 @@ from typing import Annotated, Any, Optional, Self, Union
 import logging
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
+from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty
 from ical.types.data_types import serialize_field
@@ -416,12 +417,14 @@ class Todo(ComponentModel):
         return self
 
     @classmethod
-    def _parse_property(cls, field_type: type, prop: ParsedProperty) -> Any:
+    def _parse_property(
+        cls, field_type: FieldInfo, name: str, prop: list[ParsedProperty]
+    ) -> Any:
         """Parse an individual field value from a ParsedProperty."""
         try:
-            return super()._parse_property(field_type, prop)
+            return super()._parse_property(field_type, name, prop)
         except ParameterValueError as err:
-            if prop.name == "dtstart" and prop.params:
+            if name == "dtstart":
                 _LOGGER.debug(
                     "Applying todo dtstart repair for invalid timezone; Removing dtstart",
                 )

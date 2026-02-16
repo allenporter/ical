@@ -19,10 +19,12 @@ from __future__ import annotations
 import copy
 import datetime
 import json
+from functools import cache
 import logging
 from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic.fields import FieldInfo
 
 from ical.util import get_field_type
 
@@ -47,18 +49,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 ATTR_VALUE = "VALUE"
-
-# Repeated values can either be specified as multiple separate values, but
-# also some values support repeated values within a single value with a
-# comma delimiter, listed here.
-EXPAND_REPEATED_VALUES = {
-    "categories",
-    "classification",
-    "exdate",
-    "rdate",
-    "resources",
-    "freebusy",
-}
 
 
 def _adjust_recurrence_date(
@@ -170,80 +160,41 @@ class ComponentModel(BaseModel):
         # validation on the new object.
         return self.__class__(**new_item_copy.model_dump())
 
-    @model_validator(mode="before")
     @classmethod
-    def parse_extra_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse extra fields not in the model."""
-        all_fields: set[str | None] = set()
-        for name, field in cls.model_fields.items():
-            all_fields |= {field.alias, name}
-
-        extras: list[ExtraProperty] = []
-        for field_name, value in values.items():
-            if field_name in all_fields:
-                continue
-            extras.extend(
-                [
-                    ExtraPropertyEncoder.__parse_property_value__(prop)
-                    for prop in value
-                    if isinstance(prop, ParsedProperty)
-                ]
-            )
-        if extras:
-            values["extras"] = extras
-        return values
-
-    @classmethod
-    def _parse_property(cls, field_type: type, prop: ParsedProperty) -> Any:
+    def _parse_property(
+        cls, field_type: FieldInfo, name: str, props: list[ParsedProperty]
+    ) -> Any:
         """Parse an individual field value from a ParsedProperty as the specified types."""
-        return DATA_TYPE.parse_property(field_type, prop)
+        return DATA_TYPE.parse_field(field_type, name, props)
+
+    @classmethod
+    @cache
+    def _all_fields(cls) -> dict[str, str]:
+        """Return a mapping of all field names and aliases to their field names."""
+        return {field.alias or name: name for name, field in cls.model_fields.items()}
 
     @model_validator(mode="before")
     @classmethod
-    def parse_property_values(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse individual ParsedProperty value fields."""
-        _LOGGER.debug("Parsing value data %s", values)
-
-        for name, field in cls.model_fields.items():
-            if name == "extras" or field.alias == "extras":
-                continue
-            field_name = field.alias or name
-            if not (value := values.get(field_name)):
-                continue
-            if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
-                # The incoming value is not from the parse tree
-                continue
-            if field_name in EXPAND_REPEATED_VALUES:
-                value = cls._expand_repeated_property(value)
-            # Repeated values will accept a list, otherwise truncate to a single
-            # value when repeated is not allowed.
-            annotation = get_field_type(field.annotation)
-            allow_repeated = get_origin(annotation) is list
-            if not allow_repeated and len(value) > 1:
-                raise ValueError(f"Expected one value for field: {name}")
-
-            validated = [cls._parse_property(annotation, prop) for prop in value]
-            values[field_name] = validated if allow_repeated else validated[0]
-
-        _LOGGER.debug("Completed parsing value data %s", values)
-
-        return values
-
-    @classmethod
-    def _expand_repeated_property(
-        cls, value: list[ParsedProperty]
-    ) -> list[ParsedProperty]:
-        """Expand properties with repeated values into separate properties."""
-        result: list[ParsedProperty] = []
-        for prop in value:
-            if "," in prop.value:
-                for sub_value in prop.value.split(","):
-                    sub_prop = copy.deepcopy(prop)
-                    sub_prop.value = sub_value
-                    result.append(sub_prop)
+    def _parse_component(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Parse individual ParsedProperty items for both model fields and extras."""
+        new_values: dict[str, Any] = {}
+        for key, value in values.items():
+            field_name = cls._all_fields().get(key, "extras")
+            if (
+                (field := cls.model_fields.get(field_name))
+                and isinstance(value, list)
+                and value
+                and isinstance(value[0], ParsedProperty)
+            ):
+                parsed_properties = cls._parse_property(field, key, value)
+                if field_name == "extras":
+                    key = "extras"
+                    parsed_properties = new_values.get("extras", []) + parsed_properties
+                new_values[key] = parsed_properties
             else:
-                result.append(prop)
-        return result
+                new_values[key] = value
+
+        return new_values
 
     def __encode_component_root__(self) -> ParsedComponent:
         """Encode the calendar stream as an rfc5545 iCalendar content."""
