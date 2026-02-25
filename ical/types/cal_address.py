@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ical.parsing.property import ParsedPropertyParameter
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
@@ -97,13 +97,12 @@ class CalAddress(BaseModel):
     __parse_property_value__ = dataclasses.asdict
 
     @classmethod
-    def __encode_property_value__(cls, model_data: dict[str, str]) -> str | None:
-        return model_data.pop("value")
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        return encode_model_property_params(cls.model_fields, model_data)
+    def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
+        """Encode the property."""
+        return ParsedProperty(
+            name="",
+            value=model_data.pop("value"),
+            params=encode_model_property_params(cls.model_fields, model_data),
+        )
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)

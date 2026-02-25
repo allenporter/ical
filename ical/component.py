@@ -19,16 +19,18 @@ from __future__ import annotations
 import copy
 import datetime
 import json
+from functools import cache
 import logging
 from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic.fields import FieldInfo
 
-from ical.util import get_field_type
-
-from .parsing.component import ParsedComponent
 from .parsing.property import ParsedProperty
-from .types.data_types import DATA_TYPE
+from .parsing.component import ParsedComponent
+from .types.extra import ExtraProperty
+from .types.data_types import DATA_TYPE, get_field_type_info
+from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
 
 if TYPE_CHECKING:
@@ -45,18 +47,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 ATTR_VALUE = "VALUE"
-
-# Repeated values can either be specified as multiple separate values, but
-# also some values support repeated values within a single value with a
-# comma delimiter, listed here.
-EXPAND_REPEATED_VALUES = {
-    "categories",
-    "classification",
-    "exdate",
-    "rdate",
-    "resources",
-    "freebusy",
-}
 
 
 def _adjust_recurrence_date(
@@ -168,145 +158,41 @@ class ComponentModel(BaseModel):
         # validation on the new object.
         return self.__class__(**new_item_copy.model_dump())
 
-    @model_validator(mode="before")
     @classmethod
-    def parse_extra_fields(
-        cls, values: dict[str, list[ParsedProperty | ParsedComponent]]
-    ) -> dict[str, Any]:
-        """Parse extra fields not in the model."""
-        all_fields: set[str | None] = set()
-        for name, field in cls.model_fields.items():
-            all_fields |= {field.alias, name}
-
-        extras: list[ParsedProperty | ParsedComponent] = []
-        for field_name, value in values.items():
-            if field_name in all_fields:
-                continue
-            for prop in value:
-                if isinstance(prop, ParsedProperty):
-                    extras.append(prop)
-        if extras:
-            values["extras"] = extras
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse_property_values(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Parse individual ParsedProperty value fields."""
-        _LOGGER.debug("Parsing value data %s", values)
-
-        for name, field in cls.model_fields.items():
-            if field.alias == "extras":
-                continue
-            field_name = field.alias or name
-            if not (value := values.get(field_name)):
-                continue
-            if not (isinstance(value, list) and isinstance(value[0], ParsedProperty)):
-                # The incoming value is not from the parse tree
-                continue
-            if field_name in EXPAND_REPEATED_VALUES:
-                value = cls._expand_repeated_property(value)
-            # Repeated values will accept a list, otherwise truncate to a single
-            # value when repeated is not allowed.
-            annotation = get_field_type(field.annotation)
-            allow_repeated = get_origin(annotation) is list
-            if not allow_repeated and len(value) > 1:
-                raise ValueError(f"Expected one value for field: {name}")
-            field_types = cls._get_field_types(annotation)
-            validated = [cls._parse_property(field_types, prop) for prop in value]
-            values[field_name] = validated if allow_repeated else validated[0]
-
-        _LOGGER.debug("Completed parsing value data %s", values)
-
-        return values
-
-    @classmethod
-    def _parse_property(cls, field_types: list[type], prop: ParsedProperty) -> Any:
+    def _parse_property(
+        cls, field_type: FieldInfo, name: str, props: list[ParsedProperty]
+    ) -> Any:
         """Parse an individual field value from a ParsedProperty as the specified types."""
-        _LOGGER.debug(
-            "Parsing field '%s' with value '%s' as types %s",
-            prop.name,
-            prop.value,
-            field_types,
-        )
-        errors = []
-        for sub_type in field_types:
-            try:
-                return cls._parse_single_property(sub_type, prop)
-            except ParameterValueError as err:
-                _LOGGER.debug("Invalid property value of type %s: %s", sub_type, err)
-                raise err
-            except ValueError as err:
-                _LOGGER.debug(
-                    "Unable to parse property value as type %s: %s", sub_type, err
-                )
-                errors.append(str(err))
-                continue
-        raise ValueError(
-            f"Failed to validate: {prop.value} as {' or '.join(sub_type.__name__ for sub_type in field_types)}, due to: ({errors})"
-        )
+        return DATA_TYPE.parse_field(field_type, name, props)
 
     @classmethod
-    def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
-        """Parse an individual field as a single type."""
-        if (
-            value_type := prop.get_parameter_value(ATTR_VALUE)
-        ) and field_type not in DATA_TYPE.disable_value_param:
-            # Property parameter specified a strong type
-            if func := DATA_TYPE.parse_parameter_by_name.get(value_type):
-                _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
-                return func(prop)
-            # Consider graceful degradation instead in the future
-            raise ValueError(
-                f"Property parameter specified unsupported type: {value_type}"
-            )
+    @cache
+    def _all_fields(cls) -> dict[str, str]:
+        """Return a mapping of all field names and aliases to their field names."""
+        return {field.alias or name: name for name, field in cls.model_fields.items()}
 
-        if decoder := DATA_TYPE.parse_property_value.get(field_type):
-            _LOGGER.debug("Decoding '%s' as type '%s'", prop.name, field_type)
-            return decoder(prop)
-
-        _LOGGER.debug("Using '%s' bare property value '%s'", prop.name, prop.value)
-        return prop.value
-
+    @model_validator(mode="before")
     @classmethod
-    def _expand_repeated_property(
-        cls, value: list[ParsedProperty]
-    ) -> list[ParsedProperty]:
-        """Expand properties with repeated values into separate properties."""
-        result: list[ParsedProperty] = []
-        for prop in value:
-            if "," in prop.value:
-                for sub_value in prop.value.split(","):
-                    sub_prop = copy.deepcopy(prop)
-                    sub_prop.value = sub_value
-                    result.append(sub_prop)
+    def _parse_component(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Parse individual ParsedProperty items for both model fields and extras."""
+        new_values: dict[str, Any] = {}
+        for key, value in values.items():
+            field_name = cls._all_fields().get(key, "extras")
+            if (
+                (field := cls.model_fields.get(field_name))
+                and isinstance(value, list)
+                and value
+                and isinstance(value[0], ParsedProperty)
+            ):
+                parsed_properties = cls._parse_property(field, key, value)
+                if field_name == "extras":
+                    key = "extras"
+                    parsed_properties = new_values.get("extras", []) + parsed_properties
+                new_values[key] = parsed_properties
             else:
-                result.append(prop)
-        return result
+                new_values[key] = value
 
-    @classmethod
-    def _get_field_types(cls, field_type: type) -> list[type]:
-        """Return type to attempt for encoding/decoding based on the field type."""
-        origin = get_origin(field_type)
-        if origin is list:
-            if not (args := get_args(field_type)):
-                raise ValueError(f"Unable to determine args of type: {field_type}")
-            field_type = args[0]
-            origin = get_origin(field_type)
-        if origin is Union:
-            if not (args := get_args(field_type)):
-                raise ValueError(f"Unable to determine args of type: {field_type}")
-
-            # get_args does not have a deterministic order, so use the order supplied
-            # in the registry. Ignore None as its not a parseable type.
-            sortable_args = [
-                (DATA_TYPE.parse_order.get(arg, 0), arg)
-                for arg in args
-                if arg is not type(None)  # noqa: E721
-            ]
-            sortable_args.sort(reverse=True)
-            return [arg for (order, arg) in sortable_args]
-        return [field_type]
+        return new_values
 
     def __encode_component_root__(self) -> ParsedComponent:
         """Encode the calendar stream as an rfc5545 iCalendar content."""
@@ -336,51 +222,22 @@ class ComponentModel(BaseModel):
         for name, field in cls.model_fields.items():
             key = field.alias or name
             values = model_data.get(key)
-            if values is None or key == "extras":
+            if values is None:
                 continue
             if not isinstance(values, list):
                 values = [values]
-            annotation = get_field_type(field.annotation)
+            annotation = get_field_type_info(field.annotation).annotation
             for value in values:
-                for field_type in cls._get_field_types(annotation):
+                for field_type in DATA_TYPE.get_ordered_field_types(annotation):
                     if component_encoder := getattr(
                         field_type, "__encode_component__", None
                     ):
                         parent.components.append(component_encoder(key, value))
                         break
                 else:
-                    if prop := cls._encode_property(key, annotation, value):
+                    if prop := DATA_TYPE.encode_property(key, annotation, value):
                         parent.properties.append(prop)
         return parent
-
-    @classmethod
-    def _encode_property(cls, key: str, field_type: type, value: Any) -> ParsedProperty:
-        """Encode an individual property for the specified field."""
-        # A property field may have multiple possible types, like for
-        # a Union. Pick the first type that is able to encode the value.
-        errors = []
-        for sub_type in cls._get_field_types(field_type):
-            encoded_value: Any | None = None
-            if value_encoder := DATA_TYPE.encode_property_value.get(sub_type):
-                try:
-                    encoded_value = value_encoder(value)
-                except ValueError as err:
-                    _LOGGER.debug("Encoding failed for property: %s", err)
-                    errors.append(str(err))
-                    continue
-            else:
-                encoded_value = value
-
-            if encoded_value is not None:
-                prop = ParsedProperty(name=key, value=encoded_value)
-                if params_encoder := DATA_TYPE.encode_property_params.get(
-                    sub_type, None
-                ):
-                    if params := params_encoder(value):
-                        prop.params = params
-                return prop
-
-        raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
 
     model_config = ConfigDict(
         validate_assignment=True,

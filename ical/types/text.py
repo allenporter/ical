@@ -1,6 +1,6 @@
 """Library for parsing TEXT values."""
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, RE_CONTROL_CHARS
 
 from .data_types import DATA_TYPE
 
@@ -26,10 +26,11 @@ class TextEncoder:
         return prop.value
 
     @classmethod
-    def __encode_property_value__(cls, value: str) -> str:
+    def __encode_property__(cls, value: str) -> ParsedProperty:
         """Serialize text as an ICS value."""
         for key, vin in ESCAPE_CHAR.items():
             if key not in value:
                 continue
             value = value.replace(key, vin)
-        return value
+        value = RE_CONTROL_CHARS.sub("", value)
+        return ParsedProperty(name="", value=value)

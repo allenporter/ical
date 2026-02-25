@@ -72,28 +72,16 @@ def test_datedatime_value_parser() -> None:
     )
     assert model.dt == datetime.date(2022, 7, 24)
 
+    # Unknown VALUE types fall back to TEXT parsing (RFC 5545 graceful degradation)
+    # However, if the resulting TEXT value is invalid for the field type,
+    # Pydantic validation should still catch it
     with pytest.raises(CalendarParseError):
         TestModel.model_validate(
             {
                 "dt": [
                     ParsedProperty(
                         name="dt",
-                        value="20220724T120000",
-                        params=[
-                            ParsedPropertyParameter(name="VALUE", values=["INVALID"]),
-                        ],
-                    )
-                ],
-            }
-        )
-
-    with pytest.raises(CalendarParseError):
-        TestModel.model_validate(
-            {
-                "dt": [
-                    ParsedProperty(
-                        name="dt",
-                        value="20220724",
+                        value="not-a-valid-datetime-or-date",
                         params=[
                             ParsedPropertyParameter(name="VALUE", values=["INVALID"]),
                         ],

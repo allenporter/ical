@@ -9,7 +9,7 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.15.2
     hooks:
       - id: ruff-check
         types_or:
@@ -40,7 +40,7 @@ repos:
               ical/tzif/extended_timezones.py
           )$
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         exclude: '^tests/tool/testdata/.*\.yaml$'

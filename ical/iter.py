@@ -197,9 +197,9 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]
         for rdate in self._rdate:
-            ruleset.rdate(self._defloat(rdate))
+            ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]
         for exdate in self._exdate:
-            ruleset.exdate(self._defloat(exdate))
+            ruleset.exdate(self._defloat(exdate))  # type: ignore[arg-type]
         return ruleset
 
     def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:

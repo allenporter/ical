@@ -35,8 +35,15 @@
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 5), dtend=datetime.date(2025, 5, 6), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250505', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 6), dtend=datetime.date(2025, 5, 7), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250506', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 7), dtend=datetime.date(2025, 5, 8), duration=None, summary='Some Modified Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 38, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250507', related_to=[], related=[], resources=[], rrule=None, rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
-    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 7), dtend=datetime.date(2025, 5, 8), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250507', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
     Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 8), dtend=datetime.date(2025, 5, 9), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250508', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2025, 5, 4, 15, 1, 36, tzinfo=datetime.timezone.utc), uid='v8rukz8ier7ijmn@google.com', dtstart=datetime.date(2025, 5, 9), dtend=datetime.date(2025, 5, 10), duration=None, summary='Some Event', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2025, 5, 4, 14, 56, 10, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2025, 5, 4, 14, 57, 29, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20250509', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=None, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='TRANSPARENT', url=None, extras=[], alarm=[]),
+  ])
+# ---
+# name: test_iterate_events[recurring_with_single_change]
+  list([
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 1, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 1, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Initial Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260201T100000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=3, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 2, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 2, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Edited Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260202T100000', related_to=[], related=[], resources=[], rrule=None, rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
+    Event(dtstamp=datetime.datetime(2026, 2, 2, 1, 0, 20, tzinfo=datetime.timezone.utc), uid='5st6kahlb53s6sdmrgkldms9k2@google.com', dtstart=datetime.datetime(2026, 2, 3, 10, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), dtend=datetime.datetime(2026, 2, 3, 11, 0, tzinfo=zoneinfo.ZoneInfo(key='America/New_York')), duration=None, summary='Initial Title', attendees=[], categories=[], classification=None, comment=[], contacts=[], created=datetime.datetime(2026, 2, 2, 0, 57, 49, tzinfo=datetime.timezone.utc), description=None, geo=None, last_modified=datetime.datetime(2026, 2, 2, 0, 57, 57, tzinfo=datetime.timezone.utc), location=None, organizer=None, priority=None, recurrence_id='20260203T100000', related_to=[], related=[], resources=[], rrule=Recur(freq=<Frequency.DAILY: 'DAILY'>, until=None, count=3, interval=1, by_weekday=[], by_month_day=[], by_month=[], by_setpos=[], wkst=None), rdate=[], exdate=[], request_status=None, sequence=0, status=<EventStatus.CONFIRMED: 'CONFIRMED'>, transparency='OPAQUE', url=None, extras=[], alarm=[]),
   ])
 # ---
 # name: test_iterate_events[store_edit_bugs]
@@ -53,6 +60,8 @@
   BEGIN:VCALENDAR
   PRODID:-//caldav.icloud.com//CALDAVJ 2514B607//EN
   VERSION:2.0
+  X-WR-CALNAME:Home
+  X-APPLE-CALENDAR-COLOR:#ff2d55
   BEGIN:VEVENT
   DTSTAMP:20220925T191543Z
   UID:001BE545-52F9-4099-ACFC-A14FF63C4701
@@ -71,6 +80,7 @@
   SUMMARY:Multi-day event
   CREATED:20231015T180900Z
   SEQUENCE:0
+  TZID:America/Los_Angeles
   END:VEVENT
   BEGIN:VEVENT
   DTSTAMP:20231015T180532Z
@@ -80,6 +90,7 @@
   SUMMARY:Multi-day event
   CREATED:20231015T180532Z
   SEQUENCE:0
+  TZID:America/Los_Angeles
   END:VEVENT
   BEGIN:VEVENT
   DTSTAMP:20220924T152626Z
@@ -137,6 +148,7 @@
   END:VEVENT
   BEGIN:VTIMEZONE
   TZID:America/Los_Angeles
+  X-LIC-LOCATION:America/Los_Angeles
   BEGIN:STANDARD
   DTSTART:18831118T120702
   TZOFFSETTO:-0800
@@ -274,9 +286,11 @@
   UID:20070313T123432Z-456553@example.com
   CATEGORIES:FAMILY
   CATEGORIES:FINANCE
+  CLASS:HERPADERPA
   DUE:20070501
   STATUS:NEEDS-ACTION
   SUMMARY:Submit Quebec Income Tax Return for 2006
+  X-HER-PADERPA:foobar
   END:VTODO
   END:VCALENDAR
   '''
@@ -288,6 +302,8 @@
   METHOD:PUBLISH
   PRODID:-//Google Inc//Google Calendar 70.9054//EN
   VERSION:2.0
+  X-WR-CALNAME:Compromissos
+  X-WR-TIMEZONE:Etc/GMT
   BEGIN:VEVENT
   DTSTAMP:20250511T233945Z
   UID:KOrganizer-854889822.731//199594j26139acq39nj78tbhac@group.calendar.goo
@@ -307,6 +323,7 @@
   END:VEVENT
   BEGIN:VTIMEZONE
   TZID:America/Sao_Paulo
+  X-LIC-LOCATION:America/Sao_Paulo
   BEGIN:STANDARD
   DTSTART:19700101T000000
   TZOFFSETTO:-0300
@@ -316,6 +333,7 @@
   END:VTIMEZONE
   BEGIN:VTIMEZONE
   TZID:America/Argentina/Buenos_Aires
+  X-LIC-LOCATION:America/Argentina/Buenos_Aires
   BEGIN:STANDARD
   DTSTART:19700101T000000
   TZOFFSETTO:-0300
@@ -333,6 +351,9 @@
   METHOD:PUBLISH
   PRODID:-//Google Inc//Google Calendar 70.9054//EN
   VERSION:2.0
+  X-WR-CALNAME:Holidays in United States
+  X-WR-TIMEZONE:UTC
+  X-WR-CALDESC:Holidays and Observances in United States
   BEGIN:VEVENT
   DTSTAMP:20220730T150314Z
   UID:20231110_rhv0a9kca8mmmdo4ei84ubu46s@google.com
@@ -1966,6 +1987,8 @@
   METHOD:PUBLISH
   PRODID:-//Google Inc//Google Calendar 70.9054//EN
   VERSION:2.0
+  X-WR-CALNAME:Public Recurrence Test
+  X-WR-TIMEZONE:America/Los_Angeles
   BEGIN:VEVENT
   DTSTAMP:20250504T150136Z
   UID:v8rukz8ier7ijmn@google.com
@@ -1992,6 +2015,62 @@
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
   END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_parse[recurring_with_single_change]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//Google Inc//Google Calendar 70.9054//EN
+  VERSION:2.0
+  X-WR-CALNAME:iCal bug 2
+  X-WR-TIMEZONE:America/New_York
+  BEGIN:VEVENT
+  DTSTAMP:20260202T010020Z
+  UID:5st6kahlb53s6sdmrgkldms9k2@google.com
+  DTSTART;TZID=America/New_York:20260202T100000
+  DTEND;TZID=America/New_York:20260202T110000
+  SUMMARY:Edited Title
+  CREATED:20260202T005749Z
+  LAST-MODIFIED:20260202T005757Z
+  RECURRENCE-ID:20260202T100000
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  BEGIN:VEVENT
+  DTSTAMP:20260202T010020Z
+  UID:5st6kahlb53s6sdmrgkldms9k2@google.com
+  DTSTART;TZID=America/New_York:20260201T100000
+  DTEND;TZID=America/New_York:20260201T110000
+  SUMMARY:Initial Title
+  CREATED:20260202T005749Z
+  LAST-MODIFIED:20260202T005757Z
+  RRULE:FREQ=DAILY;COUNT=3
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:OPAQUE
+  END:VEVENT
+  BEGIN:VTIMEZONE
+  TZID:America/New_York
+  X-LIC-LOCATION:America/New_York
+  BEGIN:STANDARD
+  DTSTART:19701101T020000
+  TZOFFSETTO:-0500
+  TZOFFSETFROM:-0400
+  RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11
+  TZNAME:EST
+  END:STANDARD
+  BEGIN:DAYLIGHT
+  DTSTART:19700308T020000
+  TZOFFSETTO:-0400
+  TZOFFSETFROM:-0500
+  RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3
+  TZNAME:EDT
+  END:DAYLIGHT
+  END:VTIMEZONE
   END:VCALENDAR
   '''
 # ---

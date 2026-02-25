@@ -96,17 +96,11 @@ class DateTimeEncoder:
         }
 
     @classmethod
-    def __encode_property_value__(cls, value: str | dict[str, Any]) -> str | None:
-        """Encode the ParsedProperty value."""
+    def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty:
+        """Encode the ParsedProperty."""
         if isinstance(value, str):
-            return value
-        return value.get(ATTR_VALUE)
-
-    @classmethod
-    def __encode_property_params__(
-        cls, value: str | dict[str, str]
-    ) -> list[ParsedPropertyParameter]:
-        """Encode parameters for the property value."""
-        if isinstance(value, dict) and (tzid := value.get(TZID)):
-            return [ParsedPropertyParameter(name=TZID, values=[str(tzid)])]
-        return []
+            return ParsedProperty(name="", value=value)
+        prop = ParsedProperty(name="", value=value[ATTR_VALUE])
+        if tzid := value.get(TZID):
+            prop.params = [ParsedPropertyParameter(name=TZID, values=[str(tzid)])]
+        return prop

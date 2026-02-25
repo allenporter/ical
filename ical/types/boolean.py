@@ -23,6 +23,6 @@ class BooleanEncoder:
         raise ValueError(f"Unable to parse value as boolean: {prop}")
 
     @classmethod
-    def __encode_property_value__(cls, value: bool) -> str:
+    def __encode_property__(cls, value: bool) -> ParsedProperty:
         """Serialize boolean as an ICS value."""
-        return "TRUE" if value else "FALSE"
+        return ParsedProperty(name="", value="TRUE" if value else "FALSE")

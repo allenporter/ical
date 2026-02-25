@@ -17,9 +17,18 @@ class Classification(str, enum.Enum):
     CONFIDENTIAL = "CONFIDENTIAL"
 
     @classmethod
-    def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
-        """Parse value into enum."""
-        try:
-            return cls(prop.value)
-        except ValueError:
+    def _missing_(cls, value: object) -> Self | None:
+        """Allow non-standard CLASS values (don't restrict to known constants)."""
+        if value is None:
             return None
+        value = str(value)
+
+        obj = str.__new__(cls, value)
+        obj._name_ = value
+        obj._value_ = value
+        return obj
+
+    @classmethod
+    def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
+        """Parse value into enum (accepts any string)."""
+        return cls(prop.value)

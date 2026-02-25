@@ -33,8 +33,7 @@ from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
 from .iter import MergedIterable, RecurIterable
-from .parsing.property import ParsedProperty
-from .types import Recur, Uri, UtcOffset
+from .types import ExtraProperty, Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import parse_date_and_datetime_list
 
@@ -85,7 +84,7 @@ class Observance(ComponentModel):
     comment: list[str] = Field(default_factory=list)
     """Descriptive explanatory text."""
 
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     def __init__(self, **data: Any) -> None:
         """Initialize Timezone."""
@@ -105,7 +104,7 @@ class Observance(ComponentModel):
         if self.rrule:
             ruleset.rrule(self.rrule.as_rrule(self.start_datetime))
         for rdate in self.rdate:
-            ruleset.rdate(rdate)
+            ruleset.rdate(rdate)  # type: ignore[arg-type]
         return ruleset
 
     @field_validator("dtstart")
@@ -166,7 +165,7 @@ class Timezone(ComponentModel):
     """Specifies the date and time that this time zone was last updated."""
 
     # Unknown or unsupported properties
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     @classmethod
     def from_tzif(cls, key: str, start: datetime.datetime = _TZ_START) -> Timezone:

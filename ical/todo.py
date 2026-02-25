@@ -17,7 +17,9 @@ from typing import Annotated, Any, Optional, Self, Union
 import logging
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
+from pydantic.fields import FieldInfo
 
+from ical.parsing.property import ParsedProperty
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
@@ -27,13 +29,13 @@ from .component import (
     validate_until_dtstart,
     validate_recurrence_dates,
 )
-from .exceptions import CalendarParseError
+from .exceptions import CalendarParseError, ParameterValueError
 from .iter import RulesetIterable, as_rrule
-from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
     CalAddress,
     Classification,
+    ExtraProperty,
     Geo,
     Priority,
     Recur,
@@ -217,7 +219,7 @@ class Todo(ComponentModel):
 
     alarms: list[Alarm] = Field(alias="valarm", default_factory=list)
 
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     def __init__(self, **data: Any) -> None:
         """Initialize Todo."""
@@ -331,7 +333,9 @@ class Todo(ComponentModel):
         if not self.rrule and not self.rdate:
             return None
         if not self.due and not self.duration:
-            raise CalendarParseError("Event must have a due date or duration to be recurring")
+            raise CalendarParseError(
+                "Event must have a due date or duration to be recurring"
+            )
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
     _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
@@ -413,16 +417,14 @@ class Todo(ComponentModel):
         return self
 
     @classmethod
-    def _parse_single_property(cls, field_type: type, prop: ParsedProperty) -> Any:
-        """Parse an individual field as a single type."""
+    def _parse_property(
+        cls, field_type: FieldInfo, name: str, prop: list[ParsedProperty]
+    ) -> Any:
+        """Parse an individual field value from a ParsedProperty."""
         try:
-            return super()._parse_single_property(field_type, prop)
-        except ValueError as err:
-            if (
-                prop.name == "dtstart"
-                and field_type == datetime.datetime
-                and prop.params is not None
-            ):
+            return super()._parse_property(field_type, name, prop)
+        except ParameterValueError as err:
+            if name == "dtstart":
                 _LOGGER.debug(
                     "Applying todo dtstart repair for invalid timezone; Removing dtstart",
                 )

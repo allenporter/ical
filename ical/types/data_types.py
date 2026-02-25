@@ -2,19 +2,61 @@
 
 from __future__ import annotations
 
+import copy
 import logging
+from functools import cache
 from collections.abc import Callable
-from typing import Any, Protocol, TypeVar, get_origin
+from types import NoneType
+from contextvars import ContextVar
+import dataclasses
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Protocol,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+    runtime_checkable,
+)
 
-from pydantic import BaseModel, SerializationInfo
+from pydantic import BaseModel, SerializationInfo, ConfigDict
 from pydantic.fields import FieldInfo
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.util import get_field_type
+from ical.exceptions import ParameterValueError
 
 _LOGGER = logging.getLogger(__name__)
 
 T_TYPE = TypeVar("T_TYPE", bound=type)
+
+
+@dataclasses.dataclass
+class FieldTypeInfo:
+    """Information about a field type."""
+
+    annotation: type[Any]
+    """The base type of the field (e.g. without Optional or list)."""
+
+    is_repeated: bool = False
+    """Whether the field is a list."""
+
+    is_optional: bool = False
+    """Whether the field is Optional."""
+
+
+# Repeated values can either be specified as multiple separate values, but
+# also some values support repeated values within a single value with a
+# comma delimiter, listed here.
+EXPAND_REPEATED_VALUES = {
+    "categories",
+    "classification",
+    "exdate",
+    "rdate",
+    "resources",
+    "freebusy",
+}
 
 
 class DataType(Protocol):
@@ -32,18 +74,13 @@ class DataType(Protocol):
         """Parse the specified property value as a python type."""
 
     @classmethod
+    def __encode_property__(cls, value: Any) -> ParsedProperty | None:
+        """Encode the property from the object model to a ParsedProperty."""
+        return ParsedProperty(name="", value=value)
+
+    @classmethod
     def __encode_property_json__(cls, value: Any) -> str | dict[str, str]:
         """Encode the property during pydantic serialization to object model."""
-
-    @classmethod
-    def __encode_property_value__(cls, value: Any) -> str | None:
-        """Encoded the property from the object model to the ics string value."""
-
-    @classmethod
-    def __encode_property_params__(
-        cls, model_data: dict[str, Any]
-    ) -> list[ParsedPropertyParameter]:
-        """Encode the property parameters from the object model."""
 
 
 class Registry:
@@ -56,15 +93,132 @@ class Registry:
         self._items: dict[str, type] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
+        self._encode_property: dict[type, Callable[[Any], ParsedProperty | None]] = {}
         self._encode_property_json: dict[
             type, Callable[[Any], str | dict[str, str]]
         ] = {}
-        self._encode_property_value: dict[type, Callable[[Any], str | None]] = {}
-        self._encode_property_params: dict[
-            type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]
-        ] = {}
         self._disable_value_param: set[type] = set()
         self._parse_order: dict[type, int] = {}
+
+    def get_ordered_field_types(self, field_type: type) -> list[type]:
+        """Return type to attempt for encoding/decoding based on the field type."""
+        type_info = get_field_type_info(field_type)
+        if get_origin(type_info.annotation) is Union:
+            if not (args := get_args(type_info.annotation)):
+                raise ValueError(f"Unable to determine args of type: {field_type}")
+
+            # get_args does not have a deterministic order, so use the order supplied
+            # in the registry. Ignore None as its not a parseable type.
+            sortable_args = [
+                (self._parse_order.get(arg, 0), arg)
+                for arg in args
+                if arg is not type(None)  # noqa: E721
+            ]
+            sortable_args.sort(reverse=True)
+            return [arg for (order, arg) in sortable_args]
+        return [type_info.annotation]
+
+    def parse_property(self, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field value from a ParsedProperty as the specified types."""
+        field_types = self.get_ordered_field_types(field_type)
+        _LOGGER.debug(
+            "Parsing field '%s' with value '%s' as types %s",
+            prop.name,
+            prop.value,
+            field_types,
+        )
+        errors = []
+        for sub_type in field_types:
+            try:
+                return self._parse_single_property(sub_type, prop)
+            except ParameterValueError as err:
+                _LOGGER.debug("Invalid property value of type %s: %s", sub_type, err)
+                raise err
+            except ValueError as err:
+                _LOGGER.debug(
+                    "Unable to parse property value as type %s: %s", sub_type, err
+                )
+                errors.append(str(err))
+                continue
+        raise ValueError(
+            f"Failed to validate: {prop.value} as {' or '.join(sub_type.__name__ for sub_type in field_types)}, due to: ({errors})"
+        )
+
+    def _parse_single_property(self, field_type: type, prop: ParsedProperty) -> Any:
+        """Parse an individual field as a single type."""
+        if (
+            value_type := prop.get_parameter_value("VALUE")
+        ) and field_type not in self._disable_value_param:
+            # Property parameter specified a strong type
+            if func := self._parse_parameter_by_name.get(value_type):
+                _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
+                return func(prop)
+
+            # Graceful degradation: fall back to TEXT parsing for unknown VALUE types
+            _LOGGER.debug(
+                "Property '%s' has unsupported VALUE type '%s', falling back to TEXT",
+                prop.name,
+                value_type,
+            )
+            # We assume TextEncoder is already registered in Registry
+            if func := self._parse_parameter_by_name.get("TEXT"):
+                return func(prop)
+
+        if decoder := self._parse_property_value.get(field_type):
+            _LOGGER.debug("Decoding '%s' as type '%s'", prop.name, field_type)
+            return decoder(prop)
+
+        _LOGGER.debug("Using '%s' bare property value '%s'", prop.name, prop.value)
+        return prop.value
+
+    def encode_property(self, key: str, field_type: type, value: Any) -> ParsedProperty:
+        """Encode an individual property for the specified field."""
+        # A property field may have multiple possible types, like for
+        # a Union. Pick the first type that is able to encode the value.
+        errors = []
+        for sub_type in self.get_ordered_field_types(field_type):
+            if encoder := self._encode_property.get(sub_type):
+                try:
+                    if prop := encoder(value):
+                        if not prop.name:
+                            prop.name = key
+                        return prop
+                    # Encoder returned None, meaning it couldn't encode this value.
+                    # We continue to the fallback below or the next sub_type.
+                except ValueError as err:
+                    _LOGGER.debug(
+                        "Encoding failed for property type %s: %s", sub_type, err
+                    )
+                    errors.append(str(err))
+                    continue
+
+            if value is not None and not encoder:
+                return ParsedProperty(name=key, value=value)
+
+        raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
+
+    def parse_field(
+        self,
+        field: FieldInfo,
+        name: str,
+        items: list[ParsedProperty],
+    ) -> Any:
+        """Parse a list of ParsedProperty items for a specific model field."""
+        type_info = get_field_type_info(field.annotation)
+        if not type_info.annotation:
+            raise ValueError(f"Unable to determine field type for field: {name}")
+        if len(items) > 1 and not type_info.is_repeated:
+            raise ValueError(f"Expected one value for field: {name}")
+
+        if name in EXPAND_REPEATED_VALUES:
+            items = _expand_repeated_property(items)
+
+        validated = [self.parse_property(type_info.annotation, prop) for prop in items]
+        return (
+            validated
+            if type_info.is_repeated
+            else (validated[0] if validated else None)
+        )
 
     def register(
         self,
@@ -88,16 +242,10 @@ class Registry:
                 self._parse_property_value[data_type] = parse_property_value
                 if name:
                     self._parse_parameter_by_name[name] = parse_property_value
+            if encode_property := getattr(func, "__encode_property__", None):
+                self._encode_property[data_type] = encode_property
             if encode_property_json := getattr(func, "__encode_property_json__", None):
                 self._encode_property_json[data_type] = encode_property_json
-            if encode_property_value := getattr(
-                func, "__encode_property_value__", None
-            ):
-                self._encode_property_value[data_type] = encode_property_value
-            if encode_property_params := getattr(
-                func, "__encode_property_params__", None
-            ):
-                self._encode_property_params[data_type] = encode_property_params
             if disable_value_param:
                 self._disable_value_param |= set({data_type})
             if parse_order:
@@ -107,41 +255,9 @@ class Registry:
         return decorator
 
     @property
-    def parse_property_value(self) -> dict[type, Callable[[ParsedProperty], Any]]:
-        """Registry of python types to functions to parse into pydantic model."""
-        return self._parse_property_value
-
-    @property
-    def parse_parameter_by_name(self) -> dict[str, Callable[[ParsedProperty], Any]]:
-        """Registry based on data value type string name."""
-        return self._parse_parameter_by_name
-
-    @property
     def encode_property_json(self) -> dict[type, Callable[[Any], str | dict[str, str]]]:
         """Registry of encoders run during pydantic json serialization."""
         return self._encode_property_json
-
-    @property
-    def encode_property_value(self) -> dict[type, Callable[[Any], str | None]]:
-        """Registry of encoders that run on the output data model to ics."""
-        return self._encode_property_value
-
-    @property
-    def encode_property_params(
-        self,
-    ) -> dict[type, Callable[[dict[str, Any]], list[ParsedPropertyParameter]]]:
-        """Registry of property parameter encoders run on output data model."""
-        return self._encode_property_params
-
-    @property
-    def disable_value_param(self) -> set[type]:
-        """Return set of types that do not allow VALUE overrides by component parsing."""
-        return self._disable_value_param
-
-    @property
-    def parse_order(self) -> dict[type, int]:
-        """Return the parse ordering of the specified type."""
-        return self._parse_order
 
 
 DATA_TYPE: Registry = Registry()
@@ -149,22 +265,22 @@ DATA_TYPE: Registry = Registry()
 
 def encode_model_property_params(
     fields: dict[str, FieldInfo], model_data: dict[str, Any]
-) -> list[ParsedPropertyParameter]:
+) -> list[ParsedPropertyParameter] | None:
     """Encode a pydantic model's parameters as property params."""
     params = []
     for name, field in fields.items():
         key = field.alias or name
         if key == "value" or (values := model_data.get(key)) is None:
             continue
-        annotation = get_field_type(field.annotation)
-        origin = get_origin(annotation)
-        if origin is not list:
+        type_info = get_field_type_info(field.annotation)
+        if not type_info.is_repeated:
             values = [values]
-        if annotation is bool:
-            encoder = DATA_TYPE.encode_property_value[bool]
-            values = [encoder(value) for value in values]
+        if type_info.annotation is bool:
+            values = [
+                DATA_TYPE.encode_property("", bool, value).value for value in values
+            ]
         params.append(ParsedPropertyParameter(name=key, values=values))
-    return params
+    return params or None
 
 
 def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any:
@@ -185,3 +301,69 @@ def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any
         if (func := DATA_TYPE.encode_property_json.get(base)) is not None:
             return func(value)
     return value
+
+
+def _expand_repeated_property(value: list[ParsedProperty]) -> list[ParsedProperty]:
+    """Expand properties with repeated values into separate properties."""
+    result: list[ParsedProperty] = []
+    for prop in value:
+        if "," in prop.value:
+            for sub_value in prop.value.split(","):
+                sub_prop = copy.deepcopy(prop)
+                sub_prop.value = sub_value
+                result.append(sub_prop)
+        else:
+            result.append(prop)
+    return result
+
+
+def get_field_type_info(annotation: Any) -> FieldTypeInfo:
+    """Get information about the field type."""
+    return _get_field_type_info(annotation)
+
+
+@cache
+def _get_field_type_info(annotation: Any) -> FieldTypeInfo:
+    """Get information about the field type."""
+    is_optional = False
+    while get_origin(annotation) is Annotated:
+        annotation = get_args(annotation)[0]
+
+    if get_origin(annotation) is Union:
+        union_args = get_args(annotation)
+        # Filter None out of the Union
+        valid_args = [arg for arg in union_args if arg is not NoneType]
+        if len(valid_args) < len(union_args):
+            is_optional = True
+        if len(valid_args) == 1:
+            annotation = valid_args[0]
+        elif is_optional:
+            annotation = Union[tuple(valid_args)]
+
+    is_repeated = get_origin(annotation) is list
+    if is_repeated:
+        if not (list_args := get_args(annotation)):
+            raise ValueError(f"Unable to determine args of type: {annotation}")
+        annotation = list_args[0]
+
+    # Handle the case where the list item type is also Optional or Annotated
+    while get_origin(annotation) is Annotated:
+        annotation = get_args(annotation)[0]
+
+    if get_origin(annotation) is Union:
+        union_args = get_args(annotation)
+        valid_args = [arg for arg in union_args if arg is not NoneType]
+        if len(valid_args) < len(union_args):
+            is_optional = True
+        if not valid_args:
+            raise ValueError(f"Unable to determine args of type: {annotation}")
+        if len(valid_args) == 1:
+            annotation = valid_args[0]
+        elif is_optional:
+            annotation = Union[tuple(valid_args)]
+
+    return FieldTypeInfo(
+        annotation=annotation,
+        is_repeated=is_repeated,
+        is_optional=is_optional,
+    )

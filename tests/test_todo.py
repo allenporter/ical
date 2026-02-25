@@ -408,7 +408,7 @@ def test_default_computed_duration(
 
     todo = Todo(
         dtstart=start,
-        due = end,
+        due=end,
     )
     assert todo.computed_duration == datetime.timedelta(days=1)
 

@@ -15,10 +15,10 @@ from pydantic import BeforeValidator, Field, field_serializer, model_validator
 from ical.types.data_types import serialize_field
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
-from .parsing.property import ParsedProperty
 from .types import (
     CalAddress,
     Classification,
+    ExtraProperty,
     Recur,
     RecurrenceId,
     RequestStatus,
@@ -111,7 +111,7 @@ class Journal(ComponentModel):
     url: Optional[Uri] = None
 
     # Unknown or unsupported properties
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     def __init__(self, **data: Any) -> None:
         """Initialize Event."""

@@ -1581,7 +1581,9 @@ def test_dtstart_timezone(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(
+                encoding="utf-8"
+            )
         ),
     ],
 )
@@ -1706,7 +1708,9 @@ def test_store_edit_year_overrun_edit_once(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(
+                encoding="utf-8"
+            )
         ),
     ],
 )
@@ -1786,7 +1790,9 @@ def test_store_edit_year_overrun_edit_this_and_future(
     ("calendar"),
     [
         IcsCalendarStream.calendar_from_ics(
-            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text()
+            pathlib.Path("tests/examples/testdata/store_edit_bugs.ics").read_text(
+                encoding="utf-8"
+            )
         ),
     ],
 )
@@ -1910,3 +1916,23 @@ def test_store_edit_year_override_set_floating_dates(
     event4 = next(iter)
     assert event4.recurrence_id == "20241026T043000"
     assert event4.dtstart == datetime.datetime(2024, 10, 26, 4, 30, 0)
+
+
+def test_control_characters(
+    calendar: Calendar,
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test adding an event to the store and retrieval."""
+    event = Event(
+        summary="Hello, you are seeing an invalid character \x08 here",
+        start="2022-08-29T09:00:00",
+        end="2022-08-29T09:30:00",
+    )
+    store.add(event)
+    ics = IcsCalendarStream.calendar_to_ics(calendar)
+    new_calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert len(new_calendar.events) == 1
+    persisted_event = new_calendar.events[0]
+    assert persisted_event.summary == "Hello, you are seeing an invalid character  here"

@@ -33,11 +33,11 @@ from .component import (
     validate_recurrence_dates,
 )
 from .iter import RulesetIterable, as_rrule
-from .parsing.property import ParsedProperty
 from .timespan import Timespan
 from .types import (
     CalAddress,
     Classification,
+    ExtraProperty,
     Geo,
     Priority,
     Recur,
@@ -260,7 +260,7 @@ class Event(ComponentModel):
     """
 
     # Unknown or unsupported properties
-    extras: list[ParsedProperty] = Field(default_factory=list)
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     alarm: list[Alarm] = Field(alias="valarm", default_factory=list)
     """A grouping of reminder alarms for the event."""
