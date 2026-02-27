@@ -92,6 +92,14 @@ def test_from_contentlines_rdate() -> None:
             [datetime.date(2022, 8, 3), datetime.date(2022, 8, 4)],
         ),
         (
+            "{property};VALUE=DATE:20220803T000000,20220804T000000",
+            [datetime.date(2022, 8, 3), datetime.date(2022, 8, 4)],
+        ),
+        (
+            "{property};VALUE=DATE:20220803T000000Z,20220804T000000Z",
+            [datetime.date(2022, 8, 3), datetime.date(2022, 8, 4)],
+        ),
+        (
             "{property};VALUE=DATE-TIME:20220803T060000,20220804T060000",
             [
                 datetime.datetime(2022, 8, 3, 6, 0, 0),
