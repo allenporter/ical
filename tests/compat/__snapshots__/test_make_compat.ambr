@@ -1,5 +1,33 @@
 # serializer version: 1
-# name: test_make_compat[office_356_custom_timezone]
+# name: test_make_compat_calendar_labs[calendar_labs_same_day_dtend]
+  '''
+  BEGIN:VCALENDAR
+  CALSCALE:GREGORIAN
+  METHOD:PUBLISH
+  PRODID:-//Calendar Labs//Calendar 1.0//EN
+  VERSION:2.0
+  X-WR-CALNAME:Spain Holidays
+  X-WR-TIMEZONE:UTC
+  BEGIN:VEVENT
+  DTSTAMP:20251206T105424Z
+  UID:q4bugdkb4@calendarlabs.com
+  DTSTART:20251208
+  DTEND:20251209
+  SUMMARY:Immaculate Conception Day
+  CLASS:PUBLIC
+  DESCRIPTION:Visit 
+   https://calendarlabs.com/holidays/spain/immaculate-conception-day.php to 
+   know more about Immaculate Conception Day. 
+  PRIORITY:5
+  SEQUENCE:0
+  STATUS:CONFIRMED
+  TRANSP:TRANSPARENT
+  X-MICROSOFT-CDO-IMPORTANCE:1
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_make_compat_office[office_356_custom_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
@@ -171,7 +199,7 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_make_compat[office_365_extended_timezone]
+# name: test_make_compat_office[office_365_extended_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
@@ -205,7 +233,7 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_make_compat[office_365_invalid_timezone]
+# name: test_make_compat_office[office_365_invalid_timezone]
   '''
   BEGIN:VCALENDAR
   METHOD:PUBLISH
