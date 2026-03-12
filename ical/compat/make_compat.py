@@ -9,7 +9,7 @@ from collections.abc import Generator
 import logging
 import re
 
-from . import same_day_dtend_compat, timezone_compat
+from . import dtstart_until_compat, same_day_dtend_compat, timezone_compat
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 _PRODID_RE = r"PRODID:(?P<prodid>.*[^\\r\\n]+)"
 
 _EXCHANGE_PRODID = "Microsoft Exchange Server"
+_GOOGLE_PRODID = "Google Inc//Google Calendar"
 
 
 def _get_prodid(ics: str) -> str | None:
@@ -37,7 +38,7 @@ def enable_compat_mode(ics: str) -> Generator[str]:
     with same_day_dtend_compat.enable_same_day_dtend_compat():
         # Check if the PRODID is from Microsoft Exchange Server
         prodid = _get_prodid(ics)
-        
+
         if prodid and _EXCHANGE_PRODID in prodid:
             _LOGGER.debug("Enabling compatibility mode for Microsoft Exchange Server")
             # Enable compatibility mode for Microsoft Exchange Server
@@ -45,6 +46,12 @@ def enable_compat_mode(ics: str) -> Generator[str]:
                 timezone_compat.enable_allow_invalid_timezones(),
                 timezone_compat.enable_extended_timezones(),
             ):
+                yield ics
+        elif prodid and _GOOGLE_PRODID in prodid:
+            _LOGGER.debug("Enabling compatibility mode for Google Calendar")
+            # Google Calendar historically generates RRULE UNTIL as DATE when
+            # DTSTART is DATE-TIME, violating RFC 5545 section 3.3.10.
+            with dtstart_until_compat.enable_dtstart_until_compat():
                 yield ics
         else:
             yield ics
