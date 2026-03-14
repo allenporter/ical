@@ -62,14 +62,11 @@ def _adjust_recurrence_date(
                 # Some providers (e.g. Google Calendar) incorrectly generate
                 # RRULE UNTIL as a DATE when DTSTART is a DATE-TIME, violating
                 # RFC 5545 section 3.3.10.
-                # Per RFC 5545, UNTIL must be in UTC when DTSTART has a timezone.
-                # For floating DTSTART (no tzinfo), keep it floating as well.
-                converted = datetime.datetime.combine(
-                    date_value, datetime.time(0, 0, 0)
+                # Preserve the tzinfo from DTSTART: UTC for timezone-aware,
+                # None for floating DTSTART.
+                return datetime.datetime.fromordinal(date_value.toordinal()).replace(
+                    tzinfo=datetime.timezone.utc if dtstart.tzinfo is not None else None
                 )
-                if dtstart.tzinfo is not None:
-                    return converted.replace(tzinfo=datetime.timezone.utc)
-                return converted
             raise ValueError(
                 "DTSTART was DATE-TIME but UNTIL was DATE: must be the same value type"
             )
