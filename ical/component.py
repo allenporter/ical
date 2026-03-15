@@ -32,6 +32,7 @@ from .types.extra import ExtraProperty
 from .types.data_types import DATA_TYPE, get_field_type_info
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
+from .compat import dtstart_until_compat
 
 if TYPE_CHECKING:
     from typing import TypeVar
@@ -56,6 +57,16 @@ def _adjust_recurrence_date(
     """Apply fixes to the recurrence rule date."""
     if isinstance(dtstart, datetime.datetime):
         if not isinstance(date_value, datetime.datetime):
+            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                # Convert UNTIL DATE to DATE-TIME matching the DTSTART type.
+                # Some providers (e.g. Google Calendar) incorrectly generate
+                # RRULE UNTIL as a DATE when DTSTART is a DATE-TIME, violating
+                # RFC 5545 section 3.3.10.
+                # Preserve the tzinfo from DTSTART: UTC for timezone-aware,
+                # None for floating DTSTART.
+                return datetime.datetime.fromordinal(date_value.toordinal()).replace(
+                    tzinfo=datetime.timezone.utc if dtstart.tzinfo is not None else None
+                )
             raise ValueError(
                 "DTSTART was DATE-TIME but UNTIL was DATE: must be the same value type"
             )
