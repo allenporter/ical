@@ -161,7 +161,7 @@ class RecurrenceId(BaseModel):
         """Pydantic model configuration."""
 
         validate_assignment = True
-        allow_population_by_field_name = True
+        populate_by_name = True
 
     @classmethod
     def to_value(cls, recurrence_id: str) -> datetime.datetime | datetime.date:
