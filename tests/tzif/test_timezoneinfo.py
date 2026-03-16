@@ -107,6 +107,27 @@ def test_invalid_zoneinfo() -> None:
             "AST",
             datetime.timedelta(hours=-4),
         ),
+        (
+            "Pacific/Auckland",
+            [
+                # NZST (standard time, April-September)
+                datetime.datetime(2025, 7, 1, 9, 0, 0),
+                datetime.datetime(2025, 4, 7, 9, 0, 0),
+            ],
+            "NZST",
+            datetime.timedelta(hours=12),
+        ),
+        (
+            "Pacific/Auckland",
+            [
+                # NZDT (daylight time, September-April)
+                datetime.datetime(2025, 10, 8, 9, 0, 0),
+                datetime.datetime(2025, 12, 8, 15, 0, 0),
+                datetime.datetime(2026, 2, 1, 9, 0, 0),
+            ],
+            "NZDT",
+            datetime.timedelta(hours=13),
+        ),
     ],
 )
 def test_tzinfo(
