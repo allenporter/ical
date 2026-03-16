@@ -74,15 +74,18 @@ def _iana_key_to_resource(key: str) -> tuple[str, str]:
     return package, resource
 
 
-def read(key: str) -> TimezoneInfo:
-    """Read the TZif file from the tzdata package and return timezone records."""
-    _LOGGER.debug("Reading timezone: %s", key)
+def _resolve_extended_timezone(key: str) -> str:
     if timezone_compat.is_extended_timezones_enabled():
         if target_timezone := extended_timezones.EXTENDED_TIMEZONES.get(key):
             _LOGGER.debug("Using extended timezone: %s", target_timezone)
             key = target_timezone
+    return key
 
-    return _read_cache(key)
+
+def read(key: str) -> TimezoneInfo:
+    """Read the TZif file from the tzdata package and return timezone records."""
+    _LOGGER.debug("Reading timezone: %s", key)
+    return _read_cache(_resolve_extended_timezone(key))
 
 
 @cache
@@ -138,16 +141,19 @@ class TzInfo(datetime.tzinfo):
     This class uses the default implementation of fromutc.
     """
 
-    def __init__(self, rule: Rule) -> None:
+    def __init__(self, rule: Rule, key: str | None = None) -> None:
         """Initialize TzInfo."""
         self._rule: Rule = rule
+        self._key: str | None = key
 
     @classmethod
-    def from_timezoneinfo(cls, timezoneinfo: TimezoneInfo) -> TzInfo:
+    def from_timezoneinfo(
+        cls, timezoneinfo: TimezoneInfo, key: str | None = None
+    ) -> TzInfo:
         """Create a new instance of a TzInfo."""
         if not timezoneinfo.rule:
             raise ValueError("Unable to make TzInfo from TimezoneInfo, missing rule")
-        return cls(timezoneinfo.rule)
+        return cls(timezoneinfo.rule, key=key)
 
     def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta:
         """Return offset of local time from UTC, as a timedelta object."""
@@ -180,14 +186,25 @@ class TzInfo(datetime.tzinfo):
         dt_year = datetime.datetime(dt.year, 1, 1)
         dst_start = next(iter(self._rule.dst_start.as_rrule(dt_year)))
         dst_end = next(iter(self._rule.dst_end.as_rrule(dt_year)))
-        if dst_start <= dt.replace(tzinfo=None) < dst_end:
-            dst_offset = self._rule.dst.offset - self._rule.std.offset
-            return dst_offset
+        dt_naive = dt.replace(tzinfo=None)
+        dst_offset = self._rule.dst.offset - self._rule.std.offset
+
+        if dst_start < dst_end:
+            # Northern Hemisphere: DST is between start and end
+            if dst_start <= dt_naive < dst_end:
+                return dst_offset
+        else:
+            # Southern Hemisphere: DST wraps around year boundary
+            # DST is active when NOT between end and start
+            if not (dst_end <= dt_naive < dst_start):
+                return dst_offset
 
         return _ZERO
 
     def __str__(self) -> str:
         """Return the string representation of the timezone."""
+        if self._key:
+            return self._key
         return self._rule.std.name
 
     def __repr__(self) -> str:
@@ -199,9 +216,10 @@ class TzInfo(datetime.tzinfo):
 
 def read_tzinfo(key: str) -> TzInfo:
     """Create a zoneinfo implementation from raw tzif data."""
-    timezoneinfo = read(key)
+    resolved_key = _resolve_extended_timezone(key)
+    timezoneinfo = _read_cache(resolved_key)
     try:
-        return TzInfo.from_timezoneinfo(timezoneinfo)
+        return TzInfo.from_timezoneinfo(timezoneinfo, key=resolved_key)
     except ValueError as err:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
 
