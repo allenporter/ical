@@ -240,7 +240,13 @@ class RecurrenceId(BaseModel):
             return {"date": prop}
 
         result: RecurIdInputDict = {}
-        mode = prop.get_parameter_value("MODE")
+        if isinstance(prop, ParsedProperty):
+            mode = prop.get_parameter_value("MODE")
+        elif isinstance(prop, datetime.datetime):
+            mode = "DATETIME"
+        elif isinstance(prop, datetime.date):
+            mode = "DATE"
+
         if mode:
             if mode == "DATE":
                 value = DateEncoder.__parse_property_value__(prop)
@@ -263,9 +269,11 @@ class RecurrenceId(BaseModel):
                     result["date"] = value
                 except ValueError as err:
                     raise ValueError(f"Unable to parse {prop} as DATE or DATE-TIME")
-        range_param = prop.get_parameter_value("RANGE")
-        if range_param and range_param == "THISANDFUTURE":
-            result["this_and_future"] = True
+        
+        if isinstance(prop, ParsedProperty):
+            range_param = prop.get_parameter_value("RANGE")
+            if range_param and range_param == "THISANDFUTURE":
+                result["this_and_future"] = True
         return result
 
     @classmethod
