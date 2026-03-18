@@ -242,38 +242,40 @@ class RecurrenceId(BaseModel):
         result: RecurIdInputDict = {}
         if isinstance(prop, ParsedProperty):
             mode = prop.get_parameter_value("MODE")
-        elif isinstance(prop, datetime.datetime):
-            mode = "DATETIME"
-        elif isinstance(prop, datetime.date):
-            mode = "DATE"
-
-        if mode:
-            if mode == "DATE":
-                value = DateEncoder.__parse_property_value__(prop)
-            else:
-                value = DateTimeEncoder.__parse_property_value__(prop)
-            if value is None:
-                raise ValueError(f"Cannot parse {prop} as a DATE")
-            result["date"] = value
-        else:
-            try:
-                value = DateEncoder.__parse_property_value__(prop)
-                if value is None:
-                    raise ValueError()
-                result["date"] = value
-            except ValueError as err:
-                try:
+            if mode:
+                if mode == "DATE":
+                    value = DateEncoder.__parse_property_value__(prop)
+                else:
                     value = DateTimeEncoder.__parse_property_value__(prop)
+                if value is None:
+                    raise ValueError(f"Cannot parse {prop} as a DATE")
+                result["date"] = value
+            else:
+                try:
+                    value = DateEncoder.__parse_property_value__(prop)
                     if value is None:
                         raise ValueError()
                     result["date"] = value
                 except ValueError as err:
-                    raise ValueError(f"Unable to parse {prop} as DATE or DATE-TIME")
-        
-        if isinstance(prop, ParsedProperty):
+                    try:
+                        value = DateTimeEncoder.__parse_property_value__(prop)
+                        if value is None:
+                            raise ValueError()
+                        result["date"] = value
+                    except ValueError as err:
+                        raise ValueError(f"Unable to parse {prop} as DATE or DATE-TIME")
+                    
             range_param = prop.get_parameter_value("RANGE")
             if range_param and range_param == "THISANDFUTURE":
                 result["this_and_future"] = True
+        
+        elif isinstance(prop, dict):
+            prop_date = prop.get("date")
+            if prop_date and (isinstance(prop_date, datetime.datetime) or isinstance(prop_date, datetime.date)):
+                    result["date"] = prop_date
+        elif isinstance(prop, RecurrenceId):
+            result = prop
+           
         return result
 
     @classmethod
