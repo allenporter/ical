@@ -52,7 +52,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import parse_date_and_datetime
 
 from .data_types import DATA_TYPE, serialize_field
@@ -137,8 +137,11 @@ class Range(str, enum.Enum):
     """The range of the recurrence identifier and all subsequent values."""
 
 
-@DATA_TYPE.register(disable_value_param=True)
-class RecurrenceId(str):
+RecurIdInputDict = dict[str, datetime.date | datetime.datetime | bool]
+
+
+@DATA_TYPE.register("RECURRENCE-ID", disable_value_param=True)
+class RecurrenceId(BaseModel):
     """Identifies a specific instance of a recurring calendar component.
 
     A property type used in conjunction with the "UID" and "SEQUENCE" properties
@@ -147,6 +150,18 @@ class RecurrenceId(str):
     The full range of a recurrence set is referenced by the "UID". The
     recurrence id can reference a specific instance within the set.
     """
+
+    date: Union[datetime.datetime, datetime.date]
+    """The date (all-day) or datetime of the recurrence to override."""
+
+    this_and_future: bool = False
+    """Whether this should affect future occurrence as well."""
+
+    class Config:
+        """Pydantic model configuration."""
+
+        validate_assignment = True
+        populate_by_name = True
 
     @classmethod
     def to_value(cls, recurrence_id: str) -> datetime.datetime | datetime.date:
@@ -173,27 +188,92 @@ class RecurrenceId(str):
         raise ValueError(f"Unable to parse date/time value: {errors}")
 
     @classmethod
-    def __parse_property_value__(cls, value: Any) -> RecurrenceId:
-        """Parse a calendar user address."""
-        if isinstance(value, ParsedProperty):
-            value = cls._parse_value(value.value)
-        if isinstance(value, str):
-            value = cls._parse_value(value)
-        if isinstance(value, datetime.datetime):
-            value = DateTimeEncoder.__encode_property_json__(value)
-        elif isinstance(value, datetime.date):
-            value = DateEncoder.__encode_property_json__(value)
-        else:
-            value = str(value)
-        return RecurrenceId(value)
+    def __encode_property_value__(cls, data: dict[str, Any]) -> str:
+        for key, value in data.items():
+            if key == "date":
+                if isinstance(value, str):
+                    return value
+                if isinstance(value, dict):
+                    prop_value = DateTimeEncoder.__encode_property_value__(value)
+                    if prop_value:
+                        return prop_value
+                if isinstance(value, datetime.datetime):
+                    prop = DateTimeEncoder.__encode_property_json__(value)
+                    prop_value = DateTimeEncoder.__encode_property_value__(prop)
+                    if prop_value:
+                        return prop_value
+                return DateEncoder.__encode_property_json__(value)
+        raise ValueError("No date provided to RecurrenceId")
 
     @classmethod
-    def _parse_value(cls, value: str) -> datetime.datetime | datetime.date | str:
-        try:
-            return cls.to_value(value)
-        except ValueError:
-            pass
-        return str(value)
+    def __encode_property_params__(
+        cls,
+        value: (
+            str | dict[str, str | dict[str, str] | datetime.date | datetime.datetime]
+        ),
+    ) -> list[ParsedPropertyParameter]:
+        if not isinstance(value, dict):
+            return []
+
+        params = []
+        for key, param in value.items():
+            if key == "date":
+                if isinstance(param, dict):
+                    params.extend(DateTimeEncoder.__encode_property_params__(param))
+                    params.append(ParsedPropertyParameter("VALUE", ["DATE-TIME"]))
+                elif isinstance(param, datetime.datetime):
+                    prop = DateTimeEncoder.__encode_property_json__(param)
+                    params.extend(DateTimeEncoder.__encode_property_params__(prop))
+                    params.append(ParsedPropertyParameter("VALUE", ["DATE-TIME"]))
+                else:
+                    params.append(ParsedPropertyParameter("VALUE", ["DATE"]))
+            elif key == "this_and_future":
+                if param:
+                    params.append(ParsedPropertyParameter("RANGE", ["THISANDFUTURE"]))
+        return params
+
+    @classmethod
+    def __parse_property_value__(
+        cls, prop: ParsedProperty | dict | RecurrenceId
+    ) -> RecurIdInputDict:
+        result: RecurIdInputDict = {}
+        if isinstance(prop, ParsedProperty):
+            mode = prop.get_parameter_value("MODE")
+            if mode:
+                if mode == "DATE":
+                    value = DateEncoder.__parse_property_value__(prop)
+                else:
+                    value = DateTimeEncoder.__parse_property_value__(prop)
+                if value is None:
+                    raise ValueError(f"Cannot parse {prop} as a DATE")
+                result["date"] = value
+            else:
+                try:
+                    value = DateEncoder.__parse_property_value__(prop)
+                    if value is None:
+                        raise ValueError()
+                    result["date"] = value
+                except ValueError as err:
+                    try:
+                        value = DateTimeEncoder.__parse_property_value__(prop)
+                        if value is None:
+                            raise ValueError()
+                        result["date"] = value
+                    except ValueError as err:
+                        raise ValueError(f"Unable to parse {prop} as DATE or DATE-TIME")
+                    
+            range_param = prop.get_parameter_value("RANGE")
+            if range_param and range_param == "THISANDFUTURE":
+                result["this_and_future"] = True
+        
+        elif isinstance(prop, dict):
+            prop_date = prop.get("date")
+            if prop_date and (isinstance(prop_date, datetime.datetime) or isinstance(prop_date, datetime.date)):
+                result["date"] = prop_date
+        elif isinstance(prop, RecurrenceId):
+            result = prop
+           
+        return result
 
     @classmethod
     def __get_pydantic_core_schema__(
