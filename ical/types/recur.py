@@ -234,11 +234,8 @@ class RecurrenceId(BaseModel):
 
     @classmethod
     def __parse_property_value__(
-        cls, prop: ParsedProperty | datetime.datetime | datetime.date
+        cls, prop: ParsedProperty | dict | RecurrenceId
     ) -> RecurIdInputDict:
-        if isinstance(prop, datetime.datetime) or isinstance(prop, datetime.date):
-            return {"date": prop}
-
         result: RecurIdInputDict = {}
         if isinstance(prop, ParsedProperty):
             mode = prop.get_parameter_value("MODE")
