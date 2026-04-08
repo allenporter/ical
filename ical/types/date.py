@@ -13,6 +13,8 @@ from .data_types import DATA_TYPE
 _LOGGER = logging.getLogger(__name__)
 
 DATE_REGEX = re.compile(r"^([0-9]{8})$")
+# Some generators emit invalid DATE values with a midnight time suffix.
+DATE_WITH_TIME_REGEX = re.compile(r"^([0-9]{8})T000000Z?$")
 
 
 @DATA_TYPE.register("DATE", parse_order=1)
@@ -26,7 +28,10 @@ class DateEncoder:
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.date | None:
         """Parse a rfc5545 into a datetime.date."""
-        if not (match := DATE_REGEX.fullmatch(prop.value)):
+        match = DATE_REGEX.fullmatch(prop.value)
+        if not match:
+            match = DATE_WITH_TIME_REGEX.fullmatch(prop.value)
+        if not match:
             raise ValueError(f"Expected value to match DATE pattern: '{prop.value}'")
         date_value = match.group(1)
         year = int(date_value[0:4])
