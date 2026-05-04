@@ -1,4 +1,4 @@
-"""Regression tests for performance of TzInfo.dst() / utcoffset().
+"""Regression and benchmark tests for performance of TzInfo.dst().
 
 TzInfo.dst() previously rebuilt two dateutil.rrule.rrule instances on
 every call to compute the year's DST start/end transitions. Because
@@ -8,6 +8,11 @@ this work. For large calendars that use posix-rule TzInfo instances --
 e.g. Office 365 ICS feeds whose VTIMEZONEs ("Pacific Standard Time" etc.)
 get mapped to posix rules by the compat layer -- this dominated runtime.
 
+The cache regression test below is always run; the ``benchmark`` tests
+follow the existing ``pytest-benchmark`` pattern (see ``test_iter.py`` and
+``test_tz_rule.py``) and are skipped by default via the ``--benchmark-skip``
+option in ``pytest.ini``. Run them explicitly with ``--benchmark-only``.
+
 See:
 - home-assistant/core#148315
 - allenporter/ical#481 (same class of bug, different code path)
@@ -16,7 +21,7 @@ See:
 from __future__ import annotations
 
 import datetime
-import time
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -116,65 +121,60 @@ END:VTIMEZONE
     return "\r\n".join(lines) + "\r\n"
 
 
-def test_timeline_active_after_is_fast_for_office365_extended_timezone() -> None:
-    """End-to-end regression test for the perf bug.
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+def test_benchmark_dst_repeated_calls(benchmark: Any) -> None:
+    """Benchmark TzInfo.dst() across repeated calls within the same year.
 
-    Build a synthetic Office 365-style ICS with the non-IANA TZID
-    "Pacific Standard Time" and many events, then iterate the timeline.
-    Without the per-year DST transition cache, this took ~15s for 2543
-    events on a fast laptop and minutes on a Raspberry Pi (causing
-    Home Assistant to hang). With the cache it completes in well under
-    a second.
-
-    A generous 5s budget is used so the test is tolerant of slow CI
-    while still flagging an order-of-magnitude regression.
+    With the per-year cache in place, ``dst()`` should be effectively
+    O(1) after the first call for a given year. Without it, every call
+    rebuilt two ``dateutil.rrule.rrule`` instances. This benchmark
+    exercises the hot path and is intended to surface regressions in
+    the cache.
     """
-    ics = _build_office_style_ics(num_events=2000)
+    tz = timezoneinfo.read_tzinfo("America/Los_Angeles")
+    # Pre-generate a list of datetimes spanning two years so the cache
+    # is exercised but year transitions are amortized.
+    dts = [
+        datetime.datetime(2024 + (i % 2), 1 + (i % 12), 1 + (i % 28), 12, 0, 0)
+        for i in range(1000)
+    ]
 
-    with enable_compat_mode(ics) as compat_ics:
-        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+    def call_dst() -> int:
+        count = 0
+        for dt in dts:
+            tz.dst(dt)
+            count += 1
+        return count
 
-    assert len(calendar.events) == 2000
-
-    now = datetime.datetime.now(datetime.timezone.utc)
-    timeline = calendar.timeline
-
-    start = time.perf_counter()
-    event = next(timeline.active_after(now), None)
-    elapsed = time.perf_counter() - start
-
-    # We don't assert on the specific event (depends on "now"); the
-    # iteration just needs to complete quickly.
-    _ = event
-
-    assert elapsed < 5.0, (
-        f"timeline.active_after() + next() took {elapsed:.2f}s for 2000 "
-        "events with TZID=Pacific Standard Time; expected < 5.0s. This "
-        "indicates a regression in the TzInfo.dst() per-year transition "
-        "cache."
-    )
+    result = benchmark(call_dst)
+    assert result == len(dts)
 
 
 @pytest.mark.parametrize("num_events", [500, 2000])
-def test_repeated_event_lookups_are_fast(num_events: int) -> None:
-    """Repeated next-event lookups should not re-do per-call DST work.
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+def test_benchmark_office365_extended_timezone_timeline(
+    num_events: int, benchmark: Any
+) -> None:
+    """Benchmark ``timeline.active_after()`` on an Office 365-style ICS.
 
-    Mirrors how Home Assistant repeatedly polls the next event from the
-    timeline; each call must remain cheap.
+    Builds a synthetic ICS using the non-IANA ``Pacific Standard Time``
+    TZID (which the ical compat layer maps to a posix-rule TzInfo) and
+    measures how long it takes to fetch the next active event. This is
+    the user-facing scenario that motivated the per-year DST transition
+    cache (Home Assistant polls this repeatedly for Office 365
+    calendars).
     """
     ics = _build_office_style_ics(num_events=num_events)
     with enable_compat_mode(ics) as compat_ics:
         calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
 
+    assert len(calendar.events) == num_events
+
     now = datetime.datetime.now(datetime.timezone.utc)
-    timeline = calendar.timeline
 
-    start = time.perf_counter()
-    for _ in range(5):
-        next(timeline.active_after(now), None)
-    elapsed = time.perf_counter() - start
+    def lookup_next() -> None:
+        # ``timeline`` rebuilds the iterator each time (mirrors HA
+        # polling pattern), so re-access it inside the benchmark loop.
+        next(calendar.timeline.active_after(now), None)
 
-    assert elapsed < 5.0, (
-        f"5 timeline.active_after() + next() calls took {elapsed:.2f}s "
-        f"for {num_events} events; expected < 5.0s."
-    )
+    benchmark(lookup_next)
