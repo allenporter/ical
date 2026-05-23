@@ -1,6 +1,7 @@
 """Tests for the tzif library."""
 
 import datetime
+from typing import Any
 from unittest.mock import patch
 import zoneinfo
 
@@ -201,3 +202,68 @@ def test_read_tzinfo_value_error() -> None:
         ),
     ):
         timezoneinfo.read_tzinfo("X/Y")
+
+
+def test_dst_caches_transitions_per_year() -> None:
+    """TzInfo.dst() should compute year transitions at most once per year.
+
+    Direct unit-level guard on the cache: with the as_rrule() helper
+    spied on, calling dst() many times across only two distinct years
+    must trigger at most two rrule constructions per transition rule
+    (one for dst_start, one for dst_end), regardless of the number of
+    dst() calls.
+    """
+    tz = timezoneinfo.read_tzinfo("America/Los_Angeles")
+
+    original_as_rrule = tz_rule.RuleDate.as_rrule
+    call_count = 0
+
+    def counting_as_rrule(self, dtstart=None):  # type: ignore[no-untyped-def]
+        nonlocal call_count
+        call_count += 1
+        return original_as_rrule(self, dtstart)
+
+    with patch.object(tz_rule.RuleDate, "as_rrule", counting_as_rrule):
+        # Hammer dst() with many datetimes in only two distinct years.
+        for _ in range(1000):
+            tz.dst(datetime.datetime(2024, 3, 15, 12, 0, 0))
+            tz.dst(datetime.datetime(2024, 11, 15, 12, 0, 0))
+            tz.dst(datetime.datetime(2025, 3, 15, 12, 0, 0))
+            tz.dst(datetime.datetime(2025, 11, 15, 12, 0, 0))
+
+    # Two distinct years * two transition rules (dst_start + dst_end) = 4.
+    assert call_count <= 4, (
+        f"RuleDate.as_rrule called {call_count} times; expected <= 4 "
+        "(once per (year, transition)). The per-year cache in "
+        "TzInfo.dst() appears to be broken, which causes severe "
+        "performance regressions for large calendars."
+    )
+
+
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+def test_benchmark_dst_repeated_calls(benchmark: Any) -> None:
+    """Benchmark TzInfo.dst() across repeated calls within the same year.
+
+    With the per-year cache in place, ``dst()`` should be effectively
+    O(1) after the first call for a given year. Without it, every call
+    rebuilt two ``dateutil.rrule.rrule`` instances. This benchmark
+    exercises the hot path and is intended to surface regressions in
+    the cache.
+    """
+    tz = timezoneinfo.read_tzinfo("America/Los_Angeles")
+    # Pre-generate a list of datetimes spanning two years so the cache
+    # is exercised but year transitions are amortized.
+    dts = [
+        datetime.datetime(2024 + (i % 2), 1 + (i % 12), 1 + (i % 28), 12, 0, 0)
+        for i in range(1000)
+    ]
+
+    def call_dst() -> int:
+        count = 0
+        for dt in dts:
+            tz.dst(dt)
+            count += 1
+        return count
+
+    result = benchmark(call_dst)
+    assert result == len(dts)
