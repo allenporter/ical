@@ -34,7 +34,9 @@ def mock_frozen_time() -> Generator[FrozenDateTimeFactory, None, None]:
 
 
 @pytest.mark.parametrize("filename", OFFICE_FILES, ids=OFFICE_IDS)
-def test_make_compat_office(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
+def test_make_compat_office(
+    filename: pathlib.Path, snapshot: SnapshotAssertion
+) -> None:
     """Test Microsoft Office/Exchange Server compatibility."""
     with filename.open(encoding="utf-8") as ics_file:
         ics = ics_file.read()
@@ -51,7 +53,9 @@ def test_make_compat_office(filename: pathlib.Path, snapshot: SnapshotAssertion)
 
 
 @pytest.mark.parametrize("filename", CALENDAR_LABS_FILES, ids=CALENDAR_LABS_IDS)
-def test_make_compat_calendar_labs(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
+def test_make_compat_calendar_labs(
+    filename: pathlib.Path, snapshot: SnapshotAssertion
+) -> None:
     """Test Calendar Labs same-day DTEND compatibility."""
     with filename.open(encoding="utf-8") as ics_file:
         ics = ics_file.read()
@@ -77,7 +81,7 @@ def test_parse_failure_office(filename: pathlib.Path) -> None:
 @pytest.mark.parametrize("filename", CALENDAR_LABS_FILES, ids=CALENDAR_LABS_IDS)
 def test_parse_success_calendar_labs(filename: pathlib.Path) -> None:
     """Test that Calendar Labs files parse successfully without compat mode.
-    
+
     Calendar Labs same-day DTEND files should parse successfully even without
     compat mode, but will have incorrect DTEND (same as DTSTART).
     """
