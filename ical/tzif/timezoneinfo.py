@@ -131,6 +131,25 @@ class TzInfoResult:
     dst: datetime.timedelta | None
 
 
+@cache
+def _get_rule_date_transition(
+    month: int,
+    day_of_week: int,
+    week_of_month: int,
+    time: datetime.timedelta,
+    year: int,
+) -> datetime.datetime:
+    """Compute and cache the transition date for a RuleDate in a given year."""
+    dt_year = datetime.datetime(year, 1, 1)
+    rule_date = RuleDate(
+        month=month,
+        day_of_week=day_of_week,
+        week_of_month=week_of_month,
+        time=time,
+    )
+    return next(iter(rule_date.as_rrule(dt_year)))
+
+
 class TzInfo(datetime.tzinfo):
     """An implementation of tzinfo based on a TimezoneInfo for current TZ rules.
 
@@ -145,14 +164,6 @@ class TzInfo(datetime.tzinfo):
         """Initialize TzInfo."""
         self._rule: Rule = rule
         self._key: str | None = key
-        # Cache of (dst_start, dst_end) naive datetimes for a given year. The
-        # transition dates depend only on dt.year, but computing them requires
-        # building two dateutil rrules and iterating them which is expensive
-        # when called for every datetime comparison during timeline iteration
-        # of large calendars (e.g. Office 365 ICS feeds).
-        self._dst_transitions_cache: dict[
-            int, tuple[datetime.datetime, datetime.datetime]
-        ] = {}
 
     @classmethod
     def from_timezoneinfo(
@@ -191,15 +202,20 @@ class TzInfo(datetime.tzinfo):
         ):
             return None
 
-        transitions = self._dst_transitions_cache.get(dt.year)
-        if transitions is None:
-            dt_year = datetime.datetime(dt.year, 1, 1)
-            transitions = (
-                next(iter(self._rule.dst_start.as_rrule(dt_year))),
-                next(iter(self._rule.dst_end.as_rrule(dt_year))),
-            )
-            self._dst_transitions_cache[dt.year] = transitions
-        dst_start, dst_end = transitions
+        dst_start = _get_rule_date_transition(
+            self._rule.dst_start.month,
+            self._rule.dst_start.day_of_week,
+            self._rule.dst_start.week_of_month,
+            self._rule.dst_start.time,
+            dt.year,
+        )
+        dst_end = _get_rule_date_transition(
+            self._rule.dst_end.month,
+            self._rule.dst_end.day_of_week,
+            self._rule.dst_end.week_of_month,
+            self._rule.dst_end.time,
+            dt.year,
+        )
         dt_naive = dt.replace(tzinfo=None)
         dst_offset = self._rule.dst.offset - self._rule.std.offset
 
