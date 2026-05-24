@@ -41,7 +41,7 @@ def parse_property_value(
             else:
                 try:
                     timezone = zoneinfo.ZoneInfo(value)
-                except zoneinfo.ZoneInfoNotFoundError:
+                except (zoneinfo.ZoneInfoNotFoundError, ValueError):
                     try:
                         timezone = timezoneinfo.read_tzinfo(value)
                     except timezoneinfo.TimezoneInfoError:

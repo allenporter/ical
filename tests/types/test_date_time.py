@@ -149,3 +149,56 @@ def test_datedatime_parameter_encoder() -> None:
                 ],
             }
         )
+
+
+def test_bogus_timezone_value_error() -> None:
+    """Test that a bogus timezone like tzone:// raises a clean CalendarParseError under default strict parsing."""
+
+    class TestModel(ComponentModel):
+        dt: datetime.datetime
+
+    with pytest.raises(CalendarParseError, match="valid timezone"):
+        TestModel.model_validate(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724T120000",
+                        params=[
+                            ParsedPropertyParameter(
+                                name="TZID",
+                                values=["tzone://Microsoft/Custom"],
+                            ),
+                        ],
+                    )
+                ],
+            }
+        )
+
+
+def test_bogus_timezone_allow_invalid() -> None:
+    """Test that a bogus timezone is parsed successfully when allow_invalid_timezone is True."""
+
+    class TestModel(ComponentModel):
+        dt: datetime.datetime
+
+    from ical.compat import timezone_compat
+
+    with timezone_compat.enable_allow_invalid_timezones():
+        model = TestModel.model_validate(
+            {
+                "dt": [
+                    ParsedProperty(
+                        name="dt",
+                        value="20220724T120000",
+                        params=[
+                            ParsedPropertyParameter(
+                                name="TZID",
+                                values=["tzone://Microsoft/Custom"],
+                            ),
+                        ],
+                    )
+                ],
+            }
+        )
+        assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0, tzinfo=None)
