@@ -12,7 +12,7 @@ wheels = [
 
 [[package]]
 name = "ical"
-version = "13.2.2"
+version = "13.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
