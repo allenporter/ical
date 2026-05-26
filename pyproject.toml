@@ -63,3 +63,6 @@ init_forbid_extra = false
 init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
+
+[tool.ty.src]
+exclude = ["tests", "examples"]
