@@ -40,6 +40,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal, Optional, Union
+from zoneinfo import ZoneInfo
 
 from dateutil import rrule
 from pydantic import (
@@ -52,7 +53,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import parse_date_and_datetime
 
 from .data_types import DATA_TYPE, serialize_field
@@ -137,8 +138,8 @@ class Range(str, enum.Enum):
     """The range of the recurrence identifier and all subsequent values."""
 
 
-@DATA_TYPE.register(disable_value_param=True)
-class RecurrenceId(str):
+@DATA_TYPE.register("RECURRENCE-ID", disable_value_param=True)
+class RecurrenceId(BaseModel):
     """Identifies a specific instance of a recurring calendar component.
 
     A property type used in conjunction with the "UID" and "SEQUENCE" properties
@@ -148,13 +149,66 @@ class RecurrenceId(str):
     recurrence id can reference a specific instance within the set.
     """
 
+    date: Annotated[
+        Union[datetime.date, datetime.datetime],
+        BeforeValidator(parse_date_and_datetime),
+    ]
+    """The date (all-day) or datetime of the recurrence to override."""
+
+    this_and_future: bool = False
+    """Whether this should affect future occurrence as well."""
+
+    @property
+    def range(self) -> Range:
+        return Range.THIS_AND_FUTURE if self.this_and_future else Range.NONE
+
+    model_config = ConfigDict(
+        populate_by_name=True, validate_assignment=True, arbitrary_types_allowed=True
+    )
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RecurrenceId):
+            return NotImplemented
+        return self.date == other.date and self.this_and_future == other.this_and_future
+
+    def __hash__(self) -> int:
+        return hash((self.date, self.this_and_future))
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
+
     @classmethod
-    def to_value(cls, recurrence_id: str) -> datetime.datetime | datetime.date:
+    def from_value(
+        cls,
+        recurrence_id: RecurrenceId | str | datetime.date | datetime.datetime,
+        this_and_future: Range | bool | None = None,
+        timezone: datetime.tzinfo | None = None,
+    ) -> "RecurrenceId":
+        if isinstance(recurrence_id, RecurrenceId):
+            date = recurrence_id.date
+            future = recurrence_id.this_and_future
+        elif isinstance(recurrence_id, str):
+            date = cls.string_to_date(recurrence_id)
+            future = False
+        else:
+            date = recurrence_id
+            future = False
+        if this_and_future is not None:
+            if isinstance(this_and_future, Range):
+                future = this_and_future == Range.THIS_AND_FUTURE
+            else:
+                future = this_and_future
+        if timezone is not None:
+            if isinstance(date, datetime.datetime):
+                date = date.astimezone(timezone)
+        return RecurrenceId(date=date, this_and_future=future)
+
+    @classmethod
+    def string_to_date(cls, date_str: str) -> datetime.datetime | datetime.date:
         """Convert a string RecurrenceId into a date or time value."""
         errors = []
         try:
             date_value = DateEncoder.__parse_property_value__(
-                ParsedProperty(name="", value=recurrence_id)
+                ParsedProperty(name="", value=date_str)
             )
             if date_value:
                 return date_value
@@ -163,7 +217,7 @@ class RecurrenceId(str):
 
         try:
             date_time_value = DateTimeEncoder.__parse_property_value__(
-                ParsedProperty(name="", value=recurrence_id)
+                ParsedProperty(name="", value=date_str)
             )
             if date_time_value:
                 return date_time_value
@@ -173,27 +227,60 @@ class RecurrenceId(str):
         raise ValueError(f"Unable to parse date/time value: {errors}")
 
     @classmethod
-    def __parse_property_value__(cls, value: Any) -> RecurrenceId:
-        """Parse a calendar user address."""
-        if isinstance(value, ParsedProperty):
-            value = cls._parse_value(value.value)
-        if isinstance(value, str):
-            value = cls._parse_value(value)
-        if isinstance(value, datetime.datetime):
-            value = DateTimeEncoder.__encode_property_json__(value)
-        elif isinstance(value, datetime.date):
-            value = DateEncoder.__encode_property_json__(value)
+    def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
+        params = []
+
+        date_value = model_data["date"]
+        if isinstance(date_value, str):
+            prop = ParsedProperty(name="recurrence-id", value=date_value)
         else:
-            value = str(value)
-        return RecurrenceId(value)
+            prop = ParsedProperty(name="recurrence-id", value=date_value["VALUE"])
+            if "TZID" in date_value:
+                params.append(
+                    ParsedPropertyParameter(name="TZID", values=[date_value["TZID"]])
+                )
+
+        date_type = cls.string_to_date(prop.value)
+        if isinstance(date_type, datetime.datetime):
+            params.append(ParsedPropertyParameter("VALUE", ["DATE-TIME"]))
+        else:
+            params.append(ParsedPropertyParameter("VALUE", ["DATE"]))
+
+        if model_data.get("this_and_future"):
+            params.append(
+                ParsedPropertyParameter("RANGE", [Range.THIS_AND_FUTURE.value])
+            )
+
+        if params:
+            prop.params = params
+        return prop
 
     @classmethod
-    def _parse_value(cls, value: str) -> datetime.datetime | datetime.date | str:
-        try:
-            return cls.to_value(value)
-        except ValueError:
-            pass
-        return str(value)
+    def __parse_property_value__(
+        cls, prop: ParsedProperty | dict[str, Any] | datetime.datetime | datetime.date
+    ) -> RecurrenceId | dict[str, Any]:
+        if isinstance(prop, dict):
+            return prop
+        elif isinstance(prop, datetime.datetime) or isinstance(prop, datetime.date):
+            return cls.from_value(prop)
+        elif isinstance(prop, RecurrenceId):
+            return prop
+        else:
+            this_and_future = False
+            timezone: datetime.tzinfo | None = None
+            if prop.params:
+                for param in prop.params:
+                    if param.name == "RANGE" and Range.THIS_AND_FUTURE in param.values:
+                        this_and_future = True
+                    if param.name == "TZID" and param.values:
+                        timezone_value = param.values[0]
+                        if isinstance(timezone_value, str):
+                            timezone = ZoneInfo(timezone_value)
+                        else:
+                            timezone = timezone_value
+            return cls.from_value(
+                prop.value, this_and_future=this_and_future, timezone=timezone
+            )
 
     @classmethod
     def __get_pydantic_core_schema__(

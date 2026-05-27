@@ -22,7 +22,7 @@ from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
-from ical.types.recur import Range, Recur
+from ical.types.recur import Range, Recur, RecurrenceId
 from ical.types import RelationshipType, RelatedTo
 
 TZ = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -1605,17 +1605,29 @@ def test_store_edit_year_overrun_edit_once(
     # Pick an arbitrary event in the series
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 5, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 12, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T110000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 19, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
@@ -1642,22 +1654,38 @@ def test_store_edit_year_overrun_edit_once(
     timeline = calendar.timeline_tz(tzinfo=viewer_tz)
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 5, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 12, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 10, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T110000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 19, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
     event4 = next(iter)
-    assert event4.recurrence_id == "20241026T110000"
+    assert event4.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 26, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event4.dtstart == datetime.datetime(
         2024, 10, 26, 11, 0, 0, tzinfo=calendar_tz
     )
@@ -1683,22 +1711,38 @@ def test_store_edit_year_overrun_edit_once(
     timeline = calendar.timeline_tz(tzinfo=viewer_tz)
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 5, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 12, 11, 0, tzinfo=zoneinfo.ZoneInfo(key="Europe/Amsterdam")
+        )
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 10, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T043000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 19, 4, 30, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+        )
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 10, 30, 0, tzinfo=calendar_tz
     )
     event4 = next(iter)
-    assert event4.recurrence_id == "20241026T043000"
+    assert event4.recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2024, 10, 26, 4, 30, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+        )
+    )
     assert event4.dtstart == datetime.datetime(
         2024, 10, 26, 10, 30, 0, tzinfo=calendar_tz
     )
@@ -1732,17 +1776,23 @@ def test_store_edit_year_overrun_edit_this_and_future(
     # Pick an arbitrary event in the series
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 5, 11, 0, tzinfo=calendar_tz)
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 12, 11, 0, tzinfo=calendar_tz)
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T110000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 19, 11, 0, tzinfo=calendar_tz)
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
@@ -1770,17 +1820,23 @@ def test_store_edit_year_overrun_edit_this_and_future(
     timeline = calendar.timeline_tz(tzinfo=viewer_tz)
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 5, 11, 0, tzinfo=calendar_tz)
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T040000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 12, 4, 0, tzinfo=viewer_tz)
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 10, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T040000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 19, 4, 0, tzinfo=viewer_tz)
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 10, 0, 0, tzinfo=calendar_tz
     )
@@ -1814,17 +1870,23 @@ def test_store_edit_year_override_set_floating_dates(
     # Pick an arbitrary event in the series
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 5, 11, 0, tzinfo=calendar_tz)
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 12, 11, 0, tzinfo=calendar_tz)
+    )
     assert event2.dtstart == datetime.datetime(
         2024, 10, 12, 11, 0, 0, tzinfo=calendar_tz
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T110000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 19, 11, 0, tzinfo=calendar_tz)
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
@@ -1856,12 +1918,16 @@ def test_store_edit_year_override_set_floating_dates(
     timeline = calendar.timeline_tz(tzinfo=viewer_tz)
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 5, 11, 0, tzinfo=calendar_tz)
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 12, 11, 0, tzinfo=calendar_tz)
+    )
     assert event2.dtstart == datetime.datetime(
         2024,
         10,
@@ -1871,12 +1937,16 @@ def test_store_edit_year_override_set_floating_dates(
         0,
     )
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T110000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 19, 11, 0, tzinfo=calendar_tz)
+    )
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
     event4 = next(iter)
-    assert event4.recurrence_id == "20241026T110000"
+    assert event4.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 26, 11, 0, tzinfo=calendar_tz)
+    )
     assert event4.dtstart == datetime.datetime(
         2024, 10, 26, 11, 0, 0, tzinfo=calendar_tz
     )
@@ -1903,18 +1973,26 @@ def test_store_edit_year_override_set_floating_dates(
     timeline = calendar.timeline_tz(tzinfo=viewer_tz)
     iter = timeline.active_after(datetime.datetime(2024, 10, 1, tzinfo=viewer_tz))
     event1 = next(iter)
-    assert event1.recurrence_id == "20241005T110000"
+    assert event1.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 5, 11, 0, tzinfo=calendar_tz)
+    )
     assert event1.dtstart == datetime.datetime(
         2024, 10, 5, 11, 0, 0, tzinfo=calendar_tz
     )
     event2 = next(iter)
-    assert event2.recurrence_id == "20241012T110000"
+    assert event2.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 12, 11, 0, tzinfo=calendar_tz)
+    )
     assert event2.dtstart == datetime.datetime(2024, 10, 12, 4, 0, 0)
     event3 = next(iter)
-    assert event3.recurrence_id == "20241019T043000"
+    assert event3.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 19, 4, 30)
+    )
     assert event3.dtstart == datetime.datetime(2024, 10, 19, 4, 30, 0)
     event4 = next(iter)
-    assert event4.recurrence_id == "20241026T043000"
+    assert event4.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2024, 10, 26, 4, 30)
+    )
     assert event4.dtstart == datetime.datetime(2024, 10, 26, 4, 30, 0)
 
 

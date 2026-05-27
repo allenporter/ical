@@ -82,19 +82,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Daily meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-08-30T09:00:00',
-      'recurrence_id': '20220830T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 30, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Daily meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-08-31T09:00:00',
-      'recurrence_id': '20220831T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 31, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Daily meeting',
       'uid': 'mock-uid-1',
     }),
@@ -117,19 +126,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -139,13 +157,19 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -177,7 +201,7 @@
   list([
     tuple(
       '2024-01-09',
-      '20240109',
+      RecurrenceId(date=FakeDate(2024, 1, 9), this_and_future=False),
       None,
       list([
       ]),
@@ -196,7 +220,7 @@
   list([
     tuple(
       '2024-01-09',
-      '20240109',
+      RecurrenceId(date=FakeDate(2024, 1, 9), this_and_future=False),
       None,
       list([
       ]),
@@ -216,7 +240,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -227,7 +254,10 @@
   list([
     dict({
       'due': '2024-01-12',
-      'recurrence_id': '20240111',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 11),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -238,7 +268,10 @@
   list([
     dict({
       'due': '2024-01-13',
-      'recurrence_id': '20240112',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 12),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -262,19 +295,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
@@ -284,19 +326,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays',
       'uid': 'mock-uid-1',
     }),
@@ -306,19 +357,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -328,19 +388,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -350,19 +419,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -372,19 +450,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -421,19 +508,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00',
-      'recurrence_id': '20220919T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 19, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
@@ -443,19 +539,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26',
-      'recurrence_id': '20220926',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 26),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
@@ -465,19 +570,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
@@ -487,21 +601,30 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'sequence': 1,
       'summary': 'Tuesday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
@@ -512,21 +635,30 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'sequence': 1,
       'summary': 'Tuesday event',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'sequence': 0,
       'summary': 'Monday event',
       'uid': 'mock-uid-1',
@@ -537,19 +669,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Monday',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
@@ -559,19 +700,28 @@
   list([
     dict({
       'dtstart': '2022-08-29',
-      'recurrence_id': '20220829',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 8, 29),
+        'this_and_future': False,
+      }),
       'summary': 'Monday',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05',
-      'recurrence_id': '20220905',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 5),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12',
-      'recurrence_id': '20220912',
+      'recurrence_id': dict({
+        'date': FakeDate(2022, 9, 12),
+        'this_and_future': False,
+      }),
       'summary': 'Mondays [edit]',
       'uid': 'mock-uid-1',
     }),
@@ -581,19 +731,28 @@
   list([
     dict({
       'dtstart': '2022-08-30T09:00:00',
-      'recurrence_id': '20220830T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 30, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
-      'recurrence_id': '20220906T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 6, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-13T09:00:00',
-      'recurrence_id': '20220913T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 13, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -603,19 +762,28 @@
   list([
     dict({
       'dtstart': '2022-08-30T09:00:00',
-      'recurrence_id': '20220830T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 30, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
-      'recurrence_id': '20220906T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 6, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-13T09:00:00',
-      'recurrence_id': '20220913T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 13, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -625,19 +793,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -647,19 +824,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -669,19 +855,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
@@ -691,19 +886,28 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Team meeting',
       'uid': 'mock-uid-1',
     }),
@@ -713,13 +917,19 @@
   list([
     dict({
       'dtstart': '2022-08-30T09:00:00',
-      'recurrence_id': '20220830T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 30, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-06T09:00:00',
-      'recurrence_id': '20220906T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 6, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Tuesday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -850,7 +1060,10 @@
   list([
     dict({
       'due': '2024-01-07',
-      'recurrence_id': '20240106',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 6),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Wash car (Sa)',
       'uid': 'mock-uid-1',
@@ -861,7 +1074,10 @@
   list([
     dict({
       'due': '2024-01-07',
-      'recurrence_id': '20240106',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 6),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Wash car (Sa)',
       'uid': 'mock-uid-1',
@@ -872,7 +1088,10 @@
   list([
     dict({
       'due': '2024-01-14',
-      'recurrence_id': '20240113',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 13),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Wash car (Sa)',
       'uid': 'mock-uid-1',
@@ -883,7 +1102,10 @@
   list([
     dict({
       'due': '2024-01-22',
-      'recurrence_id': '20240121',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 21),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Wash car (Su)',
       'uid': 'mock-uid-1',
@@ -902,7 +1124,7 @@
   DTSTART:20240121
   DUE:20240122
   LAST-MODIFIED:20220903T093805Z
-  RECURRENCE-ID:20240120
+  RECURRENCE-ID;VALUE=DATE;RANGE=THISANDFUTURE:20240120
   RRULE:FREQ=WEEKLY;COUNT=8;BYDAY=SU
   SEQUENCE:1
   STATUS:NEEDS-ACTION
@@ -927,31 +1149,46 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00',
-      'recurrence_id': '20220919T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 19, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -961,31 +1198,46 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00',
-      'recurrence_id': '20220919T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 19, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -995,31 +1247,46 @@
   list([
     dict({
       'dtstart': '2022-08-29T09:00:00-07:00',
-      'recurrence_id': '20220829T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 8, 29, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-05T09:00:00-07:00',
-      'recurrence_id': '20220905T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 5, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-12T09:00:00-07:00',
-      'recurrence_id': '20220912T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 12, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-19T09:00:00-07:00',
-      'recurrence_id': '20220919T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 19, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
     dict({
       'dtstart': '2022-09-26T09:00:00-07:00',
-      'recurrence_id': '20220926T090000',
+      'recurrence_id': dict({
+        'date': FakeDatetime(2022, 9, 26, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles')),
+        'this_and_future': False,
+      }),
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),
@@ -1050,7 +1317,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1061,7 +1331,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1072,7 +1345,10 @@
   list([
     dict({
       'due': '2024-01-11',
-      'recurrence_id': '20240110',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 10),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1083,7 +1359,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1102,7 +1381,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1113,7 +1395,10 @@
   list([
     dict({
       'due': '2024-01-11',
-      'recurrence_id': '20240110',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 10),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.NEEDS_ACTION: 'NEEDS-ACTION'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1124,7 +1409,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240110',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 10),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk cat',
       'uid': 'mock-uid-1',
@@ -1135,7 +1423,10 @@
   list([
     dict({
       'due': '2024-01-10',
-      'recurrence_id': '20240109',
+      'recurrence_id': dict({
+        'date': FakeDate(2024, 1, 9),
+        'this_and_future': False,
+      }),
       'status': <TodoStatus.COMPLETED: 'COMPLETED'>,
       'summary': 'Walk dog',
       'uid': 'mock-uid-1',
@@ -1155,7 +1446,7 @@
   DTSTART:20240109
   DUE:20240110
   LAST-MODIFIED:20240109T100005Z
-  RECURRENCE-ID:20240109
+  RECURRENCE-ID;VALUE=DATE:20240109
   SEQUENCE:1
   STATUS:COMPLETED
   SUMMARY:Walk dog
@@ -1189,7 +1480,7 @@
   DTSTART:20240109
   DUE:20240110
   LAST-MODIFIED:20240109T100005Z
-  RECURRENCE-ID:20240109
+  RECURRENCE-ID;VALUE=DATE:20240109
   SEQUENCE:1
   STATUS:COMPLETED
   SUMMARY:Walk dog
@@ -1202,7 +1493,7 @@
   DTSTART:20240109
   DUE:20240110
   LAST-MODIFIED:20240110T100000Z
-  RECURRENCE-ID:20240110
+  RECURRENCE-ID;VALUE=DATE:20240110
   EXDATE:20240109
   SEQUENCE:1
   STATUS:COMPLETED
@@ -1237,7 +1528,7 @@
   DTSTART:20240109
   DUE:20240110
   LAST-MODIFIED:20240109T100005Z
-  RECURRENCE-ID:20240109
+  RECURRENCE-ID;VALUE=DATE:20240109
   SEQUENCE:1
   STATUS:COMPLETED
   SUMMARY:Walk dog
@@ -1250,7 +1541,7 @@
   DTSTART:20240109
   DUE:20240110
   LAST-MODIFIED:20240110T100000Z
-  RECURRENCE-ID:20240110
+  RECURRENCE-ID;VALUE=DATE:20240110
   EXDATE:20240109
   SEQUENCE:2
   STATUS:COMPLETED

@@ -13,7 +13,7 @@ from ical.calendar_stream import IcsCalendarStream
 from ical.compat import enable_compat_mode
 from ical.event import Event
 from ical.journal import Journal
-from ical.types.recur import Recur
+from ical.types.recur import Recur, RecurrenceId
 from ical.timeline import generic_timeline, materialize_timeline, calendar_timeline
 
 TZ = zoneinfo.ZoneInfo("America/Regina")
@@ -81,31 +81,37 @@ def test_journal_timeline() -> None:
     ):
         timeline = generic_timeline([journal], TZ)
         assert list(timeline) == [
-            Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.model_copy(
+                journal,
+                update={"recurrence_id": RecurrenceId(date=datetime.date(2022, 8, 7))},
+            ),
             Journal.model_copy(
                 journal,
                 update={
                     "dtstart": datetime.date(2022, 8, 8),
-                    "recurrence_id": "20220808",
+                    "recurrence_id": RecurrenceId(date=datetime.date(2022, 8, 8)),
                 },
             ),
             Journal.model_copy(
                 journal,
                 update={
                     "dtstart": datetime.date(2022, 8, 9),
-                    "recurrence_id": "20220809",
+                    "recurrence_id": RecurrenceId(date=datetime.date(2022, 8, 9)),
                 },
             ),
         ]
         assert list(
             timeline.overlapping(datetime.date(2022, 8, 7), datetime.date(2022, 8, 9))
         ) == [
-            Journal.model_copy(journal, update={"recurrence_id": "20220807"}),
+            Journal.model_copy(
+                journal,
+                update={"recurrence_id": RecurrenceId(date=datetime.date(2022, 8, 7))},
+            ),
             Journal.model_copy(
                 journal,
                 update={
                     "dtstart": datetime.date(2022, 8, 8),
-                    "recurrence_id": "20220808",
+                    "recurrence_id": RecurrenceId(date=datetime.date(2022, 8, 8)),
                 },
             ),
         ]

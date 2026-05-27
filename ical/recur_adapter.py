@@ -28,20 +28,6 @@ ItemType = TypeVar("ItemType", bound="Event | Todo | Journal")
 _DateOrDatetime = datetime.datetime | datetime.date
 
 
-def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
-    """Compute the RecurrenceId for a recurrence date.
-
-    This converts a date/datetime from a recurrence expansion into the
-    floating-time RecurrenceId string used to identify that instance.
-    """
-    # Make recurrence_id floating time to avoid dealing with serializing
-    # TZID. This value will still be unique within the series and is in
-    # the context of dtstart which may have a timezone.
-    if isinstance(dt, datetime.datetime) and dt.tzinfo:
-        dt = dt.replace(tzinfo=None)
-    return RecurrenceId.__parse_property_value__(dt)
-
-
 class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
     """An iterable that filters out dates from a recurrence expansion.
 
@@ -52,7 +38,7 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
     def __init__(
         self,
         recur: Iterable[_DateOrDatetime],
-        exclude_ids: frozenset[RecurrenceId],
+        exclude_ids: frozenset[datetime.date | datetime.datetime],
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
@@ -61,7 +47,7 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
         for dt in self._recur:
-            if _recurrence_id_for(dt) not in self._exclude_ids:
+            if dt not in self._exclude_ids:
                 yield dt
 
 
@@ -89,7 +75,7 @@ class RecurAdapter(Generic[ItemType]):
         """Return a lazy sortable item."""
 
         dtend = dtstart + self._duration if self._duration else dtstart
-        recurrence_id = _recurrence_id_for(dtstart)
+        recurrence_id = RecurrenceId.from_value(dtstart)
 
         def build() -> ItemType:
             updates = {
@@ -137,7 +123,7 @@ def merge_and_expand_items(
         # An edited instance has a recurrence_id (identifying which
         # instance it replaces) but no rrule (it's a single instance).
         exclude_ids = frozenset(
-            item.recurrence_id
+            item.recurrence_id.date
             for item in uid_items
             if item.recurrence_id and not item.rrule
         )

@@ -40,7 +40,9 @@ def test_recurrence_id_datetime() -> None:
             ]
         }
     )
-    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2022, 7, 24, 12, 0)
+    )
 
 
 def test_recurrence_id_date() -> None:
@@ -49,7 +51,7 @@ def test_recurrence_id_date() -> None:
     model = FakeModel.model_validate(
         {"recurrence_id": [ParsedProperty(name="recurrence_id", value="20220724")]}
     )
-    assert model.recurrence_id == "20220724"
+    assert model.recurrence_id == RecurrenceId(date=datetime.date(2022, 7, 24))
 
 
 def test_recurrence_id_ignore_params() -> None:
@@ -68,15 +70,17 @@ def test_recurrence_id_ignore_params() -> None:
             ]
         }
     )
-    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id == RecurrenceId(
+        date=datetime.datetime(2022, 7, 24, 12, 0), this_and_future=True
+    )
 
 
 def test_invalid_recurrence_id() -> None:
     """Test for a recurrence id that is not a valid DATE or DATE-TIME string."""
-    model = FakeModel.model_validate(
-        {"recurrence_id": [ParsedProperty(name="recurrence_id", value="invalid")]}
-    )
-    assert model.recurrence_id == "invalid"
+    with pytest.raises(CalendarParseError):
+        FakeModel.model_validate(
+            {"recurrence_id": [ParsedProperty(name="recurrence_id", value="invalid")]}
+        )
 
 
 @pytest.mark.parametrize(

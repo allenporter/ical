@@ -9,6 +9,7 @@ import pytest
 from syrupy import SnapshotAssertion
 
 from ical.calendar_stream import IcsCalendarStream
+from ical.types import RecurrenceId
 
 TEST_DIR = Path("tests/examples")
 TEST_FILES = sorted(list(TEST_DIR.glob("testdata/*.ics")))
@@ -44,15 +45,27 @@ def test_recurring_with_single_change() -> None:
 
     # Feb 1 - original title
     assert events[0].summary == "Initial Title"
-    assert events[0].recurrence_id == "20260201T100000"
+    assert events[0].recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2026, 2, 1, 10, 0, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+        )
+    )
     assert events[0].dtstart == datetime.datetime(2026, 2, 1, 10, 0, tzinfo=tz)
 
     # Feb 2 - edited instance with RECURRENCE-ID
     assert events[1].summary == "Edited Title"
-    assert events[1].recurrence_id == "20260202T100000"
+    assert events[1].recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2026, 2, 2, 10, 0, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+        )
+    )
     assert events[1].dtstart == datetime.datetime(2026, 2, 2, 10, 0, tzinfo=tz)
 
     # Feb 3 - original title
     assert events[2].summary == "Initial Title"
-    assert events[2].recurrence_id == "20260203T100000"
+    assert events[2].recurrence_id == RecurrenceId(
+        date=datetime.datetime(
+            2026, 2, 3, 10, 0, tzinfo=zoneinfo.ZoneInfo(key="America/New_York")
+        )
+    )
     assert events[2].dtstart == datetime.datetime(2026, 2, 3, 10, 0, tzinfo=tz)
