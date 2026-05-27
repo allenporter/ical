@@ -9,6 +9,8 @@ from unittest.mock import patch
 import pytest
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
+from ical.compat import enable_compat_mode
 from ical.event import Event
 from ical.journal import Journal
 from ical.types.recur import Recur, RecurrenceId
@@ -326,3 +328,87 @@ def test_materialize_timeline_no_stop_max_events() -> None:
     events = list(materialized)
     assert len(events) == 3
     assert [e.summary for e in events] == ["Event 0", "Event 1", "Event 2"]
+
+
+def _build_office_style_ics(num_events: int) -> str:
+    """Build a synthetic ICS using an Office 365-style 'Pacific Standard Time'
+
+    VTIMEZONE plus ``num_events`` non-overlapping VEVENTs spanning several
+    years. The TZID is mapped by ical's compat layer to a posix-rule
+    TzInfo, which is the code path that exhibited the regression.
+    """
+    # Office 365 VTIMEZONE block as Microsoft emits it. The TZID
+    # "Pacific Standard Time" is non-IANA; the ical compat layer maps it
+    # to America/Los_Angeles (posix-rule TzInfo).
+    lines = [
+        "BEGIN:VCALENDAR",
+        "METHOD:PUBLISH",
+        "PRODID:Microsoft Exchange Server 2010",
+        "VERSION:2.0",
+        "BEGIN:VTIMEZONE",
+        "TZID:Pacific Standard Time",
+        "BEGIN:STANDARD",
+        "DTSTART:16010101T020000",
+        "TZOFFSETFROM:-0700",
+        "TZOFFSETTO:-0800",
+        "RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11",
+        "END:STANDARD",
+        "BEGIN:DAYLIGHT",
+        "DTSTART:16010101T020000",
+        "TZOFFSETFROM:-0800",
+        "TZOFFSETTO:-0700",
+        "RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3",
+        "END:DAYLIGHT",
+        "END:VTIMEZONE",
+    ]
+
+    # Spread events across several years so timeline iteration crosses
+    # multiple year boundaries (which mirrors a real Office 365 calendar).
+    base = datetime.datetime(2020, 1, 1, 9, 0, 0)
+    for i in range(num_events):
+        start = base + datetime.timedelta(hours=i)
+        end = start + datetime.timedelta(minutes=30)
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:perf-regression-{i}@example.invalid",
+                f"SUMMARY:Event {i}",
+                f"DTSTART;TZID=Pacific Standard Time:{start:%Y%m%dT%H%M%S}",
+                f"DTEND;TZID=Pacific Standard Time:{end:%Y%m%dT%H%M%S}",
+                f"DTSTAMP:{start:%Y%m%dT%H%M%S}Z",
+                "END:VEVENT",
+            ]
+        )
+
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines) + "\r\n"
+
+
+@pytest.mark.parametrize("num_events", [500, 2000])
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+def test_benchmark_office365_extended_timezone_timeline(
+    num_events: int, benchmark: Any
+) -> None:
+    """Benchmark ``timeline.active_after()`` on an Office 365-style ICS.
+
+    Builds a synthetic ICS using the non-IANA ``Pacific Standard Time``
+    TZID (which the ical compat layer maps to a posix-rule TzInfo) and
+    measures how long it takes to fetch the next active event. This is
+    the user-facing scenario that motivated the per-year DST transition
+    cache (Home Assistant polls this repeatedly for Office 365
+    calendars).
+    """
+    ics = _build_office_style_ics(num_events=num_events)
+    with enable_compat_mode(ics) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    assert len(calendar.events) == num_events
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    def lookup_next() -> None:
+        # ``timeline`` rebuilds the iterator each time (mirrors HA
+        # polling pattern), so re-access it inside the benchmark loop.
+        next(calendar.timeline.active_after(now), None)
+
+    benchmark(lookup_next)

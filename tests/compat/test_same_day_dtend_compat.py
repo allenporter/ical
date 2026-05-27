@@ -17,7 +17,7 @@ def test_same_day_dtend_fail() -> None:
     calendar = IcsCalendarStream.calendar_from_ics(
         CALENDAR_LABS_SAME_DAY.read_text(encoding="utf-8")
     )
-    
+
     event = calendar.events[0]
     # Without compat mode, DTEND should equal DTSTART (incorrect)
     assert event.dtstart == event.dtend
@@ -31,13 +31,13 @@ def test_same_day_dtend_compat() -> None:
         calendar = IcsCalendarStream.calendar_from_ics(
             CALENDAR_LABS_SAME_DAY.read_text(encoding="utf-8")
         )
-    
+
     event = calendar.events[0]
     # With compat mode, DTEND should be DTSTART + 1 day (correct)
     assert event.dtend != event.dtstart
     assert str(event.dtstart) == "2025-12-08"
     assert str(event.dtend) == "2025-12-09"
-    
+
     # Test that the output can be serialized and parsed back
     output_ics = IcsCalendarStream.calendar_to_ics(calendar)
     reparsed_calendar = IcsCalendarStream.calendar_from_ics(output_ics)
@@ -50,11 +50,11 @@ def test_same_day_dtend_compat_context_manager() -> None:
     """Test that compat mode is properly enabled/disabled."""
     # Initially disabled
     assert not same_day_dtend_compat.is_same_day_dtend_compat_enabled()
-    
+
     # Enabled within context
     with same_day_dtend_compat.enable_same_day_dtend_compat():
         assert same_day_dtend_compat.is_same_day_dtend_compat_enabled()
-    
+
     # Disabled after context
     assert not same_day_dtend_compat.is_same_day_dtend_compat_enabled()
 
@@ -71,10 +71,10 @@ DTEND:20251208T100000Z
 SUMMARY:Datetime Event
 END:VEVENT
 END:VCALENDAR"""
-    
+
     with same_day_dtend_compat.enable_same_day_dtend_compat():
         calendar = IcsCalendarStream.calendar_from_ics(datetime_ics)
-    
+
     event = calendar.events[0]
     # Datetime events should NOT be fixed (DTEND should remain same as DTSTART)
     assert event.dtstart == event.dtend
@@ -93,10 +93,10 @@ DTEND;VALUE=DATE:20251210
 SUMMARY:Multi-day Event
 END:VEVENT
 END:VCALENDAR"""
-    
+
     with same_day_dtend_compat.enable_same_day_dtend_compat():
         calendar = IcsCalendarStream.calendar_from_ics(different_dates_ics)
-    
+
     event = calendar.events[0]
     # Events with different DTSTART/DTEND should NOT be modified
     assert str(event.dtstart) == "2025-12-08"

@@ -455,7 +455,9 @@ class Event(ComponentModel):
     def _validate_same_day_dtend(self) -> Self:
         """Fix same-day DTEND for all-day events when compat mode is enabled."""
         if same_day_dtend_compat.is_same_day_dtend_compat_enabled():
-            if isinstance(self.dtstart, datetime.date) and not isinstance(self.dtstart, datetime.datetime):
+            if isinstance(self.dtstart, datetime.date) and not isinstance(
+                self.dtstart, datetime.datetime
+            ):
                 if self.dtend and self.dtend == self.dtstart:
                     self.dtend = self.dtstart + datetime.timedelta(days=1)
         return self
