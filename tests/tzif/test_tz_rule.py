@@ -12,7 +12,7 @@ TEST_DATETIME = datetime.datetime(2022, 1, 1)
 
 def expand_rule(test_rule: tz_rule.RuleDate) -> datetime.datetime:
     """Test method to expand a rule to a single value."""
-    return cast(datetime.datetime, next(iter(test_rule.as_rrule(TEST_DATETIME))))
+    return next(iter(test_rule.as_rrule(TEST_DATETIME)))
 
 
 def test_standard() -> None:

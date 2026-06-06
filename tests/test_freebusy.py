@@ -58,6 +58,7 @@ def test_start_date() -> None:
     """Test FreeBusy with a start date and no end."""
 
     freebusy = FreeBusy(start=datetime.date(2022, 8, 7))
+    assert freebusy.start is not None
     assert freebusy.start.isoformat() == "2022-08-07"
     # Use local timezone
     assert freebusy.start_datetime
@@ -95,14 +96,14 @@ def test_free_busy() -> None:
                     2022, 8, 7, 5, 0, 0, tzinfo=datetime.timezone.utc
                 ),
                 duration=datetime.timedelta(hours=2),
-                free_busy_type=FreeBusyType.BUSY,
+                FBTYPE=FreeBusyType.BUSY,
             ),
             Period(
                 start=datetime.datetime(
                     2022, 8, 7, 10, 0, 0, tzinfo=datetime.timezone.utc
                 ),
                 duration=datetime.timedelta(minutes=30),
-                free_busy_type=FreeBusyType.BUSY,
+                FBTYPE=FreeBusyType.BUSY,
             ),
         ],
     )
@@ -125,7 +126,7 @@ def test_free_busy_requires_utc() -> None:
                 Period(
                     start=datetime.datetime(2022, 8, 7, 5, 0, 0),
                     duration=datetime.timedelta(hours=2),
-                    free_busy_type=FreeBusyType.BUSY,
+                    FBTYPE=FreeBusyType.BUSY,
                 ),
             ],
         )

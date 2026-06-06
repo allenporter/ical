@@ -3,6 +3,7 @@
 import pathlib
 import re
 from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +27,7 @@ CALENDAR_LABS_IDS = [x.stem for x in CALENDAR_LABS_FILES]
 
 
 @pytest.fixture(name="frozen_time", autouse=True)
-def mock_frozen_time() -> Generator[FrozenDateTimeFactory, None, None]:
+def mock_frozen_time() -> Generator[Any, None, None]:
     """Fixture to freeze time to a specific point."""
     with freeze_time("2026-01-03T21:29:07") as freeze:
         with patch("ical.event.dtstamp_factory", new=freeze):

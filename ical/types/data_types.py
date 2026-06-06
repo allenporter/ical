@@ -36,7 +36,7 @@ T_TYPE = TypeVar("T_TYPE", bound=type)
 class FieldTypeInfo:
     """Information about a field type."""
 
-    annotation: type[Any]
+    annotation: Any
     """The base type of the field (e.g. without Optional or list)."""
 
     is_repeated: bool = False

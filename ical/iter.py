@@ -21,7 +21,7 @@ import datetime
 import heapq
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from typing import Any, Generic, TypeVar, Union, cast
 
 from dateutil import rrule
@@ -195,11 +195,11 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         """Create a dateutil.rruleset."""
         ruleset = rrule.rruleset()
         for rule in self._rrule:
-            ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]
+            ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for rdate in self._rdate:
-            ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]
+            ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for exdate in self._exdate:
-            ruleset.exdate(self._defloat(exdate))  # type: ignore[arg-type]
+            ruleset.exdate(self._defloat(exdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         return ruleset
 
     def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:
@@ -286,7 +286,7 @@ class MergedIterator(Iterator[T]):
 class MergedIterable(Iterable[T]):
     """An iterator that merges results from underlying sorted iterables."""
 
-    def __init__(self, iters: list[Iterable[T]]) -> None:
+    def __init__(self, iters: Sequence[Iterable[T]]) -> None:
         """Initialize MergedIterable."""
         self._iters = iters
 

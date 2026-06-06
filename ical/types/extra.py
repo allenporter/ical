@@ -58,7 +58,7 @@ class ExtraPropertyEncoder:
                 ExtraPropertyParameter(
                     name=param.name,
                     # Ignore timezone hack.
-                    values=param.values,  # type: ignore[arg-type]
+                    values=[v for v in param.values if isinstance(v, str)],
                 )
                 for param in prop.params
             ]

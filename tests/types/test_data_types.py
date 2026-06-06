@@ -1,5 +1,5 @@
 import pytest
-from typing import List, Union, Any
+from typing import List, Union, Any, cast
 from ical.types.data_types import Registry
 from ical.parsing.property import ParsedProperty
 
@@ -8,7 +8,7 @@ def test_get_ordered_field_types_unsupported_list() -> None:
     """Test get_ordered_field_types with a list that has no arguments."""
     registry = Registry()
     with pytest.raises(ValueError, match="Unable to determine args of type"):
-        registry.get_ordered_field_types(List)
+        registry.get_ordered_field_types(cast(Any, List))
 
 
 def test_encode_property_failed_encoder() -> None:

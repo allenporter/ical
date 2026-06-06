@@ -96,7 +96,7 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
         # same timezone as the item to compare.
         if item.dtstart.tzinfo is not None:
             dtstart = dtstart.replace(tzinfo=item.dtstart.tzinfo)
-    for dt in item.as_rrule() or ():
+    for dt in cast(Any, item).as_rrule() or ():
         if isinstance(dt, datetime.datetime):
             if dt.date() > _MAX_SCAN_DATE:
                 _LOGGER.debug("Aborting scan, date %s is beyond max scan date", dt)

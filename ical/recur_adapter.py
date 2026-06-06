@@ -100,7 +100,7 @@ class RecurAdapter(Generic[ItemType]):
                 updates["dtend"] = dtend
             if isinstance(self._item, Todo) and self._item.due and dtend:
                 updates["due"] = dtend
-            return cast(ItemType, self._item.model_copy(update=updates))
+            return self._item.model_copy(update=updates)
 
         ts = Timespan.of(dtstart, dtend, self._tzinfo)
         return LazySortableItem(ts, build)
@@ -143,12 +143,12 @@ def merge_and_expand_items(
         )
 
         for item in uid_items:
-            if not (recur := item.as_rrule()):
+            if not (recur := item.as_rrule()):  # ty: ignore[invalid-argument-type]
                 # Non-recurring item (includes edited instances)
                 iters.append(
                     [
                         SortableItemValue(
-                            item.timespan_of(tzinfo),
+                            item.timespan_of(tzinfo),  # ty: ignore[invalid-argument-type]
                             item,
                         )
                     ]
