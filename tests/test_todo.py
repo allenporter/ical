@@ -146,7 +146,9 @@ def test_is_recurring() -> None:
     )
     assert todo.recurring
     assert todo.computed_duration == datetime.timedelta(days=1)
-    assert list(todo.as_rrule()) == [
+    rrule = todo.as_rrule()
+    assert rrule is not None
+    assert list(rrule) == [
         datetime.date(2024, 2, 2),
         datetime.date(2024, 2, 3),
         datetime.date(2024, 2, 4),

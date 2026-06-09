@@ -25,7 +25,7 @@ TESTDATA_IDS = [x.stem for x in TESTDATA_FILES]
 
 
 @pytest.mark.parametrize("filename", TESTDATA_FILES, ids=TESTDATA_IDS)
-def test_from_ics(filename: str, snapshot: SnapshotAssertion) -> None:
+def test_from_ics(filename: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Fixture to read golden file and compare to golden output."""
     properties = list(parse_contentlines(unfolded_lines(filename.read_text("utf-8"))))
     assert properties == snapshot
@@ -63,6 +63,7 @@ def test_blank_parameters(ics: str) -> None:
     prop = properties[0]
     assert prop.name == "x-test-blank"
     assert prop.value == "VALUE"
+    assert prop.params is not None
     assert len(prop.params) == 2
     assert prop.params[0].name == "VALUE"
     assert prop.params[0].values == ["URI"]

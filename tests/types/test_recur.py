@@ -173,7 +173,7 @@ def test_day_iteration(
             Recur(
                 freq=Frequency.WEEKLY,
                 until=datetime.date(2022, 9, 6),
-                by_weekday=[WeekdayValue(Weekday.MONDAY)],
+                byday=[WeekdayValue(Weekday.MONDAY)],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -191,7 +191,7 @@ def test_day_iteration(
                 freq=Frequency.WEEKLY,
                 until=datetime.date(2022, 9, 6),
                 interval=2,
-                by_weekday=[WeekdayValue(Weekday.MONDAY)],
+                byday=[WeekdayValue(Weekday.MONDAY)],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -205,7 +205,7 @@ def test_day_iteration(
             Recur(
                 freq=Frequency.WEEKLY,
                 count=3,
-                by_weekday=[WeekdayValue(Weekday.MONDAY)],
+                byday=[WeekdayValue(Weekday.MONDAY)],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -220,7 +220,7 @@ def test_day_iteration(
                 freq=Frequency.WEEKLY,
                 interval=2,
                 count=3,
-                by_weekday=[WeekdayValue(Weekday.MONDAY)],
+                byday=[WeekdayValue(Weekday.MONDAY)],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -256,7 +256,7 @@ def test_weekly_iteration(
             Recur(
                 freq=Frequency.MONTHLY,
                 until=datetime.date(2023, 1, 1),
-                by_month_day=[1],
+                bymonthday=[1],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -274,7 +274,7 @@ def test_weekly_iteration(
                 freq=Frequency.MONTHLY,
                 until=datetime.date(2023, 1, 1),
                 interval=2,
-                by_month_day=[1],
+                bymonthday=[1],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -285,7 +285,7 @@ def test_weekly_iteration(
         (
             datetime.date(2022, 8, 1),
             datetime.date(2022, 8, 2),
-            Recur(freq=Frequency.MONTHLY, count=3, by_month_day=[1]),
+            Recur(freq=Frequency.MONTHLY, count=3, bymonthday=[1]),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
                 (datetime.date(2022, 9, 1), datetime.date(2022, 9, 2)),
@@ -299,7 +299,7 @@ def test_weekly_iteration(
                 freq=Frequency.MONTHLY,
                 interval=2,
                 count=3,
-                by_month_day=[1],
+                bymonthday=[1],
             ),
             [
                 (datetime.date(2022, 8, 1), datetime.date(2022, 8, 2)),
@@ -313,7 +313,7 @@ def test_weekly_iteration(
             Recur(
                 freq=Frequency.MONTHLY,
                 until=datetime.datetime(2023, 1, 1, 0, 0, 0),
-                by_month_day=[2],
+                bymonthday=[2],
             ),
             [
                 (
@@ -345,7 +345,7 @@ def test_weekly_iteration(
                 freq=Frequency.MONTHLY,
                 interval=2,
                 count=3,
-                by_weekday=[WeekdayValue(weekday=Weekday.SUNDAY, occurrence=1)],
+                byday=[WeekdayValue(weekday=Weekday.SUNDAY, occurrence=1)],
             ),
             [
                 (datetime.date(2022, 8, 7), datetime.date(2022, 8, 8)),
@@ -359,7 +359,7 @@ def test_weekly_iteration(
             Recur(
                 freq=Frequency.MONTHLY,
                 count=3,
-                by_weekday=[WeekdayValue(weekday=Weekday.SUNDAY, occurrence=-1)],
+                byday=[WeekdayValue(weekday=Weekday.SUNDAY, occurrence=-1)],
             ),
             [
                 (datetime.date(2022, 8, 28), datetime.date(2022, 8, 29)),
@@ -444,7 +444,7 @@ def test_merged_recur_event_timeline() -> None:
                 start=datetime.date(2022, 8, 3),
                 end=datetime.date(2022, 8, 4),
                 rrule=Recur(
-                    freq=Frequency.WEEKLY, by_weekday=[WeekdayValue(Weekday.WEDNESDAY)]
+                    freq=Frequency.WEEKLY, byday=[WeekdayValue(Weekday.WEDNESDAY)]
                 ),
             ),
             Event(
@@ -456,7 +456,7 @@ def test_merged_recur_event_timeline() -> None:
                 summary="Pay day",
                 start=datetime.date(2022, 8, 15),
                 end=datetime.date(2022, 8, 16),
-                rrule=Recur(freq=Frequency.MONTHLY, by_month_day=[15]),
+                rrule=Recur(freq=Frequency.MONTHLY, bymonthday=[15]),
             ),
         ]
     )
@@ -586,7 +586,7 @@ def test_year_iteration() -> None:
                 summary="Bi-annual meeting",
                 start=datetime.datetime(2022, 1, 2, 6, 0, 0),
                 end=datetime.datetime(2022, 1, 2, 7, 0, 0),
-                rrule=Recur(freq=Frequency.YEARLY, by_month=[1, 6], count=4),
+                rrule=Recur(freq=Frequency.YEARLY, bymonth=[1, 6], count=4),
             ),
         ]
     )
@@ -749,7 +749,7 @@ def test_recur_until_as_string(recur: Recur) -> None:
 @pytest.mark.parametrize(
     "recur",
     [
-        Recur(freq=Frequency.WEEKLY, by_weekday=[WeekdayValue(Weekday.TUESDAY)]),
+        Recur(freq=Frequency.WEEKLY, byday=[WeekdayValue(Weekday.TUESDAY)]),
         Recur.from_rrule("FREQ=WEEKLY;BYDAY=TU"),
     ],
 )
@@ -768,9 +768,7 @@ def test_recur_by_weekday_as_string(recur: Recur) -> None:
 @pytest.mark.parametrize(
     "recur",
     [
-        Recur(
-            freq=Frequency.MONTHLY, until=datetime.date(2023, 1, 1), by_month_day=[1]
-        ),
+        Recur(freq=Frequency.MONTHLY, until=datetime.date(2023, 1, 1), bymonthday=[1]),
         Recur.from_rrule("FREQ=MONTHLY;UNTIL=20230101;BYMONTHDAY=1"),
     ],
 )
@@ -791,7 +789,7 @@ def test_recur_by_monthday_as_string(recur: Recur) -> None:
     [
         Recur(
             freq=Frequency.MONTHLY,
-            by_weekday=[WeekdayValue(weekday=Weekday.TUESDAY, occurrence=-1)],
+            byday=[WeekdayValue(weekday=Weekday.TUESDAY, occurrence=-1)],
         ),
         Recur.from_rrule("FREQ=MONTHLY;BYDAY=-1TU"),
     ],

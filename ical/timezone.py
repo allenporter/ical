@@ -104,7 +104,7 @@ class Observance(ComponentModel):
         if self.rrule:
             ruleset.rrule(self.rrule.as_rrule(self.start_datetime))
         for rdate in self.rdate:
-            ruleset.rdate(rdate)  # type: ignore[arg-type]
+            ruleset.rdate(rdate)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         return ruleset
 
     @field_validator("dtstart")
@@ -208,7 +208,7 @@ class Timezone(ComponentModel):
                     dtstart=rule.dst_start.rrule_dtstart(start),
                 )
             )
-        return Timezone(tz_id=key, standard=[std_timezone_info], daylight=daylight)
+        return Timezone(tzid=key, standard=[std_timezone_info], daylight=daylight)
 
     def _observances(
         self,

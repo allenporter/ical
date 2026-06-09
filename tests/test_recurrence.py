@@ -298,7 +298,7 @@ def test_mismatch_date_and_datetime_types() -> None:
         ),
     ],
 )
-def test_wkst(wkst: str, expected: list[datetime.datetime | date]) -> None:
+def test_wkst(wkst: str, expected: list[datetime.datetime | datetime.date]) -> None:
     """Test parsing a recurrence rule from a string."""
     recurrences = Recurrences.from_basic_contentlines(
         [

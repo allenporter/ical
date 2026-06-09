@@ -418,11 +418,11 @@ class Todo(ComponentModel):
 
     @classmethod
     def _parse_property(
-        cls, field_type: FieldInfo, name: str, prop: list[ParsedProperty]
+        cls, field_type: FieldInfo, name: str, props: list[ParsedProperty]
     ) -> Any:
         """Parse an individual field value from a ParsedProperty."""
         try:
-            return super()._parse_property(field_type, name, prop)
+            return super()._parse_property(field_type, name, props)
         except ParameterValueError as err:
             if name == "dtstart":
                 _LOGGER.debug(

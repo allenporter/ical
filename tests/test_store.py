@@ -104,7 +104,7 @@ def mock_fetch_todos(
 
 
 @pytest.fixture(name="frozen_time", autouse=True)
-def mock_frozen_time() -> Generator[FrozenDateTimeFactory, None, None]:
+def mock_frozen_time() -> Generator[Any, None, None]:
     """Fixture to freeze time to a specific point."""
     with freeze_time("2022-09-03T09:38:05") as freeze:
         with patch("ical.event.dtstamp_factory", new=freeze):
@@ -1440,6 +1440,7 @@ def test_delete_instance_in_todo_series(
     raw_ids = [
         (item.dtstart.isoformat(), item.recurrence_id, item.rrule)
         for item in calendar.todos
+        if item.dtstart is not None
     ]
     assert raw_ids == snapshot
 
@@ -1448,6 +1449,7 @@ def test_delete_instance_in_todo_series(
     raw_ids = [
         (item.dtstart.isoformat(), item.recurrence_id, item.rrule, item.exdate)
         for item in calendar.todos
+        if item.dtstart is not None
     ]
     assert raw_ids == snapshot
 
@@ -1457,6 +1459,7 @@ def test_delete_instance_in_todo_series(
     raw_ids = [
         (item.dtstart.isoformat(), item.recurrence_id, item.rrule, item.exdate)
         for item in calendar.todos
+        if item.dtstart is not None
     ]
     assert raw_ids == snapshot
 
@@ -1546,6 +1549,7 @@ def test_modify_todo_due_without_dtstart(
         2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
     )
     assert isinstance(todo.dtstart, datetime.datetime)
+    assert isinstance(todo.due, datetime.datetime)
     assert todo.dtstart < todo.due
 
 
@@ -1574,6 +1578,7 @@ def test_dtstart_timezone(
     assert len(todos) == 1
     todo = todos[0]
     assert todo.due is None
+    assert isinstance(todo.dtstart, datetime.datetime)
     assert todo.dtstart.tzinfo == TZ
 
 
@@ -1620,6 +1625,7 @@ def test_store_edit_year_overrun_edit_once(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
 
+    assert isinstance(event2.dtstart, datetime.datetime)
     # Move event2 one hour earlier (9am in calendar tz)
     update_dtstart = event2.dtstart.astimezone(viewer_tz)
     assert update_dtstart == datetime.datetime(2024, 10, 12, 5, 0, 0, tzinfo=viewer_tz)
@@ -1747,6 +1753,7 @@ def test_store_edit_year_overrun_edit_this_and_future(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
 
+    assert isinstance(event2.dtstart, datetime.datetime)
     # Move event2 one hour earlier (9am in calendar tz)
     update_dtstart = event2.dtstart.astimezone(viewer_tz)
     assert update_dtstart == datetime.datetime(2024, 10, 12, 5, 0, 0, tzinfo=viewer_tz)
@@ -1828,6 +1835,7 @@ def test_store_edit_year_override_set_floating_dates(
     assert event3.dtstart == datetime.datetime(
         2024, 10, 19, 11, 0, 0, tzinfo=calendar_tz
     )
+    assert isinstance(event2.dtstart, datetime.datetime)
 
     # Move event2 one hour earlier (9am in calendar tz)
     update_dtstart = event2.dtstart.astimezone(viewer_tz)

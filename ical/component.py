@@ -131,16 +131,18 @@ def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
     if not self.rrule or not (dtstart := self.dtstart):
         return self
-    is_datetime = isinstance(dtstart, datetime.datetime)
-    validator = _as_datetime if is_datetime else _as_date
     for field in ("exdate", "rdate"):
         if not (date_values := self.__dict__.get(field)):
             continue
 
-        self.__dict__[field] = [
-            validator(date_value, dtstart)  # type: ignore[arg-type]
-            for date_value in date_values
-        ]
+        if isinstance(dtstart, datetime.datetime):
+            self.__dict__[field] = [
+                _as_datetime(date_value, dtstart) for date_value in date_values
+            ]
+        else:
+            self.__dict__[field] = [
+                _as_date(date_value, dtstart) for date_value in date_values
+            ]
     return self
 
 

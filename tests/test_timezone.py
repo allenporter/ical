@@ -19,8 +19,8 @@ from ical.tzif.timezoneinfo import TimezoneInfoError
 
 TEST_RECUR = Recur(
     freq=Frequency.YEARLY,
-    by_month=[10],
-    by_day=[WeekdayValue(Weekday.SUNDAY, occurrence=-1)],
+    bymonth=[10],
+    byday=[WeekdayValue(Weekday.SUNDAY, occurrence=-1)],
     until=datetime.datetime(2006, 10, 29, 6, 0, 0),
 )
 
@@ -30,14 +30,14 @@ def test_requires_subcompnent() -> None:
     with pytest.raises(
         CalendarParseError, match=r"At least one standard or daylight.*"
     ):
-        Timezone(tz_id="America/New_York")
+        Timezone(tzid="America/New_York")
 
 
 def test_daylight() -> None:
     """Test a Timezone object with a daylight observance."""
     timezone = Timezone(
-        tz_id="America/New_York",
-        last_modified=datetime.datetime(2005, 8, 9, 5),
+        tzid="America/New_York",
+        last_modified=datetime.datetime(2005, 8, 9, 5),  # ty: ignore[unknown-argument]
         daylight=[
             Observance(
                 start=datetime.datetime(1967, 10, 29, 2, 0, 0, 0),
@@ -89,7 +89,7 @@ def test_from_tzif_timezoneinfo_with_dst(
     calendar = Calendar()
     calendar.timezones.append(timezone)
 
-    stream = IcsCalendarStream(calendars=[calendar])
+    stream = IcsCalendarStream(vcalendar=[calendar])
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR
@@ -150,7 +150,7 @@ def test_from_tzif_timezoneinfo_fixed_offset(
     calendar = Calendar()
     calendar.timezones.append(timezone)
 
-    stream = IcsCalendarStream(calendars=[calendar])
+    stream = IcsCalendarStream(vcalendar=[calendar])
     assert stream.ics() == inspect.cleandoc(
         """
        BEGIN:VCALENDAR

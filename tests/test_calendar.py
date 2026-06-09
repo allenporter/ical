@@ -416,7 +416,7 @@ def test_all_day_with_local_timezone(
 
     local_tz = zoneinfo.ZoneInfo(tzname)
 
-    def start_after(dtstart: datetime.datetime) -> list[str]:
+    def start_after(dtstart: datetime.datetime) -> list[str | None]:
         nonlocal cal, local_tz
         return [e.summary for e in cal.timeline_tz(local_tz).start_after(dtstart)]
 
