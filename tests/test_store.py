@@ -1669,6 +1669,7 @@ def test_store_edit_year_overrun_edit_once(
     )
 
     # Edit all events after event3
+    assert isinstance(event3.dtstart, datetime.datetime)
     update_dtstart = event3.dtstart.astimezone(viewer_tz)
     update_dtstart -= datetime.timedelta(minutes=30)
 
@@ -1890,6 +1891,7 @@ def test_store_edit_year_override_set_floating_dates(
     )
 
     # Edit all events after event3
+    assert isinstance(event3.dtstart, datetime.datetime)
     update_dtstart = event3.dtstart.astimezone(viewer_tz)
     update_dtstart -= datetime.timedelta(minutes=30)
     update_dtstart = update_dtstart.replace(tzinfo=None)
