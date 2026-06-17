@@ -21,4 +21,4 @@ syrupy==5.3.2
 # emoji is a dev only dependency used by script/update_emoji.py
 emoji==2.15.0
 # tzlocal is a dev only dependency used by script/update_tzlocal.py
-tzlocal==5.4
+tzlocal==5.4.3
