@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator
 import datetime
 import inspect
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 from freezegun import freeze_time
@@ -216,3 +218,99 @@ def test_clear_old_dtstamp(mock_prodid: Generator[None, None, None]) -> None:
        END:VTIMEZONE
        END:VCALENDAR
     """)
+
+
+def _customized_timezone() -> Timezone:
+    """Build a Microsoft "Customized Time Zone" style embedded VTIMEZONE.
+
+    These are emitted by Office 365/Exchange with the observance ``DTSTART`` in
+    year 1601 and an unbounded ``YEARLY`` recurrence. They are kept as an
+    embedded timezone (rather than mapped to a named ``TzInfo``), so offsets are
+    resolved through ``Timezone.get_observance``.
+    """
+    last_sunday = [WeekdayValue(Weekday.SUNDAY, occurrence=-1)]
+    return Timezone(
+        tzid="Customized Time Zone",
+        standard=[
+            Observance(
+                start=datetime.datetime(1601, 1, 1, 3, 0, 0),
+                tz_offset_to=UtcOffset(datetime.timedelta(hours=1)),
+                tz_offset_from=UtcOffset(datetime.timedelta(hours=2)),
+                rrule=Recur(freq=Frequency.YEARLY, bymonth=[10], byday=last_sunday),
+            ),
+        ],
+        daylight=[
+            Observance(
+                start=datetime.datetime(1601, 1, 1, 2, 0, 0),
+                tz_offset_to=UtcOffset(datetime.timedelta(hours=2)),
+                tz_offset_from=UtcOffset(datetime.timedelta(hours=1)),
+                rrule=Recur(freq=Frequency.YEARLY, bymonth=[3], byday=last_sunday),
+            ),
+        ],
+    )
+
+
+def test_get_observance_cache_avoids_repeated_expansion() -> None:
+    """A "Customized Time Zone" must not re-expand the recurrence per lookup.
+
+    The observance recurrence starts in year 1601, so expanding it on every
+    ``get_observance`` call walks hundreds of years of transitions. A calendar
+    with many events triggers this for each event, which previously made loading
+    a remote Office 365 calendar extremely slow (allenporter/ical#593).
+    """
+    timezone = _customized_timezone()
+
+    # Returned offsets must be correct: +02:00 in summer, +01:00 in winter.
+    summer = timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
+    winter = timezone.get_observance(datetime.datetime(2024, 1, 15, 12, 0, 0))
+    assert summer is not None
+    assert summer.observance.tz_offset_to.offset == datetime.timedelta(hours=2)
+    assert winter is not None
+    assert winter.observance.tz_offset_to.offset == datetime.timedelta(hours=1)
+
+    original = Timezone._observances
+    call_count = 0
+
+    def counting_observances(self: Timezone) -> object:
+        nonlocal call_count
+        call_count += 1
+        return original(self)
+
+    timezone = _customized_timezone()
+    with patch.object(Timezone, "_observances", counting_observances):
+        # Hammer get_observance with datetimes spanning two years.
+        for _ in range(1000):
+            timezone.get_observance(datetime.datetime(2024, 1, 15, 12, 0, 0))
+            timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
+            timezone.get_observance(datetime.datetime(2025, 1, 15, 12, 0, 0))
+            timezone.get_observance(datetime.datetime(2025, 7, 15, 12, 0, 0))
+
+    # The recurrence is only expanded as the cache is extended to cover newly
+    # requested datetimes (four transition crossings here), not on every call.
+    assert call_count <= 4, (
+        f"Timezone._observances expanded {call_count} times; expected <= 4. The "
+        "observance cache in get_observance appears broken, which causes severe "
+        "performance regressions for large Office 365 calendars."
+    )
+
+
+@pytest.mark.benchmark(min_rounds=1, warmup=False)
+def test_benchmark_get_observance_repeated_calls(benchmark: Any) -> None:
+    """Benchmark get_observance on a "Customized Time Zone" embedded VTIMEZONE.
+
+    With the observance cache, repeated lookups are O(log n) over the cached
+    transitions instead of re-expanding the (year 1601) recurrence each call.
+    """
+    timezone = _customized_timezone()
+    dts = [
+        datetime.datetime(2024 + (i % 2), 1 + (i % 12), 1 + (i % 28), 12, 0, 0)
+        for i in range(1000)
+    ]
+
+    def lookup() -> int:
+        for dt in dts:
+            timezone.get_observance(dt)
+        return len(dts)
+
+    result = benchmark(lookup)
+    assert result == len(dts)

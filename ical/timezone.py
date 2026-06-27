@@ -12,6 +12,7 @@ different calendaring systems.
 
 from __future__ import annotations
 
+import bisect
 import copy
 import traceback
 import datetime
@@ -24,6 +25,7 @@ from dateutil.rrule import rruleset
 from pydantic import (
     BeforeValidator,
     Field,
+    PrivateAttr,
     field_serializer,
     field_validator,
     model_validator,
@@ -167,6 +169,18 @@ class Timezone(ComponentModel):
     # Unknown or unsupported properties
     extras: list[ExtraProperty] = Field(default_factory=list)
 
+    # Cache of observance transitions, sorted ascending by onset. Built lazily up
+    # to the highest datetime queried so far so the (potentially centuries-long)
+    # recurrence expansion in `_observances` only runs once instead of on every
+    # `get_observance` lookup. `_observance_bound` is the first onset strictly
+    # greater than every value covered by the cache (or None if not yet built).
+    _observance_cache: list[
+        tuple[datetime.datetime | datetime.date, "_ObservanceInfo"]
+    ] = PrivateAttr(default_factory=list)
+    _observance_bound: Optional[datetime.datetime | datetime.date] = PrivateAttr(
+        default=None
+    )
+
     @classmethod
     def from_tzif(cls, key: str, start: datetime.datetime = _TZ_START) -> Timezone:
         """Create a new Timezone from a tzif data source."""
@@ -249,12 +263,23 @@ class Timezone(ComponentModel):
         """Return the specified observance for the specified date."""
         if value.tzinfo is not None:
             raise ValueError("Start time must be in local time format")
-        last_observance_info: _ObservanceInfo | None = None
-        for dt_start, observance_info in self._observances():
-            if dt_start > value:
-                return last_observance_info
-            last_observance_info = observance_info
-        return last_observance_info
+        cache = self._observance_cache
+        # Extend the cached transitions only when the request reaches past what
+        # has already been materialized, walking the recurrence from where the
+        # last build stopped rather than from the (year 1601) start every call.
+        if self._observance_bound is None or value >= self._observance_bound:
+            cache.clear()
+            bound: datetime.datetime | datetime.date | None = None
+            for dt_start, observance_info in self._observances():
+                cache.append((dt_start, observance_info))
+                if dt_start > value:
+                    bound = dt_start
+                    break
+            self._observance_bound = bound
+        index = bisect.bisect_right(cache, value, key=lambda item: item[0])
+        if index == 0:
+            return None
+        return cache[index - 1][1]
 
     @model_validator(mode="after")
     def parse_required_timezoneinfo(self) -> Self:
