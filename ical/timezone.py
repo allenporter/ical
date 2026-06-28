@@ -258,7 +258,7 @@ class Timezone(ComponentModel):
         if value.tzinfo is not None:
             raise ValueError("Start time must be in local time format")
         if self._observance_timeline is None:
-            self._observance_timeline = CachedTransitionTimeline(self._observances)
+            self._observance_timeline = CachedTransitionTimeline(self._observances())
         return self._observance_timeline.active_at(value)
 
     @model_validator(mode="after")

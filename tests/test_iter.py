@@ -150,49 +150,94 @@ def test_debug_invalid_rule_without_recur() -> None:
     )
 
 
+class _YearTransitions:
+    """Re-iterable source of ``(Jan 1 of 2000 + i, i)`` transitions, ascending.
+
+    Tracks how many times it is iterated and how many items are pulled so tests
+    can assert lazy, single consumption via public behavior alone.
+    """
+
+    def __init__(self, count: int | None = None) -> None:
+        self.count = count
+        self.iterations = 0
+        self.pulls = 0
+
+    def __iter__(self) -> Iterator[tuple[datetime.datetime, int]]:
+        self.iterations += 1
+        indices: Iterable[int] = (
+            itertools.count() if self.count is None else range(self.count)
+        )
+
+        def _gen() -> Iterator[tuple[datetime.datetime, int]]:
+            for i in indices:
+                self.pulls += 1
+                yield (datetime.datetime(2000 + i, 1, 1), i)
+
+        return _gen()
+
+
+def _year(value: int) -> datetime.datetime:
+    return datetime.datetime(value, 6, 1)
+
+
 def test_cached_transition_timeline_active_at() -> None:
     """Test resolving items across an unbounded sorted transition source."""
-    transitions = (
-        (datetime.datetime(year, 1, 1), f"y{year}") for year in itertools.count(2000)
-    )
-    timeline: CachedTransitionTimeline[str] = CachedTransitionTimeline(
-        lambda: transitions
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(
+        _YearTransitions()
     )
 
     # Before the first onset there is no active item.
-    assert timeline.active_at(datetime.datetime(1999, 6, 1)) is None
+    assert timeline.active_at(_year(1999)) is None
     # Latest onset at or before the value wins, in any query order.
-    assert timeline.active_at(datetime.datetime(2003, 6, 1)) == "y2003"
-    assert timeline.active_at(datetime.datetime(2001, 1, 1)) == "y2001"
-    assert timeline.active_at(datetime.datetime(2010, 12, 31)) == "y2010"
+    assert timeline.active_at(_year(2003)) == 3
+    assert timeline.active_at(_year(2001)) == 1
+    assert timeline.active_at(_year(2010)) == 10
+    # An onset exactly equal to the value is inclusive.
+    assert timeline.active_at(datetime.datetime(2007, 1, 1)) == 7
+
+
+@pytest.mark.parametrize(
+    "queries",
+    [
+        pytest.param([2003, 2001, 2010, 2005], id="out-of-order"),
+        pytest.param([2010, 2008, 2006, 2004, 2002], id="descending"),
+        pytest.param([2002, 2004, 2006, 2008, 2010], id="ascending"),
+        pytest.param([2005, 2005, 2005], id="repeated"),
+        pytest.param([2010, 2001, 2010, 2001], id="interleaved-extremes"),
+    ],
+)
+def test_cached_transition_timeline_request_order(queries: list[int]) -> None:
+    """Results are correct regardless of the order values are requested in."""
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(
+        _YearTransitions()
+    )
+    # The active item for June of year N is N - 2000 (the Jan 1 onset of year N).
+    assert [timeline.active_at(_year(year)) for year in queries] == [
+        year - 2000 for year in queries
+    ]
 
 
 def test_cached_transition_timeline_caches_transitions() -> None:
-    """The transition source is consumed lazily and only once."""
-    factory_calls = 0
-
-    def factory() -> Iterable[tuple[datetime.datetime, int]]:
-        nonlocal factory_calls
-        factory_calls += 1
-        return ((datetime.datetime(2000 + i, 1, 1), i) for i in itertools.count())
-
-    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(factory)
+    """The transition source is iterated once and consumed lazily."""
+    source = _YearTransitions()
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(source)
     for _ in range(100):
-        assert timeline.active_at(datetime.datetime(2005, 6, 1)) == 5
+        assert timeline.active_at(_year(2005)) == 5
 
-    assert factory_calls == 1
+    # Iterated once, and only far enough to resolve 2005 (not the whole source).
+    assert source.iterations == 1
+    assert source.pulls <= 8
 
 
 def test_cached_transition_timeline_deepcopy() -> None:
-    """A deep copy resolves independently without copying live iterators."""
-
-    def factory() -> Iterable[tuple[datetime.datetime, int]]:
-        return ((datetime.datetime(2000 + i, 1, 1), i) for i in range(50))
-
-    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(factory)
-    assert timeline.active_at(datetime.datetime(2005, 6, 1)) == 5
+    """A deep copy resolves independently by re-iterating the shared source."""
+    source = _YearTransitions()
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(source)
+    assert timeline.active_at(_year(2005)) == 5
 
     clone = copy.deepcopy(timeline)
-    assert clone.active_at(datetime.datetime(2010, 6, 1)) == 10
+    assert clone.active_at(_year(2010)) == 10
     # The original keeps working independently of the copy.
-    assert timeline.active_at(datetime.datetime(2020, 6, 1)) == 20
+    assert timeline.active_at(_year(2020)) == 20
+    # The copy took its own fresh iterator from the shared source.
+    assert source.iterations == 2
