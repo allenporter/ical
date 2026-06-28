@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import datetime
+import itertools
 import random
 from collections.abc import Generator
 from typing import Any, Iterable, Iterator
@@ -11,6 +13,7 @@ import pytest
 from dateutil import rrule
 
 from ical.iter import (
+    CachedTransitionTimeline,
     MergedIterable,
     MergedIterator,
     RecurIterable,
@@ -145,3 +148,51 @@ def test_debug_invalid_rule_without_recur() -> None:
         "rdate=[datetime.date(2022, 12, 22)], "
         "exdate=[datetime.datetime(2022, 12, 23, 5, 0)]))"
     )
+
+
+def test_cached_transition_timeline_active_at() -> None:
+    """Test resolving items across an unbounded sorted transition source."""
+    transitions = (
+        (datetime.datetime(year, 1, 1), f"y{year}") for year in itertools.count(2000)
+    )
+    timeline: CachedTransitionTimeline[str] = CachedTransitionTimeline(
+        lambda: transitions
+    )
+
+    # Before the first onset there is no active item.
+    assert timeline.active_at(datetime.datetime(1999, 6, 1)) is None
+    # Latest onset at or before the value wins, in any query order.
+    assert timeline.active_at(datetime.datetime(2003, 6, 1)) == "y2003"
+    assert timeline.active_at(datetime.datetime(2001, 1, 1)) == "y2001"
+    assert timeline.active_at(datetime.datetime(2010, 12, 31)) == "y2010"
+
+
+def test_cached_transition_timeline_caches_transitions() -> None:
+    """The transition source is consumed lazily and only once."""
+    factory_calls = 0
+
+    def factory() -> Iterable[tuple[datetime.datetime, int]]:
+        nonlocal factory_calls
+        factory_calls += 1
+        return ((datetime.datetime(2000 + i, 1, 1), i) for i in itertools.count())
+
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(factory)
+    for _ in range(100):
+        assert timeline.active_at(datetime.datetime(2005, 6, 1)) == 5
+
+    assert factory_calls == 1
+
+
+def test_cached_transition_timeline_deepcopy() -> None:
+    """A deep copy resolves independently without copying live iterators."""
+
+    def factory() -> Iterable[tuple[datetime.datetime, int]]:
+        return ((datetime.datetime(2000 + i, 1, 1), i) for i in range(50))
+
+    timeline: CachedTransitionTimeline[int] = CachedTransitionTimeline(factory)
+    assert timeline.active_at(datetime.datetime(2005, 6, 1)) == 5
+
+    clone = copy.deepcopy(timeline)
+    assert clone.active_at(datetime.datetime(2010, 6, 1)) == 10
+    # The original keeps working independently of the copy.
+    assert timeline.active_at(datetime.datetime(2020, 6, 1)) == 20

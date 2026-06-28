@@ -12,7 +12,6 @@ different calendaring systems.
 
 from __future__ import annotations
 
-import bisect
 import copy
 import traceback
 import datetime
@@ -34,7 +33,7 @@ from pydantic import (
 from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
-from .iter import MergedIterable, RecurIterable
+from .iter import CachedTransitionTimeline, MergedIterable, RecurIterable
 from .types import ExtraProperty, Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import parse_date_and_datetime_list
@@ -169,18 +168,11 @@ class Timezone(ComponentModel):
     # Unknown or unsupported properties
     extras: list[ExtraProperty] = Field(default_factory=list)
 
-    # Per-instance cache of observance transitions, sorted ascending by onset
-    # (PrivateAttr with a default_factory is instantiated per object, not shared
-    # across instances). Built lazily up to the highest datetime queried so far
-    # so the (potentially centuries-long) recurrence expansion in `_observances`
-    # only runs once instead of on every `get_observance` lookup.
-    # `_observance_bound` is the first onset strictly greater than every value
-    # covered by the cache (or None if not yet built).
-    _observance_cache: list[
-        tuple[datetime.datetime | datetime.date, "_ObservanceInfo"]
-    ] = PrivateAttr(default_factory=list)
-    _observance_bound: Optional[datetime.datetime | datetime.date] = PrivateAttr(
-        default=None
+    # Per-instance lazily-cached timeline over the observance transitions, so the
+    # (potentially centuries-long) recurrence expansion only runs once instead of
+    # on every `get_observance` lookup.
+    _observance_timeline: Optional[CachedTransitionTimeline["_ObservanceInfo"]] = (
+        PrivateAttr(default=None)
     )
 
     @classmethod
@@ -265,23 +257,9 @@ class Timezone(ComponentModel):
         """Return the specified observance for the specified date."""
         if value.tzinfo is not None:
             raise ValueError("Start time must be in local time format")
-        cache = self._observance_cache
-        # Extend the cached transitions only when the request reaches past what
-        # has already been materialized, walking the recurrence from where the
-        # last build stopped rather than from the (year 1601) start every call.
-        if self._observance_bound is None or value >= self._observance_bound:
-            cache.clear()
-            bound: datetime.datetime | datetime.date | None = None
-            for dt_start, observance_info in self._observances():
-                cache.append((dt_start, observance_info))
-                if dt_start > value:
-                    bound = dt_start
-                    break
-            self._observance_bound = bound
-        index = bisect.bisect_right(cache, value, key=lambda item: item[0])
-        if index == 0:
-            return None
-        return cache[index - 1][1]
+        if self._observance_timeline is None:
+            self._observance_timeline = CachedTransitionTimeline(self._observances)
+        return self._observance_timeline.active_at(value)
 
     @model_validator(mode="after")
     def parse_required_timezoneinfo(self) -> Self:
