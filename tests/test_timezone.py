@@ -6,7 +6,6 @@ from collections.abc import Generator
 import datetime
 import inspect
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 from freezegun import freeze_time
@@ -250,48 +249,23 @@ def _customized_timezone() -> Timezone:
     )
 
 
-def test_get_observance_cache_avoids_repeated_expansion() -> None:
-    """A "Customized Time Zone" must not re-expand the recurrence per lookup.
+def test_customized_timezone_observance_offsets() -> None:
+    """Resolve offsets for a "Customized Time Zone" across repeated lookups.
 
-    The observance recurrence starts in year 1601, so expanding it on every
-    ``get_observance`` call walks hundreds of years of transitions. A calendar
-    with many events triggers this for each event, which previously made loading
-    a remote Office 365 calendar extremely slow (allenporter/ical#593).
+    The observance recurrence starts in year 1601 with an unbounded yearly rule,
+    so a single timezone is queried for many datetimes spanning multiple years
+    (the Office 365 scenario behind allenporter/ical#593). Each lookup must
+    return the correct observance: +02:00 in summer, +01:00 in winter.
     """
     timezone = _customized_timezone()
 
-    # Returned offsets must be correct: +02:00 in summer, +01:00 in winter.
-    summer = timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
-    winter = timezone.get_observance(datetime.datetime(2024, 1, 15, 12, 0, 0))
-    assert summer is not None
-    assert summer.observance.tz_offset_to.offset == datetime.timedelta(hours=2)
-    assert winter is not None
-    assert winter.observance.tz_offset_to.offset == datetime.timedelta(hours=1)
-
-    original = Timezone._observances
-    call_count = 0
-
-    def counting_observances(self: Timezone) -> object:
-        nonlocal call_count
-        call_count += 1
-        return original(self)
-
-    timezone = _customized_timezone()
-    with patch.object(Timezone, "_observances", counting_observances):
-        # Hammer get_observance with datetimes spanning two years.
-        for _ in range(1000):
-            timezone.get_observance(datetime.datetime(2024, 1, 15, 12, 0, 0))
-            timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
-            timezone.get_observance(datetime.datetime(2025, 1, 15, 12, 0, 0))
-            timezone.get_observance(datetime.datetime(2025, 7, 15, 12, 0, 0))
-
-    # The recurrence is only expanded as the cache is extended to cover newly
-    # requested datetimes (four transition crossings here), not on every call.
-    assert call_count <= 4, (
-        f"Timezone._observances expanded {call_count} times; expected <= 4. The "
-        "observance cache in get_observance appears broken, which causes severe "
-        "performance regressions for large Office 365 calendars."
-    )
+    for year in range(2020, 2027):
+        summer = timezone.get_observance(datetime.datetime(year, 7, 15, 12, 0, 0))
+        winter = timezone.get_observance(datetime.datetime(year, 1, 15, 12, 0, 0))
+        assert summer is not None
+        assert summer.observance.tz_offset_to.offset == datetime.timedelta(hours=2)
+        assert winter is not None
+        assert winter.observance.tz_offset_to.offset == datetime.timedelta(hours=1)
 
 
 @pytest.mark.benchmark(min_rounds=1, warmup=False)

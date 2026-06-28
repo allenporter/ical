@@ -169,11 +169,13 @@ class Timezone(ComponentModel):
     # Unknown or unsupported properties
     extras: list[ExtraProperty] = Field(default_factory=list)
 
-    # Cache of observance transitions, sorted ascending by onset. Built lazily up
-    # to the highest datetime queried so far so the (potentially centuries-long)
-    # recurrence expansion in `_observances` only runs once instead of on every
-    # `get_observance` lookup. `_observance_bound` is the first onset strictly
-    # greater than every value covered by the cache (or None if not yet built).
+    # Per-instance cache of observance transitions, sorted ascending by onset
+    # (PrivateAttr with a default_factory is instantiated per object, not shared
+    # across instances). Built lazily up to the highest datetime queried so far
+    # so the (potentially centuries-long) recurrence expansion in `_observances`
+    # only runs once instead of on every `get_observance` lookup.
+    # `_observance_bound` is the first onset strictly greater than every value
+    # covered by the cache (or None if not yet built).
     _observance_cache: list[
         tuple[datetime.datetime | datetime.date, "_ObservanceInfo"]
     ] = PrivateAttr(default_factory=list)
