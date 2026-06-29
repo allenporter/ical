@@ -17,6 +17,7 @@ backwards incompatibility due to the internal nature.
 
 from __future__ import annotations
 
+import bisect
 import datetime
 import heapq
 import logging
@@ -42,6 +43,7 @@ __all__ = [
     "RecurIterable",
     "ItemAdapter",
     "LazySortableItem",
+    "CachedTransitionTimeline",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -437,3 +439,54 @@ def as_rrule(
         rdate,
         exdate,
     )
+
+
+class CachedTransitionTimeline(Generic[T]):
+    """A lazily materialized timeline over sorted ``(onset, item)`` transitions.
+
+    Given a re-iterable source of sorted ``(onset, item)`` pairs, ``active_at``
+    returns the item of the latest transition whose onset is at or before the
+    queried value. Transitions are materialized lazily and appended to a cache
+    only as far as the highest value queried so far, so an unbounded recurrence
+    (such as a timezone observance rule starting in year 1601) is expanded once
+    instead of on every lookup. The source must be re-iterable, since a fresh
+    iterator is taken from it after a deep copy.
+    """
+
+    def __init__(
+        self,
+        transitions: Iterable[tuple[datetime.datetime | datetime.date, T]],
+    ) -> None:
+        """Initialize CachedTransitionTimeline with a sorted transition source."""
+        self._transitions = transitions
+        self._iter: Iterator[tuple[datetime.datetime | datetime.date, T]] | None = None
+        self._cache: list[tuple[datetime.datetime | datetime.date, T]] = []
+        self._exhausted = False
+
+    def active_at(self, value: datetime.datetime | datetime.date) -> T | None:
+        """Return the item active at ``value`` (latest onset <= value)."""
+        # Extend the cache only when the request reaches past what has already
+        # been materialized; the iterator is append-only and never restarted.
+        if not self._exhausted and (not self._cache or self._cache[-1][0] <= value):
+            if self._iter is None:
+                self._iter = iter(self._transitions)
+            while not self._exhausted and (
+                not self._cache or self._cache[-1][0] <= value
+            ):
+                try:
+                    self._cache.append(next(self._iter))
+                except StopIteration:
+                    self._exhausted = True
+        index = bisect.bisect_right(self._cache, value, key=lambda item: item[0])
+        if index == 0:
+            return None
+        return self._cache[index - 1][1]
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> CachedTransitionTimeline[T]:
+        """Return an independent copy with an empty cache.
+
+        ``dateutil.rrule`` iterators hold non-copyable thread locks, so the
+        source is not deep-copied. It is re-iterable and shared, and the copy
+        takes its own fresh iterator and rebuilds its cache lazily.
+        """
+        return CachedTransitionTimeline(self._transitions)
