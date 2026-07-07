@@ -9,6 +9,7 @@ import pytest
 from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.component import ComponentModel
 from ical.event import Event
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -910,4 +911,66 @@ def test_bysetpos() -> None:
         (datetime.date(2023, 3, 31), "Monthly Event"),
         (datetime.date(2023, 4, 28), "Monthly Event"),
         (datetime.date(2023, 5, 31), "Monthly Event"),
+    ]
+
+
+def test_recur_extra_fields_preservation() -> None:
+    """Test unrecognized and extra recurrence rule properties are preserved."""
+    recur = Recur.from_rrule("FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4")
+    assert recur.freq == Frequency.DAILY
+    # Unrecognized fields are preserved as extra properties
+    assert recur.model_dump().get("byyearday") == "1,2,3"
+    assert recur.model_dump().get("byweekno") == "4"
+    assert recur.as_rrule_str() == "FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4"
+
+    # Test serialization inside an event to ICS format
+    calendar = Calendar()
+    calendar.events.append(
+        Event(
+            summary="Preserved Event",
+            start=datetime.datetime(2022, 8, 29, 9, 0, 0),
+            end=datetime.datetime(2022, 8, 29, 10, 0, 0),
+            rrule=recur,
+        )
+    )
+    ics_output = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "RRULE:FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4" in ics_output
+
+
+def test_recur_freq_secondly() -> None:
+    """Test secondly frequency is parsed and evaluated correctly."""
+    recur_sec = Recur.from_rrule("FREQ=SECONDLY;COUNT=3;INTERVAL=10")
+    assert recur_sec.freq == Frequency.SECONDLY
+    assert recur_sec.as_rrule_str() == "FREQ=SECONDLY;COUNT=3;INTERVAL=10"
+    occurrences_sec = list(recur_sec.as_rrule(datetime.datetime(2022, 8, 29, 9, 0, 0)))
+    assert occurrences_sec == [
+        datetime.datetime(2022, 8, 29, 9, 0, 0),
+        datetime.datetime(2022, 8, 29, 9, 0, 10),
+        datetime.datetime(2022, 8, 29, 9, 0, 20),
+    ]
+
+
+def test_recur_freq_minutely() -> None:
+    """Test minutely frequency is parsed and evaluated correctly."""
+    recur_min = Recur.from_rrule("FREQ=MINUTELY;COUNT=3;INTERVAL=5")
+    assert recur_min.freq == Frequency.MINUTELY
+    assert recur_min.as_rrule_str() == "FREQ=MINUTELY;COUNT=3;INTERVAL=5"
+    occurrences_min = list(recur_min.as_rrule(datetime.datetime(2022, 8, 29, 9, 0, 0)))
+    assert occurrences_min == [
+        datetime.datetime(2022, 8, 29, 9, 0, 0),
+        datetime.datetime(2022, 8, 29, 9, 5, 0),
+        datetime.datetime(2022, 8, 29, 9, 10, 0),
+    ]
+
+
+def test_recur_freq_hourly() -> None:
+    """Test hourly frequency is parsed and evaluated correctly."""
+    recur_hr = Recur.from_rrule("FREQ=HOURLY;COUNT=3;INTERVAL=2")
+    assert recur_hr.freq == Frequency.HOURLY
+    assert recur_hr.as_rrule_str() == "FREQ=HOURLY;COUNT=3;INTERVAL=2"
+    occurrences_hr = list(recur_hr.as_rrule(datetime.datetime(2022, 8, 29, 9, 0, 0)))
+    assert occurrences_hr == [
+        datetime.datetime(2022, 8, 29, 9, 0, 0),
+        datetime.datetime(2022, 8, 29, 11, 0, 0),
+        datetime.datetime(2022, 8, 29, 13, 0, 0),
     ]

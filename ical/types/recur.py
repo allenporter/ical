@@ -106,9 +106,7 @@ class WeekdayValue:
 
 
 class Frequency(str, enum.Enum):
-    """Type of recurrence rule.
-    Frequencies SECONDLY, MINUTELY, HOURLY, YEARLY are not supported.
-    """
+    """Type of recurrence rule."""
 
     DAILY = "DAILY"
     """Repeating events based on an interval of a day or more."""
@@ -121,6 +119,15 @@ class Frequency(str, enum.Enum):
 
     YEARLY = "YEARLY"
     """Repeating events based on an interval of a year or more."""
+
+    HOURLY = "HOURLY"
+    """Repeating events based on an interval of an hour or more."""
+
+    MINUTELY = "MINUTELY"
+    """Repeating events based on an interval of a minute or more."""
+
+    SECONDLY = "SECONDLY"
+    """Repeating events based on an interval of a second or more."""
 
 
 class Range(str, enum.Enum):
@@ -204,7 +211,10 @@ class RecurrenceId(str):
         )
 
 
-RRULE_FREQ: dict[Frequency, Literal[0, 1, 2, 3]] = {
+RRULE_FREQ: dict[Frequency, Literal[0, 1, 2, 3, 4, 5, 6]] = {
+    Frequency.SECONDLY: rrule.SECONDLY,
+    Frequency.MINUTELY: rrule.MINUTELY,
+    Frequency.HOURLY: rrule.HOURLY,
     Frequency.DAILY: rrule.DAILY,
     Frequency.WEEKLY: rrule.WEEKLY,
     Frequency.MONTHLY: rrule.MONTHLY,
@@ -306,7 +316,9 @@ class Recur(BaseModel):
         """Create a Recur object from an RRULE string."""
         return Recur.model_validate(cls.__parse_property_value__(rrule_str))
 
-    model_config = ConfigDict(validate_assignment=True, populate_by_name=True)
+    model_config = ConfigDict(
+        validate_assignment=True, populate_by_name=True, extra="allow"
+    )
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
     @classmethod
