@@ -241,21 +241,13 @@
             'alarm': list([
               dict({
                 'action': 'AUDIO',
-                'duration': '-P13DT15H',
-                'extras': list([
+                'attach': list([
                   dict({
-                    'name': 'attach',
-                    'params': list([
-                      dict({
-                        'name': 'FMTTYPE',
-                        'values': list([
-                          'audio/basic',
-                        ]),
-                      }),
-                    ]),
-                    'value': 'ftp://example.com/pub/sounds/bell-01.aud',
+                    'fmttype': 'audio/basic',
+                    'uri': 'ftp://example.com/pub/sounds/bell-01.aud',
                   }),
                 ]),
+                'duration': '-P13DT15H',
                 'repeat': 4,
                 'trigger': '1997-03-17T13:30:00Z',
               }),
@@ -1300,21 +1292,13 @@
             'alarms': list([
               dict({
                 'action': 'AUDIO',
-                'duration': 'PT1H',
-                'extras': list([
+                'attach': list([
                   dict({
-                    'name': 'attach',
-                    'params': list([
-                      dict({
-                        'name': 'FMTTYPE',
-                        'values': list([
-                          'audio/basic',
-                        ]),
-                      }),
-                    ]),
-                    'value': 'http://example.com/pub/audio-files/ssbanner.aud',
+                    'fmttype': 'audio/basic',
+                    'uri': 'http://example.com/pub/audio-files/ssbanner.aud',
                   }),
                 ]),
+                'duration': 'PT1H',
                 'repeat': 4,
                 'trigger': '1998-04-03T12:00:00Z',
               }),

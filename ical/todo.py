@@ -33,6 +33,7 @@ from .exceptions import CalendarParseError, ParameterValueError
 from .iter import RulesetIterable, as_rrule
 from .timespan import Timespan
 from .types import (
+    Attachment,
     CalAddress,
     Classification,
     ExtraProperty,
@@ -216,6 +217,9 @@ class Todo(ComponentModel):
 
     May convey a location where a more dynamic rendition of the item can be found.
     """
+
+    attach: list[Attachment] = Field(default_factory=list)
+    """Associate a document object with the todo."""
 
     alarms: list[Alarm] = Field(alias="valarm", default_factory=list)
 
