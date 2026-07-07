@@ -88,3 +88,72 @@ def test_mixed_case_property_name(ics: str) -> None:
     assert prop.name == "begin"
     assert prop.value == "VEVENT"
     assert prop.params is None
+
+
+def test_parameter_quoting_parsing() -> None:
+    """Test parsing and serialization of single quoted and unquoted parameter values."""
+    properties = list(parse_contentlines(['PROP;PARAM1=value1;PARAM2="value2":VAL']))
+    assert len(properties) == 1
+    prop = properties[0]
+    assert prop.name == "prop"
+    assert prop.value == "VAL"
+    assert prop.params == [
+        ParsedPropertyParameter(name="PARAM1", values=["value1"]),
+        ParsedPropertyParameter(name="PARAM2", values=["value2"]),
+    ]
+    # Check serialization of safe values (no quotes generated)
+    assert prop.ics() == "PROP;PARAM1=value1;PARAM2=value2:VAL"
+
+
+def test_parameter_quoting_multiple_values() -> None:
+    """Test parsing and serialization of multiple parameter values (comma-separated)."""
+    properties = list(parse_contentlines(['PROP;PARAM=value1,"value2",value3:VAL']))
+    assert len(properties) == 1
+    assert properties[0].params == [
+        ParsedPropertyParameter(name="PARAM", values=["value1", "value2", "value3"])
+    ]
+    assert properties[0].ics() == "PROP;PARAM=value1,value2,value3:VAL"
+
+
+def test_parameter_quoting_unsafe_characters() -> None:
+    """Test that parameter values containing unsafe characters are quoted on serialization."""
+    properties = list(
+        parse_contentlines(
+            ['PROP;PARAM1="val,one";PARAM2="val:two";PARAM3="val;three":VAL']
+        )
+    )
+    assert len(properties) == 1
+    assert properties[0].params == [
+        ParsedPropertyParameter(name="PARAM1", values=["val,one"]),
+        ParsedPropertyParameter(name="PARAM2", values=["val:two"]),
+        ParsedPropertyParameter(name="PARAM3", values=["val;three"]),
+    ]
+    # Check serialization preserves quoting for unsafe characters
+    assert (
+        properties[0].ics()
+        == 'PROP;PARAM1="val,one";PARAM2="val:two";PARAM3="val;three":VAL'
+    )
+
+
+@pytest.mark.parametrize(
+    "ics",
+    [
+        'PROP;PARAM="unclosed:VAL',
+        'PROP;PARAM="val"quote:VAL',
+    ],
+)
+def test_parameter_quoting_parse_errors(ics: str) -> None:
+    """Test error handling during parsing of invalid quoted parameters."""
+    with pytest.raises(CalendarParseError):
+        list(parse_contentlines([ics]))
+
+
+def test_parameter_quoting_serialization_errors() -> None:
+    """Test that serializing parameter values with double quotes raises ValueError."""
+    invalid_prop = ParsedProperty(
+        name="PROP",
+        value="VAL",
+        params=[ParsedPropertyParameter(name="PARAM", values=['val"quote'])],
+    )
+    with pytest.raises(ValueError, match="cannot contain double quotes"):
+        invalid_prop.ics()

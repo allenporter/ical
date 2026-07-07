@@ -124,6 +124,10 @@ class ParsedProperty:
                 for value in parameter.values:
                     if not isinstance(value, str):
                         continue  # Shouldn't happen; only strings are set by parsing
+                    if _QUOTE in value:
+                        raise ValueError(
+                            f"Parameter value '{value}' for parameter '{parameter.name}' cannot contain double quotes."
+                        )
                     # Property parameters with values contain a colon, semicolon,
                     # or a comma character must be placed in quoted text
                     if _UNSAFE_CHAR_RE.search(value):
