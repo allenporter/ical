@@ -23,6 +23,8 @@ from .util import (
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["FreeBusy"]
+
 
 class FreeBusy(ComponentModel):
     """A single free/busy entry on a calendar."""

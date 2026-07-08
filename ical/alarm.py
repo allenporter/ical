@@ -11,6 +11,9 @@ from .types import Attachment, CalAddress, ExtraProperty
 from .types.data_types import serialize_field
 
 
+__all__ = ["Alarm", "Action"]
+
+
 class Action(str, enum.Enum):
     """Type of actioninvoked when alarm is triggered."""
 

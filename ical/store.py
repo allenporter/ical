@@ -125,7 +125,7 @@ def _prepare_update(
     recurrence_id: str | None = None,
     recurrence_range: Range = Range.NONE,
 ) -> dict[str, Any]:
-    """Prepare an update to an existing event."""
+    """Prepare an update to an existing event or todo."""
     partial_update = item.model_dump(
         exclude_unset=True,
         exclude={"dtstamp", "uid", "sequence", "created", "last_modified"},
@@ -185,7 +185,7 @@ def _prepare_update(
 
 
 class GenericStore(Generic[_T]):
-    """A a store manages the lifecycle of items on a Calendar."""
+    """A store manages the lifecycle of items on a Calendar."""
 
     def __init__(
         self,
@@ -360,8 +360,8 @@ class GenericStore(Generic[_T]):
         when encoded.
         """
         items_to_edit: list[tuple[int, _T]] = [
-            (index, item)
-            for index, item in _match_items(self._items, uid, recurrence_id)
+            (store_idx, store_itm)
+            for store_idx, store_itm in _match_items(self._items, uid, recurrence_id)
         ]
         if not items_to_edit:
             raise self._exc(

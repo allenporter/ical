@@ -148,12 +148,90 @@ def test_parameter_quoting_parse_errors(ics: str) -> None:
         list(parse_contentlines([ics]))
 
 
-def test_parameter_quoting_serialization_errors() -> None:
-    """Test that serializing parameter values with double quotes raises ValueError."""
-    invalid_prop = ParsedProperty(
-        name="PROP",
-        value="VAL",
-        params=[ParsedPropertyParameter(name="PARAM", values=['val"quote'])],
+def test_rfc6868_ical_parameter_decoding() -> None:
+    """Test RFC 6868 Section 3.1 iCalendar parameter decoding."""
+    prop = ParsedProperty.from_ics(
+        "ATTENDEE;CN=George Herman ^'Babe^' Ruth:mailto:babe@example.com"
     )
-    with pytest.raises(ValueError, match="cannot contain double quotes"):
-        invalid_prop.ics()
+    assert prop.name == "attendee"
+    assert prop.value == "mailto:babe@example.com"
+    assert prop.get_parameter_value("CN") == 'George Herman "Babe" Ruth'
+
+
+def test_rfc6868_vcard_parameter_decoding() -> None:
+    """Test RFC 6868 Section 3.2 vCard parameter decoding."""
+    prop = ParsedProperty.from_ics(
+        'GEO;X-ADDRESS="Pittsburgh Pirates^n115 Federal St^nPittsburgh, PA 15212":geo:40.446816,-80.00566'
+    )
+    assert prop.name == "geo"
+    assert prop.value == "geo:40.446816,-80.00566"
+    assert (
+        prop.get_parameter_value("X-ADDRESS")
+        == "Pittsburgh Pirates\n115 Federal St\nPittsburgh, PA 15212"
+    )
+
+
+@pytest.mark.parametrize(
+    ("ics_line", "expected_value"),
+    [
+        ("X-TEST;KEY=^^:VALUE", "^"),
+        ("X-TEST-2;KEY=^^n:VALUE", "^n"),
+        ("X-TEST-3;KEY=a^:VALUE", "a^"),
+        ("X-TEST-4;KEY=a^x:VALUE", "a^x"),
+    ],
+)
+def test_rfc6868_caret_parameter_decoding(ics_line: str, expected_value: str) -> None:
+    """Test RFC 6868 circumflex escaping edge cases during decoding."""
+    prop = ParsedProperty.from_ics(ics_line)
+    assert prop.get_parameter_value("KEY") == expected_value
+
+
+def test_rfc6868_ical_parameter_encoding() -> None:
+    """Test RFC 6868 Section 3.1 iCalendar parameter encoding."""
+    prop = ParsedProperty(
+        name="ATTENDEE",
+        value="mailto:babe@example.com",
+        params=[
+            ParsedPropertyParameter(name="CN", values=['George Herman "Babe" Ruth'])
+        ],
+    )
+    assert (
+        prop.ics() == "ATTENDEE;CN=George Herman ^'Babe^' Ruth:mailto:babe@example.com"
+    )
+
+
+def test_rfc6868_vcard_parameter_encoding() -> None:
+    """Test RFC 6868 Section 3.2 vCard parameter encoding."""
+    prop = ParsedProperty(
+        name="GEO",
+        value="geo:40.446816,-80.00566",
+        params=[
+            ParsedPropertyParameter(
+                name="X-ADDRESS",
+                values=["Pittsburgh Pirates\n115 Federal St\nPittsburgh, PA 15212"],
+            )
+        ],
+    )
+    assert (
+        prop.ics()
+        == 'GEO;X-ADDRESS="Pittsburgh Pirates^n115 Federal St^nPittsburgh, PA 15212":geo:40.446816,-80.00566'
+    )
+
+
+@pytest.mark.parametrize(
+    ("input_value", "expected_ics"),
+    [
+        ("^", "X-TEST;KEY=^^:VALUE"),
+        ("^n", "X-TEST-2;KEY=^^n:VALUE"),
+        ("a^", "X-TEST-3;KEY=a^^:VALUE"),
+    ],
+)
+def test_rfc6868_caret_parameter_encoding(input_value: str, expected_ics: str) -> None:
+    """Test RFC 6868 circumflex escaping edge cases during encoding."""
+    prop_name = expected_ics.split(";")[0]
+    prop = ParsedProperty(
+        name=prop_name,
+        value="VALUE",
+        params=[ParsedPropertyParameter(name="KEY", values=[input_value])],
+    )
+    assert prop.ics() == expected_ics

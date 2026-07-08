@@ -1,99 +1,159 @@
-This is an iCalendar rfc 5545 implementation in python. The goal of this
-project is to offer a calendar library that fills gaps in other widely used
-calendar libraries such as:
+# ical
 
-- Relevant and practical features needed for building a calendar application -- namely recurring events.
-- Simple APIs that are straight forward to use
-- High quality code base with high test coverage and regular releases.
+[![PyPI version](https://img.shields.io/pypi/v/ical.svg)](https://pypi.org/project/ical/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ical.svg)](https://pypi.org/project/ical/)
+[![CI](https://github.com/allenporter/ical/actions/workflows/test.yaml/badge.svg)](https://github.com/allenporter/ical/actions/workflows/test.yaml)
+[![Documentation](https://img.shields.io/badge/docs-allenporter.github.io%2Fical-blue)](https://allenporter.github.io/ical/)
 
-ical's main focus is on simplicity. Internally, this library uses other existing
-data parsing libraries making it easy to support as much as possible of rfc5545.
-It is not a goal to support everything exhaustively (e.g. enterprise features),
-however, the simplicity of the implementation makes it easy to do so. The package
-has high coverage, and high test coverage, and is easy to extend with new rfc5545
-properties.
-
-This packages uses semantic versioning, and releases often, and works
-on recent python versions.
-
-See [documentation](https://allenporter.github.io/ical/) for full quickstart and API reference.
-
-# Quickstart
-
-The example below creates a Calendar, then adds an all day event to
-the calendar, then iterates over all events on the calendar.
+A modern Python [RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) iCalendar library with **built-in recurring event support** — no companion libraries needed.
 
 ```python
-from datetime import date
+from ical.calendar_stream import IcsCalendarStream
 
-from ical.calendar import Calendar
-from ical.event import Event
+cal = IcsCalendarStream.calendar_from_ics(ics_content)
 
-calendar = Calendar()
-calendar.events.append(
-    Event(summary="Event summary", start=date(2022, 7, 3), end=date(2022, 7, 4)),
-)
-for event in calendar.timeline:
-    print(event.summary)
+# Recurring events are automatically expanded — just iterate
+for event in cal.timeline:
+    print(event.start, event.summary)
 ```
 
-# Reading ics files
+## Why ical?
 
-This example parses an .ics file from disk and creates a `ical.calendar.Calendar` object, then
-prints out the events in order:
+Most Python iCalendar libraries require two separate packages to handle recurring events:
+
+```python
+# The typical ecosystem approach — two libraries, two APIs
+import icalendar
+import recurring_ical_events
+
+cal = icalendar.Calendar.from_ical(ics_content)
+events = recurring_ical_events.of(cal).between(start, end)
+```
+
+`ical` handles this natively with a single, unified [`Timeline`](https://allenporter.github.io/ical/) interface, built on a fully type-safe [Pydantic v2](https://docs.pydantic.dev/) data model.
+
+| Feature | `ical` | `icalendar` | `ics.py` |
+|---|---|---|---|
+| Built-in recurrence expansion | ✅ | ❌ needs `recurring-ical-events` | ❌ |
+| Pydantic v2 data model | ✅ | ❌ | ❌ |
+| Full type annotations (`py.typed`) | ✅ strict mypy | ✅ v7+ | ❌ |
+| Application-level store API | ✅ | ❌ | ❌ |
+| RFC 7986 / RFC 6868 / RFC 8536 | ✅ | partial | ❌ |
+| Active maintenance | ✅ | ✅ | ⚠️ stalled |
+
+## Used By
+
+- [**Home Assistant**](https://www.home-assistant.io/) — powers the [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), [Remote Calendar](https://www.home-assistant.io/integrations/remote_calendar/), and [Google Calendar](https://www.home-assistant.io/integrations/google/) integrations (including serving locally-synced calendars for performance)
+
+## Installation
+
+```bash
+pip install ical
+```
+
+Requires Python 3.11+.
+
+## Quickstart
+
+### Reading an .ics file
+
+Parse a calendar file and iterate over events in chronological order, with recurring events automatically expanded:
 
 ```python
 from pathlib import Path
 from ical.calendar_stream import IcsCalendarStream
 from ical.exceptions import CalendarParseError
 
-filename = Path("example/calendar.ics")
+filename = Path("calendar.ics")
 with filename.open() as ics_file:
     try:
-        calendar = IcsCalendarStream.calendar_from_ics(ics_file.read())
+        cal = IcsCalendarStream.calendar_from_ics(ics_file.read())
     except CalendarParseError as err:
-        print(f"Failed to parse ics file '{str(filename)}': {err}")
+        print(f"Failed to parse '{filename}': {err}")
     else:
-        print([event.summary for event in calendar.timeline])
+        for event in cal.timeline:
+            print(event.start, event.summary)
 ```
 
-# Writing ics files
+### Creating a calendar
 
-This example writes a calendar object to an ics output file:
+```python
+from datetime import date
+from ical.calendar import Calendar
+from ical.event import Event
+
+cal = Calendar()
+cal.events.append(
+    Event(summary="Team standup", start=date(2024, 1, 15), end=date(2024, 1, 16)),
+)
+for event in cal.timeline:
+    print(event.summary)
+```
+
+### Writing an .ics file
 
 ```python
 from pathlib import Path
 from ical.calendar_stream import IcsCalendarStream
 
-filename = Path("example/output.ics")
-with filename.open() as ics_file:
-    ics_file.write(IcsCalendarStream.calendar_to_ics(calendar))
+with Path("output.ics").open("w") as f:
+    f.write(IcsCalendarStream.calendar_to_ics(cal))
 ```
 
-# Application-level APIs
+### Recurring events
 
-The above APIs are used for lower level interaction with calendar components,
-however applications require a higher level interface to manage some of the
-underlying complexity. The `ical.store` library is used to manage state at a higher
-level (e.g. ensuring timezones are created properly) or handling edits to
-recurring events.
+Recurring events are stored once in the calendar but automatically expanded by the `Timeline`:
 
-# Recurring events
+```python
+from datetime import date
+from ical.calendar import Calendar
+from ical.event import Event
+from ical.types.recur import Recur
 
-A calendar event may be recurring (e.g. weekly, monthly, etc). Recurring events
-are represented in a `ical.calendar.Calendar` with a single `ical.event.Event` object, however
-when observed through a `ical.timeline.Timeline` will be expanded based on the recurrence rule.
-See the `rrule`, `rdate`, and `exdate` fields on the `ical.event.Event` for more details.
+cal = Calendar()
+cal.events.append(
+    Event(
+        summary="Weekly standup",
+        start=date(2024, 1, 15),
+        end=date(2024, 1, 16),
+        rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=10"),
+    )
+)
 
-# Related Work
+# All 10 occurrences are expanded automatically
+for event in cal.timeline:
+    print(event.start, event.summary)
+```
 
-There are other python rfc5545 implementations that are more mature, and having
-been around for many years, are still active, and served as reference
-implementations for this project:
+### Application-level API
 
-  - Ics.py - [github](https://github.com/ics-py/ics-py) [docs](https://icspy.readthedocs.io/en/stable/) - Since 2013
-  - icalendar [github](https://github.com/collective/icalendar) [docs](https://icalendar.readthedocs.io/) - Since 2005
+For managing calendar state in an application (ensuring timezones are set correctly, editing individual instances of recurring events, etc.), use `ical.store`:
 
-You may prefer these projects if you want something that changes less often or
-if you require a non-modern version of python and if you don't mind patching
-recurring events on top yourself e.g. using `python-recurring-ical-events`.
+```python
+from ical.store import EventStore
+from ical.event import Event
+from datetime import datetime, timezone
+
+store = EventStore()
+store.add(Event(summary="Meeting", start=datetime(2024, 1, 15, 9, tzinfo=timezone.utc)))
+```
+
+See the [full documentation](https://allenporter.github.io/ical/) for the complete API reference.
+
+## Supported RFCs
+
+- [RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) — Internet Calendaring and Scheduling Core Object Specification (iCalendar)
+- [RFC 6868](https://datatracker.ietf.org/doc/html/rfc6868) — Parameter Value Encoding in iCalendar and vCard
+- [RFC 7986](https://datatracker.ietf.org/doc/html/rfc7986) — New Properties for iCalendar
+- [RFC 8536](https://datatracker.ietf.org/doc/html/rfc8536) — The Time Zone Information Format (TZif)
+
+## Comparison with other libraries
+
+`ical` is designed for applications that need a complete, modern solution. You may prefer an alternative if:
+
+- **[`icalendar`](https://github.com/collective/icalendar)** — You need low-level control over raw iCalendar components, jCal (JSON) support, or maximum ecosystem compatibility. You prefer to expand recurring events manually and don't mind a second library ([`recurring-ical-events`](https://github.com/niccokunzmann/python-recurring-ical-events)). You need to support legacy Python versions (3.8+) that `ical` does not target.
+- **[`ics.py`](https://github.com/ics-py/ics-py)** — You need a simple read-only script and do not require recurrence support. Note: no stable release since 0.7.2 (August 2021).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and development instructions.

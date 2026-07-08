@@ -9,7 +9,7 @@ from collections.abc import Generator
 import logging
 import re
 
-from . import dtstart_until_compat, same_day_dtend_compat, timezone_compat
+from . import date_compat, dtstart_until_compat, same_day_dtend_compat, timezone_compat
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,10 @@ def enable_compat_mode(ics: str) -> Generator[str]:
     """Enable compatibility mode to fix known broken calendar content."""
     # Always enable same-day DTEND compatibility for all calendars
     # This is a common issue across many calendar providers
-    with same_day_dtend_compat.enable_same_day_dtend_compat():
+    with (
+        same_day_dtend_compat.enable_same_day_dtend_compat(),
+        date_compat.enable_allow_invalid_dates(),
+    ):
         # Check if the PRODID is from Microsoft Exchange Server
         prodid = _get_prodid(ics)
 

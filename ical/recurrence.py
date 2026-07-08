@@ -38,6 +38,8 @@ from .types.period import Period
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["Recurrences"]
+
 
 class Recurrences(ComponentModel):
     """A common set of recurrence related properties for calendar components."""

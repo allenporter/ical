@@ -17,7 +17,7 @@ from .event import Event
 from .freebusy import FreeBusy
 from .journal import Journal
 from .types.date_time import TZID
-from .types import ExtraProperty
+from .types import ExtraProperty, Uri, Image
 from .parsing.property import ParsedProperty
 from .timeline import Timeline, calendar_timeline
 from .timezone import Timezone, TimezoneModel, IcsTimezoneInfo
@@ -34,14 +34,69 @@ _VERSION = "2.0"
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
 
+__all__ = ["Calendar"]
+
 
 class Calendar(ComponentModel):
-    """A sequence of calendar properties and calendar components."""
+    """A sequence of calendar properties and calendar components.
+
+    Example usage::
+
+        from datetime import date
+        from ical.calendar import Calendar
+        from ical.event import Event
+
+        calendar = Calendar()
+        calendar.events.append(
+            Event(summary="Meeting", start=date(2024, 1, 15), end=date(2024, 1, 16))
+        )
+        for event in calendar.timeline:
+            print(event.summary)
+    """
 
     calscale: Optional[str] = None
     method: Optional[str] = None
     prodid: str = Field(default_factory=lambda: prodid_factory())
     version: str = Field(default_factory=lambda: _VERSION)
+
+    # RFC 7986 Section 4 calendar properties
+    name: list[str] = Field(default_factory=list)
+    """Specifies the user-friendly name of the calendar. Can be specified multiple times in different languages."""
+
+    description: list[str] = Field(default_factory=list)
+    """Specifies the description of the calendar. Can be specified multiple times in different languages."""
+
+    uid: Optional[str] = None
+    """A globally unique identifier for the calendar component."""
+
+    last_modified: Optional[datetime.datetime] = Field(
+        alias="last-modified", default=None
+    )
+    """Specifies the date and time that the calendar metadata was last updated."""
+
+    url: Optional[Uri] = None
+    """Specifies a URL where the calendar can be retrieved or viewed."""
+
+    categories: list[str] = Field(default_factory=list)
+    """Specifies category keywords/labels associated with the calendar."""
+
+    refresh_interval: Optional[datetime.timedelta] = Field(
+        alias="refresh-interval", default=None
+    )
+    """Specifies a suggested minimum time interval for a client to wait before pulling updates from the calendar source (e.g. PT1H)."""
+
+    source: Optional[Uri] = None
+    """Specifies a URL pointing to the original source of the calendar, used for automatically pulling updates."""
+
+    color: Optional[str] = None
+    """Specifies a default color to be associated with the calendar and all of its components.
+
+    The value MUST be a case-insensitive color name defined in CSS3-Color (e.g., "blue" or "turquoise")
+    or a CSS3 RGB/RGBA color value in hex or functional notation (e.g., "#0000FF").
+    """
+
+    image: list[Image] = Field(default_factory=list)
+    """Specifies one or more images (e.g. logo or badge) to represent the calendar. Can be links or inline binary data."""
 
     #
     # Calendar components
@@ -69,7 +124,9 @@ class Calendar(ComponentModel):
     def timeline(self) -> Timeline:
         """Return a timeline view of events on the calendar.
 
-        All day events are returned as if the attendee is viewing from UTC time.
+        All day events are returned as if the attendee is viewing from the
+        local system timezone. Use :meth:`timeline_tz` to specify a different
+        timezone.
         """
         return self.timeline_tz()
 

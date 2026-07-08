@@ -190,6 +190,8 @@ class ComponentModel(BaseModel):
         """Parse individual ParsedProperty items for both model fields and extras."""
         new_values: dict[str, Any] = {}
         for key, value in values.items():
+            if key == "name" and isinstance(value, str):
+                continue
             field_name = cls._all_fields().get(key, "extras")
             if (
                 (field := cls.model_fields.get(field_name))
