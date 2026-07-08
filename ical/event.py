@@ -59,6 +59,8 @@ from .util import (
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["Event", "EventStatus"]
+
 
 class EventStatus(str, enum.Enum):
     """Status or confirmation of the event set by the organizer."""
@@ -286,7 +288,11 @@ class Event(ComponentModel):
     @property
     def start(self) -> datetime.datetime | datetime.date:
         """Return the start time for the event."""
-        assert self.dtstart is not None
+        if self.dtstart is None:
+            raise AttributeError(
+                "Event.start accessed before dtstart was set; "
+                "ensure the event was fully validated before use."
+            )
         return self.dtstart
 
     @property

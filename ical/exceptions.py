@@ -1,5 +1,15 @@
 """Exceptions for ical library."""
 
+__all__ = [
+    "CalendarError",
+    "CalendarParseError",
+    "ParameterValueError",
+    "RecurrenceError",
+    "StoreError",
+    "EventStoreError",
+    "TodoStoreError",
+]
+
 
 class CalendarError(Exception):
     """Base exception for all ical errors."""
@@ -34,6 +44,11 @@ class ParameterValueError(ValueError):
     timezone, and fails to be a date, because it is a datetime. Rather
     than continue trying to validate it as a date, raise ParameterValueError
     to stop, and simply return a single error.
+
+    Note: This exception intentionally extends ``ValueError`` rather than
+    ``CalendarError``. This allows pydantic's validation pipeline to catch it
+    during field validation. Callers catching ``CalendarError`` will **not**
+    catch this exception.
     """
 
 
@@ -49,12 +64,23 @@ class RecurrenceError(CalendarError):
 
 
 class StoreError(CalendarError):
-    """Exception thrown by a Store."""
+    """Exception raised by store operations.
+
+    Raised when a store operation fails, for example when trying to edit
+    or delete an event that does not exist, or when timezone information
+    cannot be resolved for a datetime value being added to the calendar.
+    """
 
 
 class EventStoreError(StoreError):
-    """Exception thrown by the EventStore."""
+    """Exception raised by EventStore operations.
+
+    Raised by :class:`ical.store.EventStore` when an event operation fails.
+    """
 
 
 class TodoStoreError(StoreError):
-    """Exception thrown by the TodoStore."""
+    """Exception raised by TodoStore operations.
+
+    Raised by :class:`ical.store.TodoStore` when a todo operation fails.
+    """

@@ -24,6 +24,13 @@ from .recur_adapter import merge_and_expand_items, ItemType
 __all__ = ["Timeline", "generic_timeline"]
 
 Timeline = SortableItemTimeline[Event]
+"""A timeline of :class:`ical.event.Event` objects.
+
+Supports iteration and range queries such as
+:meth:`~ical.iter.SortableItemTimeline.on_date`,
+:meth:`~ical.iter.SortableItemTimeline.overlapping`, and
+:meth:`~ical.iter.SortableItemTimeline.at_instant`.
+"""
 
 
 def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
@@ -34,11 +41,11 @@ def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
 def generic_timeline(
     items: list[ItemType], tzinfo: datetime.tzinfo
 ) -> SortableItemTimeline[ItemType]:
-    """Return a timeline view of events on the calendar.
+    """Return a timeline view of the given items.
 
-    All events are returned as if the attendee is viewing from the
-    specified timezone. For example, this affects the order that All Day
-    events are returned.
+    Works with any :data:`ical.recur_adapter.ItemType` (events, todos, etc.).
+    All items are returned as if viewed from the specified timezone — for
+    example, this affects the order that all-day items are returned.
     """
     return SortableItemTimeline(
         merge_and_expand_items(
