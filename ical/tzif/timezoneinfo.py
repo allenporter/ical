@@ -26,6 +26,7 @@ from .tzif import read_tzif
 __all__ = [
     "TimezoneInfoError",
     "read",
+    "native_timezones",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -249,12 +250,14 @@ class TzInfo(datetime.tzinfo):
         return f"TzInfo({self._rule.std.name})"
 
 
-def read_tzinfo(key: str) -> TzInfo:
+def read_tzinfo(key: str, resolved_key_as_name: bool = True) -> TzInfo:
     """Create a zoneinfo implementation from raw tzif data."""
     resolved_key = _resolve_extended_timezone(key)
     timezoneinfo = _read_cache(resolved_key)
     try:
-        return TzInfo.from_timezoneinfo(timezoneinfo, key=resolved_key)
+        return TzInfo.from_timezoneinfo(
+            timezoneinfo, key=resolved_key if resolved_key_as_name else key
+        )
     except ValueError as err:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
 
@@ -265,14 +268,20 @@ def _extended_timezones() -> set[str]:
     return set(extended_timezones.EXTENDED_TIMEZONES.keys())
 
 
+def native_timezones() -> set[str]:
+    """Return the set of native system and tzdata timezones (excluding extended timezones)."""
+    result = set(_read_system_timezones())
+    result |= _read_tzdata_timezones()
+    return result
+
+
 def available_timezones() -> set[str]:
     """Return a set of all available timezones.
 
     This includes system timezones, tzdata timezones, and extended timezones if
     enabled for compatibility mode.
     """
-    result = set(_read_system_timezones())
-    result |= _read_tzdata_timezones()
+    result = native_timezones()
     if timezone_compat.is_extended_timezones_enabled():
         result |= _extended_timezones()
     return result

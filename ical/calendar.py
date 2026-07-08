@@ -104,12 +104,21 @@ class Calendar(ComponentModel):
 
         # First parse the timezones out of the calendar, ignoring everything else
         timezone_model = TimezoneModel.model_validate(values)
+        native_tzids = timezoneinfo.native_timezones()
         system_tzids = timezoneinfo.available_timezones()
-        tzinfos: dict[str, datetime.tzinfo] = {
-            timezone.tz_id: IcsTimezoneInfo.from_timezone(timezone)
-            for timezone in timezone_model.timezones
-            if timezone.tz_id not in system_tzids
-        }
+        tzinfos: dict[str, datetime.tzinfo] = {}
+        for timezone in timezone_model.timezones:
+            if timezone.tz_id in native_tzids:
+                continue
+            if timezone.tz_id in system_tzids:
+                try:
+                    tzinfos[timezone.tz_id] = timezoneinfo.read_tzinfo(
+                        timezone.tz_id, resolved_key_as_name=False
+                    )
+                except timezoneinfo.TimezoneInfoError:
+                    tzinfos[timezone.tz_id] = IcsTimezoneInfo.from_timezone(timezone)
+            else:
+                tzinfos[timezone.tz_id] = IcsTimezoneInfo.from_timezone(timezone)
         if not timezone_model.timezones:
             return values
         # Replace any TZID objects with a reference to tzinfo from this calendar. The
