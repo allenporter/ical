@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import dataclasses
 from typing import Any, Optional
 
@@ -60,7 +61,7 @@ class Attachment(BaseModel):
                     if rem > 0:
                         clean_value += "=" * (4 - rem)
                     values["content"] = base64.b64decode(clean_value)
-                except Exception as err:
+                except binascii.Error as err:
                     raise ValueError(
                         f"Failed to decode base64 binary attachment: {err}"
                     )
