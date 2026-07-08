@@ -10,9 +10,11 @@ import zoneinfo
 import pytest
 from pydantic import ValidationError
 
+from ical.calendar import Calendar
 from ical.event import Event
 from ical.exceptions import CalendarParseError
 from ical.types.recur import Recur
+from ical.types import Period
 
 SUMMARY = "test summary"
 LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -500,9 +502,6 @@ END:VCALENDAR"""
 
 def test_event_recurrence_expansion_period() -> None:
     """Test that event recurrence expansion uses the period's duration."""
-    from ical.calendar import Calendar
-    from ical.types import Period
-
     event = Event(
         summary="Test Event",
         dtstart=datetime(2022, 8, 7, 9, 0, 0),

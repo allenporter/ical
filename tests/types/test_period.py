@@ -10,6 +10,7 @@ from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty
 from ical.types import Period
+from ical.types.period import FreeBusyType
 from ical.types.data_types import serialize_field
 
 
@@ -108,8 +109,6 @@ def test_encode_period() -> None:
 
 def test_free_busy_type_parse() -> None:
     """Test FreeBusyType parsing."""
-    from ical.types.period import FreeBusyType
-
     assert (
         FreeBusyType.__parse_property_value__(
             ParsedProperty(name="FBTYPE", value="BUSY-UNAVAILABLE")

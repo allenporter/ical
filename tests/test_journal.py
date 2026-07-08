@@ -11,6 +11,8 @@ import pytest
 from ical.exceptions import CalendarParseError
 from ical.journal import Journal, JournalStatus
 from ical.timespan import Timespan
+from ical.types import Period
+from ical.recur_adapter import merge_and_expand_items
 
 
 def test_empty() -> None:
@@ -86,9 +88,6 @@ def test_computed_duration_datetime() -> None:
 
 def test_journal_recurrence_expansion_period() -> None:
     """Test that journal recurrence expansion works with periods."""
-    from ical.types import Period
-    from ical.recur_adapter import merge_and_expand_items
-
     journal = Journal(
         summary="Test Journal",
         dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),

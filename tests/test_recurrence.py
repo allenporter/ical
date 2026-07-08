@@ -9,6 +9,7 @@ import pytest
 from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.component import ComponentModel
 from ical.exceptions import RecurrenceError
 from ical.event import Event
@@ -18,6 +19,7 @@ from ical.timeline import Timeline
 from ical.todo import Todo
 from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
 from ical.recurrence import Recurrences
+from ical.types import Period
 
 
 def test_from_contentlines() -> None:
@@ -332,8 +334,6 @@ def test_ics_wkst() -> None:
 
 def test_parse_rdate_period_naive() -> None:
     """Test parsing naive RDATE periods."""
-    from ical.types import Period
-
     lines = [
         "DTSTART:19960403T020000",
         "RDATE;VALUE=PERIOD:19960403T020000/19960403T040000,19960404T020000/PT3H",
@@ -358,9 +358,6 @@ def test_parse_rdate_period_naive() -> None:
 
 def test_parse_rdate_period_tzid() -> None:
     """Test parsing RDATE periods with a timezone (TZID)."""
-    import zoneinfo
-    from ical.types import Period
-
     lines = [
         "DTSTART;TZID=America/New_York:19960403T020000",
         "RDATE;VALUE=PERIOD;TZID=America/New_York:19960403T020000/19960403T040000",
@@ -377,10 +374,6 @@ def test_parse_rdate_period_tzid() -> None:
 
 def test_rdate_period_serialization() -> None:
     """Test serializing RDATE properties with PERIOD values."""
-    from ical.calendar import Calendar
-    from ical.calendar_stream import IcsCalendarStream
-    from ical.types import Period
-
     event = Event(
         summary="Test Serialization",
         dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),
@@ -400,8 +393,6 @@ def test_rdate_period_serialization() -> None:
 
 def test_parse_rdate_list_strings() -> None:
     """Test before validator parse_rdate_list with strings."""
-    from ical.types import Period
-
     recurrences = Recurrences(
         dtstart=datetime.datetime(2022, 8, 3, 6, 0, 0),
         rdate=[
