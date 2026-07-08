@@ -319,11 +319,13 @@
               'common_name': 'John Smith',
               'uri': 'mailto:jsmith@example.com',
             }),
-            'request_status': dict({
-              'exdata': 'DTSTART:96-Apr-01',
-              'statcode': 3.1,
-              'statdesc': 'Invalid property value',
-            }),
+            'request_status': list([
+              dict({
+                'exdata': 'DTSTART:96-Apr-01',
+                'statcode': 3.1,
+                'statdesc': 'Invalid property value',
+              }),
+            ]),
             'summary': 'Festival International de Jazz de Montreal',
             'uid': '20070423T123432Z-541111@example.com',
           }),
@@ -498,11 +500,13 @@
             'dtend': '2007-06-28T10:00:00',
             'dtstamp': '2007-04-23T12:34:32Z',
             'dtstart': '2007-06-28T09:00:00',
-            'request_status': dict({
-              'exdata': None,
-              'statcode': 2.0,
-              'statdesc': 'Success',
-            }),
+            'request_status': list([
+              dict({
+                'exdata': None,
+                'statcode': 2.0,
+                'statdesc': 'Success',
+              }),
+            ]),
             'resources': list([
               'EASEL',
               'PROJECTOR',

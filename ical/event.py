@@ -230,9 +230,9 @@ class Event(ComponentModel):
     then excluding any times specified by exdate.
     """
 
-    request_status: Optional[RequestStatus] = Field(
-        default=None,
+    request_status: list[RequestStatus] = Field(
         alias="request-status",
+        default_factory=list,
     )
 
     sequence: Optional[int] = None
