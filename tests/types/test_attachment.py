@@ -194,3 +194,28 @@ def test_encode_binary_attachment() -> None:
             )
         ],
     )
+
+
+def test_non_dict_validation() -> None:
+    """Test validating a non-dictionary value raises validation error."""
+    with pytest.raises(Exception):
+        Attachment.model_validate("not a dict")
+
+
+def test_serialize_content_none() -> None:
+    """Test serializing content when it is None."""
+    attachment = Attachment(uri=Uri("http://example.com"))
+    data = attachment.model_dump()
+    assert data["content"] is None
+
+
+def test_encode_property_bytes() -> None:
+    """Test encoding property when content is passed as raw bytes."""
+    prop = Attachment.__encode_property__({"content": b"raw bytes"})
+    assert prop.value == base64.b64encode(b"raw bytes").decode("ascii")
+
+
+def test_encode_property_empty() -> None:
+    """Test encoding property when both content and uri are None."""
+    prop = Attachment.__encode_property__({})
+    assert prop.value == ""
