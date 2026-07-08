@@ -152,9 +152,9 @@ class Todo(ComponentModel):
     related_to: list[RelatedTo] = Field(alias="related-to", default_factory=list)
     """Used to represent a relationship or reference between events."""
 
-    request_status: Optional[RequestStatus] = Field(
-        default=None,
+    request_status: list[RequestStatus] = Field(
         alias="request-status",
+        default_factory=list,
     )
 
     rrule: Optional[Recur] = None

@@ -463,3 +463,36 @@ def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
     )
     with pytest.raises(CalendarParseError):
         event.as_rrule()
+
+
+def test_multiple_request_status() -> None:
+    """Test parsing an event with multiple REQUEST-STATUS properties."""
+    from ical.calendar_stream import CalendarStream
+
+    ics = """BEGIN:VCALENDAR
+PRODID:-//example//1.2.3
+VERSION:2.0
+BEGIN:VEVENT
+UID:event-id
+DTSTAMP:20220916T060000
+DTSTART:20220916T060000
+REQUEST-STATUS:2.0;Success
+REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = CalendarStream.from_ics(ics)
+    assert len(calendar.calendars) == 1
+    assert len(calendar.calendars[0].events) == 1
+    event = calendar.calendars[0].events[0]
+    assert len(event.request_status) == 2
+    assert event.request_status[0].statcode == 2.0
+    assert event.request_status[0].statdesc == "Success"
+    assert event.request_status[1].statcode == 3.1
+    assert event.request_status[1].statdesc == "Invalid property value"
+    assert event.request_status[1].exdata == "DTSTART:96-Apr-01"
+
+    # Verify serialization
+    out_ics = calendar.ics()
+    assert "REQUEST-STATUS:2.0;Success" in out_ics
+    assert "REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01" in out_ics

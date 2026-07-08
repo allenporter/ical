@@ -102,9 +102,9 @@ class Journal(ComponentModel):
         list[Union[datetime.date, datetime.datetime]],
         BeforeValidator(parse_date_and_datetime_list),
     ] = Field(default_factory=list)
-    request_status: Optional[RequestStatus] = Field(
-        default=None,
+    request_status: list[RequestStatus] = Field(
         alias="request-status",
+        default_factory=list,
     )
     sequence: Optional[int] = None
     status: Optional[JournalStatus] = None
