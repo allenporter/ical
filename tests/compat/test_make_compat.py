@@ -113,3 +113,41 @@ def test_make_compat_not_enabled(ics: str) -> None:
         assert compat_ics == ics
         assert not timezone_compat.is_allow_invalid_timezones_enabled()
         assert not timezone_compat.is_extended_timezones_enabled()
+
+
+def test_non_iana_timezone_roundtrip() -> None:
+    """Verify that parsed non-IANA timezones round-trip back to ICS with preserved names."""
+    ics_content = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:Microsoft Exchange Server 2010
+BEGIN:VTIMEZONE
+TZID:Central European Standard Time
+BEGIN:STANDARD
+DTSTART:16010101T030000
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:event-1
+SUMMARY:Test Event
+DTSTART;TZID=Central European Standard Time:20241025T090000
+DTEND;TZID=Central European Standard Time:20241025T100000
+END:VEVENT
+END:VCALENDAR"""
+
+    # 1. Parse using compatibility mode
+    with enable_compat_mode(ics_content) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    # 2. Serialize calendar back to ICS
+    output_ics = IcsCalendarStream.calendar_to_ics(calendar)
+
+    # 3. Verify original non-IANA timezone names are preserved in properties
+    assert "DTSTART;TZID=Central European Standard Time" in output_ics
+    assert "DTEND;TZID=Central European Standard Time" in output_ics
+
+    # 4. Verify standard/non-compat parser parses output successfully
+    new_calendar = IcsCalendarStream.calendar_from_ics(output_ics)
+    assert new_calendar is not None
