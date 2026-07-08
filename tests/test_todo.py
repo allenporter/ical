@@ -435,3 +435,21 @@ def test_default_end_date() -> None:
     )
 
     assert todo.end == start + datetime.timedelta(days=1)
+
+
+def test_todo_serialization_date_value() -> None:
+    """Test serializing a Todo with a datetime.date value matches the expected output with VALUE=DATE."""
+    import ical.calendar_stream
+    import ical.calendar
+
+    calendar = ical.calendar.Calendar(
+        prodid="test",
+        version="1",
+        vtodo=[
+            Todo(
+                dtstart=datetime.date(2025, 10, 16),
+            )
+        ],
+    )
+    ics_content = ical.calendar_stream.IcsCalendarStream.calendar_to_ics(calendar)
+    assert "DTSTART;VALUE=DATE:20251016" in ics_content

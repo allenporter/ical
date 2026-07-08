@@ -96,9 +96,11 @@ class DateTimeEncoder:
         }
 
     @classmethod
-    def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty:
+    def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty | None:
         """Encode the ParsedProperty."""
         if isinstance(value, str):
+            if "T" not in value:
+                return None
             return ParsedProperty(name="", value=value)
         prop = ParsedProperty(name="", value=value[ATTR_VALUE])
         if tzid := value.get(TZID):
