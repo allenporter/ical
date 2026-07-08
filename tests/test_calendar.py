@@ -16,7 +16,8 @@ from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.types.recur import Recur
-from ical.types import Uri, Image
+from ical.types import Uri, Image, Display
+from pydantic import ValidationError
 from pathlib import Path
 
 
@@ -522,7 +523,6 @@ def test_rfc7986_calendar_properties() -> None:
 
 def test_rfc7986_image_edge_cases() -> None:
     """Test edge cases in Image parsing and encoding to cover missing paths."""
-    from pydantic import ValidationError
 
     # 1. Non-dict input to parse_image (Line 49)
     with pytest.raises(ValidationError):
@@ -563,7 +563,6 @@ def test_rfc7986_image_edge_cases() -> None:
     assert img_altrep.altrep == Uri("http://example.com/logo.svg")
 
     # 8. Display Enum validation
-    from ical.types import Display
 
     assert Display("BADGE") == Display.BADGE
     assert Display("badge") == Display.BADGE  # case insensitive missing fallback lookup

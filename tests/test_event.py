@@ -11,10 +11,11 @@ import pytest
 from pydantic import ValidationError
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.exceptions import CalendarParseError
 from ical.types.recur import Recur
-from ical.types import Period, Uri, Image, Conference
+from ical.types import Period, Uri, Image, Conference, Feature
 from pathlib import Path
 
 SUMMARY = "test summary"
@@ -548,7 +549,6 @@ def test_rfc7986_event_properties() -> None:
     ics_path = (
         Path(__file__).parent / "parsing/testdata/valid/params_rfc7986_component.ics"
     )
-    from ical.calendar_stream import IcsCalendarStream
 
     calendar = IcsCalendarStream.calendar_from_ics(ics_path.read_text())
 
@@ -589,7 +589,6 @@ def test_rfc7986_event_properties() -> None:
     assert "CONFERENCE;FEATURE=x-custom-feature:https://custom-conf.com" in output_ics
 
     # Programmatic verification of Conference parameters
-    from ical.types import Feature
 
     conf = Conference.model_validate(
         {
@@ -605,7 +604,6 @@ def test_rfc7986_event_properties() -> None:
     assert conf.language == "en-US"
 
     # Feature Enum validation
-    from ical.types import Feature
 
     assert Feature("AUDIO") == Feature.AUDIO
     assert Feature("audio") == Feature.AUDIO  # case insensitive missing fallback lookup
