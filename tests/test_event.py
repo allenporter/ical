@@ -14,7 +14,8 @@ from ical.calendar import Calendar
 from ical.event import Event
 from ical.exceptions import CalendarParseError
 from ical.types.recur import Recur
-from ical.types import Period
+from ical.types import Period, Uri, Image, Conference
+from pathlib import Path
 
 SUMMARY = "test summary"
 LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -540,3 +541,41 @@ def test_event_recurrence_expansion_period() -> None:
     # 3. Standard datetime instance (uses default 1 hour)
     assert events[2].dtstart == datetime(2022, 8, 10, 10, 0, 0)
     assert events[2].dtend == datetime(2022, 8, 10, 11, 0, 0)
+
+
+def test_rfc7986_event_properties() -> None:
+    """Test parsing and serialization of event-level RFC 7986 properties."""
+    ics_path = (
+        Path(__file__).parent / "parsing/testdata/valid/params_rfc7986_component.ics"
+    )
+    from ical.calendar_stream import IcsCalendarStream
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics_path.read_text())
+
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+    assert event.color == "blue"
+    assert len(event.image) == 1
+    assert event.image[0].uri == Uri("http://example.com/event.jpg")
+    assert event.image[0].display == ["THUMBNAIL"]
+    assert event.image[0].format_type == "image/jpeg"
+    assert len(event.conference) == 1
+    assert event.conference[0].uri == Uri("https://zoom.us/j/123456")
+    assert event.conference[0].feature == ["AUDIO", "VIDEO"]
+    assert event.conference[0].label == "Zoom Meeting"
+
+    # Verify serialization
+    output_ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "COLOR:blue" in output_ics
+    assert (
+        "IMAGE;DISPLAY=THUMBNAIL;FMTTYPE=image/jpeg:http://example.com/event.jpg"
+        in output_ics
+        or "IMAGE;FMTTYPE=image/jpeg;DISPLAY=THUMBNAIL:http://example.com/event.jpg"
+        in output_ics
+    )
+    assert (
+        "CONFERENCE;FEATURE=AUDIO,VIDEO;LABEL=Zoom Meeting:https://zoom.us/j/123456"
+        in output_ics
+        or "CONFERENCE;LABEL=Zoom Meeting;FEATURE=AUDIO,VIDEO:https://zoom.us/j/123456"
+        in output_ics
+    )

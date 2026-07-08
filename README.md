@@ -91,6 +91,7 @@ This library implements:
 - [RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) - Internet Calendaring and Scheduling Core Object Specification (iCalendar)
 - [RFC 8536](https://datatracker.ietf.org/doc/html/rfc8536) - The Time Zone Information Format (TZif)
 - [RFC 6868](https://datatracker.ietf.org/doc/html/rfc6868) - Parameter Value Encoding in iCalendar and vCard
+- [RFC 7986](https://datatracker.ietf.org/doc/html/rfc7986) - New Properties for iCalendar (Component property extensions)
 
 # Related Work
 

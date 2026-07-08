@@ -38,8 +38,10 @@ from .types import (
     Attachment,
     CalAddress,
     Classification,
+    Conference,
     ExtraProperty,
     Geo,
+    Image,
     Priority,
     Recur,
     RecurrenceId,
@@ -168,6 +170,19 @@ class Event(ComponentModel):
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
     )
+
+    color: Optional[str] = None
+    """Specifies a color associated with the event.
+
+    The value MUST be a case-insensitive color name defined in CSS3-Color (e.g., "blue" or "turquoise")
+    or a CSS3 RGB/RGBA color value in hex or functional notation (e.g., "#0000FF").
+    """
+
+    image: list[Image] = Field(default_factory=list)
+    """Specifies one or more images associated with the event."""
+
+    conference: list[Conference] = Field(default_factory=list)
+    """Specifies one or more conferences associated with the event."""
 
     location: Optional[str] = None
     """Defines the intended venue for the activity defined by this event."""

@@ -152,28 +152,47 @@
   END:VCALENDAR
   '''
 # ---
-# name: test_encode_contentlines[params_rfc6868_caret]
+# name: test_encode_contentlines[params_rfc7986_calendar]
   '''
   BEGIN:VCALENDAR
-  X-TEST;KEY=^^:VALUE
-  X-TEST-2;KEY=^^n:VALUE
-  X-TEST-3;KEY=a^^:VALUE
-  X-TEST-4;KEY=a^^x:VALUE
+  NAME;LANGUAGE=en:My Calendar
+  DESCRIPTION;LANGUAGE=en:Description of the calendar
+  UID:calendar-unique-id-123
+  LAST-MODIFIED:20260708T144000Z
+  URL:http://example.com/calendar.ics
+  CATEGORIES:WORK,PROJECT
+  REFRESH-INTERVAL;VALUE=DURATION:PT1H
+  SOURCE;VALUE=URI:http://example.com/source.ics
+  COLOR:turquoise
+  IMAGE;DISPLAY=BADGE;FMTTYPE=image/png:http://example.com/badge.png
+  IMAGE;VALUE=BINARY;ENCODING=BASE64;FMTTYPE=image/png:aGVsbG8=
   END:VCALENDAR
   '''
 # ---
-# name: test_encode_contentlines[params_rfc6868_ical]
+# name: test_encode_contentlines[params_rfc7986_component]
   '''
   BEGIN:VCALENDAR
-  ATTENDEE;CN=George Herman ^'Babe^' Ruth:mailto:babe@example.com
-  END:VCALENDAR
-  '''
-# ---
-# name: test_encode_contentlines[params_rfc6868_vcard]
-  '''
-  BEGIN:VCALENDAR
-  GEO;X-ADDRESS="Pittsburgh Pirates^n115 Federal St^nPittsburgh, PA 
-   15212":geo:40.446816,-80.00566
+  BEGIN:VEVENT
+  UID:event-1
+  DTSTART:20260708T150000Z
+  DTEND:20260708T160000Z
+  COLOR:blue
+  IMAGE;DISPLAY=THUMBNAIL;FMTTYPE=image/jpeg:http://example.com/event.jpg
+  CONFERENCE;FEATURE=AUDIO,VIDEO;LABEL=Zoom Meeting:https://zoom.us/j/123456
+  END:VEVENT
+  BEGIN:VTODO
+  UID:todo-1
+  DTSTART:20260708T150000Z
+  COLOR:red
+  IMAGE;DISPLAY=FULLSIZE:http://example.com/todo.jpg
+  CONFERENCE;FEATURE=CHAT;LABEL=Slack Channel:https://slack.com/123
+  END:VTODO
+  BEGIN:VJOURNAL
+  UID:journal-1
+  DTSTART:20260708T150000Z
+  COLOR:green
+  IMAGE;DISPLAY=BADGE:http://example.com/journal.jpg
+  END:VJOURNAL
   END:VCALENDAR
   '''
 # ---
@@ -985,106 +1004,286 @@
     }),
   ])
 # ---
-# name: test_parse_contentlines[params_rfc6868_caret]
+# name: test_parse_contentlines[params_rfc7986_calendar]
   list([
     dict({
       'name': 'vcalendar',
       'properties': list([
         dict({
-          'name': 'x-test',
+          'name': 'name',
           'params': list([
             dict({
-              'name': 'KEY',
+              'name': 'LANGUAGE',
               'values': list([
-                '^',
+                'en',
               ]),
             }),
           ]),
-          'value': 'VALUE',
+          'value': 'My Calendar',
         }),
         dict({
-          'name': 'x-test-2',
+          'name': 'description',
           'params': list([
             dict({
-              'name': 'KEY',
+              'name': 'LANGUAGE',
               'values': list([
-                '^n',
+                'en',
               ]),
             }),
           ]),
-          'value': 'VALUE',
+          'value': 'Description of the calendar',
         }),
         dict({
-          'name': 'x-test-3',
-          'params': list([
-            dict({
-              'name': 'KEY',
-              'values': list([
-                'a^',
-              ]),
-            }),
-          ]),
-          'value': 'VALUE',
+          'name': 'uid',
+          'params': None,
+          'value': 'calendar-unique-id-123',
         }),
         dict({
-          'name': 'x-test-4',
+          'name': 'last-modified',
+          'params': None,
+          'value': '20260708T144000Z',
+        }),
+        dict({
+          'name': 'url',
+          'params': None,
+          'value': 'http://example.com/calendar.ics',
+        }),
+        dict({
+          'name': 'categories',
+          'params': None,
+          'value': 'WORK,PROJECT',
+        }),
+        dict({
+          'name': 'refresh-interval',
           'params': list([
             dict({
-              'name': 'KEY',
+              'name': 'VALUE',
               'values': list([
-                'a^x',
+                'DURATION',
               ]),
             }),
           ]),
-          'value': 'VALUE',
+          'value': 'PT1H',
+        }),
+        dict({
+          'name': 'source',
+          'params': list([
+            dict({
+              'name': 'VALUE',
+              'values': list([
+                'URI',
+              ]),
+            }),
+          ]),
+          'value': 'http://example.com/source.ics',
+        }),
+        dict({
+          'name': 'color',
+          'params': None,
+          'value': 'turquoise',
+        }),
+        dict({
+          'name': 'image',
+          'params': list([
+            dict({
+              'name': 'DISPLAY',
+              'values': list([
+                'BADGE',
+              ]),
+            }),
+            dict({
+              'name': 'FMTTYPE',
+              'values': list([
+                'image/png',
+              ]),
+            }),
+          ]),
+          'value': 'http://example.com/badge.png',
+        }),
+        dict({
+          'name': 'image',
+          'params': list([
+            dict({
+              'name': 'VALUE',
+              'values': list([
+                'BINARY',
+              ]),
+            }),
+            dict({
+              'name': 'ENCODING',
+              'values': list([
+                'BASE64',
+              ]),
+            }),
+            dict({
+              'name': 'FMTTYPE',
+              'values': list([
+                'image/png',
+              ]),
+            }),
+          ]),
+          'value': 'aGVsbG8=',
         }),
       ]),
     }),
   ])
 # ---
-# name: test_parse_contentlines[params_rfc6868_ical]
+# name: test_parse_contentlines[params_rfc7986_component]
   list([
     dict({
-      'name': 'vcalendar',
-      'properties': list([
+      'components': list([
         dict({
-          'name': 'attendee',
-          'params': list([
+          'components': list([
+          ]),
+          'name': 'vevent',
+          'properties': list([
             dict({
-              'name': 'CN',
-              'values': list([
-                'George Herman "Babe" Ruth',
+              'name': 'uid',
+              'params': None,
+              'value': 'event-1',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '20260708T150000Z',
+            }),
+            dict({
+              'name': 'dtend',
+              'params': None,
+              'value': '20260708T160000Z',
+            }),
+            dict({
+              'name': 'color',
+              'params': None,
+              'value': 'blue',
+            }),
+            dict({
+              'name': 'image',
+              'params': list([
+                dict({
+                  'name': 'DISPLAY',
+                  'values': list([
+                    'THUMBNAIL',
+                  ]),
+                }),
+                dict({
+                  'name': 'FMTTYPE',
+                  'values': list([
+                    'image/jpeg',
+                  ]),
+                }),
               ]),
+              'value': 'http://example.com/event.jpg',
+            }),
+            dict({
+              'name': 'conference',
+              'params': list([
+                dict({
+                  'name': 'FEATURE',
+                  'values': list([
+                    'AUDIO',
+                    'VIDEO',
+                  ]),
+                }),
+                dict({
+                  'name': 'LABEL',
+                  'values': list([
+                    'Zoom Meeting',
+                  ]),
+                }),
+              ]),
+              'value': 'https://zoom.us/j/123456',
             }),
           ]),
-          'value': 'mailto:babe@example.com',
         }),
-      ]),
-    }),
-  ])
-# ---
-# name: test_parse_contentlines[params_rfc6868_vcard]
-  list([
-    dict({
-      'name': 'vcalendar',
-      'properties': list([
         dict({
-          'name': 'geo',
-          'params': list([
+          'components': list([
+          ]),
+          'name': 'vtodo',
+          'properties': list([
             dict({
-              'name': 'X-ADDRESS',
-              'values': list([
-                '''
-                  Pittsburgh Pirates
-                  115 Federal St
-                  Pittsburgh, PA 15212
-                ''',
+              'name': 'uid',
+              'params': None,
+              'value': 'todo-1',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '20260708T150000Z',
+            }),
+            dict({
+              'name': 'color',
+              'params': None,
+              'value': 'red',
+            }),
+            dict({
+              'name': 'image',
+              'params': list([
+                dict({
+                  'name': 'DISPLAY',
+                  'values': list([
+                    'FULLSIZE',
+                  ]),
+                }),
               ]),
+              'value': 'http://example.com/todo.jpg',
+            }),
+            dict({
+              'name': 'conference',
+              'params': list([
+                dict({
+                  'name': 'FEATURE',
+                  'values': list([
+                    'CHAT',
+                  ]),
+                }),
+                dict({
+                  'name': 'LABEL',
+                  'values': list([
+                    'Slack Channel',
+                  ]),
+                }),
+              ]),
+              'value': 'https://slack.com/123',
             }),
           ]),
-          'value': 'geo:40.446816,-80.00566',
+        }),
+        dict({
+          'components': list([
+          ]),
+          'name': 'vjournal',
+          'properties': list([
+            dict({
+              'name': 'uid',
+              'params': None,
+              'value': 'journal-1',
+            }),
+            dict({
+              'name': 'dtstart',
+              'params': None,
+              'value': '20260708T150000Z',
+            }),
+            dict({
+              'name': 'color',
+              'params': None,
+              'value': 'green',
+            }),
+            dict({
+              'name': 'image',
+              'params': list([
+                dict({
+                  'name': 'DISPLAY',
+                  'values': list([
+                    'BADGE',
+                  ]),
+                }),
+              ]),
+              'value': 'http://example.com/journal.jpg',
+            }),
+          ]),
         }),
       ]),
+      'name': 'vcalendar',
     }),
   ])
 # ---

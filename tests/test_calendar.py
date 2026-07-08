@@ -16,6 +16,8 @@ from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.types.recur import Recur
+from ical.types import Uri, Image
+from pathlib import Path
 
 
 @pytest.fixture(name="calendar")
@@ -459,3 +461,60 @@ def test_floating_time_with_timezone_propagation() -> None:
         it = iter(cal.timeline_tz(zoneinfo.ZoneInfo("Europe/Brussels")))
         for i in range(0, 30):
             next(it)
+
+
+def test_rfc7986_calendar_properties() -> None:
+    """Test parsing and serialization of calendar-level RFC 7986 properties."""
+    ics_path = (
+        Path(__file__).parent / "parsing/testdata/valid/params_rfc7986_calendar.ics"
+    )
+    calendar = IcsCalendarStream.calendar_from_ics(ics_path.read_text())
+
+    # Verify parsed fields
+    assert calendar.name == ["My Calendar"]
+    assert calendar.description == ["Description of the calendar"]
+    assert calendar.uid == "calendar-unique-id-123"
+    assert calendar.last_modified == datetime.datetime(
+        2026, 7, 8, 14, 40, 0, tzinfo=datetime.timezone.utc
+    )
+    assert calendar.url == Uri("http://example.com/calendar.ics")
+    assert calendar.categories == ["WORK", "PROJECT"]
+    assert calendar.refresh_interval == datetime.timedelta(hours=1)
+    assert calendar.source == Uri("http://example.com/source.ics")
+    assert calendar.color == "turquoise"
+
+    # Verify images (one link, one binary)
+    assert len(calendar.image) == 2
+    img1, img2 = calendar.image
+
+    assert img1.uri == Uri("http://example.com/badge.png")
+    assert img1.content is None
+    assert img1.format_type == "image/png"
+    assert img1.display == ["BADGE"]
+
+    assert img2.uri is None
+    assert img2.content == b"hello"
+    assert img2.format_type == "image/png"
+
+    # Verify serialization
+    output_ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "NAME:My Calendar" in output_ics
+    assert "DESCRIPTION:Description of the calendar" in output_ics
+    assert "UID:calendar-unique-id-123" in output_ics
+    assert "LAST-MODIFIED:20260708T144000Z" in output_ics
+    assert "URL:http://example.com/calendar.ics" in output_ics
+    assert "CATEGORIES:WORK" in output_ics
+    assert "CATEGORIES:PROJECT" in output_ics
+    assert "REFRESH-INTERVAL;VALUE=DURATION:PT1H" in output_ics
+    assert "SOURCE;VALUE=URI:http://example.com/source.ics" in output_ics
+    assert "COLOR:turquoise" in output_ics
+    assert (
+        "IMAGE;FMTTYPE=image/png;DISPLAY=BADGE:http://example.com/badge.png"
+        in output_ics
+        or "IMAGE;DISPLAY=BADGE;FMTTYPE=image/png:http://example.com/badge.png"
+        in output_ics
+    )
+    assert (
+        "IMAGE;ENCODING=BASE64;FMTTYPE=image/png;VALUE=BINARY:aGVsbG8=" in output_ics
+        or "IMAGE;FMTTYPE=image/png;VALUE=BINARY;ENCODING=BASE64:aGVsbG8=" in output_ics
+    )

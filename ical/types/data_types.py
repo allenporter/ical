@@ -176,13 +176,12 @@ class Registry:
         # A property field may have multiple possible types, like for
         # a Union. Pick the first type that is able to encode the value.
         errors = []
+        prop = None
         for sub_type in self.get_ordered_field_types(field_type):
             if encoder := self._encode_property.get(sub_type):
                 try:
                     if prop := encoder(value):
-                        if not prop.name:
-                            prop.name = key
-                        return prop
+                        break
                     # Encoder returned None, meaning it couldn't encode this value.
                     # We continue to the fallback below or the next sub_type.
                 except ValueError as err:
@@ -193,9 +192,32 @@ class Registry:
                     continue
 
             if value is not None and not encoder:
-                return ParsedProperty(name=key, value=value)
+                prop = ParsedProperty(name=key, value=value)
+                break
 
-        raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
+        if prop is None:
+            raise ValueError(f"Unable to encode property: {value}, errors: {errors}")
+
+        if not prop.name:
+            prop.name = key
+
+        # Add special parameters for RFC 7986 properties without defaults
+        if key.lower() == "refresh-interval":
+            if not prop.params:
+                prop.params = []
+            if not any(p.name == "VALUE" for p in prop.params):
+                prop.params.append(
+                    ParsedPropertyParameter(name="VALUE", values=["DURATION"])
+                )
+        elif key.lower() == "source":
+            if not prop.params:
+                prop.params = []
+            if not any(p.name == "VALUE" for p in prop.params):
+                prop.params.append(
+                    ParsedPropertyParameter(name="VALUE", values=["URI"])
+                )
+
+        return prop
 
     def parse_field(
         self,

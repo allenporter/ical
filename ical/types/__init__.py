@@ -14,6 +14,8 @@ from .recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
 from .relation import RelatedTo, RelationshipType
 from .request_status import RequestStatus
 from .attachment import Attachment
+from .conference import Conference
+from .image import Image
 from .uri import Uri
 from .utc_offset import UtcOffset
 
@@ -22,9 +24,11 @@ __all__ = [
     "CalAddress",
     "CalendarUserType",
     "Classification",
+    "Conference",
     "Frequency",
     "FreeBusyType",
     "Geo",
+    "Image",
     "Period",
     "Priority",
     "Range",
