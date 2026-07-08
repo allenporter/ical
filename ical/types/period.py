@@ -43,7 +43,7 @@ class FreeBusyType(str, enum.Enum):
             return None
 
 
-@DATA_TYPE.register("PERIOD")
+@DATA_TYPE.register("PERIOD", parse_order=3)
 class Period(BaseModel):
     """A value with a precise period of time."""
 
@@ -80,9 +80,16 @@ class Period(BaseModel):
         parts = value.split("/")
         if len(parts) != 2:
             raise ValueError(f"Period did not have two time values: {value}")
+        params = values.get("params")
+        if params and isinstance(params, list):
+            if all(isinstance(p, dict) for p in params):
+                params = [
+                    ParsedPropertyParameter(name=p["name"], values=p["values"])
+                    for p in params
+                ]
         try:
             start = DateTimeEncoder.__parse_property_value__(
-                ParsedProperty(name="ignored", value=parts[0])
+                ParsedProperty(name="ignored", value=parts[0], params=params)
             )
         except ValueError as err:
             _LOGGER.debug("Failed to parse start date as date time: %s", parts[0])
@@ -90,7 +97,7 @@ class Period(BaseModel):
         values["start"] = start
         try:
             end = DateTimeEncoder.__parse_property_value__(
-                ParsedProperty(name="ignored", value=parts[1])
+                ParsedProperty(name="ignored", value=parts[1], params=params)
             )
         except ValueError:
             pass
@@ -107,13 +114,18 @@ class Period(BaseModel):
         return values
 
     @classmethod
-    def __parse_property_value__(cls, prop: ParsedProperty) -> dict[str, str]:
+    def __parse_property_value__(cls, prop: ParsedProperty) -> dict[str, Any]:
         """Convert the property into a dictionary for pydantic model."""
+        if "/" not in prop.value:
+            raise ValueError(f"Value does not contain a solidus: {prop.value}")
         return dataclasses.asdict(prop)
 
     @classmethod
-    def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
+    def __encode_property__(cls, model_data: Any) -> ParsedProperty | None:
         """Encode the property."""
+        if not isinstance(model_data, dict):
+            return None
+        model_data = dict(model_data)
         if not (start := model_data.pop("start", None)):
             raise ValueError(f"Invalid period object missing start: {model_data}")
         end = model_data.pop("end", None)

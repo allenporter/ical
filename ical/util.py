@@ -91,3 +91,24 @@ def parse_date_and_datetime_list(
         else datetime.date.fromisoformat(val)
         for val in values
     ]
+
+
+def parse_rdate_list(
+    values: Sequence[Any],
+) -> list[Any]:
+    """Coerce list[str] into list[date | datetime | Period] values."""
+    if not values:
+        return []
+    results: list[Any] = []
+    for val in values:
+        if not isinstance(val, str):
+            results.append(val)
+        elif "/" in val:
+            # A solidus character '/' indicates a PERIOD value type (e.g. start/end or start/duration).
+            # We wrap it in a dict so that Pydantic validates it as a Period model.
+            results.append({"value": val})
+        elif "T" in val or " " in val:
+            results.append(datetime.datetime.fromisoformat(val))
+        else:
+            results.append(datetime.date.fromisoformat(val))
+    return results

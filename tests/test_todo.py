@@ -453,3 +453,30 @@ def test_todo_serialization_date_value() -> None:
     )
     ics_content = ical.calendar_stream.IcsCalendarStream.calendar_to_ics(calendar)
     assert "DTSTART;VALUE=DATE:20251016" in ics_content
+
+
+def test_todo_recurrence_expansion_period() -> None:
+    """Test that todo recurrence expansion uses the period's duration for due times."""
+    from ical.types import Period
+    from ical.recur_adapter import merge_and_expand_items
+
+    todo = Todo(
+        summary="Test Todo",
+        dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),
+        due=datetime.datetime(2022, 8, 7, 10, 0, 0),  # 1 hour default duration
+        rdate=[
+            Period(
+                start=datetime.datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime.datetime(2022, 8, 8, 12, 0, 0),
+            )
+        ],
+    )
+
+    todos = [
+        item.item for item in merge_and_expand_items([todo], datetime.timezone.utc)
+    ]
+    assert len(todos) == 1
+
+    assert todos[0].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
+    assert todos[0].due == datetime.datetime(2022, 8, 8, 12, 0, 0)
+

@@ -496,3 +496,49 @@ END:VCALENDAR"""
     out_ics = calendar.ics()
     assert "REQUEST-STATUS:2.0;Success" in out_ics
     assert "REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01" in out_ics
+
+
+def test_event_recurrence_expansion_period() -> None:
+    """Test that event recurrence expansion uses the period's duration."""
+    from ical.calendar import Calendar
+    from ical.types import Period
+
+    event = Event(
+        summary="Test Event",
+        dtstart=datetime(2022, 8, 7, 9, 0, 0),
+        dtend=datetime(2022, 8, 7, 10, 0, 0),  # 1 hour default duration
+        rdate=[
+            # This instance should override duration to 2 hours
+            Period(
+                start=datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime(2022, 8, 8, 12, 0, 0),
+            ),
+            # This instance should override duration to 3 hours
+            Period(
+                start=datetime(2022, 8, 9, 10, 0, 0),
+                duration=timedelta(hours=3),
+            ),
+            # Also support standard datetime RDATE (should use default 1 hour duration)
+            datetime(2022, 8, 10, 10, 0, 0),
+        ],
+    )
+
+    # Expand recurrence using timeline (does not include dtstart as there is no rrule)
+    calendar = Calendar(vevent=[event])
+    timeline = calendar.timeline
+    events = list(timeline)
+
+    assert len(events) == 3
+
+    # 1. Period instance with explicit end (2 hours)
+    assert events[0].dtstart == datetime(2022, 8, 8, 10, 0, 0)
+    assert events[0].dtend == datetime(2022, 8, 8, 12, 0, 0)
+
+    # 2. Period instance with duration (3 hours)
+    assert events[1].dtstart == datetime(2022, 8, 9, 10, 0, 0)
+    assert events[1].dtend == datetime(2022, 8, 9, 13, 0, 0)
+
+    # 3. Standard datetime instance (uses default 1 hour)
+    assert events[2].dtstart == datetime(2022, 8, 10, 10, 0, 0)
+    assert events[2].dtend == datetime(2022, 8, 10, 11, 0, 0)
+

@@ -328,3 +328,71 @@ def test_ics_wkst() -> None:
         "DTSTART:20220802T060000Z",
         "RRULE:FREQ=WEEKLY;COUNT=3;WKST=SU",
     ]
+
+
+def test_parse_rdate_period_naive() -> None:
+    """Test parsing naive RDATE periods."""
+    from ical.types import Period
+
+    lines = [
+        "DTSTART:19960403T020000",
+        "RDATE;VALUE=PERIOD:19960403T020000/19960403T040000,19960404T020000/PT3H",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 2
+
+    p1 = recurrences.rdate[0]
+    assert isinstance(p1, Period)
+    assert p1.start == datetime.datetime(1996, 4, 3, 2, 0, 0)
+    assert p1.end == datetime.datetime(1996, 4, 3, 4, 0, 0)
+    assert p1.duration is None
+    assert p1.end_value == datetime.datetime(1996, 4, 3, 4, 0, 0)
+
+    p2 = recurrences.rdate[1]
+    assert isinstance(p2, Period)
+    assert p2.start == datetime.datetime(1996, 4, 4, 2, 0, 0)
+    assert p2.end is None
+    assert p2.duration == datetime.timedelta(hours=3)
+    assert p2.end_value == datetime.datetime(1996, 4, 4, 5, 0, 0)
+
+
+def test_parse_rdate_period_tzid() -> None:
+    """Test parsing RDATE periods with a timezone (TZID)."""
+    import zoneinfo
+    from ical.types import Period
+
+    lines = [
+        "DTSTART;TZID=America/New_York:19960403T020000",
+        "RDATE;VALUE=PERIOD;TZID=America/New_York:19960403T020000/19960403T040000",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 1
+
+    p1 = recurrences.rdate[0]
+    assert isinstance(p1, Period)
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    assert p1.start == datetime.datetime(1996, 4, 3, 2, 0, 0, tzinfo=tz)
+    assert p1.end == datetime.datetime(1996, 4, 3, 4, 0, 0, tzinfo=tz)
+
+
+def test_rdate_period_serialization() -> None:
+    """Test serializing RDATE properties with PERIOD values."""
+    from ical.calendar import Calendar
+    from ical.calendar_stream import IcsCalendarStream
+    from ical.types import Period
+
+    event = Event(
+        summary="Test Serialization",
+        dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),
+        dtend=datetime.datetime(2022, 8, 7, 10, 0, 0),
+        rdate=[
+            Period(
+                start=datetime.datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime.datetime(2022, 8, 8, 12, 0, 0),
+            )
+        ],
+    )
+    calendar = Calendar(vevent=[event])
+    ics_content = IcsCalendarStream.calendar_to_ics(calendar)
+
+    assert "RDATE;VALUE=PERIOD:20220808T100000/20220808T120000" in ics_content

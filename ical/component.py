@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic.fields import FieldInfo
 
-from .parsing.property import ParsedProperty
+from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .parsing.component import ParsedComponent
 from .types.extra import ExtraProperty
 from .types.data_types import DATA_TYPE, get_field_type_info
@@ -249,6 +249,15 @@ class ComponentModel(BaseModel):
                         break
                 else:
                     if prop := DATA_TYPE.encode_property(key, annotation, value):
+                        if key == "rdate" and isinstance(value, dict):
+                            if not prop.params:
+                                prop.params = []
+                            if not any(param.name == "VALUE" for param in prop.params):
+                                prop.params.append(
+                                    ParsedPropertyParameter(
+                                        name="VALUE", values=["PERIOD"]
+                                    )
+                                )
                         parent.properties.append(prop)
         return parent
 

@@ -82,3 +82,27 @@ def test_computed_duration_datetime() -> None:
     journal = Journal(start=datetime.datetime(2022, 8, 7, 0, 0, 0))
     assert journal.start
     assert journal.computed_duration == datetime.timedelta(hours=1)
+
+
+def test_journal_recurrence_expansion_period() -> None:
+    """Test that journal recurrence expansion works with periods."""
+    from ical.types import Period
+    from ical.recur_adapter import merge_and_expand_items
+
+    journal = Journal(
+        summary="Test Journal",
+        dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),
+        rdate=[
+            Period(
+                start=datetime.datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime.datetime(2022, 8, 8, 12, 0, 0),
+            )
+        ],
+    )
+
+    journals = [
+        item.item for item in merge_and_expand_items([journal], datetime.timezone.utc)
+    ]
+    assert len(journals) == 1
+
+    assert journals[0].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)

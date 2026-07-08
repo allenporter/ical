@@ -18,6 +18,7 @@ from .iter import (
     SortableItem,
 )
 from .types.recur import RecurrenceId
+from .types.period import Period
 from .event import Event
 from .todo import Todo
 from .journal import Journal
@@ -88,17 +89,32 @@ class RecurAdapter(Generic[ItemType]):
     ) -> SortableItem[Timespan, ItemType]:
         """Return a lazy sortable item."""
 
-        dtend = dtstart + self._duration if self._duration else dtstart
         recurrence_id = _recurrence_id_for(dtstart)
+
+        # Check if the start matches a Period in rdate
+        period = None
+        if self._item.rdate:
+            for rdate_item in self._item.rdate:
+                if (
+                    isinstance(rdate_item, Period)
+                    and _recurrence_id_for(rdate_item.start) == recurrence_id
+                ):
+                    period = rdate_item
+                    break
+
+        if period:
+            dtend = period.end_value
+        else:
+            dtend = dtstart + self._duration if self._duration else dtstart
 
         def build() -> ItemType:
             updates = {
                 "dtstart": dtstart,
                 "recurrence_id": recurrence_id,
             }
-            if isinstance(self._item, Event) and self._item.dtend and dtend:
+            if isinstance(self._item, Event) and (self._item.dtend or period) and dtend:
                 updates["dtend"] = dtend
-            if isinstance(self._item, Todo) and self._item.due and dtend:
+            if isinstance(self._item, Todo) and (self._item.due or period) and dtend:
                 updates["due"] = dtend
             return self._item.model_copy(update=updates)
 

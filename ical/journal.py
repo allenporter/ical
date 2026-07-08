@@ -25,12 +25,14 @@ from .types import (
     RequestStatus,
     Uri,
     RelatedTo,
+    Period,
 )
 from .util import (
     dtstamp_factory,
     normalize_datetime,
     parse_date_and_datetime,
     parse_date_and_datetime_list,
+    parse_rdate_list,
     uid_factory,
     local_timezone,
 )
@@ -99,8 +101,8 @@ class Journal(ComponentModel):
     related: list[str] = Field(default_factory=list)
     rrule: Optional[Recur] = None
     rdate: Annotated[
-        list[Union[datetime.date, datetime.datetime]],
-        BeforeValidator(parse_date_and_datetime_list),
+        list[Union[datetime.date, datetime.datetime, Period]],
+        BeforeValidator(parse_rdate_list),
     ] = Field(default_factory=list)
     request_status: list[RequestStatus] = Field(
         alias="request-status",
