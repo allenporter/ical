@@ -557,7 +557,7 @@ def test_rfc7986_event_properties() -> None:
     assert event.color == "blue"
     assert len(event.image) == 1
     assert event.image[0].uri == Uri("http://example.com/event.jpg")
-    assert event.image[0].display == ["THUMBNAIL"]
+    assert event.image[0].display == "THUMBNAIL"
     assert event.image[0].format_type == "image/jpeg"
     assert len(event.conference) == 1
     assert event.conference[0].uri == Uri("https://zoom.us/j/123456")
@@ -579,3 +579,17 @@ def test_rfc7986_event_properties() -> None:
         or "CONFERENCE;LABEL=Zoom Meeting;FEATURE=AUDIO,VIDEO:https://zoom.us/j/123456"
         in output_ics
     )
+
+    # Programmatic verification of Conference parameters
+    conf = Conference.model_validate(
+        {
+            "value": "https://zoom.us/j/123",
+            "FEATURE": ["AUDIO"],
+            "LABEL": "My Zoom",
+            "LANGUAGE": "en-US",
+        }
+    )
+    assert conf.uri == Uri("https://zoom.us/j/123")
+    assert conf.feature == ["AUDIO"]
+    assert conf.label == "My Zoom"
+    assert conf.language == "en-US"

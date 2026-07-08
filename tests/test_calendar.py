@@ -490,7 +490,7 @@ def test_rfc7986_calendar_properties() -> None:
     assert img1.uri == Uri("http://example.com/badge.png")
     assert img1.content is None
     assert img1.format_type == "image/png"
-    assert img1.display == ["BADGE"]
+    assert img1.display == "BADGE"
 
     assert img2.uri is None
     assert img2.content == b"hello"
@@ -551,3 +551,21 @@ def test_rfc7986_image_edge_cases() -> None:
 
     # 6. None value to serialize_content (Line 80)
     assert Image().serialize_content(None) is None
+
+    # 7. ALTREP parameter validation
+    img_altrep = Image.model_validate(
+        {
+            "value": "http://example.com/logo.png",
+            "ALTREP": "http://example.com/logo.svg",
+        }
+    )
+    assert img_altrep.uri == Uri("http://example.com/logo.png")
+    assert img_altrep.altrep == Uri("http://example.com/logo.svg")
+
+    # 8. Display Enum validation
+    from ical.types import Display
+
+    assert Display("BADGE") == Display.BADGE
+    assert Display("badge") == Display.BADGE  # case insensitive missing fallback lookup
+    assert Display("x-custom") == "x-custom"  # custom token fallback
+    assert Display._missing_(None) is None

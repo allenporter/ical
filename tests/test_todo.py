@@ -493,7 +493,7 @@ def test_rfc7986_todo_properties() -> None:
     assert todo.color == "red"
     assert len(todo.image) == 1
     assert todo.image[0].uri == Uri("http://example.com/todo.jpg")
-    assert todo.image[0].display == ["FULLSIZE"]
+    assert todo.image[0].display == "FULLSIZE"
     assert len(todo.conference) == 1
     assert todo.conference[0].uri == Uri("https://slack.com/123")
     assert todo.conference[0].feature == ["CHAT"]

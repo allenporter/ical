@@ -15,7 +15,7 @@ from .relation import RelatedTo, RelationshipType
 from .request_status import RequestStatus
 from .attachment import Attachment
 from .conference import Conference
-from .image import Image
+from .image import Image, Display
 from .uri import Uri
 from .utc_offset import UtcOffset
 
@@ -25,6 +25,7 @@ __all__ = [
     "CalendarUserType",
     "Classification",
     "Conference",
+    "Display",
     "Frequency",
     "FreeBusyType",
     "Geo",

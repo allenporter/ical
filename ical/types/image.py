@@ -7,6 +7,9 @@ import binascii
 import dataclasses
 from typing import Any, Optional
 
+import enum
+from typing import Self
+
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
 from ical.parsing.property import ParsedProperty
@@ -14,6 +17,32 @@ from ical.parsing.property import ParsedProperty
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
+
+
+class Display(str, enum.Enum):
+    """The display parameter for an image."""
+
+    BADGE = "BADGE"
+    THUMBNAIL = "THUMBNAIL"
+    FULLSIZE = "FULLSIZE"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Self | None:
+        """Allow non-standard display values."""
+        if value is None:
+            return None
+        value = str(value)
+
+        # Check case-insensitive matching for known values to be user friendly
+        upper_val = value.upper()
+        for member in cls:
+            if member.value == upper_val:
+                return member
+
+        obj = str.__new__(cls, value)
+        obj._name_ = value
+        obj._value_ = value
+        return obj
 
 
 @DATA_TYPE.register("IMAGE", disable_value_param=True)
@@ -35,7 +64,7 @@ class Image(BaseModel):
     altrep: Optional[Uri] = Field(alias="ALTREP", default=None)
     """The alternate representation parameter."""
 
-    display: Optional[list[str]] = Field(alias="DISPLAY", default=None)
+    display: Optional[Display] = Field(alias="DISPLAY", default=None)
     """The display parameter (e.g. BADGE, THUMBNAIL, FULLSIZE)."""
 
     value_attr: Optional[str] = Field(alias="VALUE", default=None)

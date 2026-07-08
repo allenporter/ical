@@ -121,7 +121,7 @@ def test_rfc7986_journal_properties() -> None:
     assert journal.color == "green"
     assert len(journal.image) == 1
     assert journal.image[0].uri == Uri("http://example.com/journal.jpg")
-    assert journal.image[0].display == ["BADGE"]
+    assert journal.image[0].display == "BADGE"
 
     # Verify serialization
     output_ics = IcsCalendarStream.calendar_to_ics(calendar)
