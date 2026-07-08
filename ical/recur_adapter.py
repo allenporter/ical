@@ -92,15 +92,15 @@ class RecurAdapter(Generic[ItemType]):
         recurrence_id = _recurrence_id_for(dtstart)
 
         # Check if the start matches a Period in rdate
-        period = None
-        if self._item.rdate:
-            for rdate_item in self._item.rdate:
-                if (
-                    isinstance(rdate_item, Period)
-                    and _recurrence_id_for(rdate_item.start) == recurrence_id
-                ):
-                    period = rdate_item
-                    break
+        period = next(
+            (
+                p
+                for p in self._item.rdate
+                if isinstance(p, Period)
+                and _recurrence_id_for(p.start) == recurrence_id
+            ),
+            None,
+        )
 
         if period:
             dtend = period.end_value
@@ -112,9 +112,9 @@ class RecurAdapter(Generic[ItemType]):
                 "dtstart": dtstart,
                 "recurrence_id": recurrence_id,
             }
-            if isinstance(self._item, Event) and (self._item.dtend or period) and dtend:
+            if isinstance(self._item, Event) and (self._item.dtend or period):
                 updates["dtend"] = dtend
-            if isinstance(self._item, Todo) and (self._item.due or period) and dtend:
+            elif isinstance(self._item, Todo) and (self._item.due or period):
                 updates["due"] = dtend
             return self._item.model_copy(update=updates)
 
