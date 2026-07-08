@@ -288,3 +288,33 @@ def test_benchmark_get_observance_repeated_calls(benchmark: Any) -> None:
 
     result = benchmark(lookup)
     assert result == len(dts)
+
+
+def test_timezone_deepcopy() -> None:
+    """Verify that TzInfo and Timezone objects can be deepcopied safely."""
+    import copy
+    from ical.tzif import timezoneinfo
+
+    # 1. Test TzInfo deepcopy
+    tz = timezoneinfo.read_tzinfo("America/New_York")
+    copied_tz = copy.deepcopy(tz)
+    assert copied_tz._key == tz._key
+    assert copied_tz._rule == tz._rule
+
+    # 2. Test Timezone component deepcopy
+    timezone = _customized_timezone()
+    # Trigger cache initialization
+    timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
+    assert timezone._observance_timeline is not None
+    initial_cache_len = len(timezone._observance_timeline._cache)
+    assert initial_cache_len > 0
+
+    copied_timezone = copy.deepcopy(timezone)
+    assert copied_timezone._observance_timeline is not None
+    # CachedTransitionTimeline.__deepcopy__ resets the cache to empty to be rebuilt lazily
+    assert len(copied_timezone._observance_timeline._cache) == 0
+
+    summer = copied_timezone.get_observance(datetime.datetime(2024, 7, 15, 12, 0, 0))
+    assert summer is not None
+    assert summer.observance.tz_offset_to.offset == datetime.timedelta(hours=2)
+    assert len(copied_timezone._observance_timeline._cache) > 0

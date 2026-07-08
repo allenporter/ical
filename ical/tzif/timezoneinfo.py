@@ -7,6 +7,7 @@ python package.
 
 from __future__ import annotations
 
+from typing import Any
 import datetime
 import logging
 import os
@@ -164,6 +165,10 @@ class TzInfo(datetime.tzinfo):
         """Initialize TzInfo."""
         self._rule: Rule = rule
         self._key: str | None = key
+
+    def __deepcopy__(self, memo: Any) -> TzInfo:
+        """Return a deep copy of the timezone object."""
+        return TzInfo(self._rule, key=self._key)
 
     @classmethod
     def from_timezoneinfo(
