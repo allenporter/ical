@@ -46,12 +46,14 @@ from .types import (
     RequestStatus,
     Uri,
     RelatedTo,
+    Period,
 )
 from .util import (
     dtstamp_factory,
     normalize_datetime,
     parse_date_and_datetime,
     parse_date_and_datetime_list,
+    parse_rdate_list,
     uid_factory,
 )
 
@@ -207,8 +209,8 @@ class Event(ComponentModel):
     """
 
     rdate: Annotated[
-        list[Union[datetime.date, datetime.datetime]],
-        BeforeValidator(parse_date_and_datetime_list),
+        list[Union[datetime.date, datetime.datetime, Period]],
+        BeforeValidator(parse_rdate_list),
     ] = Field(default_factory=list)
     """Defines the list of date/time values for recurring events.
 

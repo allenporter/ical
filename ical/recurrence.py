@@ -28,7 +28,12 @@ from .types.date_time import DateTimeEncoder
 from .component import ComponentModel
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
-from .util import parse_date_and_datetime, parse_date_and_datetime_list
+from .util import (
+    parse_date_and_datetime,
+    parse_date_and_datetime_list,
+    parse_rdate_list,
+)
+from .types.period import Period
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,8 +52,8 @@ class Recurrences(ComponentModel):
     """The recurrence rule for the event."""
 
     rdate: Annotated[
-        list[Union[datetime.date, datetime.datetime]],
-        BeforeValidator(parse_date_and_datetime_list),
+        list[Union[datetime.date, datetime.datetime, Period]],
+        BeforeValidator(parse_rdate_list),
     ] = Field(default_factory=list)
     """Dates for the event."""
 

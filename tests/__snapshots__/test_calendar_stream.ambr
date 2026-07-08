@@ -931,6 +931,35 @@
     ]),
   })
 # ---
+# name: test_parse[rrule-rdate-period]
+  dict({
+    'calendars': list([
+      dict({
+        'events': list([
+          dict({
+            'dtend': '1996-04-03T03:00:00Z',
+            'dtstamp': '1996-04-03T02:00:00Z',
+            'dtstart': '1996-04-03T02:00:00Z',
+            'rdate': list([
+              dict({
+                'end': '1996-04-03T04:00:00Z',
+                'start': '1996-04-03T02:00:00Z',
+              }),
+              dict({
+                'duration': 'PT3H',
+                'start': '1996-04-04T01:00:00Z',
+              }),
+            ]),
+            'summary': 'RDATE Period Example Event',
+            'uid': 'rdate-period-example@example.com',
+          }),
+        ]),
+        'prodid': '-//hacksw/handcal//NONSGML v1.0//EN',
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[rrule-until-mismatch]
   dict({
     'calendars': list([
@@ -1945,6 +1974,23 @@
   SEQUENCE:0
   STATUS:CONFIRMED
   TRANSP:TRANSPARENT
+  END:VEVENT
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[rrule-rdate-period]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+  VERSION:2.0
+  BEGIN:VEVENT
+  DTSTAMP:19960403T020000Z
+  UID:rdate-period-example@example.com
+  DTSTART:19960403T020000Z
+  DTEND:19960403T030000Z
+  SUMMARY:RDATE Period Example Event
+  RDATE;VALUE=PERIOD:19960403T020000Z/19960403T040000Z
+  RDATE;VALUE=PERIOD:19960404T010000Z/PT3H
   END:VEVENT
   END:VCALENDAR
   '''

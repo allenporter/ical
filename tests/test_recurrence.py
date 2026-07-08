@@ -9,6 +9,7 @@ import pytest
 from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.component import ComponentModel
 from ical.exceptions import RecurrenceError
 from ical.event import Event
@@ -18,6 +19,7 @@ from ical.timeline import Timeline
 from ical.todo import Todo
 from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
 from ical.recurrence import Recurrences
+from ical.types import Period
 
 
 def test_from_contentlines() -> None:
@@ -328,3 +330,94 @@ def test_ics_wkst() -> None:
         "DTSTART:20220802T060000Z",
         "RRULE:FREQ=WEEKLY;COUNT=3;WKST=SU",
     ]
+
+
+def test_parse_rdate_period_naive() -> None:
+    """Test parsing naive RDATE periods."""
+    lines = [
+        "DTSTART:19960403T020000",
+        "RDATE;VALUE=PERIOD:19960403T020000/19960403T040000,19960404T020000/PT3H",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 2
+
+    p1 = recurrences.rdate[0]
+    assert isinstance(p1, Period)
+    assert p1.start == datetime.datetime(1996, 4, 3, 2, 0, 0)
+    assert p1.end == datetime.datetime(1996, 4, 3, 4, 0, 0)
+    assert p1.duration is None
+    assert p1.end_value == datetime.datetime(1996, 4, 3, 4, 0, 0)
+
+    p2 = recurrences.rdate[1]
+    assert isinstance(p2, Period)
+    assert p2.start == datetime.datetime(1996, 4, 4, 2, 0, 0)
+    assert p2.end is None
+    assert p2.duration == datetime.timedelta(hours=3)
+    assert p2.end_value == datetime.datetime(1996, 4, 4, 5, 0, 0)
+
+
+def test_parse_rdate_period_tzid() -> None:
+    """Test parsing RDATE periods with a timezone (TZID)."""
+    lines = [
+        "DTSTART;TZID=America/New_York:19960403T020000",
+        "RDATE;VALUE=PERIOD;TZID=America/New_York:19960403T020000/19960403T040000",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 1
+
+    p1 = recurrences.rdate[0]
+    assert isinstance(p1, Period)
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    assert p1.start == datetime.datetime(1996, 4, 3, 2, 0, 0, tzinfo=tz)
+    assert p1.end == datetime.datetime(1996, 4, 3, 4, 0, 0, tzinfo=tz)
+
+
+def test_rdate_period_serialization() -> None:
+    """Test serializing RDATE properties with PERIOD values."""
+    event = Event(
+        summary="Test Serialization",
+        dtstart=datetime.datetime(2022, 8, 7, 9, 0, 0),
+        dtend=datetime.datetime(2022, 8, 7, 10, 0, 0),
+        rdate=[
+            Period(
+                start=datetime.datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime.datetime(2022, 8, 8, 12, 0, 0),
+            )
+        ],
+    )
+    calendar = Calendar(vevent=[event])
+    ics_content = IcsCalendarStream.calendar_to_ics(calendar)
+
+    assert "RDATE;VALUE=PERIOD:20220808T100000/20220808T120000" in ics_content
+
+
+def test_parse_rdate_list_strings() -> None:
+    """Test before validator parse_rdate_list with strings."""
+    recurrences = Recurrences(
+        dtstart=datetime.datetime(2022, 8, 3, 6, 0, 0),
+        rdate=[
+            "20220804T100000/20220804T120000",  # Period format
+            "20220805T060000Z",  # Datetime format
+            "20220806",  # Date format
+        ],  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+    )
+    assert len(recurrences.rdate) == 3
+    assert isinstance(recurrences.rdate[0], Period)
+    assert isinstance(recurrences.rdate[1], datetime.datetime)
+    assert isinstance(recurrences.rdate[2], datetime.date)
+
+
+def test_parse_rdate_mixed() -> None:
+    """Test parsing a recurrence rule with mixed RDATE value types."""
+    lines = [
+        "DTSTART:19960403T020000",
+        "RDATE;VALUE=DATE:19960404,19960405",
+        "RDATE;VALUE=PERIOD:19960406T020000/PT3H",
+        "RDATE:19960407T020000",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 4
+    assert isinstance(recurrences.rdate[0], datetime.date)
+    assert isinstance(recurrences.rdate[1], datetime.date)
+    assert isinstance(recurrences.rdate[2], Period)
+    assert isinstance(recurrences.rdate[3], datetime.datetime)

@@ -30,6 +30,7 @@ from dateutil import rrule
 from .timespan import Timespan
 from .util import normalize_datetime
 from .types.recur import Recur
+from .types.period import Period
 from .exceptions import CalendarParseError, RecurrenceError
 
 __all__ = [
@@ -169,7 +170,7 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         self,
         dtstart: datetime.datetime | datetime.date,
         recur: list[Iterable[datetime.datetime | datetime.date]],
-        rdate: list[datetime.datetime | datetime.date],
+        rdate: list[datetime.datetime | datetime.date | Period],
         exdate: list[datetime.datetime | datetime.date],
     ) -> None:
         """Create the RulesetIterable."""
@@ -199,7 +200,10 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for rdate in self._rdate:
-            ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+            if isinstance(rdate, Period):
+                ruleset.rdate(self._defloat(rdate.start))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+            else:
+                ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for exdate in self._exdate:
             ruleset.exdate(self._defloat(exdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         return ruleset
@@ -417,7 +421,7 @@ class SortableItemTimeline(Iterable[T]):
 
 def as_rrule(
     rrule: Recur | None,
-    rdate: list[datetime.datetime | datetime.date],
+    rdate: list[datetime.datetime | datetime.date | Period],
     exdate: list[datetime.datetime | datetime.date],
     start: datetime.datetime | datetime.date | None,
 ) -> Iterable[datetime.datetime | datetime.date] | None:
