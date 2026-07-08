@@ -156,6 +156,7 @@
     ParsedProperty(name='x-test', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^'])]),
     ParsedProperty(name='x-test-2', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^n'])]),
     ParsedProperty(name='x-test-3', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^'])]),
+    ParsedProperty(name='x-test-4', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^x'])]),
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---

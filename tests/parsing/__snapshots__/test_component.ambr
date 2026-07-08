@@ -158,6 +158,7 @@
   X-TEST;KEY=^^:VALUE
   X-TEST-2;KEY=^^n:VALUE
   X-TEST-3;KEY=a^^:VALUE
+  X-TEST-4;KEY=a^^x:VALUE
   END:VCALENDAR
   '''
 # ---
@@ -1020,6 +1021,18 @@
               'name': 'KEY',
               'values': list([
                 'a^',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'x-test-4',
+          'params': list([
+            dict({
+              'name': 'KEY',
+              'values': list([
+                'a^x',
               ]),
             }),
           ]),

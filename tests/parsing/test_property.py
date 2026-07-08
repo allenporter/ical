@@ -177,6 +177,7 @@ def test_rfc6868_vcard_parameter_decoding() -> None:
         ("X-TEST;KEY=^^:VALUE", "^"),
         ("X-TEST-2;KEY=^^n:VALUE", "^n"),
         ("X-TEST-3;KEY=a^:VALUE", "a^"),
+        ("X-TEST-4;KEY=a^x:VALUE", "a^x"),
     ],
 )
 def test_rfc6868_caret_parameter_decoding(ics_line: str, expected_value: str) -> None:
