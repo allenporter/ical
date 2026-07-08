@@ -20,6 +20,7 @@ from .types import (
     CalAddress,
     Classification,
     ExtraProperty,
+    Image,
     Recur,
     RecurrenceId,
     RequestStatus,
@@ -92,6 +93,16 @@ class Journal(ComponentModel):
     last_modified: Optional[datetime.datetime] = Field(
         alias="last-modified", default=None
     )
+
+    color: Optional[str] = None
+    """Specifies a color associated with the journal entry.
+
+    The value MUST be a case-insensitive color name defined in CSS3-Color (e.g., "blue" or "turquoise")
+    or a CSS3 RGB/RGBA color value in hex or functional notation (e.g., "#0000FF").
+    """
+
+    image: list[Image] = Field(default_factory=list)
+    """Specifies one or more images associated with the journal entry."""
     organizer: Optional[CalAddress] = None
     recurrence_id: Optional[RecurrenceId] = Field(default=None, alias="recurrence-id")
 
