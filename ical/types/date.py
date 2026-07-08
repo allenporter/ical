@@ -46,19 +46,10 @@ class DateEncoder:
     @classmethod
     def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty | None:
         """Encode the ParsedProperty."""
-        if isinstance(value, str):
-            if "T" not in value:
-                return ParsedProperty(
-                    name="",
-                    value=value,
-                    params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
-                )
-            return None
-        val_str = value.get("VALUE", "")
-        if "T" not in val_str:
+        if isinstance(value, str) and "T" not in value:
             return ParsedProperty(
                 name="",
-                value=val_str,
+                value=value,
                 params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
             )
         return None

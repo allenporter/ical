@@ -90,3 +90,11 @@ def test_date_encoder() -> None:
             )
         ],
     )
+
+
+def test_date_encoder_fallback() -> None:
+    """Test that DateEncoder returns None for values that are not plain date strings."""
+    from ical.types.date import DateEncoder
+
+    assert DateEncoder.__encode_property__("20220724T120000") is None
+    assert DateEncoder.__encode_property__({"VALUE": "20220724"}) is None

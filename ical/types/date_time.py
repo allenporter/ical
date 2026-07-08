@@ -102,10 +102,7 @@ class DateTimeEncoder:
             if "T" not in value:
                 return None
             return ParsedProperty(name="", value=value)
-        val_str = value.get(ATTR_VALUE, "")
-        if "T" not in val_str:
-            return None
-        prop = ParsedProperty(name="", value=val_str)
+        prop = ParsedProperty(name="", value=value[ATTR_VALUE])
         if tzid := value.get(TZID):
             prop.params = [ParsedPropertyParameter(name=TZID, values=[str(tzid)])]
         return prop
