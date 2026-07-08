@@ -58,7 +58,7 @@ _QUOTE = '"'
 _DECODE_RE = re.compile(r"\^(.)")
 
 
-def decode_parameter_value(value: str) -> str:
+def _decode_parameter_value(value: str) -> str:
     """Decode caret-escaped parameter values according to RFC 6868."""
 
     def replace(match: re.Match) -> str:
@@ -74,7 +74,7 @@ def decode_parameter_value(value: str) -> str:
     return _DECODE_RE.sub(replace, value)
 
 
-def encode_parameter_value(value: str) -> str:
+def _encode_parameter_value(value: str) -> str:
     """Encode parameter values using caret escaping according to RFC 6868."""
     value = value.replace("^", "^^")
     value = value.replace("\n", "^n")
@@ -153,7 +153,7 @@ class ParsedProperty:
                         continue  # Shouldn't happen; only strings are set by parsing
 
                     # Encode value using RFC 6868 caret-escaping
-                    encoded_value = encode_parameter_value(value)
+                    encoded_value = _encode_parameter_value(value)
 
                     # Property parameters with values contain a colon, semicolon,
                     # or a comma character must be placed in quoted text
@@ -282,7 +282,8 @@ def _parse_line(line: str) -> ParsedProperty:
     # Decode parameter values according to RFC 6868 caret-escaping rules.
     for param in params:
         param.values = [
-            decode_parameter_value(v) if isinstance(v, str) else v for v in param.values
+            _decode_parameter_value(v) if isinstance(v, str) else v
+            for v in param.values
         ]
 
     property_value = line[pos:]

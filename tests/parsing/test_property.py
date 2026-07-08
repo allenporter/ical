@@ -171,16 +171,18 @@ def test_rfc6868_vcard_parameter_decoding() -> None:
     )
 
 
-def test_rfc6868_caret_parameter_decoding() -> None:
+@pytest.mark.parametrize(
+    ("ics_line", "expected_value"),
+    [
+        ("X-TEST;KEY=^^:VALUE", "^"),
+        ("X-TEST-2;KEY=^^n:VALUE", "^n"),
+        ("X-TEST-3;KEY=a^:VALUE", "a^"),
+    ],
+)
+def test_rfc6868_caret_parameter_decoding(ics_line: str, expected_value: str) -> None:
     """Test RFC 6868 circumflex escaping edge cases during decoding."""
-    prop1 = ParsedProperty.from_ics("X-TEST;KEY=^^:VALUE")
-    assert prop1.get_parameter_value("KEY") == "^"
-
-    prop2 = ParsedProperty.from_ics("X-TEST-2;KEY=^^n:VALUE")
-    assert prop2.get_parameter_value("KEY") == "^n"
-
-    prop3 = ParsedProperty.from_ics("X-TEST-3;KEY=a^:VALUE")
-    assert prop3.get_parameter_value("KEY") == "a^"
+    prop = ParsedProperty.from_ics(ics_line)
+    assert prop.get_parameter_value("KEY") == expected_value
 
 
 def test_rfc6868_ical_parameter_encoding() -> None:
@@ -215,25 +217,20 @@ def test_rfc6868_vcard_parameter_encoding() -> None:
     )
 
 
-def test_rfc6868_caret_parameter_encoding() -> None:
+@pytest.mark.parametrize(
+    ("input_value", "expected_ics"),
+    [
+        ("^", "X-TEST;KEY=^^:VALUE"),
+        ("^n", "X-TEST-2;KEY=^^n:VALUE"),
+        ("a^", "X-TEST-3;KEY=a^^:VALUE"),
+    ],
+)
+def test_rfc6868_caret_parameter_encoding(input_value: str, expected_ics: str) -> None:
     """Test RFC 6868 circumflex escaping edge cases during encoding."""
-    prop1 = ParsedProperty(
-        name="X-TEST",
+    prop_name = expected_ics.split(";")[0]
+    prop = ParsedProperty(
+        name=prop_name,
         value="VALUE",
-        params=[ParsedPropertyParameter(name="KEY", values=["^"])],
+        params=[ParsedPropertyParameter(name="KEY", values=[input_value])],
     )
-    assert prop1.ics() == "X-TEST;KEY=^^:VALUE"
-
-    prop2 = ParsedProperty(
-        name="X-TEST-2",
-        value="VALUE",
-        params=[ParsedPropertyParameter(name="KEY", values=["^n"])],
-    )
-    assert prop2.ics() == "X-TEST-2;KEY=^^n:VALUE"
-
-    prop3 = ParsedProperty(
-        name="X-TEST-3",
-        value="VALUE",
-        params=[ParsedPropertyParameter(name="KEY", values=["a^"])],
-    )
-    assert prop3.ics() == "X-TEST-3;KEY=a^^:VALUE"
+    assert prop.ics() == expected_ics
