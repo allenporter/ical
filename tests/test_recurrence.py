@@ -396,3 +396,21 @@ def test_rdate_period_serialization() -> None:
     ics_content = IcsCalendarStream.calendar_to_ics(calendar)
 
     assert "RDATE;VALUE=PERIOD:20220808T100000/20220808T120000" in ics_content
+
+
+def test_parse_rdate_list_strings() -> None:
+    """Test before validator parse_rdate_list with strings."""
+    from ical.types import Period
+
+    recurrences = Recurrences(
+        dtstart=datetime.datetime(2022, 8, 3, 6, 0, 0),
+        rdate=[
+            "20220804T100000/20220804T120000",  # Period format
+            "20220805T060000Z",  # Datetime format
+            "20220806",  # Date format
+        ],  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+    )
+    assert len(recurrences.rdate) == 3
+    assert isinstance(recurrences.rdate[0], Period)
+    assert isinstance(recurrences.rdate[1], datetime.datetime)
+    assert isinstance(recurrences.rdate[2], datetime.date)

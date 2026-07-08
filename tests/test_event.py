@@ -541,4 +541,3 @@ def test_event_recurrence_expansion_period() -> None:
     # 3. Standard datetime instance (uses default 1 hour)
     assert events[2].dtstart == datetime(2022, 8, 10, 10, 0, 0)
     assert events[2].dtend == datetime(2022, 8, 10, 11, 0, 0)
-

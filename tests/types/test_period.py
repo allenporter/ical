@@ -104,3 +104,54 @@ def test_encode_period() -> None:
         name="FakeModel",
         properties=[ParsedProperty(name="example", value="20220807T060000/PT5H30M")],
     )
+
+
+def test_free_busy_type_parse() -> None:
+    """Test FreeBusyType parsing."""
+    from ical.types.period import FreeBusyType
+
+    assert (
+        FreeBusyType.__parse_property_value__(
+            ParsedProperty(name="FBTYPE", value="BUSY-UNAVAILABLE")
+        )
+        == FreeBusyType.BUSY_UNAVAILABLE
+    )
+    assert (
+        FreeBusyType.__parse_property_value__(
+            ParsedProperty(name="FBTYPE", value="INVALID")
+        )
+        is None
+    )
+
+
+def test_period_missing_end_and_duration() -> None:
+    """Test period end_value raises ValueError when end and duration are missing."""
+    p = Period.model_construct(start=datetime.datetime.now())
+    with pytest.raises(
+        ValueError, match="Invalid period missing both end and duration"
+    ):
+        _ = p.end_value
+
+
+def test_period_invalid_part_count() -> None:
+    """Test period validation fails with invalid part count."""
+    with pytest.raises(CalendarParseError, match="Period did not have two time values"):
+        FakeModel.model_validate(
+            {"example": [ParsedProperty(name="example", value="a/b/c")]}
+        )
+
+
+def test_encode_period_errors() -> None:
+    """Test period encoding error cases."""
+    # 1. Non-dict input
+    assert Period.__encode_property__("not a dict") is None
+
+    # 2. Missing start
+    with pytest.raises(ValueError, match="Invalid period object missing start"):
+        Period.__encode_property__({"end": "20220808T120000"})
+
+    # 3. Missing both end and duration
+    with pytest.raises(
+        ValueError, match="Invalid period missing both end and duration"
+    ):
+        Period.__encode_property__({"start": "20220808T100000"})

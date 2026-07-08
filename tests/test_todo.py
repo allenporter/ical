@@ -479,4 +479,3 @@ def test_todo_recurrence_expansion_period() -> None:
 
     assert todos[0].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
     assert todos[0].due == datetime.datetime(2022, 8, 8, 12, 0, 0)
-
