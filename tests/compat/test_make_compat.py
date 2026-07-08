@@ -70,7 +70,14 @@ def test_make_compat_calendar_labs(
     IcsCalendarStream.calendar_from_ics(new_ics)
 
 
-@pytest.mark.parametrize("filename", OFFICE_FILES, ids=OFFICE_IDS)
+OFFICE_FAILURE_FILES = [
+    TESTDATA_PATH / "office_365_extended_timezone.ics",
+    TESTDATA_PATH / "office_365_invalid_timezone.ics",
+]
+OFFICE_FAILURE_IDS = [x.stem for x in OFFICE_FAILURE_FILES]
+
+
+@pytest.mark.parametrize("filename", OFFICE_FAILURE_FILES, ids=OFFICE_FAILURE_IDS)
 def test_parse_failure_office(filename: pathlib.Path) -> None:
     """Test that Office files fail parsing without compat mode."""
     with filename.open(encoding="utf-8") as ics_file:

@@ -266,7 +266,7 @@ def available_timezones() -> set[str]:
     This includes system timezones, tzdata timezones, and extended timezones if
     enabled for compatibility mode.
     """
-    result = _read_system_timezones()
+    result = set(_read_system_timezones())
     result |= _read_tzdata_timezones()
     if timezone_compat.is_extended_timezones_enabled():
         result |= _extended_timezones()
