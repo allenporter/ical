@@ -181,6 +181,75 @@ def _prepare_update(
             # an explicit end which needs to be realigned to new start time.
             if isinstance(store_item, Event) and store_item.dtend:
                 update["dtend"] = dtstart + store_item.computed_duration
+
+    if "dtstart" in update:
+        new_dtstart = update["dtstart"]
+        is_aware = (
+            isinstance(new_dtstart, datetime.datetime)
+            and new_dtstart.tzinfo is not None
+        )
+        from .types.period import Period
+
+        # Adjust exdate
+        exdates = update.get("exdate", store_item.exdate)
+        if exdates:
+            new_exdate = []
+            for ex in exdates:
+                if isinstance(ex, datetime.datetime):
+                    if is_aware:
+                        if ex.tzinfo is None:
+                            ex = ex.replace(tzinfo=new_dtstart.tzinfo)
+                    else:
+                        if ex.tzinfo is not None:
+                            ex = ex.replace(tzinfo=None)
+                new_exdate.append(ex)
+            update["exdate"] = new_exdate
+
+        # Adjust rdate
+        rdates = update.get("rdate", store_item.rdate)
+        if rdates:
+            new_rdate = []
+            for rd in rdates:
+                if isinstance(rd, Period):
+                    rd = rd.model_copy()
+                    if is_aware:
+                        if rd.start.tzinfo is None:
+                            rd.start = rd.start.replace(tzinfo=new_dtstart.tzinfo)
+                        if rd.end and rd.end.tzinfo is None:
+                            rd.end = rd.end.replace(tzinfo=new_dtstart.tzinfo)
+                    else:
+                        if rd.start.tzinfo is not None:
+                            rd.start = rd.start.replace(tzinfo=None)
+                        if rd.end and rd.end.tzinfo is not None:
+                            rd.end = rd.end.replace(tzinfo=None)
+                elif isinstance(rd, datetime.datetime):
+                    if is_aware:
+                        if rd.tzinfo is None:
+                            rd = rd.replace(tzinfo=new_dtstart.tzinfo)
+                    else:
+                        if rd.tzinfo is not None:
+                            rd = rd.replace(tzinfo=None)
+                new_rdate.append(rd)
+            update["rdate"] = new_rdate
+
+        # Adjust rrule.until
+        rrule_obj = update.get("rrule", store_item.rrule)
+        if rrule_obj and rrule_obj.until:
+            if "rrule" not in update:
+                update["rrule"] = rrule_obj.model_copy()
+            rrule_update = update["rrule"]
+            if isinstance(rrule_update, Recur) and rrule_update.until:
+                until_val = rrule_update.until
+                if isinstance(until_val, datetime.datetime):
+                    if is_aware:
+                        if until_val.tzinfo is None:
+                            rrule_update.until = until_val.replace(
+                                tzinfo=datetime.timezone.utc
+                            )
+                    else:
+                        if until_val.tzinfo is not None:
+                            rrule_update.until = until_val.replace(tzinfo=None)
+
     return update
 
 

@@ -18,6 +18,8 @@ from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.timeline import Timeline
 from ical.todo import Todo
 from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
+from ical.types import Period
+from ical.compat import dtstart_until_compat
 
 
 def recur_timeline(event: Event) -> Timeline:
@@ -1028,3 +1030,202 @@ def test_weekday_value_validation_errors(occurrence: int) -> None:
         ValueError, match="Weekday occurrence must be between -53 and 53"
     ):
         WeekdayValue(Weekday.MONDAY, occurrence)
+
+
+def test_until_naive_fails_on_aware_dtstart() -> None:
+    """Verify timezone-aware DTSTART with naive UNTIL raises ValueError."""
+    with pytest.raises(
+        CalendarParseError, match="UNTIL must be UTC when DTSTART is timezone-aware"
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=datetime.timezone.utc),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2022, 8, 4, 6, 0, 0),  # Naive
+            ),
+        )
+
+
+def test_until_naive_succeeds_with_compat_on_aware_dtstart() -> None:
+    """Verify that under compat mode, naive UNTIL is auto-corrected to UTC."""
+    with dtstart_until_compat.enable_dtstart_until_compat():
+        event = Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=datetime.timezone.utc),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2022, 8, 4, 6, 0, 0),  # Naive
+            ),
+        )
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(
+        2022, 8, 4, 6, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_until_local_tz_succeeds_with_compat() -> None:
+    """Verify that under compat mode, local timezone UNTIL is converted to UTC."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    with dtstart_until_compat.enable_dtstart_until_compat():
+        event = Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=tz),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=tz),
+            ),
+        )
+    assert event.rrule is not None
+    # America/New_York 06:00:00 on 2022-08-04 is 10:00:00 UTC
+    assert event.rrule.until == datetime.datetime(
+        2022, 8, 4, 10, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_until_aware_fails_on_naive_dtstart() -> None:
+    """Verify naive DTSTART with aware UNTIL raises ValueError."""
+    with pytest.raises(
+        CalendarParseError, match="DTSTART is date local but UNTIL was not"
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(
+                    2022, 8, 4, 6, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        )
+
+
+def test_until_aware_succeeds_with_compat_on_naive_dtstart() -> None:
+    """Verify that under compat mode, timezone-aware UNTIL is converted to naive."""
+    with dtstart_until_compat.enable_dtstart_until_compat():
+        event = Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(
+                    2022, 8, 4, 6, 0, 0, tzinfo=datetime.timezone.utc
+                ),
+            ),
+        )
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(2022, 8, 4, 6, 0, 0)
+
+
+def test_recurrence_dates_mismatched_timezone_naive_dtstart() -> None:
+    """Verify naive DTSTART with aware EXDATE/RDATE raises ValueError."""
+    with pytest.raises(
+        CalendarParseError,
+        match="DTSTART is naive local but EXDATE/RDATE was timezone-aware",
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            exdate=[
+                datetime.datetime(2022, 1, 3, 6, 0, 0, tzinfo=datetime.timezone.utc)
+            ],
+        )
+
+
+def test_recurrence_dates_mismatched_timezone_aware_dtstart() -> None:
+    """Verify timezone-aware DTSTART with naive EXDATE/RDATE raises ValueError."""
+    with pytest.raises(
+        CalendarParseError,
+        match="DTSTART is timezone-aware but EXDATE/RDATE was naive local",
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=datetime.timezone.utc),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=datetime.timezone.utc),
+            exdate=[datetime.datetime(2022, 1, 3, 6, 0, 0)],
+        )
+
+
+def test_recurrence_dates_mismatched_timezone_compat_mode() -> None:
+    """Verify compat mode auto-corrects EXDATE/RDATE timezone mismatches."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    with dtstart_until_compat.enable_dtstart_until_compat():
+        event = Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=tz),
+            exdate=[
+                datetime.datetime(2022, 1, 3, 6, 0, 0)
+            ],  # Naive local gets tzinfo=tz
+            rdate=[
+                datetime.datetime(2022, 1, 4, 6, 0, 0)
+            ],  # Naive local gets tzinfo=tz
+        )
+    assert isinstance(event.exdate[0], datetime.datetime)
+    assert event.exdate[0].tzinfo == tz
+    assert isinstance(event.rdate[0], datetime.datetime)
+    assert event.rdate[0].tzinfo == tz
+
+
+def test_rdate_period_invalid_for_date_dtstart() -> None:
+    """Verify Period in RDATE is rejected if DTSTART is a date."""
+    with pytest.raises(
+        CalendarParseError,
+        match="RDATE with Period value not allowed when DTSTART is a date",
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.date(2022, 1, 2),
+            end=datetime.date(2022, 1, 3),
+            rdate=[
+                Period(
+                    start=datetime.datetime(2022, 1, 4, 6, 0, 0),
+                    end=datetime.datetime(2022, 1, 4, 8, 0, 0),
+                )
+            ],
+        )
+
+
+def test_rdate_period_timezone_validation() -> None:
+    """Verify Period start/end timezone matching."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+
+    # 1. Aware DTSTART, naive Period start
+    with pytest.raises(
+        CalendarParseError,
+        match="DTSTART is timezone-aware but RDATE start was naive local",
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0, tzinfo=tz),
+            rdate=[
+                Period(
+                    start=datetime.datetime(2022, 1, 4, 6, 0, 0),
+                    end=datetime.datetime(2022, 1, 4, 8, 0, 0, tzinfo=tz),
+                )
+            ],
+        )
+
+    # 2. Naive DTSTART, aware Period end
+    with pytest.raises(
+        CalendarParseError,
+        match="DTSTART is naive local but RDATE end was timezone-aware",
+    ):
+        Event(
+            summary="Test Event",
+            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+            rdate=[
+                Period(
+                    start=datetime.datetime(2022, 1, 4, 6, 0, 0),
+                    end=datetime.datetime(2022, 1, 4, 8, 0, 0, tzinfo=tz),
+                )
+            ],
+        )
