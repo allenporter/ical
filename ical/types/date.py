@@ -5,8 +5,9 @@ from __future__ import annotations
 import datetime
 import logging
 import re
+from typing import Any
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 from .data_types import DATA_TYPE
 
@@ -41,3 +42,23 @@ class DateEncoder:
     def __encode_property_json__(cls, value: datetime.date) -> str:
         """Serialize as an ICS value."""
         return value.strftime("%Y%m%d")
+
+    @classmethod
+    def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty | None:
+        """Encode the ParsedProperty."""
+        if isinstance(value, str):
+            if "T" not in value:
+                return ParsedProperty(
+                    name="",
+                    value=value,
+                    params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
+                )
+            return None
+        val_str = value.get("VALUE", "")
+        if "T" not in val_str:
+            return ParsedProperty(
+                name="",
+                value=val_str,
+                params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
+            )
+        return None

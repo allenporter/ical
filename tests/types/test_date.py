@@ -3,11 +3,14 @@
 import datetime
 from typing import Union
 
+from pydantic import field_serializer
 import pytest
-from ical.exceptions import CalendarParseError
 
+from ical.exceptions import CalendarParseError
 from ical.component import ComponentModel
-from ical.parsing.property import ParsedProperty
+from ical.parsing.component import ParsedComponent
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.types.data_types import serialize_field
 
 
 def test_date_parser() -> None:
@@ -63,3 +66,27 @@ def test_union_date_parser() -> None:
         }
     )
     assert model.d == datetime.datetime(2022, 7, 24, 12, 0, 0)
+
+
+def test_date_encoder() -> None:
+    """Test encoding of date property value."""
+
+    class TestModel(ComponentModel):
+        """Model under test."""
+
+        d: datetime.date
+        serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
+
+    model = TestModel(d=datetime.date(2022, 7, 24))
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="TestModel",
+        properties=[
+            ParsedProperty(
+                name="d",
+                value="20220724",
+                params=[
+                    ParsedPropertyParameter(name="VALUE", values=["DATE"]),
+                ],
+            )
+        ],
+    )
