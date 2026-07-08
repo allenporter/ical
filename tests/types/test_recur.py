@@ -6,6 +6,8 @@ import datetime
 import zoneinfo
 
 import pytest
+from pydantic import ValidationError
+from typing import Any
 from ical.exceptions import CalendarParseError
 
 from ical.calendar import Calendar
@@ -974,3 +976,55 @@ def test_recur_freq_hourly() -> None:
         datetime.datetime(2022, 8, 29, 11, 0, 0),
         datetime.datetime(2022, 8, 29, 13, 0, 0),
     ]
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        ({"interval": 0}, "Interval must be a positive integer"),
+        ({"interval": -5}, "Interval must be a positive integer"),
+        ({"count": 0}, "Count must be a positive integer"),
+        ({"count": -1}, "Count must be a positive integer"),
+        ({"bymonth": [0]}, "Month must be between 1 and 12"),
+        ({"bymonth": [13]}, "Month must be between 1 and 12"),
+        ({"bymonthday": [0]}, "Month day must be between -31 and 31"),
+        ({"bymonthday": [32]}, "Month day must be between -31 and 31"),
+        ({"bymonthday": [-32]}, "Month day must be between -31 and 31"),
+        ({"bysetpos": [0]}, "Setpos must be between -366 and 366"),
+        ({"bysetpos": [367]}, "Setpos must be between -366 and 366"),
+        ({"bysetpos": [-367]}, "Setpos must be between -366 and 366"),
+    ],
+)
+def test_recur_validation_errors(kwargs: dict[str, Any], match: str) -> None:
+    """Test validations for recurrence rules constructor."""
+    with pytest.raises(ValidationError, match=match):
+        Recur(freq=Frequency.DAILY, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "rrule_str,match",
+    [
+        ("FREQ=DAILY;INTERVAL=0", "Interval must be a positive integer"),
+        ("FREQ=DAILY;COUNT=0", "Count must be a positive integer"),
+        ("FREQ=YEARLY;BYMONTH=13", "Month must be between 1 and 12"),
+        ("FREQ=MONTHLY;BYMONTHDAY=0", "Month day must be between -31 and 31"),
+        ("FREQ=MONTHLY;BYMONTHDAY=32", "Month day must be between -31 and 31"),
+        ("FREQ=MONTHLY;BYSETPOS=0", "Setpos must be between -366 and 366"),
+        ("FREQ=MONTHLY;BYSETPOS=-367", "Setpos must be between -366 and 366"),
+        ("FREQ=YEARLY;BYDAY=54MO", "Weekday occurrence must be between -53 and 53"),
+        ("FREQ=YEARLY;BYDAY=-54MO", "Weekday occurrence must be between -53 and 53"),
+    ],
+)
+def test_recur_from_rrule_validation_errors(rrule_str: str, match: str) -> None:
+    """Test validations for recurrence rules parsed from strings."""
+    with pytest.raises(ValidationError, match=match):
+        Recur.from_rrule(rrule_str)
+
+
+@pytest.mark.parametrize("occurrence", [0, 54, -54])
+def test_weekday_value_validation_errors(occurrence: int) -> None:
+    """Test validations for weekday occurrence range limits."""
+    with pytest.raises(
+        ValueError, match="Weekday occurrence must be between -53 and 53"
+    ):
+        WeekdayValue(Weekday.MONDAY, occurrence)
