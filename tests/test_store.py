@@ -1946,3 +1946,123 @@ def test_control_characters(
     assert len(new_calendar.events) == 1
     persisted_event = new_calendar.events[0]
     assert persisted_event.summary == "Hello, you are seeing an invalid character  here"
+
+
+# ---------------------------------------------------------------------------
+# Issue #480 — RecurrenceId TZID parameter support
+# ---------------------------------------------------------------------------
+
+NY_TZ = zoneinfo.ZoneInfo("America/New_York")
+
+
+def _make_recurring_tz_event(uid: str, tzinfo: zoneinfo.ZoneInfo) -> Event:
+    """Create a simple weekly recurring event anchored in a specific timezone."""
+    return Event(
+        uid=uid,
+        summary="Weekly meeting",
+        start=datetime.datetime(2025, 5, 5, 10, 0, 0, tzinfo=tzinfo),
+        end=datetime.datetime(2025, 5, 5, 11, 0, 0, tzinfo=tzinfo),
+        rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
+    )
+
+
+def test_edit_recurring_event_with_tzid_recurrence_id(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Edit a single tz-aware recurring instance using an inline TZID recurrence_id.
+
+    Reproduces the failure from issue #480: ``store.edit`` raises because
+    ``RecurrenceId.to_value`` could not parse the TZID-prefixed string.
+    """
+    uid = "tz-meeting-uid"
+    store.add(_make_recurring_tz_event(uid, NY_TZ))
+
+    # Pass recurrence_id in the inline "TZID=tz:DATETIME" format from #480
+    recurrence_id = "TZID=America/New_York:20250512T100000"
+    store.edit(
+        uid=uid,
+        item=Event(summary="Weekly meeting (rescheduled)"),
+        recurrence_id=recurrence_id,
+    )
+
+    events = sorted(calendar.timeline, key=lambda e: e.dtstart)
+    summaries = [e.summary for e in events]
+    assert "Weekly meeting (rescheduled)" in summaries
+    assert summaries.count("Weekly meeting") == 4
+
+
+def test_delete_recurring_event_with_tzid_recurrence_id(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Delete a single tz-aware recurring instance using an inline TZID recurrence_id.
+
+    Reproduces the failure from issue #480 for the delete path.
+    """
+    uid = "tz-delete-uid"
+    store.add(_make_recurring_tz_event(uid, NY_TZ))
+
+    recurrence_id = "TZID=America/New_York:20250519T100000"
+    store.delete(uid=uid, recurrence_id=recurrence_id)
+
+    events = sorted(calendar.timeline, key=lambda e: e.dtstart)
+    assert len(events) == 4
+    starts = [e.dtstart for e in events]
+    deleted_dt = datetime.datetime(2025, 5, 19, 10, 0, 0, tzinfo=NY_TZ)
+    assert deleted_dt not in starts
+
+
+def test_edit_recurring_event_with_parsed_tzid_property(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Edit a recurring instance using a RecurrenceId parsed from a ParsedProperty with TZID.
+
+    Verifies the store correctly handles the ``RecurrenceId`` object enriched
+    with ``.tzinfo`` metadata (the path taken when reading from an .ics file).
+    """
+    from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+    from ical.types.recur import RecurrenceId
+
+    uid = "tz-property-uid"
+    store.add(_make_recurring_tz_event(uid, NY_TZ))
+
+    # Simulate a RecurrenceId parsed from an ICS property with a TZID param.
+    rid_prop = ParsedProperty(
+        name="RECURRENCE-ID",
+        value="20250526T100000",
+        params=[ParsedPropertyParameter(name="TZID", values=["America/New_York"])],
+    )
+    rid = RecurrenceId.__parse_property_value__(rid_prop)
+    assert rid.tzinfo == NY_TZ
+
+    store.edit(
+        uid=uid,
+        item=Event(summary="Last instance updated"),
+        recurrence_id=rid,
+    )
+
+    events = sorted(calendar.timeline, key=lambda e: e.dtstart)
+    assert any(e.summary == "Last instance updated" for e in events)
+
+
+def test_recurrence_id_naive_fallback_still_works(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Verify that a naive recurrence_id string still matches a tz-aware series.
+
+    This is the pre-existing behaviour that must not regress: when the caller
+    does NOT supply a TZID, the item's own timezone is used for the comparison.
+    """
+    uid = "tz-naive-rid-uid"
+    store.add(_make_recurring_tz_event(uid, NY_TZ))
+
+    # Plain naive string — should still work via the fallback path
+    store.delete(uid=uid, recurrence_id="20250505T100000")
+
+    events = sorted(calendar.timeline, key=lambda e: e.dtstart)
+    assert len(events) == 4
+    first_dt = datetime.datetime(2025, 5, 5, 10, 0, 0, tzinfo=NY_TZ)
+    assert first_dt not in [e.dtstart for e in events]
