@@ -405,3 +405,19 @@ def test_parse_rdate_list_strings() -> None:
     assert isinstance(recurrences.rdate[0], Period)
     assert isinstance(recurrences.rdate[1], datetime.datetime)
     assert isinstance(recurrences.rdate[2], datetime.date)
+
+
+def test_parse_rdate_mixed() -> None:
+    """Test parsing a recurrence rule with mixed RDATE value types."""
+    lines = [
+        "DTSTART:19960403T020000",
+        "RDATE;VALUE=DATE:19960404,19960405",
+        "RDATE;VALUE=PERIOD:19960406T020000/PT3H",
+        "RDATE:19960407T020000",
+    ]
+    recurrences = Recurrences.from_basic_contentlines(lines)
+    assert len(recurrences.rdate) == 4
+    assert isinstance(recurrences.rdate[0], datetime.date)
+    assert isinstance(recurrences.rdate[1], datetime.date)
+    assert isinstance(recurrences.rdate[2], Period)
+    assert isinstance(recurrences.rdate[3], datetime.datetime)
