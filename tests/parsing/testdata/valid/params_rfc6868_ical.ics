@@ -1,0 +1,3 @@
+BEGIN:VCALENDAR
+ATTENDEE;CN=George Herman ^'Babe^' Ruth:mailto:babe@example.com
+END:VCALENDAR

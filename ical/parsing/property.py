@@ -55,6 +55,34 @@ _PARAM_DELIMITERS = (",", ";", ":")
 _QUOTE = '"'
 
 
+_DECODE_RE = re.compile(r"\^(.)")
+
+
+def _decode_parameter_value(value: str) -> str:
+    """Decode caret-escaped parameter values according to RFC 6868."""
+
+    def replace(match: re.Match) -> str:
+        match match.group(1):
+            case "n":
+                return "\n"
+            case "^":
+                return "^"
+            case "'":
+                return '"'
+            case _:
+                return match.group(0)
+
+    return _DECODE_RE.sub(replace, value)
+
+
+def _encode_parameter_value(value: str) -> str:
+    """Encode parameter values using caret escaping according to RFC 6868."""
+    value = value.replace("^", "^^")
+    value = value.replace("\n", "^n")
+    value = value.replace('"', "^'")
+    return value
+
+
 def _find_first(
     line: str, chars: Sequence[str], start: int | None = None
 ) -> int | None:
@@ -124,16 +152,16 @@ class ParsedProperty:
                 for value in parameter.values:
                     if not isinstance(value, str):
                         continue  # Shouldn't happen; only strings are set by parsing
-                    if _QUOTE in value:
-                        raise ValueError(
-                            f"Parameter value '{value}' for parameter '{parameter.name}' cannot contain double quotes."
-                        )
+
+                    # Encode value using RFC 6868 caret-escaping
+                    encoded_value = _encode_parameter_value(value)
+
                     # Property parameters with values contain a colon, semicolon,
                     # or a comma character must be placed in quoted text
-                    if _UNSAFE_CHAR_RE.search(value):
-                        result_param_values.append(f'"{value}"')
+                    if _UNSAFE_CHAR_RE.search(encoded_value):
+                        result_param_values.append(f'"{encoded_value}"')
                     else:
-                        result_param_values.append(value)
+                        result_param_values.append(encoded_value)
                 values = ",".join(result_param_values)
                 result_params.append(f"{parameter.name.upper()}={values}")
             result.append(";".join(result_params))
@@ -251,6 +279,13 @@ def _parse_line(line: str) -> ParsedProperty:
                     f"Invalid parameter value '{value}' for parameter '{param.name}'",
                     detailed_error=line,
                 )
+
+    # Decode parameter values according to RFC 6868 caret-escaping rules.
+    for param in params:
+        param.values = [
+            _decode_parameter_value(v) if isinstance(v, str) else v
+            for v in param.values
+        ]
 
     property_value = line[pos:]
     if RE_CONTROL_CHARS.search(property_value):

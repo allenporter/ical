@@ -150,6 +150,30 @@
     ParsedProperty(name='end', value='VCALENDAR', params=None),
   ])
 # ---
+# name: test_from_ics[params_rfc6868_caret]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='x-test', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^'])]),
+    ParsedProperty(name='x-test-2', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^n'])]),
+    ParsedProperty(name='x-test-3', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^'])]),
+    ParsedProperty(name='x-test-4', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^x'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[params_rfc6868_ical]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='attendee', value='mailto:babe@example.com', params=[ParsedPropertyParameter(name='CN', values=['George Herman "Babe" Ruth'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
+# name: test_from_ics[params_rfc6868_vcard]
+  list([
+    ParsedProperty(name='begin', value='VCALENDAR', params=None),
+    ParsedProperty(name='geo', value='geo:40.446816,-80.00566', params=[ParsedPropertyParameter(name='X-ADDRESS', values=['Pittsburgh Pirates\n115 Federal St\nPittsburgh, PA 15212'])]),
+    ParsedProperty(name='end', value='VCALENDAR', params=None),
+  ])
+# ---
 # name: test_from_ics[rdate]
   list([
     ParsedProperty(name='begin', value='VCALENDAR', params=None),
