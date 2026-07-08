@@ -1946,3 +1946,119 @@ def test_control_characters(
     assert len(new_calendar.events) == 1
     persisted_event = new_calendar.events[0]
     assert persisted_event.summary == "Hello, you are seeing an invalid character  here"
+
+
+def test_edit_recurring_event_with_exception_cleanup(
+    calendar: Calendar,
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+) -> None:
+    """Test that editing/moving a recurring event cleans up invalid EXDATEs."""
+    # Add a recurring event starting on 2025-05-23 repeating daily for 10 days
+    store.add(
+        Event(
+            summary="Daily meeting",
+            start="2025-05-23T09:00:00",
+            end="2025-05-23T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+
+    # Edit a single instance (2025-05-27) to create an exception
+    # This automatically adds 2025-05-27 to the exdate of the primary event
+    store.edit(
+        "mock-uid-1",
+        Event(start="2025-05-27T10:00:00", summary="Daily meeting exception"),
+        recurrence_id="20250527T090000",
+    )
+
+    # Verification: Validate external behavior (the override was created, timeline has it)
+    events_external = fetch_events({"uid", "recurrence_id", "dtstart", "summary"})
+    assert (
+        len(events_external) == 10
+    )  # 9 occurrences of primary, plus 1 exception override
+
+    # Verification: Validate internal bookkeeping details
+    # We verify `exdate` directly. Note: In the future, the internal bookkeeping representation
+    # of exceptions may change to not use `exdate` directly, so this direct internal check is separate.
+    events_internal = list(store._items)
+    primary_event = next(e for e in events_internal if not e.recurrence_id)
+    assert primary_event.exdate == [datetime.datetime(2025, 5, 27, 9, 0)]
+
+    # Move the primary event series to start on 2025-06-01
+    store.edit(
+        "mock-uid-1",
+        Event(start="2025-06-01T09:00:00", summary="Daily meeting moved"),
+    )
+
+    # Verification: Validate external behavior after moving the series
+    # The exception on 2025-05-27 should be gone since that date is no longer in the series
+    events_external_after = fetch_events({"uid", "recurrence_id", "dtstart", "summary"})
+    assert (
+        len(events_external_after) == 10
+    )  # All 10 occurrences of the moved series are generated
+
+    # Verification: Validate internal bookkeeping details after moving the series
+    # The primary event's EXDATE should be completely cleaned up because 2025-05-27 is no longer a valid occurrence
+    events_internal_after = list(store._items)
+    assert len(events_internal_after) == 1
+    assert not events_internal_after[0].recurrence_id
+    assert not events_internal_after[0].exdate
+
+
+def test_edit_recurring_all_day_event_with_exception_cleanup(
+    calendar: Calendar,
+    store: EventStore,
+    fetch_events: Callable[..., list[dict[str, Any]]],
+) -> None:
+    """Test that editing/moving an all-day recurring event cleans up invalid EXDATEs."""
+    # Add an all-day recurring event starting on 2025-05-23 repeating daily for 10 days
+    store.add(
+        Event(
+            summary="Daily event",
+            start="2025-05-23",
+            end="2025-05-24",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=10"),
+        )
+    )
+
+    # Edit a single instance (2025-05-27) to create an exception
+    # This automatically adds 2025-05-27 to the exdate of the primary event
+    store.edit(
+        "mock-uid-1",
+        Event(start="2025-05-27", summary="Daily event exception"),
+        recurrence_id="20250527",
+    )
+
+    # Verification: Validate external behavior (the override was created, timeline has it)
+    events_external = fetch_events({"uid", "recurrence_id", "dtstart", "summary"})
+    assert (
+        len(events_external) == 10
+    )  # 9 occurrences of primary, plus 1 exception override
+
+    # Verification: Validate internal bookkeeping details
+    # We verify `exdate` directly. Note: In the future, the internal bookkeeping representation
+    # of exceptions may change to not use `exdate` directly, so this direct internal check is separate.
+    events_internal = list(store._items)
+    primary_event = next(e for e in events_internal if not e.recurrence_id)
+    assert primary_event.exdate == [datetime.date(2025, 5, 27)]
+
+    # Move the primary event series to start on 2025-06-01
+    store.edit(
+        "mock-uid-1",
+        Event(start="2025-06-01", summary="Daily event moved"),
+    )
+
+    # Verification: Validate external behavior after moving the series
+    # The exception on 2025-05-27 should be gone since that date is no longer in the series
+    events_external_after = fetch_events({"uid", "recurrence_id", "dtstart", "summary"})
+    assert (
+        len(events_external_after) == 10
+    )  # All 10 occurrences of the moved series are generated
+
+    # Verification: Validate internal bookkeeping details after moving the series
+    # The primary event's EXDATE should be completely cleaned up because 2025-05-27 is no longer a valid occurrence
+    events_internal_after = list(store._items)
+    assert len(events_internal_after) == 1
+    assert not events_internal_after[0].recurrence_id
+    assert not events_internal_after[0].exdate
