@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+import copy
 import datetime
 import inspect
 from typing import Any
@@ -288,3 +289,47 @@ def test_benchmark_get_observance_repeated_calls(benchmark: Any) -> None:
 
     result = benchmark(lookup)
     assert result == len(dts)
+
+
+def test_calendar_deepcopy() -> None:
+    """Verify that a calendar can be deepcopied cleanly through the public API."""
+
+    ics_content = """BEGIN:VCALENDAR
+PRODID:-//Example Corp//Cal//EN
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:Custom Time Zone
+BEGIN:STANDARD
+DTSTART:16010101T020000
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:event-1
+SUMMARY:Test Event
+DTSTART;TZID=Custom Time Zone:20241025T090000
+DTEND;TZID=Custom Time Zone:20241025T100000
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics_content)
+    # Trigger timeline/observance cache initialization
+    events = list(calendar.timeline)
+    assert len(events) == 1
+    assert isinstance(events[0].dtstart, datetime.datetime)
+    assert events[0].dtstart.tzinfo is not None
+
+    # Deepcopy the calendar (which deepcopies the custom TzInfo and Timezone components)
+    copied_calendar = copy.deepcopy(calendar)
+
+    # Verify the copied calendar operates identically
+    copied_events = list(copied_calendar.timeline)
+    assert len(copied_events) == 1
+    assert copied_events[0].summary == "Test Event"
+    assert copied_events[0].dtstart == events[0].dtstart
+    # Verify that the tzinfo of the copied event still works correctly
+    assert isinstance(copied_events[0].dtstart, datetime.datetime)
+    assert copied_events[0].dtstart.tzname() == events[0].dtstart.tzname()
+    assert copied_events[0].dtstart.utcoffset() == events[0].dtstart.utcoffset()
