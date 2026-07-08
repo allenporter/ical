@@ -7,11 +7,23 @@ name = "ical"
 version = "13.3.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-description = "Python iCalendar implementation (rfc 2445)"
+description = "Python iCalendar implementation (rfc 5545) with built-in recurring event support"
 readme = "README.md"
 authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
 requires-python = ">=3.13"
-classifiers = []
+keywords = ["icalendar", "ics", "calendar", "recurring", "rfc5545", "vcalendar", "rrule", "vcard", "caldav"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business :: Scheduling",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
 dependencies = [
   "python-dateutil>=2.8.2",
   "tzdata>=2023.3",
@@ -20,6 +32,9 @@ dependencies = [
 
 [project.urls]
 Source = "https://github.com/allenporter/ical"
+Documentation = "https://allenporter.github.io/ical/"
+"Bug Tracker" = "https://github.com/allenporter/ical/issues"
+Changelog = "https://github.com/allenporter/ical/releases"
 
 [tool.setuptools.packages.find]
 include = ["ical*"]
