@@ -505,8 +505,8 @@ def test_rfc7986_calendar_properties() -> None:
     assert "URL:http://example.com/calendar.ics" in output_ics
     assert "CATEGORIES:WORK" in output_ics
     assert "CATEGORIES:PROJECT" in output_ics
-    assert "REFRESH-INTERVAL;VALUE=DURATION:PT1H" in output_ics
-    assert "SOURCE;VALUE=URI:http://example.com/source.ics" in output_ics
+    assert "REFRESH-INTERVAL:PT1H" in output_ics
+    assert "SOURCE:http://example.com/source.ics" in output_ics
     assert "COLOR:turquoise" in output_ics
     assert (
         "IMAGE;FMTTYPE=image/png;DISPLAY=BADGE:http://example.com/badge.png"

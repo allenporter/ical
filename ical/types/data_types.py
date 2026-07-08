@@ -201,22 +201,6 @@ class Registry:
         if not prop.name:
             prop.name = key
 
-        # Add special parameters for RFC 7986 properties without defaults
-        if key.lower() == "refresh-interval":
-            if not prop.params:
-                prop.params = []
-            if not any(p.name == "VALUE" for p in prop.params):
-                prop.params.append(
-                    ParsedPropertyParameter(name="VALUE", values=["DURATION"])
-                )
-        elif key.lower() == "source":
-            if not prop.params:
-                prop.params = []
-            if not any(p.name == "VALUE" for p in prop.params):
-                prop.params.append(
-                    ParsedPropertyParameter(name="VALUE", values=["URI"])
-                )
-
         return prop
 
     def parse_field(
