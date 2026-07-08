@@ -154,3 +154,29 @@ def test_encode_period_errors() -> None:
         ValueError, match="Invalid period missing both end and duration"
     ):
         Period.__encode_property__({"start": "20220808T100000"})
+
+
+def test_encode_period_timezone_aware() -> None:
+    """Test period encoding with timezone-aware start and end."""
+    import zoneinfo
+    from ical.parsing.property import ParsedPropertyParameter
+
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    model = FakeModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 8, 7, 8, 0, 0, tzinfo=tz),
+        )
+    )
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="FakeModel",
+        properties=[
+            ParsedProperty(
+                name="example",
+                value="20220807T060000/20220807T080000",
+                params=[
+                    ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+                ],
+            )
+        ],
+    )

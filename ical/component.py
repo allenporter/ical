@@ -72,10 +72,18 @@ def _adjust_recurrence_date(
             )
         if dtstart.tzinfo is None:
             if date_value.tzinfo is not None:
+                if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                    return date_value.replace(tzinfo=None)
                 raise ValueError("DTSTART is date local but UNTIL was not")
             return date_value
 
-        if date_value.utcoffset():
+        if date_value.tzinfo is None:
+            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                return date_value.replace(tzinfo=datetime.timezone.utc)
+            raise ValueError("UNTIL must be UTC when DTSTART is timezone-aware")
+        if date_value.utcoffset() != datetime.timedelta(0):
+            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                return date_value.astimezone(datetime.timezone.utc)
             raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
 
         return date_value
@@ -129,20 +137,90 @@ def _as_date(
 
 def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
-    if not self.rrule or not (dtstart := self.dtstart):
+    if not (dtstart := self.dtstart):
         return self
+
+    from .types.period import Period
+
     for field in ("exdate", "rdate"):
         if not (date_values := self.__dict__.get(field)):
             continue
 
         if isinstance(dtstart, datetime.datetime):
-            self.__dict__[field] = [
-                _as_datetime(date_value, dtstart) for date_value in date_values
-            ]
+            new_values = []
+            for date_value in date_values:
+                if isinstance(date_value, Period):
+                    start = date_value.start
+                    end = date_value.end
+
+                    if dtstart.tzinfo is None:
+                        if start.tzinfo is not None:
+                            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                date_value.start = start.replace(tzinfo=None)
+                            else:
+                                raise ValueError(
+                                    "DTSTART is naive local but RDATE start was timezone-aware"
+                                )
+                    else:
+                        if start.tzinfo is None:
+                            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                date_value.start = start.replace(tzinfo=dtstart.tzinfo)
+                            else:
+                                raise ValueError(
+                                    "DTSTART is timezone-aware but RDATE start was naive local"
+                                )
+
+                    if end:
+                        if dtstart.tzinfo is None:
+                            if end.tzinfo is not None:
+                                if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                    date_value.end = end.replace(tzinfo=None)
+                                else:
+                                    raise ValueError(
+                                        "DTSTART is naive local but RDATE end was timezone-aware"
+                                    )
+                        else:
+                            if end.tzinfo is None:
+                                if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                    date_value.end = end.replace(tzinfo=dtstart.tzinfo)
+                                else:
+                                    raise ValueError(
+                                        "DTSTART is timezone-aware but RDATE end was naive local"
+                                    )
+                    new_values.append(date_value)
+                else:
+                    if not isinstance(date_value, datetime.datetime):
+                        date_value = datetime.datetime.combine(
+                            date_value, dtstart.time()
+                        ).replace(tzinfo=dtstart.tzinfo)
+
+                    if dtstart.tzinfo is None:
+                        if date_value.tzinfo is not None:
+                            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                date_value = date_value.replace(tzinfo=None)
+                            else:
+                                raise ValueError(
+                                    "DTSTART is naive local but EXDATE/RDATE was timezone-aware"
+                                )
+                    else:
+                        if date_value.tzinfo is None:
+                            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                                date_value = date_value.replace(tzinfo=dtstart.tzinfo)
+                            else:
+                                raise ValueError(
+                                    "DTSTART is timezone-aware but EXDATE/RDATE was naive local"
+                                )
+                    new_values.append(date_value)
+            self.__dict__[field] = new_values
         else:
-            self.__dict__[field] = [
-                _as_date(date_value, dtstart) for date_value in date_values
-            ]
+            new_values = []
+            for date_value in date_values:
+                if isinstance(date_value, Period):
+                    raise ValueError(
+                        "RDATE with Period value not allowed when DTSTART is a date"
+                    )
+                new_values.append(_as_date(date_value, dtstart))
+            self.__dict__[field] = new_values
     return self
 
 

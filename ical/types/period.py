@@ -134,23 +134,40 @@ class Period(BaseModel):
             raise ValueError(
                 f"Invalid period missing both end and duration: {model_data}"
             )
+
+        tzid = None
+        if isinstance(start, dict):
+            tzid = start.get("TZID")
+            start = start["VALUE"]
+        if isinstance(end, dict):
+            if not tzid:
+                tzid = end.get("TZID")
+            end = end["VALUE"]
+
         # End and duration are already encoded values
         if end:
             value = "/".join([start, end])
         else:
             value = "/".join([start, duration])
 
+        params = encode_model_property_params(
+            cls.model_fields,
+            {
+                k: v
+                for k, v in model_data.items()
+                if k not in ("end", "duration", "start")
+            },
+        )
+        if tzid:
+            if not params:
+                params = []
+            if not any(param.name == "TZID" for param in params):
+                params.append(ParsedPropertyParameter(name="TZID", values=[str(tzid)]))
+
         return ParsedProperty(
             name="",
             value=value,
-            params=encode_model_property_params(
-                cls.model_fields,
-                {
-                    k: v
-                    for k, v in model_data.items()
-                    if k not in ("end", "duration", "start")
-                },
-            ),
+            params=params,
         )
 
     model_config = ConfigDict(populate_by_name=True)
