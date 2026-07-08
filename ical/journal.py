@@ -16,6 +16,7 @@ from ical.types.data_types import serialize_field
 
 from .component import ComponentModel, validate_until_dtstart, validate_recurrence_dates
 from .types import (
+    Attachment,
     CalAddress,
     Classification,
     ExtraProperty,
@@ -109,6 +110,9 @@ class Journal(ComponentModel):
     status: Optional[JournalStatus] = None
     summary: Optional[str] = None
     url: Optional[Uri] = None
+
+    attach: list[Attachment] = Field(default_factory=list)
+    """Associate a document object with the journal."""
 
     # Unknown or unsupported properties
     extras: list[ExtraProperty] = Field(default_factory=list)

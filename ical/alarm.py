@@ -7,7 +7,7 @@ from typing import Optional, Self, Union
 from pydantic import Field, field_serializer, model_validator
 
 from .component import ComponentModel
-from .types import CalAddress, ExtraProperty
+from .types import Attachment, CalAddress, ExtraProperty
 from .types.data_types import serialize_field
 
 
@@ -73,10 +73,10 @@ class Alarm(ComponentModel):
     attendees: list[CalAddress] = Field(alias="attendee", default_factory=list)
     """Email recipients for the alarm."""
 
-    extras: list[ExtraProperty] = Field(default_factory=list)
+    attach: list[Attachment] = Field(default_factory=list)
+    """Associate a document object with the alarm."""
 
-    # Future properties:
-    # - attach
+    extras: list[ExtraProperty] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def parse_display_required_fields(self) -> Self:
