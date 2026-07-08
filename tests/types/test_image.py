@@ -8,38 +8,48 @@ from pydantic import ValidationError
 from ical.types import Image, Display, Uri
 
 
-def test_image_edge_cases() -> None:
-    """Test edge cases in Image parsing and encoding to cover missing paths."""
-
-    # 1. Non-dict input to parse_image (Line 49)
+def test_image_parse_non_dict_error() -> None:
+    """Test that passing a non-dict to Image parsing raises a ValidationError."""
     with pytest.raises(ValidationError):
         Image.model_validate("not-a-dict")
 
-    # 2. Binary image needing base64 padding (Line 68)
+
+def test_image_parse_binary_padding() -> None:
+    """Test parsing binary image base64 value requiring padding."""
     # "aGVsbG8" is "hello" without padding (7 chars). Remainder 3.
     img_padded = Image.model_validate(
         {"value": "aGVsbG8", "VALUE": "BINARY", "ENCODING": "BASE64"}
     )
     assert img_padded.content == b"hello"
 
-    # 3. Invalid base64 (Lines 70-71)
+
+def test_image_parse_invalid_base64_error() -> None:
+    """Test that parsing invalid base64 content raises a ValidationError."""
     with pytest.raises(ValidationError, match="Failed to decode base64 binary image"):
         Image.model_validate(
             {"value": "invalid-base64-!!!", "VALUE": "BINARY", "ENCODING": "BASE64"}
         )
 
-    # 4. Empty image serialization (Line 101)
+
+def test_image_encode_empty() -> None:
+    """Test that encoding an empty image yields an empty value."""
     encoded = Image.__encode_property__({})
     assert encoded.value == ""
 
-    # 5. Raw bytes passed to __encode_property__ (Line 93)
+
+def test_image_encode_raw_bytes() -> None:
+    """Test that encoding raw bytes dynamically base64-encodes the content."""
     encoded_bytes = Image.__encode_property__({"content": b"hello"})
     assert encoded_bytes.value == "aGVsbG8="
 
-    # 6. None value to serialize_content (Line 80)
+
+def test_image_serialize_content_none() -> None:
+    """Test that serializing None content returns None."""
     assert Image().serialize_content(None) is None
 
-    # 7. ALTREP parameter validation
+
+def test_image_altrep_parameter() -> None:
+    """Test parsing of the ALTREP parameter on the Image property."""
     img_altrep = Image.model_validate(
         {
             "value": "http://example.com/logo.png",
