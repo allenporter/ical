@@ -41,7 +41,7 @@ import re
 import datetime
 from dataclasses import dataclass
 from collections.abc import Iterator, Generator, Iterable
-from typing import Optional, Union, Sequence, Iterable
+from typing import Optional, Union, Sequence
 
 from ical.exceptions import CalendarParseError
 

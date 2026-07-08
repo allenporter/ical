@@ -307,7 +307,71 @@ def test_date_intersects(
     range2: tuple[date, date],
     expected: bool,
 ) -> None:
-    """Test event intersection."""
+    """Test event intersection with date-type start/end values."""
+    event1 = Event(summary=SUMMARY, start=range1[0], end=range1[1])
+    event2 = Event(summary=SUMMARY, start=range2[0], end=range2[1])
+    assert event1.intersects(event2) == expected
+
+
+@pytest.mark.parametrize(
+    "range1,range2,expected",
+    [
+        # Overlapping datetime events (UTC)
+        (
+            (
+                datetime(2022, 8, 1, 9, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+            (
+                datetime(2022, 8, 1, 9, 30, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 11, 0, tzinfo=timezone.utc),
+            ),
+            True,
+        ),
+        # Non-overlapping datetime events (UTC)
+        (
+            (
+                datetime(2022, 8, 1, 9, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+            (
+                datetime(2022, 8, 1, 11, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 12, 0, tzinfo=timezone.utc),
+            ),
+            False,
+        ),
+        # Exact boundary — adjacent events do NOT intersect (half-open intervals)
+        (
+            (
+                datetime(2022, 8, 1, 9, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+            (
+                datetime(2022, 8, 1, 10, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 11, 0, tzinfo=timezone.utc),
+            ),
+            False,
+        ),
+        # Cross-timezone: same instant, different tzinfo — should intersect
+        (
+            (
+                datetime(2022, 8, 1, 9, 0, tzinfo=timezone.utc),
+                datetime(2022, 8, 1, 10, 0, tzinfo=timezone.utc),
+            ),
+            (
+                datetime(2022, 8, 1, 2, 0, tzinfo=timezone(timedelta(hours=-7))),
+                datetime(2022, 8, 1, 3, 30, tzinfo=timezone(timedelta(hours=-7))),
+            ),
+            True,
+        ),
+    ],
+)
+def test_datetime_intersects(
+    range1: tuple[datetime, datetime],
+    range2: tuple[datetime, datetime],
+    expected: bool,
+) -> None:
+    """Test event intersection with datetime-type (aware) start/end values."""
     event1 = Event(summary=SUMMARY, start=range1[0], end=range1[1])
     event2 = Event(summary=SUMMARY, start=range2[0], end=range2[1])
     assert event1.intersects(event2) == expected

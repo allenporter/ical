@@ -219,7 +219,7 @@ def test_recurring_event(
         Recur.from_rrule("FREQ=WEEKLY;COUNT=5"),
     ],
 )
-def test_deletel_partial_recurring_event(
+def test_delete_partial_recurring_event(
     store: EventStore,
     fetch_events: Callable[..., list[dict[str, Any]]],
     recur: Recur,

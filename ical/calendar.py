@@ -34,9 +34,25 @@ _VERSION = "2.0"
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
 
+__all__ = ["Calendar"]
+
 
 class Calendar(ComponentModel):
-    """A sequence of calendar properties and calendar components."""
+    """A sequence of calendar properties and calendar components.
+
+    Example usage::
+
+        from datetime import date
+        from ical.calendar import Calendar
+        from ical.event import Event
+
+        calendar = Calendar()
+        calendar.events.append(
+            Event(summary="Meeting", start=date(2024, 1, 15), end=date(2024, 1, 16))
+        )
+        for event in calendar.timeline:
+            print(event.summary)
+    """
 
     calscale: Optional[str] = None
     method: Optional[str] = None
@@ -108,7 +124,9 @@ class Calendar(ComponentModel):
     def timeline(self) -> Timeline:
         """Return a timeline view of events on the calendar.
 
-        All day events are returned as if the attendee is viewing from UTC time.
+        All day events are returned as if the attendee is viewing from the
+        local system timezone. Use :meth:`timeline_tz` to specify a different
+        timezone.
         """
         return self.timeline_tz()
 

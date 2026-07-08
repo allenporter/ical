@@ -258,6 +258,50 @@
     'mock-uid-4',
   ])
 # ---
+# name: test_delete_partial_recurring_event[recur0]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
+# name: test_delete_partial_recurring_event[recur1]
+  list([
+    dict({
+      'dtstart': '2022-08-29T09:00:00',
+      'recurrence_id': '20220829T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-12T09:00:00',
+      'recurrence_id': '20220912T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+    dict({
+      'dtstart': '2022-09-26T09:00:00',
+      'recurrence_id': '20220926T090000',
+      'summary': 'Monday meeting',
+      'uid': 'mock-uid-1',
+    }),
+  ])
+# ---
 # name: test_delete_this_and_future_all_day_event[recur0]
   list([
     dict({
@@ -341,50 +385,6 @@
     dict({
       'dtstart': '2022-09-12T09:00:00',
       'recurrence_id': '20220912T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-  ])
-# ---
-# name: test_deletel_partial_recurring_event[recur0]
-  list([
-    dict({
-      'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-    dict({
-      'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-    dict({
-      'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-  ])
-# ---
-# name: test_deletel_partial_recurring_event[recur1]
-  list([
-    dict({
-      'dtstart': '2022-08-29T09:00:00',
-      'recurrence_id': '20220829T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-    dict({
-      'dtstart': '2022-09-12T09:00:00',
-      'recurrence_id': '20220912T090000',
-      'summary': 'Monday meeting',
-      'uid': 'mock-uid-1',
-    }),
-    dict({
-      'dtstart': '2022-09-26T09:00:00',
-      'recurrence_id': '20220926T090000',
       'summary': 'Monday meeting',
       'uid': 'mock-uid-1',
     }),

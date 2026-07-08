@@ -40,6 +40,8 @@ from pydantic import ConfigDict
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["CalendarStream", "IcsCalendarStream"]
+
 
 class CalendarStream(ComponentModel):
     """A container that is a collection of calendaring information.
