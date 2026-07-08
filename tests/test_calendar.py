@@ -518,3 +518,36 @@ def test_rfc7986_calendar_properties() -> None:
         "IMAGE;ENCODING=BASE64;FMTTYPE=image/png;VALUE=BINARY:aGVsbG8=" in output_ics
         or "IMAGE;FMTTYPE=image/png;VALUE=BINARY;ENCODING=BASE64:aGVsbG8=" in output_ics
     )
+
+
+def test_rfc7986_image_edge_cases() -> None:
+    """Test edge cases in Image parsing and encoding to cover missing paths."""
+    from pydantic import ValidationError
+
+    # 1. Non-dict input to parse_image (Line 49)
+    with pytest.raises(ValidationError):
+        Image.model_validate("not-a-dict")
+
+    # 2. Binary image needing base64 padding (Line 68)
+    # "aGVsbG8" is "hello" without padding (7 chars). Remainder 3.
+    img_padded = Image.model_validate(
+        {"value": "aGVsbG8", "VALUE": "BINARY", "ENCODING": "BASE64"}
+    )
+    assert img_padded.content == b"hello"
+
+    # 3. Invalid base64 (Lines 70-71)
+    with pytest.raises(ValidationError, match="Failed to decode base64 binary image"):
+        Image.model_validate(
+            {"value": "invalid-base64-!!!", "VALUE": "BINARY", "ENCODING": "BASE64"}
+        )
+
+    # 4. Empty image serialization (Line 101)
+    encoded = Image.__encode_property__({})
+    assert encoded.value == ""
+
+    # 5. Raw bytes passed to __encode_property__ (Line 93)
+    encoded_bytes = Image.__encode_property__({"content": b"hello"})
+    assert encoded_bytes.value == "aGVsbG8="
+
+    # 6. None value to serialize_content (Line 80)
+    assert Image().serialize_content(None) is None
