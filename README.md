@@ -85,6 +85,13 @@ are represented in a `ical.calendar.Calendar` with a single `ical.event.Event` o
 when observed through a `ical.timeline.Timeline` will be expanded based on the recurrence rule.
 See the `rrule`, `rdate`, and `exdate` fields on the `ical.event.Event` for more details.
 
+# Supported RFCs
+
+This library implements:
+- [RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) - Internet Calendaring and Scheduling Core Object Specification (iCalendar)
+- [RFC 8536](https://datatracker.ietf.org/doc/html/rfc8536) - The Time Zone Information Format (TZif)
+- [RFC 6868](https://datatracker.ietf.org/doc/html/rfc6868) - Parameter Value Encoding in iCalendar and vCard
+
 # Related Work
 
 There are other python rfc5545 implementations that are more mature, and having

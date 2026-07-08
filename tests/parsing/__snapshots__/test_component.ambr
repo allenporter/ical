@@ -152,6 +152,30 @@
   END:VCALENDAR
   '''
 # ---
+# name: test_encode_contentlines[params_rfc6868_caret]
+  '''
+  BEGIN:VCALENDAR
+  X-TEST;KEY=^^:VALUE
+  X-TEST-2;KEY=^^n:VALUE
+  X-TEST-3;KEY=a^^:VALUE
+  END:VCALENDAR
+  '''
+# ---
+# name: test_encode_contentlines[params_rfc6868_ical]
+  '''
+  BEGIN:VCALENDAR
+  ATTENDEE;CN=George Herman ^'Babe^' Ruth:mailto:babe@example.com
+  END:VCALENDAR
+  '''
+# ---
+# name: test_encode_contentlines[params_rfc6868_vcard]
+  '''
+  BEGIN:VCALENDAR
+  GEO;X-ADDRESS="Pittsburgh Pirates^n115 Federal St^nPittsburgh, PA 
+   15212":geo:40.446816,-80.00566
+  END:VCALENDAR
+  '''
+# ---
 # name: test_encode_contentlines[rdate]
   '''
   BEGIN:VCALENDAR
@@ -955,6 +979,97 @@
             }),
           ]),
           'value': 'VALUE',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[params_rfc6868_caret]
+  list([
+    dict({
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'x-test',
+          'params': list([
+            dict({
+              'name': 'KEY',
+              'values': list([
+                '^',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'x-test-2',
+          'params': list([
+            dict({
+              'name': 'KEY',
+              'values': list([
+                '^n',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+        dict({
+          'name': 'x-test-3',
+          'params': list([
+            dict({
+              'name': 'KEY',
+              'values': list([
+                'a^',
+              ]),
+            }),
+          ]),
+          'value': 'VALUE',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[params_rfc6868_ical]
+  list([
+    dict({
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'attendee',
+          'params': list([
+            dict({
+              'name': 'CN',
+              'values': list([
+                'George Herman "Babe" Ruth',
+              ]),
+            }),
+          ]),
+          'value': 'mailto:babe@example.com',
+        }),
+      ]),
+    }),
+  ])
+# ---
+# name: test_parse_contentlines[params_rfc6868_vcard]
+  list([
+    dict({
+      'name': 'vcalendar',
+      'properties': list([
+        dict({
+          'name': 'geo',
+          'params': list([
+            dict({
+              'name': 'X-ADDRESS',
+              'values': list([
+                '''
+                  Pittsburgh Pirates
+                  115 Federal St
+                  Pittsburgh, PA 15212
+                ''',
+              ]),
+            }),
+          ]),
+          'value': 'geo:40.446816,-80.00566',
         }),
       ]),
     }),
