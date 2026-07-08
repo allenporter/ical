@@ -5,7 +5,9 @@ DTSTART:20260708T150000Z
 DTEND:20260708T160000Z
 COLOR:blue
 IMAGE;DISPLAY=THUMBNAIL;FMTTYPE=image/jpeg:http://example.com/event.jpg
+IMAGE;DISPLAY=x-custom-display:http://example.com/custom.jpg
 CONFERENCE;FEATURE=AUDIO,VIDEO;LABEL="Zoom Meeting":https://zoom.us/j/123456
+CONFERENCE;FEATURE=x-custom-feature:https://custom-conf.com
 END:VEVENT
 BEGIN:VTODO
 UID:todo-1

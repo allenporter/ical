@@ -555,14 +555,20 @@ def test_rfc7986_event_properties() -> None:
     assert len(calendar.events) == 1
     event = calendar.events[0]
     assert event.color == "blue"
-    assert len(event.image) == 1
+
+    assert len(event.image) == 2
     assert event.image[0].uri == Uri("http://example.com/event.jpg")
     assert event.image[0].display == "THUMBNAIL"
     assert event.image[0].format_type == "image/jpeg"
-    assert len(event.conference) == 1
+    assert event.image[1].uri == Uri("http://example.com/custom.jpg")
+    assert event.image[1].display == "x-custom-display"
+
+    assert len(event.conference) == 2
     assert event.conference[0].uri == Uri("https://zoom.us/j/123456")
     assert event.conference[0].feature == ["AUDIO", "VIDEO"]
     assert event.conference[0].label == "Zoom Meeting"
+    assert event.conference[1].uri == Uri("https://custom-conf.com")
+    assert event.conference[1].feature == ["x-custom-feature"]
 
     # Verify serialization
     output_ics = IcsCalendarStream.calendar_to_ics(calendar)
@@ -573,14 +579,18 @@ def test_rfc7986_event_properties() -> None:
         or "IMAGE;FMTTYPE=image/jpeg;DISPLAY=THUMBNAIL:http://example.com/event.jpg"
         in output_ics
     )
+    assert "IMAGE;DISPLAY=x-custom-display:http://example.com/custom.jpg" in output_ics
     assert (
         "CONFERENCE;FEATURE=AUDIO,VIDEO;LABEL=Zoom Meeting:https://zoom.us/j/123456"
         in output_ics
         or "CONFERENCE;LABEL=Zoom Meeting;FEATURE=AUDIO,VIDEO:https://zoom.us/j/123456"
         in output_ics
     )
+    assert "CONFERENCE;FEATURE=x-custom-feature:https://custom-conf.com" in output_ics
 
     # Programmatic verification of Conference parameters
+    from ical.types import Feature
+
     conf = Conference.model_validate(
         {
             "value": "https://zoom.us/j/123",
@@ -590,6 +600,14 @@ def test_rfc7986_event_properties() -> None:
         }
     )
     assert conf.uri == Uri("https://zoom.us/j/123")
-    assert conf.feature == ["AUDIO"]
+    assert conf.feature == [Feature.AUDIO]
     assert conf.label == "My Zoom"
     assert conf.language == "en-US"
+
+    # Feature Enum validation
+    from ical.types import Feature
+
+    assert Feature("AUDIO") == Feature.AUDIO
+    assert Feature("audio") == Feature.AUDIO  # case insensitive missing fallback lookup
+    assert Feature("x-custom") == "x-custom"  # custom token fallback
+    assert Feature._missing_(None) is None

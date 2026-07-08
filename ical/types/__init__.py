@@ -6,7 +6,7 @@ from . import boolean, date, date_time, duration  # noqa: F401
 from . import float as float_pkg  # noqa: F401
 from .extra import ExtraProperty, ExtraPropertyParameter
 from .cal_address import CalAddress, Role, CalendarUserType, ParticipationStatus
-from .const import Classification
+from .const import Classification, ExtensibleEnum
 from .geo import Geo
 from .period import FreeBusyType, Period
 from .priority import Priority
@@ -14,7 +14,7 @@ from .recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
 from .relation import RelatedTo, RelationshipType
 from .request_status import RequestStatus
 from .attachment import Attachment
-from .conference import Conference
+from .conference import Conference, Feature
 from .image import Image, Display
 from .uri import Uri
 from .utc_offset import UtcOffset
@@ -26,6 +26,8 @@ __all__ = [
     "Classification",
     "Conference",
     "Display",
+    "ExtensibleEnum",
+    "Feature",
     "Frequency",
     "FreeBusyType",
     "Geo",

@@ -203,7 +203,9 @@
   DTEND:20260708T160000Z
   COLOR:blue
   IMAGE;DISPLAY=THUMBNAIL;FMTTYPE=image/jpeg:http://example.com/event.jpg
+  IMAGE;DISPLAY=x-custom-display:http://example.com/custom.jpg
   CONFERENCE;FEATURE=AUDIO,VIDEO;LABEL=Zoom Meeting:https://zoom.us/j/123456
+  CONFERENCE;FEATURE=x-custom-feature:https://custom-conf.com
   END:VEVENT
   BEGIN:VTODO
   UID:todo-1
@@ -1304,6 +1306,18 @@
               'value': 'http://example.com/event.jpg',
             }),
             dict({
+              'name': 'image',
+              'params': list([
+                dict({
+                  'name': 'DISPLAY',
+                  'values': list([
+                    'x-custom-display',
+                  ]),
+                }),
+              ]),
+              'value': 'http://example.com/custom.jpg',
+            }),
+            dict({
               'name': 'conference',
               'params': list([
                 dict({
@@ -1321,6 +1335,18 @@
                 }),
               ]),
               'value': 'https://zoom.us/j/123456',
+            }),
+            dict({
+              'name': 'conference',
+              'params': list([
+                dict({
+                  'name': 'FEATURE',
+                  'values': list([
+                    'x-custom-feature',
+                  ]),
+                }),
+              ]),
+              'value': 'https://custom-conf.com',
             }),
           ]),
         }),
