@@ -399,7 +399,7 @@ def test_parse_rdate_list_strings() -> None:
             "20220804T100000/20220804T120000",  # Period format
             "20220805T060000Z",  # Datetime format
             "20220806",  # Date format
-        ],  # type: ignore[arg-type]
+        ],  # type: ignore
     )
     assert len(recurrences.rdate) == 3
     assert isinstance(recurrences.rdate[0], Period)

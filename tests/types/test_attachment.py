@@ -149,7 +149,7 @@ def test_encode_uri_attachment() -> None:
         attach=[
             Attachment(
                 uri=Uri("http://example.com/public/spec.pdf"),
-                fmttype="application/pdf",
+                FMTTYPE="application/pdf",
             )
         ]
     )
@@ -176,7 +176,7 @@ def test_encode_binary_attachment() -> None:
         attach=[
             Attachment(
                 content=raw_data,
-                fmttype="image/png",
+                FMTTYPE="image/png",
             )
         ]
     )
