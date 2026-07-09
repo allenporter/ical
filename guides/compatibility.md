@@ -1,5 +1,7 @@
 # Calendar Compatibility Layer
 
+> **Work In Progress (WIP) / TODO**: This guide is currently a placeholder. Content will be added in a future update.
+
 This guide covers how `ical` handles non-compliant calendar sources from major providers.
 
 ## Key Topics

@@ -1,5 +1,7 @@
 # Recurrence Rules & Event Generation
 
+> **Work In Progress (WIP) / TODO**: This guide is currently a placeholder. Content will be added in a future update.
+
 This guide covers the technical architecture behind how `ical` handles recurrence rules (RFC 5545) and generates timeline events.
 
 ## Key Design Principles
