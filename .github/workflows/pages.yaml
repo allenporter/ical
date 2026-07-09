@@ -38,7 +38,7 @@ jobs:
         run: |
           uv pip install -r requirements_dev.txt
       - run: |
-          pdoc ./ical -o docs/
+          python script/build_doc.py
           cp llms.txt docs/llms.txt
       - name: Setup Pages
         uses: actions/configure-pages@v6
