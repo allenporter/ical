@@ -1,7 +1,6 @@
 # ical
 
 [![PyPI version](https://img.shields.io/pypi/v/ical.svg)](https://pypi.org/project/ical/)
-[![Python versions](https://img.shields.io/pypi/pyversions/ical.svg)](https://pypi.org/project/ical/)
 [![CI](https://github.com/allenporter/ical/actions/workflows/test.yaml/badge.svg)](https://github.com/allenporter/ical/actions/workflows/test.yaml)
 [![Documentation](https://img.shields.io/badge/docs-allenporter.github.io%2Fical-blue)](https://allenporter.github.io/ical/)
 
