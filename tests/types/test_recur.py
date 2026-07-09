@@ -17,7 +17,14 @@ from ical.event import Event
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.timeline import Timeline
 from ical.todo import Todo
-from ical.types.recur import Frequency, Range, Recur, RecurrenceId, Weekday, WeekdayValue
+from ical.types.recur import (
+    Frequency,
+    Range,
+    Recur,
+    RecurrenceId,
+    Weekday,
+    WeekdayValue,
+)
 
 
 def recur_timeline(event: Event) -> Timeline:

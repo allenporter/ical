@@ -1,0 +1,25 @@
+# ical
+
+> Modern Python iCalendar library with built-in recurring event support.
+
+## Overview
+
+`ical` is a modern Python implementation of RFC 5545 iCalendar, built with type-safety and developer productivity in mind. It uses Pydantic v2 for data parsing and validation, providing a clean, strongly-typed interface.
+
+Key features and differentiators:
+- **Built-in Recurrence Expansion:** Unlike `icalendar` (which requires the separate `recurring-ical-events` package) or `ics.py` (which lacks recurrence support), `ical` automatically expands recurring events natively using its sorted chronological `Timeline` interface.
+- **Type Safety & Validation:** Leverages Pydantic v2 for strict type checking and schema validation, supporting full type annotations (`py.typed`) compatible with strict `ty`.
+- **Application Store API:** Provides a high-level `EventStore` API for safe recurrence editing (e.g., modifying "this and all future instances") and handling complex timezone offsets.
+- **Modern RFC Support:** Implements RFC 5545 (Core iCalendar), RFC 6868 (Parameter Value Encoding), RFC 7986 (Component Property Extensions), and RFC 8536 (TZif format).
+
+## Used By
+
+- **Home Assistant:** Powers the Local Calendar, Remote Calendar, and Google Calendar integrations.
+
+## Documentation Links
+
+- [Quickstart & Examples](https://allenporter.github.io/ical/): Read the library overview, quickstart instructions, and basic usage examples.
+- [API Reference](https://allenporter.github.io/ical/ical.html): View the complete package API documentation.
+- [Timeline Expansion API](https://allenporter.github.io/ical/ical/timeline.html): Documentation for the `Timeline` component that manages chronological iteration and recurrence expansion.
+- [Calendar Store API](https://allenporter.github.io/ical/ical/store.html): Documentation for `EventStore` used for editing events and handling recurring event modifications.
+- [Calendar Stream Parser](https://allenporter.github.io/ical/ical/calendar_stream.html): API for parsing and serializing RFC 5545 streams.

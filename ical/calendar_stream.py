@@ -24,7 +24,7 @@ with filename.open(mode="w") as ics_file:
 
 """
 
-# mypy: allow-any-generics
+# ty: allow-any-generics
 
 from __future__ import annotations
 

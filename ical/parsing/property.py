@@ -33,7 +33,7 @@ Note: This specific example may be a bit confusing because one of the property p
 "VALUE" which refers to the value type.
 """
 
-# mypy: allow-any-generics
+# ty: allow-any-generics
 
 from __future__ import annotations
 
