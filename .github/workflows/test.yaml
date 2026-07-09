@@ -37,10 +37,8 @@ jobs:
       - name: Test with pytest
         run: |
           pytest --cov=ical --cov-report=term-missing
-      - uses: codecov/codecov-action@v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          env_vars: OS,PYTHON
-          fail_ci_if_error: false
-          version: v11.3.0
-          verbose: true
+      - name: Upload coverage to Codecov
+        run: |
+          .venv/bin/codecovcli upload-coverage --git-service github --env OS,PYTHON
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
