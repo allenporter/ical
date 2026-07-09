@@ -30,13 +30,14 @@ cal = icalendar.Calendar.from_ical(ics_content)
 events = recurring_ical_events.of(cal).between(start, end)
 ```
 
-`ical` handles this natively with a single, unified [`Timeline`](https://allenporter.github.io/ical/) interface, built on a fully type-safe [Pydantic v2](https://docs.pydantic.dev/) data model.
+`ical` handles this natively with a single, unified [`Timeline`](https://allenporter.github.io/ical/) interface, with a Pythonic API and validated inputs.
 
 | Feature | `ical` | `icalendar` | `ics.py` |
 |---|---|---|---|
 | Built-in recurrence expansion | ✅ | ❌ needs `recurring-ical-events` | ❌ |
-| Pydantic v2 data model | ✅ | ❌ | ❌ |
-| Full type annotations (`py.typed`) | ✅ strict mypy | ✅ v7+ | ❌ |
+| Pythonic attribute access (`event.start`, `event.summary`) | ✅ | ❌ (`event.get('DTSTART').dt`) | ✅ |
+| Input validation with clear error messages | ✅ | ❌ | ❌ |
+| Full type annotations (`py.typed`) | ✅ strict `ty` | ✅ v7+ | ❌ |
 | Application-level store API | ✅ | ❌ | ❌ |
 | RFC 7986 / RFC 6868 / RFC 8536 | ✅ | partial | ❌ |
 | Active maintenance | ✅ | ✅ | ⚠️ stalled |
@@ -46,6 +47,12 @@ events = recurring_ical_events.of(cal).between(start, end)
 - [**Home Assistant**](https://www.home-assistant.io/) — powers the [Local Calendar](https://www.home-assistant.io/integrations/local_calendar/), [Remote Calendar](https://www.home-assistant.io/integrations/remote_calendar/), and [Google Calendar](https://www.home-assistant.io/integrations/google/) integrations (including serving locally-synced calendars for performance)
 
 ## Installation
+
+```bash
+uv add ical
+```
+
+Or with pip:
 
 ```bash
 pip install ical
