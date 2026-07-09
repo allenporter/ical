@@ -24,7 +24,7 @@ with filename.open(mode="w") as ics_file:
 
 """
 
-# mypy: allow-any-generics
+# ty: allow-any-generics
 
 from __future__ import annotations
 
@@ -39,6 +39,8 @@ from .exceptions import CalendarParseError
 from pydantic import ConfigDict
 
 _LOGGER = logging.getLogger(__name__)
+
+__all__ = ["CalendarStream", "IcsCalendarStream"]
 
 
 class CalendarStream(ComponentModel):

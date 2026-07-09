@@ -92,9 +92,13 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
     if isinstance(dtstart, datetime.datetime) and isinstance(
         item.dtstart, datetime.datetime
     ):
-        # The recurrence_id does not support timezone information, so put it in the
-        # same timezone as the item to compare.
-        if item.dtstart.tzinfo is not None:
+        if dtstart.tzinfo is not None:
+            # The recurrence_id carries an explicit TZID: the datetime is already
+            # tz-aware, so no further adjustment is needed for comparison.
+            pass
+        elif item.dtstart.tzinfo is not None:
+            # No explicit TZID was supplied; fall back to the item's own timezone
+            # so the wall-clock time comparison is correct.
             dtstart = dtstart.replace(tzinfo=item.dtstart.tzinfo)
     for dt in cast(Any, item).as_rrule() or ():
         if isinstance(dt, datetime.datetime):
@@ -125,7 +129,7 @@ def _prepare_update(
     recurrence_id: str | None = None,
     recurrence_range: Range = Range.NONE,
 ) -> dict[str, Any]:
-    """Prepare an update to an existing event."""
+    """Prepare an update to an existing event or todo."""
     partial_update = item.model_dump(
         exclude_unset=True,
         exclude={"dtstamp", "uid", "sequence", "created", "last_modified"},
@@ -208,7 +212,7 @@ def _prune_invalid_exdates(
 
 
 class GenericStore(Generic[_T]):
-    """A a store manages the lifecycle of items on a Calendar."""
+    """A store manages the lifecycle of items on a Calendar."""
 
     def __init__(
         self,
@@ -329,13 +333,14 @@ class GenericStore(Generic[_T]):
         if recurrence_range == Range.NONE:
             # A single recurrence instance is removed. Add an exclusion to
             # to the event.
-            # RecurrenceId does not support timezone information. The exclusion
-            # must have the same timezone as the item to compare.
             if (
                 isinstance(exdate, datetime.datetime)
                 and isinstance(store_item.dtstart, datetime.datetime)
-                and store_item.dtstart.tzinfo
+                and exdate.tzinfo is None
+                and store_item.dtstart.tzinfo is not None
             ):
+                # No explicit TZID was carried by the recurrence_id, so align
+                # the exdate to the item's timezone for a correct comparison.
                 exdate = exdate.replace(tzinfo=store_item.dtstart.tzinfo)
             store_item.exdate.append(exdate)
             return
@@ -383,8 +388,8 @@ class GenericStore(Generic[_T]):
         when encoded.
         """
         items_to_edit: list[tuple[int, _T]] = [
-            (index, item)
-            for index, item in _match_items(self._items, uid, recurrence_id)
+            (store_idx, store_itm)
+            for store_idx, store_itm in _match_items(self._items, uid, recurrence_id)
         ]
         if not items_to_edit:
             raise self._exc(

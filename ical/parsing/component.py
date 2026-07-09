@@ -8,7 +8,7 @@ Components created here have no semantic meaning, but hold all the
 data needed to interpret based on the type (e.g. by a pydantic model)
 """
 
-# mypy: allow-any-generics
+# ty: allow-any-generics
 
 from __future__ import annotations
 

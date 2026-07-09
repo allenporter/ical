@@ -1,0 +1,13 @@
+BEGIN:VCALENDAR
+NAME;LANGUAGE=en:My Calendar
+DESCRIPTION;LANGUAGE=en:Description of the calendar
+UID:calendar-unique-id-123
+LAST-MODIFIED:20260708T144000Z
+URL:http://example.com/calendar.ics
+CATEGORIES:WORK,PROJECT
+REFRESH-INTERVAL;VALUE=DURATION:PT1H
+SOURCE;VALUE=URI:http://example.com/source.ics
+COLOR:turquoise
+IMAGE;DISPLAY=BADGE;FMTTYPE=image/png:http://example.com/badge.png
+IMAGE;VALUE=BINARY;ENCODING=BASE64;FMTTYPE=image/png:aGVsbG8=
+END:VCALENDAR

@@ -17,7 +17,14 @@ from ical.event import Event
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.timeline import Timeline
 from ical.todo import Todo
-from ical.types.recur import Frequency, Recur, RecurrenceId, Weekday, WeekdayValue
+from ical.types.recur import (
+    Frequency,
+    Range,
+    Recur,
+    RecurrenceId,
+    Weekday,
+    WeekdayValue,
+)
 
 
 def recur_timeline(event: Event) -> Timeline:
@@ -55,8 +62,8 @@ def test_recurrence_id_date() -> None:
     assert model.recurrence_id == "20220724"
 
 
-def test_recurrence_id_ignore_params() -> None:
-    """Test property parameter values are ignored."""
+def test_recurrence_id_params_range() -> None:
+    """Test that RANGE=THISANDFUTURE is captured on the RecurrenceId."""
 
     model = FakeModel.model_validate(
         {
@@ -72,6 +79,91 @@ def test_recurrence_id_ignore_params() -> None:
         }
     )
     assert model.recurrence_id == "20220724T120000"
+    # The RANGE parameter is now preserved on the RecurrenceId instance.
+    assert model.recurrence_id.range == Range.THIS_AND_FUTURE
+
+
+def test_recurrence_id_tzid_param() -> None:
+    """Test that TZID property parameter is parsed and stored on RecurrenceId."""
+
+    ny_tz = zoneinfo.ZoneInfo("America/New_York")
+    model = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="20250511T020000",
+                    params=[
+                        ParsedPropertyParameter(
+                            name="TZID", values=["America/New_York"]
+                        ),
+                    ],
+                )
+            ]
+        }
+    )
+    # String value remains the plain datetime for backward compatibility.
+    assert model.recurrence_id == "20250511T020000"
+    # Timezone metadata is accessible.
+    assert model.recurrence_id.tzinfo == ny_tz
+
+
+def test_recurrence_id_tzid_param_as_tzinfo() -> None:
+    """Test TZID param already resolved to tzinfo object is handled."""
+
+    ny_tz = zoneinfo.ZoneInfo("America/New_York")
+    model = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="20250511T020000",
+                    params=[
+                        ParsedPropertyParameter(name="TZID", values=[ny_tz]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert model.recurrence_id == "20250511T020000"
+    assert model.recurrence_id.tzinfo == ny_tz
+
+
+def test_recurrence_id_no_params() -> None:
+    """Test that tzinfo and range default to None / NONE when no params."""
+    model = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(name="recurrence_id", value="20220724T120000")
+            ]
+        }
+    )
+    assert model.recurrence_id == "20220724T120000"
+    assert model.recurrence_id.tzinfo is None
+    assert model.recurrence_id.range == Range.NONE
+
+
+def test_recurrence_id_unknown_tzid_is_ignored() -> None:
+    """Test that an unrecognised TZID is skipped without raising an error."""
+
+    model = FakeModel.model_validate(
+        {
+            "recurrence_id": [
+                ParsedProperty(
+                    name="recurrence_id",
+                    value="20250511T020000",
+                    params=[
+                        ParsedPropertyParameter(
+                            name="TZID", values=["Not/AReal_Timezone"]
+                        ),
+                    ],
+                )
+            ]
+        }
+    )
+    # Still parses; unknown TZID is silently dropped.
+    assert model.recurrence_id == "20250511T020000"
+    assert model.recurrence_id.tzinfo is None
 
 
 def test_invalid_recurrence_id() -> None:
@@ -80,6 +172,48 @@ def test_invalid_recurrence_id() -> None:
         {"recurrence_id": [ParsedProperty(name="recurrence_id", value="invalid")]}
     )
     assert model.recurrence_id == "invalid"
+
+
+@pytest.mark.parametrize(
+    "recurrence_id_str,expected",
+    [
+        # Plain date
+        ("20250511", datetime.date(2025, 5, 11)),
+        # Naive datetime
+        ("20250511T020000", datetime.datetime(2025, 5, 11, 2, 0, 0)),
+        # UTC datetime
+        (
+            "20250511T020000Z",
+            datetime.datetime(2025, 5, 11, 2, 0, 0, tzinfo=datetime.timezone.utc),
+        ),
+        # Inline TZID parameter (the original bug from issue #480)
+        (
+            "TZID=America/New_York:20250511T020000",
+            datetime.datetime(
+                2025, 5, 11, 2, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/New_York")
+            ),
+        ),
+    ],
+)
+def test_recurrence_id_to_value(
+    recurrence_id_str: str,
+    expected: datetime.date | datetime.datetime,
+) -> None:
+    """Test RecurrenceId.to_value for all supported input formats."""
+    result = RecurrenceId.to_value(recurrence_id_str)
+    assert result == expected
+
+
+def test_recurrence_id_to_value_inline_tzid_returns_aware() -> None:
+    """Test that the inline TZID format produces a tz-aware datetime."""
+    result = RecurrenceId.to_value("TZID=America/Los_Angeles:20250101T090000")
+    assert isinstance(result, datetime.datetime)
+    assert result.tzinfo is not None
+    assert result.tzinfo == zoneinfo.ZoneInfo("America/Los_Angeles")
+    assert result.year == 2025
+    assert result.month == 1
+    assert result.day == 1
+    assert result.hour == 9
 
 
 @pytest.mark.parametrize(

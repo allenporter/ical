@@ -262,6 +262,25 @@ def read_tzinfo(key: str, resolved_key_as_name: bool = True) -> TzInfo:
         raise TimezoneInfoError(f"Unable create TzInfo: {key}") from err
 
 
+def resolve_tzinfo(key: str, allow_invalid: bool = False) -> datetime.tzinfo | None:
+    """Resolve a timezone string into a tzinfo object (using system ZoneInfo or local tzif).
+
+    If the timezone key is invalid or unresolvable, the behavior is controlled by configuration:
+    - If allow_invalid is True, or if the compatibility setting `is_allow_invalid_timezones_enabled()`
+      is True, this function handles it gracefully by returning None.
+    - Otherwise, a TimezoneInfoError is raised.
+    """
+    try:
+        return zoneinfo.ZoneInfo(key)
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+        try:
+            return read_tzinfo(key)
+        except TimezoneInfoError as err:
+            if allow_invalid or timezone_compat.is_allow_invalid_timezones_enabled():
+                return None
+            raise TimezoneInfoError(f"Unable to resolve timezone: {key}") from err
+
+
 @cache
 def _extended_timezones() -> set[str]:
     """Return the set of extended timezones."""
