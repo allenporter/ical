@@ -56,6 +56,7 @@ from pydantic_core import CoreSchema, core_schema
 
 from ical.parsing.property import ParsedProperty
 from ical.util import parse_date_and_datetime
+from ical.tzif import timezoneinfo
 
 from .data_types import DATA_TYPE, serialize_field
 from .date import DateEncoder
@@ -265,8 +266,8 @@ class RecurrenceId(str):
                         tzinfo = raw_tz
                     else:
                         try:
-                            tzinfo = zoneinfo.ZoneInfo(str(raw_tz))
-                        except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+                            tzinfo = timezoneinfo.resolve_tzinfo(str(raw_tz))
+                        except timezoneinfo.TimezoneInfoError:
                             _LOGGER.warning(
                                 "RecurrenceId: unrecognised TZID '%s', ignoring", raw_tz
                             )

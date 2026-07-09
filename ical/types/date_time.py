@@ -40,17 +40,13 @@ def parse_property_value(
                 timezone = value
             else:
                 try:
-                    timezone = zoneinfo.ZoneInfo(value)
-                except (zoneinfo.ZoneInfoNotFoundError, ValueError):
-                    try:
-                        timezone = timezoneinfo.read_tzinfo(value)
-                    except timezoneinfo.TimezoneInfoError:
-                        if allow_invalid_timezone:
-                            timezone = None
-                        else:
-                            raise ParameterValueError(
-                                f"Expected DATE-TIME TZID value '{value}' to be valid timezone"
-                            )
+                    timezone = timezoneinfo.resolve_tzinfo(
+                        value, allow_invalid=allow_invalid_timezone
+                    )
+                except timezoneinfo.TimezoneInfoError:
+                    raise ParameterValueError(
+                        f"Expected DATE-TIME TZID value '{value}' to be valid timezone"
+                    )
     elif match.group(3):  # Example: 19980119T070000Z
         timezone = datetime.timezone.utc
 
