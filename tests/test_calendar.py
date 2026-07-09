@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 import datetime
+import logging
 import re
 import uuid
 import zoneinfo
@@ -517,4 +518,169 @@ def test_rfc7986_calendar_properties() -> None:
     assert (
         "IMAGE;ENCODING=BASE64;FMTTYPE=image/png;VALUE=BINARY:aGVsbG8=" in output_ics
         or "IMAGE;FMTTYPE=image/png;VALUE=BINARY;ENCODING=BASE64:aGVsbG8=" in output_ics
+    )
+
+
+def test_parsing_x_wr_timezone_propagation() -> None:
+    """Verify floating DATE-TIME properties are promoted to X-WR-TIMEZONE timezone."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:event1
+DTSTART:20260709T090000
+DTEND:20260709T100000
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert calendar.x_wr_timezone == "America/New_York"
+
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+
+    expected_tz = zoneinfo.ZoneInfo("America/New_York")
+    assert event.dtstart == datetime.datetime(2026, 7, 9, 9, 0, 0, tzinfo=expected_tz)
+    assert event.dtend == datetime.datetime(2026, 7, 9, 10, 0, 0, tzinfo=expected_tz)
+
+
+def test_parsing_preserves_explicit_tz() -> None:
+    """Verify X-WR-TIMEZONE does not override explicit TZID parameters or UTC."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:event2
+DTSTART;TZID=America/Los_Angeles:20260709T090000
+DTEND:20260709T100000Z
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert calendar.x_wr_timezone == "America/New_York"
+
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+
+    assert event.dtstart == datetime.datetime(
+        2026, 7, 9, 9, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Los_Angeles")
+    )
+    assert event.dtend == datetime.datetime(
+        2026, 7, 9, 10, 0, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_parsing_no_impact_on_dates() -> None:
+    """Verify X-WR-TIMEZONE has no impact on DATE values (which are timezone-independent)."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:event3
+DTSTART;VALUE=DATE:20260709
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert calendar.x_wr_timezone == "America/New_York"
+
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+
+    assert event.dtstart == datetime.date(2026, 7, 9)
+
+
+def test_auto_generate_vtimezone_on_serialization() -> None:
+    """Verify VTIMEZONE block is auto-generated for compliance on serialization."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+UID:event4
+DTSTART:20260709T090000
+DTEND:20260709T100000
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+
+    # Verify the VTIMEZONE component was injected into calendar.timezones
+    assert len(calendar.timezones) == 1
+    assert calendar.timezones[0].tz_id == "America/New_York"
+
+    serialized_ics = IcsCalendarStream.calendar_to_ics(calendar)
+
+    # Assert VTIMEZONE block is present in the serialized output
+    assert "BEGIN:VTIMEZONE" in serialized_ics
+    assert "TZID:America/New_York" in serialized_ics
+    assert "X-WR-TIMEZONE:America/New_York" in serialized_ics
+
+    # Re-parsing should succeed and preserve the timezone
+    calendar_reparsed = IcsCalendarStream.calendar_from_ics(serialized_ics)
+    assert calendar_reparsed.x_wr_timezone == "America/New_York"
+    assert len(calendar_reparsed.timezones) == 1
+    assert calendar_reparsed.timezones[0].tz_id == "America/New_York"
+
+
+def test_graceful_fallback_invalid_timezone(caplog: pytest.LogCaptureFixture) -> None:
+    """Verify graceful fallback when X-WR-TIMEZONE value is invalid/unresolvable."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:Invalid/NonExistentZone
+BEGIN:VEVENT
+UID:event5
+DTSTART:20260709T090000
+END:VEVENT
+END:VCALENDAR"""
+
+    with caplog.at_level(logging.WARNING):
+        calendar = IcsCalendarStream.calendar_from_ics(ics)
+
+    assert calendar.x_wr_timezone == "Invalid/NonExistentZone"
+    assert len(calendar.timezones) == 0
+
+    # Verify warning was logged
+    warnings = [
+        rec.message
+        for rec in caplog.records
+        if "Could not resolve X-WR-TIMEZONE" in rec.message
+    ]
+    assert len(warnings) == 1
+    assert "Invalid/NonExistentZone" in warnings[0]
+
+    # Datetime should remain naive (floating)
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+    assert event.dtstart == datetime.datetime(2026, 7, 9, 9, 0, 0, tzinfo=None)
+
+
+def test_programmatic_initialization_serialization() -> None:
+    """Verify programmatic usage of x_wr_timezone works and serializes correctly."""
+    calendar = Calendar()
+    calendar.x_wr_timezone = "America/Chicago"
+
+    # Add event with timezone matching x_wr_timezone
+    tz = zoneinfo.ZoneInfo("America/Chicago")
+    calendar.events.append(
+        Event(
+            uid="event6",
+            dtstart=datetime.datetime(2026, 7, 9, 9, 0, 0, tzinfo=tz),
+            dtend=datetime.datetime(2026, 7, 9, 10, 0, 0, tzinfo=tz),
+        )
+    )
+
+    serialized_ics = IcsCalendarStream.calendar_to_ics(calendar)
+
+    # Check that serialization contains X-WR-TIMEZONE and VTIMEZONE component
+    assert "X-WR-TIMEZONE:America/Chicago" in serialized_ics
+
+    # Parse back and check properties
+    reparsed = IcsCalendarStream.calendar_from_ics(serialized_ics)
+    assert reparsed.x_wr_timezone == "America/Chicago"
+    assert len(reparsed.timezones) == 1
+    assert reparsed.timezones[0].tz_id == "America/Chicago"
+
+    assert len(reparsed.events) == 1
+    assert reparsed.events[0].dtstart == datetime.datetime(
+        2026, 7, 9, 9, 0, 0, tzinfo=tz
     )
