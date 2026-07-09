@@ -395,11 +395,11 @@ def test_parse_rdate_list_strings() -> None:
     """Test before validator parse_rdate_list with strings."""
     recurrences = Recurrences(
         dtstart=datetime.datetime(2022, 8, 3, 6, 0, 0),
-        rdate=[
+        rdate=[  # type: ignore
             "20220804T100000/20220804T120000",  # Period format
             "20220805T060000Z",  # Datetime format
             "20220806",  # Date format
-        ],  # type: ignore
+        ],
     )
     assert len(recurrences.rdate) == 3
     assert isinstance(recurrences.rdate[0], Period)
