@@ -9,7 +9,6 @@ import zoneinfo
 from typing import Any
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-from ical.compat import timezone_compat
 from ical.tzif import timezoneinfo
 from ical.exceptions import ParameterValueError
 from .data_types import DATA_TYPE
@@ -26,9 +25,6 @@ def parse_property_value(
     prop: ParsedProperty, allow_invalid_timezone: bool = False
 ) -> datetime.datetime:
     """Parse a rfc5545 into a datetime.datetime."""
-    if timezone_compat.is_allow_invalid_timezones_enabled():
-        allow_invalid_timezone = True
-
     if not (match := DATETIME_REGEX.fullmatch(prop.value)):
         raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
 
