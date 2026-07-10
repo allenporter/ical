@@ -146,6 +146,13 @@ store.add(Event(summary="Meeting", start=datetime(2024, 1, 15, 9, tzinfo=timezon
 
 See the [full documentation](https://allenporter.github.io/ical/) for the complete API reference.
 
+## Technical Guides
+
+We publish detailed technical guides exploring the library's design:
+- [Timezones & Custom TzInfo](https://allenporter.github.io/ical/ical/guides/timezone.html)
+- [Recurrence Rules & Event Generation](https://allenporter.github.io/ical/ical/guides/recurrence.html)
+- [Calendar Compatibility Layer](https://allenporter.github.io/ical/ical/guides/compatibility.html)
+
 ## Supported RFCs
 
 - [RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) — Internet Calendaring and Scheduling Core Object Specification (iCalendar)
