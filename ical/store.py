@@ -19,13 +19,13 @@ from .calendar import Calendar
 from .component import validate_recurrence_dates
 from .event import Event
 from .exceptions import StoreError, TodoStoreError, EventStoreError
-from .iter import RulesetIterable
+from .iter import RulesetIterable, as_rrule
 from .list import todo_list_view
 from .timezone import Timezone
 from .todo import Todo, TodoStatus
-from .types import Range, Recur, RecurrenceId, RelationshipType
+from .types import Range, Recur, RecurrenceId, RelationshipType, Period
 from .tzif.timezoneinfo import TimezoneInfoError
-from .util import dtstamp_factory, local_timezone
+from .util import dtstamp_factory, local_timezone, normalize_datetime
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -186,6 +186,29 @@ def _prepare_update(
             if isinstance(store_item, Event) and store_item.dtend:
                 update["dtend"] = dtstart + store_item.computed_duration
     return update
+
+
+def _prune_invalid_exdates(
+    exdate: list[datetime.date | datetime.datetime],
+    rrule: Recur | None,
+    rdate: list[datetime.date | datetime.datetime | Period],
+    dtstart: datetime.date | datetime.datetime | None,
+) -> list[datetime.date | datetime.datetime]:
+    """Remove EXDATE values that are no longer valid occurrences of the recurrence rule."""
+    if not dtstart or not (occurrences_iter := as_rrule(rrule, rdate, [], dtstart)):
+        return exdate
+
+    tzinfo = dtstart.tzinfo if isinstance(dtstart, datetime.datetime) else None
+    exdate_normalized = {ex: normalize_datetime(ex, tzinfo=tzinfo) for ex in exdate}
+    max_exdate_normalized = max(exdate_normalized.values())
+    allowed_occurrences = set()
+    for occ in occurrences_iter:
+        occ_normalized = normalize_datetime(occ, tzinfo=tzinfo)
+        if occ_normalized > max_exdate_normalized:
+            break
+        allowed_occurrences.add(occ_normalized)
+
+    return [ex for ex in exdate if exdate_normalized[ex] in allowed_occurrences]
 
 
 class GenericStore(Generic[_T]):
@@ -437,6 +460,12 @@ class GenericStore(Generic[_T]):
         self._ensure_timezone(new_item.dtstart)
         if isinstance(new_item, Event) and new_item.dtend:
             self._ensure_timezone(new_item.dtend)
+
+        # Clean up EXDATE entries that are no longer valid occurrences of the recurrence rule
+        if new_item.exdate and (new_item.rrule or new_item.rdate):
+            new_item.exdate = _prune_invalid_exdates(
+                new_item.exdate, new_item.rrule, new_item.rdate, new_item.dtstart
+            )
 
         # Editing a single instance of a recurring item is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
