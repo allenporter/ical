@@ -39,7 +39,7 @@ def test_daylight() -> None:
     """Test a Timezone object with a daylight observance."""
     timezone = Timezone(
         tzid="America/New_York",
-        last_modified=datetime.datetime(2005, 8, 9, 5),  # ty: ignore[unknown-argument]
+        last_modified=datetime.datetime(2005, 8, 9, 5),
         daylight=[
             Observance(
                 start=datetime.datetime(1967, 10, 29, 2, 0, 0, 0),
