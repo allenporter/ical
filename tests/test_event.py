@@ -8,6 +8,7 @@ from unittest.mock import patch
 import zoneinfo
 
 import pytest
+from freezegun import freeze_time
 from pydantic import ValidationError
 
 from ical.calendar import Calendar
@@ -651,3 +652,18 @@ def test_rfc7986_event_properties() -> None:
         in output_ics
     )
     assert "CONFERENCE;FEATURE=x-custom-feature:https://custom-conf.com" in output_ics
+
+
+def test_event_rdate_freezegun() -> None:
+    """Test parsing/validation of Event rdate with freezegun active."""
+    with freeze_time("2026-07-19T12:00:00Z"):
+        now = datetime.now(timezone.utc)
+        # now is a FakeDatetime object
+        event = Event(
+            summary="Freezegun Event",
+            start=now,
+            end=now + timedelta(hours=1),
+            rdate=[now],
+        )
+        assert len(event.rdate) == 1
+        assert event.rdate[0] == now

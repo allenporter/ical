@@ -154,3 +154,9 @@ def test_encode_period_errors() -> None:
         ValueError, match="Invalid period missing both end and duration"
     ):
         Period.__encode_property__({"start": "20220808T100000"})
+
+
+def test_period_validation_non_dict() -> None:
+    """Test validating Period with a non-dict input (like a datetime or string) raises ValidationError, not AttributeError."""
+    with pytest.raises(CalendarParseError):
+        FakeModel.model_validate({"example": datetime.datetime(2022, 8, 3, 6, 0, 0)})

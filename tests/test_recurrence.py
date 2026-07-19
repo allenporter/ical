@@ -423,3 +423,17 @@ def test_parse_rdate_mixed() -> None:
     assert isinstance(recurrences.rdate[1], datetime.date)
     assert isinstance(recurrences.rdate[2], Period)
     assert isinstance(recurrences.rdate[3], datetime.datetime)
+
+
+def test_rdate_with_datetime_objects() -> None:
+    """Test validation of Recurrences when rdate contains datetime/date objects directly."""
+    recurrences = Recurrences(
+        dtstart=datetime.datetime(2022, 8, 3, 6, 0, 0),
+        rdate=[
+            datetime.datetime(2022, 8, 5, 6, 0, 0, tzinfo=datetime.timezone.utc),
+            datetime.date(2022, 8, 6),
+        ],
+    )
+    assert len(recurrences.rdate) == 2
+    assert isinstance(recurrences.rdate[0], datetime.datetime)
+    assert isinstance(recurrences.rdate[1], datetime.date)
