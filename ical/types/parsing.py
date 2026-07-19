@@ -27,6 +27,8 @@ def parse_parameter_values(
 ) -> dict[str, Any]:
     """Convert property parameters to pydantic fields."""
     _LOGGER.debug("parse_parameter_values=%s", values)
+    if not isinstance(values, dict):
+        return values
     if params := values.get("params"):
         all_fields = _all_fields(cls)
         for param in params:

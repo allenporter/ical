@@ -75,6 +75,8 @@ class Period(BaseModel):
     @classmethod
     def parse_period_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
         """Parse a rfc5545 priority value."""
+        if not isinstance(values, dict):
+            return values
         if not (value := values.pop("value", None)):
             return values
         parts = value.split("/")
