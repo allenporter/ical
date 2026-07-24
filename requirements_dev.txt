@@ -16,7 +16,7 @@ pytest-benchmark==5.2.3
 types-python-dateutil==2.9.0.20260716
 wheel==0.47.0
 PyYAML==6.0.3
-types-PyYAML==6.0.12.20260518
+types-PyYAML==6.0.12.20260724
 syrupy==5.5.3
 
 # emoji is a dev only dependency used by script/update_emoji.py
