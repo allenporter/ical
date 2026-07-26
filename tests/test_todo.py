@@ -14,7 +14,8 @@ import pytest
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.types.recur import Recur
-from ical.calendar_stream import IcsCalendarStream
+from ical.calendar import Calendar
+from ical.calendar_stream import CalendarStream, IcsCalendarStream
 from ical.types import Period, Uri, Image, Conference
 from ical.recur_adapter import merge_and_expand_items
 from pathlib import Path
@@ -442,10 +443,7 @@ def test_default_end_date() -> None:
 
 def test_todo_serialization_date_value() -> None:
     """Test serializing a Todo with a datetime.date value matches the expected output with VALUE=DATE."""
-    import ical.calendar_stream
-    import ical.calendar
-
-    calendar = ical.calendar.Calendar(
+    calendar = Calendar(
         prodid="test",
         version="1",
         vtodo=[
@@ -454,7 +452,7 @@ def test_todo_serialization_date_value() -> None:
             )
         ],
     )
-    ics_content = ical.calendar_stream.IcsCalendarStream.calendar_to_ics(calendar)
+    ics_content = IcsCalendarStream.calendar_to_ics(calendar)
     assert "DTSTART;VALUE=DATE:20251016" in ics_content
 
 

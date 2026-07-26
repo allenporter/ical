@@ -13,6 +13,7 @@ from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types.data_types import serialize_field
 from ical.tzif import timezoneinfo
+from ical.compat import timezone_compat
 
 
 def test_datedatime_parser() -> None:
@@ -181,8 +182,6 @@ def test_bogus_timezone_allow_invalid() -> None:
 
     class TestModel(ComponentModel):
         dt: datetime.datetime
-
-    from ical.compat import timezone_compat
 
     with timezone_compat.enable_allow_invalid_timezones():
         model = TestModel.model_validate(
