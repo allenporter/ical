@@ -12,7 +12,7 @@ from freezegun import freeze_time
 from pydantic import ValidationError
 
 from ical.calendar import Calendar
-from ical.calendar_stream import IcsCalendarStream
+from ical.calendar_stream import CalendarStream, IcsCalendarStream
 from ical.event import Event
 from ical.exceptions import CalendarParseError
 from ical.types.recur import Recur
@@ -536,8 +536,6 @@ def test_validate_rrule_required_fields(params: dict[str, Any]) -> None:
 
 def test_multiple_request_status() -> None:
     """Test parsing an event with multiple REQUEST-STATUS properties."""
-    from ical.calendar_stream import CalendarStream
-
     ics = """BEGIN:VCALENDAR
 PRODID:-//example//1.2.3
 VERSION:2.0

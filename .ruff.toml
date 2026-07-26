@@ -10,3 +10,4 @@ select = [
     "ASYNC230", # Async functions should not open files with blocking methods like open
     "ASYNC251", # Async functions should not call time.sleep
 ]
+extend-select = ["PLC0415"]

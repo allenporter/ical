@@ -22,7 +22,8 @@ from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
-from ical.types.recur import Range, Recur
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.types.recur import Range, Recur, RecurrenceId
 from ical.types import RelationshipType, RelatedTo
 
 TZ = zoneinfo.ZoneInfo("America/Los_Angeles")
@@ -2138,9 +2139,6 @@ def test_edit_recurring_event_with_parsed_tzid_property(
     Verifies the store correctly handles the ``RecurrenceId`` object enriched
     with ``.tzinfo`` metadata (the path taken when reading from an .ics file).
     """
-    from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
-    from ical.types.recur import RecurrenceId
-
     uid = "tz-property-uid"
     store.add(_make_recurring_tz_event(uid, NY_TZ))
 
