@@ -59,6 +59,12 @@ pip install ical
 
 Requires Python 3.11+.
 
+Fetching calendars from a url asynchronously (see below) requires the optional `async` extra, which pulls in [`aiohttp`](https://docs.aiohttp.org/):
+
+```bash
+pip install ical[async]
+```
+
 ## Quickstart
 
 ### Reading an .ics file
@@ -80,6 +86,20 @@ with filename.open() as ics_file:
         for event in cal.timeline:
             print(event.start, event.summary)
 ```
+
+### Fetching a remote .ics url
+
+Fetching a remote calendar over HTTP without blocking the event loop requires the optional `ical[async]` extra:
+
+```python
+from ical.calendar_stream import IcsCalendarStream
+
+cal = await IcsCalendarStream.calendar_from_url("https://example.com/calendar.ics")
+for event in cal.timeline:
+    print(event.start, event.summary)
+```
+
+An existing `aiohttp.ClientSession` can be passed in via the `session` argument to reuse connection pooling; otherwise a session is created and closed automatically for the request.
 
 ### Creating a calendar
 
