@@ -30,6 +30,9 @@ dependencies = [
   "pydantic>=2.10.4",
 ]
 
+[project.optional-dependencies]
+async = ["aiohttp>=3.10.0"]
+
 [project.urls]
 Source = "https://github.com/allenporter/ical"
 Documentation = "https://allenporter.github.io/ical/"

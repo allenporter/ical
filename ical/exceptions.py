@@ -2,6 +2,7 @@
 
 __all__ = [
     "CalendarError",
+    "CalendarFetchError",
     "CalendarParseError",
     "ParameterValueError",
     "RecurrenceError",
@@ -13,6 +14,14 @@ __all__ = [
 
 class CalendarError(Exception):
     """Base exception for all ical errors."""
+
+
+class CalendarFetchError(CalendarError):
+    """Exception raised when fetching an iCalendar url fails.
+
+    Raised by :meth:`ical.calendar_stream.CalendarStream.from_url` when the
+    underlying HTTP request fails (e.g. connection error or non-2xx response).
+    """
 
 
 class CalendarParseError(CalendarError):
