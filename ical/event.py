@@ -22,7 +22,7 @@ from typing import Annotated, Any, Optional, Self, Union
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
-from ical.compat import same_day_dtend_compat
+from ical.compat import duration_dtend_compat, same_day_dtend_compat
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
@@ -475,7 +475,20 @@ class Event(ComponentModel):
     def _validate_one_end_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
         if self.dtend and self.duration:
-            raise ValueError("Only one of dtend or duration may be set.")
+            if duration_dtend_compat.is_duration_dtend_compat_enabled():
+                # RFC 5545 3.6.1 forbids specifying both DTEND and DURATION,
+                # but some real-world generators emit both anyway (often
+                # redundantly). Prefer the more explicit DTEND value and
+                # drop DURATION rather than failing to parse.
+                _LOGGER.warning(
+                    "Event has both DTEND (%s) and DURATION (%s) set; "
+                    "dropping DURATION per compat mode",
+                    self.dtend,
+                    self.duration,
+                )
+                self.duration = None
+            else:
+                raise ValueError("Only one of dtend or duration may be set.")
         return self
 
     @model_validator(mode="after")
