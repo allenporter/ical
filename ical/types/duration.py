@@ -3,6 +3,7 @@
 import datetime
 import re
 
+from ical.compat.duration_compat import is_duration_compat_enabled
 from ical.parsing.property import ParsedProperty
 
 from .data_types import DATA_TYPE
@@ -12,6 +13,10 @@ TIME_PART = r"T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
 DATETIME_PART = f"(?:{DATE_PART})?(?:{TIME_PART})?"
 WEEKS_PART = r"(?:(\d+)W)?"
 DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}{DATETIME_PART})$")
+
+COMPAT_TIME_PART = r"(?:T)?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?"
+COMPAT_DATETIME_PART = f"(?:{DATE_PART})?(?:{COMPAT_TIME_PART})?"
+COMPAT_DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}{COMPAT_DATETIME_PART})$")
 
 
 @DATA_TYPE.register("DURATION")
@@ -27,7 +32,10 @@ class DurationEncoder:
         """Parse a rfc5545 into a datetime.date."""
         if not isinstance(prop, ParsedProperty):
             raise ValueError(f"Expected ParsedProperty but was {prop}")
-        if not (match := DURATION_REGEX.fullmatch(prop.value)):
+        match = DURATION_REGEX.fullmatch(prop.value)
+        if not match and is_duration_compat_enabled():
+            match = COMPAT_DURATION_REGEX.fullmatch(prop.value)
+        if not match:
             raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
         sign, weeks, days, hours, minutes, seconds = match.groups()
         result: datetime.timedelta = datetime.timedelta(
