@@ -28,7 +28,7 @@ class Feature(ExtensibleEnum):
     MORE = "MORE"
 
 
-@DATA_TYPE.register("CONFERENCE")
+@DATA_TYPE.register("CONFERENCE", disable_value_param=True)
 class Conference(BaseModel):
     """A value type for a property that contains conference information."""
 
