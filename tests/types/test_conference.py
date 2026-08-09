@@ -105,4 +105,3 @@ def test_rfc7986_canonical_examples() -> None:
     # SIP call
     assert event.conference[4].uri == Uri("sip:user@example.com")
     assert event.conference[4].feature == [Feature.AUDIO, Feature.VIDEO]
-
