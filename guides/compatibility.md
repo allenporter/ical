@@ -34,6 +34,22 @@ Microsoft Exchange and Outlook often output Windows-specific timezone names (e.g
 Some feeds contain date strings with an illegal time suffix (e.g., `20240115T000000` for a `DATE` type).
 * **Fixup (`date_compat`)**: Strips the invalid time suffix to parse the date correctly.
 
+### DURATION and DTEND Conflict
+RFC 5545 Section 3.6.1 forbids specifying both `DTEND` and `DURATION` on the same event, but some real-world generators emit both anyway (often redundantly, with `DTEND` equal to `DTSTART` + `DURATION`).
+* **Fixup (`duration_dtend_compat`)**: Prefers the more explicit `DTEND` value and discards `DURATION` rather than failing to parse.
+
+## Audited But Not Fixed
+
+As part of auditing this module (see [issue #637](https://github.com/allenporter/ical/issues/637)), the following commonly-reported broken patterns were investigated and found to already parse correctly without any compatibility fixup, so no change was made for them:
+
+* **Missing `VTIMEZONE` with a valid IANA `TZID`** — an event referencing e.g. `TZID=America/New_York` with no matching `VTIMEZONE` block already resolves correctly, because timezone resolution falls back to the system/`tzdata` `zoneinfo` database for any TZID that is a valid IANA name.
+* **Long, unfolded property lines** — the parsing grammar does not require RFC 5545 line folding; single long lines (e.g. long `DESCRIPTION` values) parse without issue.
+* **Missing `UID`** — the `Event` model auto-generates a `UID` when one isn't present in the source data.
+* **Smart quotes and other Unicode text** — as long as the file is valid UTF-8, quotes, em-dashes, and similar characters in text fields parse without modification.
+* **`ORGANIZER`/`ATTENDEE` without a `mailto:` prefix, or with an empty value** — these are treated as opaque URI strings and are not required to have a `mailto:` prefix, so they parse successfully as-is.
+
+These are intentionally left undocumented as "fixups" since there is nothing to fix — flagging that distinction here so a future audit doesn't re-investigate the same ground.
+
 ## The `ical.compat` Design & PRODID Detection
 
 Instead of using a blanket "lenient mode" that disables all validation, `ical.compat` uses targeted fixups driven by the `PRODID` (Product Identifier) of the calendar. This is superior because:
