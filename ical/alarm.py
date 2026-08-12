@@ -2,6 +2,7 @@
 
 import datetime
 import enum
+import logging
 from typing import Any, Optional, Self, Union
 
 from pydantic import Field, field_serializer, model_validator
@@ -15,6 +16,8 @@ from .util import normalize_datetime
 
 
 __all__ = ["Alarm", "Action", "Related"]
+
+_LOGGER = logging.getLogger(__name__)
 
 _RELATED = "RELATED"
 
@@ -149,8 +152,15 @@ class Alarm(ComponentModel):
         for prop in trigger:
             if not isinstance(prop, ParsedProperty):
                 continue
-            if related := prop.get_parameter_value(_RELATED):
-                values["trigger_related"] = related.upper()
+            if not (related := prop.get_parameter_value(_RELATED)):
+                continue
+            if related.upper() not in Related.__members__:
+                # Before this parameter was read at all, an unrecognised value
+                # was simply ignored. Rejecting the calendar over it would be
+                # stricter than the parser used to be.
+                _LOGGER.debug("Ignoring unknown TRIGGER RELATED value %s", related)
+                continue
+            values["trigger_related"] = related.upper()
         return values
 
     @classmethod
