@@ -112,20 +112,50 @@ def test_event_without_alarms() -> None:
     assert event.alarm_trigger_times() == []
 
 
-def test_one_bad_alarm_does_not_hide_the_others() -> None:
-    """An event ends up with an end, so this needs a todo to reproduce."""
+def test_an_event_always_has_an_end_to_resolve_against() -> None:
+    """`Event.end` falls back to the start, so RELATED=END cannot fail here."""
+    event = Event(
+        summary="Dentist",
+        start=START,
+        alarm=[
+            _alarm(trigger=datetime.timedelta(minutes=-5), trigger_related=Related.END)
+        ],
+    )
+
+    assert event.alarm_trigger_times()[0].time == datetime.datetime(
+        2025, 7, 15, 13, 55, tzinfo=UTC
+    )
+
+
+def test_a_naive_absolute_trigger_stays_comparable() -> None:
+    """Mixing a naive absolute trigger with a relative one broke sorting."""
     event = Event(
         summary="Dentist",
         start=START,
         end=END,
-        alarm=[_alarm(trigger=datetime.timedelta(minutes=-15))],
-    )
-    event.alarm.append(
-        _alarm(trigger=datetime.timedelta(minutes=-5), trigger_related=Related.END)
+        alarm=[
+            _alarm(trigger=datetime.datetime(2025, 7, 15, 12, 0)),
+            _alarm(trigger=datetime.timedelta(hours=-2)),
+        ],
     )
 
-    # Both resolve here; the guard is exercised through Alarm directly.
-    assert len(event.alarm_trigger_times()) == 2
+    triggers = event.alarm_trigger_times()
+
+    assert len(triggers) == 2
+    assert all(trigger.time.tzinfo is not None for trigger in triggers)
+
+
+def test_a_negative_duration_still_comes_back_sorted() -> None:
+    """Malformed but readable; the docstring promises chronological order."""
+    alarm = _alarm(
+        trigger=datetime.timedelta(minutes=-15),
+        repeat=2,
+        duration=datetime.timedelta(minutes=-5),
+    )
+
+    times = alarm.trigger_times(START, END)
+
+    assert times == sorted(times)
 
 
 ICS = """BEGIN:VCALENDAR
