@@ -357,17 +357,12 @@ class Event(ComponentModel):
         Sorted by time. Alarms using `REPEAT` and `DURATION` contribute one
         entry per repetition, each pointing back at the same alarm.
 
-        Alarms that cannot be resolved -- a trigger relative to an end that
-        does not exist -- are skipped rather than raising, so one malformed
-        alarm does not hide the rest.
+        `Event.end` always resolves to a value, so a trigger relative to the
+        end cannot fail here the way `Alarm.trigger_times` allows for.
         """
         triggers: list[AlarmTrigger] = []
         for alarm in self.alarm:
-            try:
-                times = alarm.trigger_times(self.start, self.end)
-            except ValueError:
-                _LOGGER.debug("Skipping unresolvable alarm trigger: %s", alarm.trigger)
-                continue
+            times = alarm.trigger_times(self.start, self.end)
             triggers.extend(AlarmTrigger(time=time, alarm=alarm) for time in times)
         triggers.sort(key=lambda trigger: trigger.time)
         return triggers

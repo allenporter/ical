@@ -201,7 +201,12 @@ class Alarm(ComponentModel):
                 given.
         """
         if isinstance(self.trigger, datetime.datetime):
-            first = self.trigger
+            # rfc5545 requires an absolute trigger to be UTC, but this library
+            # is deliberately lenient about what it will read. A naive value
+            # here would be uncomparable against the aware times every other
+            # branch produces, so callers sorting a mixed list would hit a
+            # TypeError. Aware values pass through untouched.
+            first = normalize_datetime(self.trigger)
         else:
             if self.trigger_related == Related.END:
                 if dtend is None:
@@ -216,6 +221,9 @@ class Alarm(ComponentModel):
         times = [first]
         if self.repeat and self.duration:
             times.extend(first + self.duration * (i + 1) for i in range(self.repeat))
+        # A negative DURATION is malformed but readable, and would otherwise
+        # contradict the ordering promised above.
+        times.sort()
         return times
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
