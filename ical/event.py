@@ -14,6 +14,7 @@ can have a start and a duration.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import enum
 import logging
@@ -75,6 +76,17 @@ class EventStatus(str, enum.Enum):
 
     CANCELLED = "CANCELLED"
     """Indicates event was cancelled."""
+
+
+@dataclasses.dataclass
+class AlarmTrigger:
+    """A resolved alarm trigger with its absolute time and source alarm."""
+
+    time: datetime.datetime
+    """The absolute time the alarm fires."""
+
+    alarm: Alarm
+    """The alarm the time was resolved from."""
 
 
 class Event(ComponentModel):
@@ -338,6 +350,27 @@ class Event(ComponentModel):
         if self.duration is not None:
             return self.duration
         return self.end - self.start
+
+    def alarm_trigger_times(self) -> list[AlarmTrigger]:
+        """Resolve every alarm on this event into absolute times.
+
+        Sorted by time. Alarms using `REPEAT` and `DURATION` contribute one
+        entry per repetition, each pointing back at the same alarm.
+
+        Alarms that cannot be resolved -- a trigger relative to an end that
+        does not exist -- are skipped rather than raising, so one malformed
+        alarm does not hide the rest.
+        """
+        triggers: list[AlarmTrigger] = []
+        for alarm in self.alarm:
+            try:
+                times = alarm.trigger_times(self.start, self.end)
+            except ValueError:
+                _LOGGER.debug("Skipping unresolvable alarm trigger: %s", alarm.trigger)
+                continue
+            triggers.extend(AlarmTrigger(time=time, alarm=alarm) for time in times)
+        triggers.sort(key=lambda trigger: trigger.time)
+        return triggers
 
     @property
     def timespan(self) -> Timespan:
