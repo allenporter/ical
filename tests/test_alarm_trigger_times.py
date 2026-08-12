@@ -206,3 +206,69 @@ def test_the_default_is_not_written_out() -> None:
 
     assert "TRIGGER:-PT5M" in ics
     assert "RELATED" not in ics
+
+
+def test_an_unknown_related_value_is_ignored_not_fatal() -> None:
+    """This parameter was unread before; rejecting the file would be stricter."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        ICS.replace("RELATED=END", "RELATED=MIDDLE")
+    )
+
+    alarm = calendar.events[0].alarm[0]
+
+    assert alarm.trigger_related == Related.START
+    assert "RELATED" not in IcsCalendarStream.calendar_to_ics(calendar)
+
+
+RECURRING = ICS.replace("SUMMARY:Dentist", "RRULE:FREQ=DAILY;COUNT=3\nSUMMARY:Dentist")
+
+
+def test_each_occurrence_resolves_its_own_alarm() -> None:
+    """The point of the API: a recurring event alarms on every occurrence."""
+    calendar = IcsCalendarStream.calendar_from_ics(RECURRING)
+
+    times = [
+        trigger.time
+        for event in calendar.timeline.included(
+            datetime.datetime(2025, 7, 14, tzinfo=UTC),
+            datetime.datetime(2025, 7, 20, tzinfo=UTC),
+        )
+        for trigger in event.alarm_trigger_times()
+    ]
+
+    assert times == [
+        datetime.datetime(2025, 7, 15, 14, 55, tzinfo=UTC),
+        datetime.datetime(2025, 7, 16, 14, 55, tzinfo=UTC),
+        datetime.datetime(2025, 7, 17, 14, 55, tzinfo=UTC),
+    ]
+
+
+TODO_ICS = """BEGIN:VCALENDAR
+PRODID:-//example//example//EN
+VERSION:2.0
+BEGIN:VTODO
+DTSTAMP:20250715T100000Z
+UID:2
+SUMMARY:Taxes
+DUE:20250716T090000Z
+BEGIN:VALARM
+TRIGGER;RELATED=END:-PT30M
+ACTION:DISPLAY
+DESCRIPTION:d
+END:VALARM
+END:VTODO
+END:VCALENDAR
+"""
+
+
+def test_a_todo_alarm_resolves_and_round_trips() -> None:
+    """VTODO has no convenience method, but the primitive and ics both work."""
+    calendar = IcsCalendarStream.calendar_from_ics(TODO_ICS)
+    todo = calendar.todos[0]
+    due = todo.due
+    assert due is not None
+
+    assert todo.alarms[0].trigger_times(due, due) == [
+        datetime.datetime(2025, 7, 16, 8, 30, tzinfo=UTC)
+    ]
+    assert "TRIGGER;RELATED=END:-PT30M" in IcsCalendarStream.calendar_to_ics(calendar)
