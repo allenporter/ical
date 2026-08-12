@@ -107,3 +107,37 @@ def test_compat_leaves_a_conforming_until_alone() -> None:
         calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
 
     assert _until(calendar) == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=UTC)
+
+
+TODO_ICS = """BEGIN:VCALENDAR
+PRODID:{prodid}
+VERSION:2.0
+BEGIN:VTODO
+DTSTAMP:20250715T100000Z
+UID:1
+SUMMARY:Water the plants
+DTSTART:20250715T140000Z
+DUE:20250715T150000Z
+RRULE:FREQ=DAILY;UNTIL={until}
+END:VTODO
+END:VCALENDAR
+"""
+
+
+def test_the_rule_applies_to_a_todo_as_well() -> None:
+    """`validate_until_dtstart` is shared by VEVENT, VTODO and VJOURNAL."""
+    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
+        IcsCalendarStream.calendar_from_ics(
+            TODO_ICS.format(prodid="-//Example//Example//EN", until="20250718T140000")
+        )
+
+
+def test_compat_reads_a_todo_until_as_utc_too() -> None:
+    ics = TODO_ICS.format(prodid=_GOOGLE, until="20250718T140000")
+
+    with enable_compat_mode(ics) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    rrule = calendar.todos[0].rrule
+    assert rrule is not None
+    assert rrule.until == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=UTC)
