@@ -5,6 +5,7 @@ import datetime
 import pytest
 
 from ical.alarm import Alarm, Related
+from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 
@@ -272,3 +273,47 @@ def test_a_todo_alarm_resolves_and_round_trips() -> None:
         datetime.datetime(2025, 7, 16, 8, 30, tzinfo=UTC)
     ]
     assert "TRIGGER;RELATED=END:-PT30M" in IcsCalendarStream.calendar_to_ics(calendar)
+
+
+def test_the_parameter_does_not_accumulate_across_round_trips() -> None:
+    """The encoder appends to `params`; twice would be twice the parameter."""
+    ics = IcsCalendarStream.calendar_to_ics(IcsCalendarStream.calendar_from_ics(ICS))
+    again = IcsCalendarStream.calendar_to_ics(IcsCalendarStream.calendar_from_ics(ics))
+
+    assert ics == again
+    assert again.count("RELATED=END") == 1
+
+
+def test_a_repeat_of_zero_fires_once() -> None:
+    """rfc5545 counts repeats as additional firings, so zero means just one."""
+    alarm = _alarm(
+        trigger=datetime.timedelta(minutes=-15),
+        repeat=0,
+        duration=datetime.timedelta(minutes=5),
+    )
+
+    assert alarm.trigger_times(START, END) == [
+        datetime.datetime(2025, 7, 15, 13, 45, tzinfo=UTC)
+    ]
+
+
+def test_an_alarm_built_in_python_serialises_the_parameter() -> None:
+    """Nothing lifts RELATED off a property here; it comes from the field."""
+    calendar = Calendar()
+    calendar.events.append(
+        Event(
+            summary="Dentist",
+            dtstart=START,
+            dtend=END,
+            alarm=[
+                _alarm(
+                    trigger=datetime.timedelta(minutes=-5),
+                    trigger_related=Related.END,
+                )
+            ],
+        )
+    )
+
+    ics = IcsCalendarStream(vcalendar=[calendar]).ics()
+
+    assert "TRIGGER;RELATED=END:-PT5M" in ics
