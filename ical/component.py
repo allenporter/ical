@@ -128,6 +128,14 @@ def _as_datetime(
     if not isinstance(date_value, datetime.datetime):
         new_dt = datetime.datetime.combine(date_value, dtstart.time())
         return new_dt.replace(tzinfo=dtstart.tzinfo)
+    if (date_value.tzinfo is None) != (dtstart.tzinfo is None):
+        # A DATE gets dtstart's tzinfo a few lines up, but a DATE-TIME that
+        # disagrees about awareness was passed through untouched -- and the
+        # recurrence iterator cannot compare it against dtstart, so the whole
+        # expansion raises rather than the date being applied. Align it the
+        # same way, which for a naive value means reading it as dtstart's
+        # zone: the wall time the producer wrote it as.
+        return date_value.replace(tzinfo=dtstart.tzinfo)
     return date_value
 
 
