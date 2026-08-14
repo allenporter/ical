@@ -141,3 +141,88 @@ def test_compat_reads_a_todo_until_as_utc_too() -> None:
     rrule = calendar.todos[0].rrule
     assert rrule is not None
     assert rrule.until == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=UTC)
+
+
+RECUR_DATE_ICS = """BEGIN:VCALENDAR
+PRODID:-//Example//Example//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:20250715T100000Z
+UID:1
+{dtstart}
+RRULE:FREQ=DAILY;COUNT=3
+{recur_date}
+SUMMARY:Standup
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+def _recur_occurrences(dtstart: str, recur_date: str) -> list[datetime.datetime]:
+    calendar = IcsCalendarStream.calendar_from_ics(
+        RECUR_DATE_ICS.format(dtstart=dtstart, recur_date=recur_date)
+    )
+    return _occurrences(calendar)
+
+
+def test_a_naive_exdate_against_an_aware_dtstart_still_excludes() -> None:
+    """It raised RecurrenceError out of the iterator instead of excluding."""
+    occurrences = _recur_occurrences(
+        "DTSTART:20250715T140000Z", "EXDATE:20250716T140000"
+    )
+
+    assert occurrences == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=UTC),
+        datetime.datetime(2025, 7, 17, 14, 0, tzinfo=UTC),
+    ]
+
+
+def test_a_naive_exdate_against_a_tzid_dtstart() -> None:
+    """A TZID reference is aware too, so it hit the same failure."""
+    occurrences = _recur_occurrences(
+        "DTSTART;TZID=America/Denver:20250715T140000", "EXDATE:20250716T140000"
+    )
+
+    assert [occurrence.date() for occurrence in occurrences] == [
+        datetime.date(2025, 7, 15),
+        datetime.date(2025, 7, 17),
+    ]
+
+
+def test_a_naive_rdate_against_an_aware_dtstart_still_adds() -> None:
+    """RDATE took the whole expansion down the same way EXDATE did."""
+    occurrences = _recur_occurrences(
+        "DTSTART:20250715T140000Z", "RDATE:20250720T140000"
+    )
+
+    assert datetime.datetime(2025, 7, 20, 14, 0, tzinfo=UTC) in occurrences
+
+
+def test_an_aware_exdate_against_a_naive_dtstart() -> None:
+    """The mirror case, which happened to work; it must keep working."""
+    occurrences = _recur_occurrences(
+        "DTSTART:20250715T140000", "EXDATE:20250716T140000Z"
+    )
+
+    assert len(occurrences) == 2
+
+
+def test_a_conforming_exdate_is_untouched() -> None:
+    """Matching awareness must not be rewritten."""
+    occurrences = _recur_occurrences(
+        "DTSTART:20250715T140000Z", "EXDATE:20250716T140000Z"
+    )
+
+    assert occurrences == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=UTC),
+        datetime.datetime(2025, 7, 17, 14, 0, tzinfo=UTC),
+    ]
+
+
+def test_an_exdate_in_another_zone_still_matches_by_instant() -> None:
+    """A different TZID is legal and already worked; it compares absolutely."""
+    occurrences = _recur_occurrences(
+        "DTSTART:20250715T140000Z", "EXDATE;TZID=America/Denver:20250716T080000"
+    )
+
+    assert len(occurrences) == 2
