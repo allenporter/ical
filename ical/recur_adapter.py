@@ -81,7 +81,7 @@ class RecurAdapter(Generic[ItemType]):
     ) -> None:
         """Initialize the RecurAdapter."""
         self._item = item
-        self._duration = item.computed_duration
+        self._duration = item.computed_duration  # ty: ignore[invalid-attribute-access]
         self._tzinfo = tzinfo
 
     def get(
