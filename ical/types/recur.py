@@ -354,6 +354,21 @@ class Recur(BaseModel):
     by_setpos: list[int] = Field(alias="bysetpos", default_factory=list)
     """Values that corresponds to the nth occurrence within the set of instances."""
 
+    by_hour: list[int] = Field(alias="byhour", default_factory=list)
+    """Hours of the day between 0 and 23."""
+
+    by_minute: list[int] = Field(alias="byminute", default_factory=list)
+    """Minutes of the hour between 0 and 59."""
+
+    by_second: list[int] = Field(alias="bysecond", default_factory=list)
+    """Seconds of the minute between 0 and 60, where 60 is a leap second."""
+
+    by_year_day: list[int] = Field(alias="byyearday", default_factory=list)
+    """Days of the year between 1 and 366, or -1 to -366 counting backwards."""
+
+    by_week_no: list[int] = Field(alias="byweekno", default_factory=list)
+    """Weeks of the year between 1 and 53, or -1 to -53 counting backwards."""
+
     wkst: Optional[Weekday] = None
     """The day on which the workweek starts."""
 
@@ -404,6 +419,62 @@ class Recur(BaseModel):
                 )
         return values
 
+    @field_validator("by_hour")
+    @classmethod
+    def validate_by_hour(cls, values: list[int]) -> list[int]:
+        """Validate byhour is between 0 and 23."""
+        for val in values:
+            if val < 0 or val > 23:
+                raise ValueError(f"Hour must be between 0 and 23: {val}")
+        return values
+
+    @field_validator("by_minute")
+    @classmethod
+    def validate_by_minute(cls, values: list[int]) -> list[int]:
+        """Validate byminute is between 0 and 59."""
+        for val in values:
+            if val < 0 or val > 59:
+                raise ValueError(f"Minute must be between 0 and 59: {val}")
+        return values
+
+    @field_validator("by_second")
+    @classmethod
+    def validate_by_second(cls, values: list[int]) -> list[int]:
+        """Validate bysecond is between 0 and 60, mapping the leap second.
+
+        rfc5545 permits 60 for a leap second, which `dateutil` rejects, so
+        it is folded onto 59 rather than failing the calendar over a value
+        the spec allows.
+        """
+        result = []
+        for val in values:
+            if val < 0 or val > 60:
+                raise ValueError(f"Second must be between 0 and 60: {val}")
+            result.append(59 if val == 60 else val)
+        return result
+
+    @field_validator("by_year_day")
+    @classmethod
+    def validate_by_year_day(cls, values: list[int]) -> list[int]:
+        """Validate byyearday is between -366 and 366 (excluding 0)."""
+        for val in values:
+            if val < -366 or val > 366 or val == 0:
+                raise ValueError(
+                    f"Year day must be between -366 and 366 (excluding 0): {val}"
+                )
+        return values
+
+    @field_validator("by_week_no")
+    @classmethod
+    def validate_by_week_no(cls, values: list[int]) -> list[int]:
+        """Validate byweekno is between -53 and 53 (excluding 0)."""
+        for val in values:
+            if val < -53 or val > 53 or val == 0:
+                raise ValueError(
+                    f"Week number must be between -53 and 53 (excluding 0): {val}"
+                )
+        return values
+
     @field_validator("by_weekday")
     @classmethod
     def validate_by_weekday(cls, values: list[WeekdayValue]) -> list[WeekdayValue]:
@@ -440,6 +511,11 @@ class Recur(BaseModel):
             bymonthday=self.by_month_day if self.by_month_day else None,
             bymonth=self.by_month if self.by_month else None,
             bysetpos=self.by_setpos,
+            byhour=self.by_hour if self.by_hour else None,
+            byminute=self.by_minute if self.by_minute else None,
+            bysecond=self.by_second if self.by_second else None,
+            byyearday=self.by_year_day if self.by_year_day else None,
+            byweekno=self.by_week_no if self.by_week_no else None,
             wkst=wkst,
             cache=True,
         )
@@ -466,7 +542,16 @@ class Recur(BaseModel):
         result = []
         for key, value in data.items():
             # Need to encode based on field type also using json encoders
-            if key in ("bymonthday", "bymonth", "bysetpos"):
+            if key in (
+                "bymonthday",
+                "bymonth",
+                "bysetpos",
+                "byhour",
+                "byminute",
+                "bysecond",
+                "byyearday",
+                "byweekno",
+            ):
                 if not value:
                     continue
                 value = ",".join([str(val) for val in value])
@@ -529,7 +614,16 @@ class Recur(BaseModel):
                         ParsedProperty(name="ignored", value=value)
                     )
                 result[key] = new_value
-            elif key in ("bymonthday", "bymonth", "bysetpos"):
+            elif key in (
+                "bymonthday",
+                "bymonth",
+                "bysetpos",
+                "byhour",
+                "byminute",
+                "bysecond",
+                "byyearday",
+                "byweekno",
+            ):
                 result[key] = value.split(",")
             elif key == "byday":
                 # Build inputs for WeekdayValue dataclass

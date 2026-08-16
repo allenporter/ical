@@ -1052,12 +1052,15 @@ def test_bysetpos() -> None:
 
 def test_recur_extra_fields_preservation() -> None:
     """Test unrecognized and extra recurrence rule properties are preserved."""
-    recur = Recur.from_rrule("FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4")
+    # BYYEARDAY and BYWEEKNO used to arrive here as extras, since they were not
+    # modelled; they are now parsed fields and applied to the expansion.
+    recur = Recur.from_rrule("FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4;X-EXTRA=foo")
     assert recur.freq == Frequency.DAILY
-    # Unrecognized fields are preserved as extra properties
-    assert recur.model_dump().get("byyearday") == "1,2,3"
-    assert recur.model_dump().get("byweekno") == "4"
-    assert recur.as_rrule_str() == "FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4"
+    assert recur.by_year_day == [1, 2, 3]
+    assert recur.by_week_no == [4]
+    # An unrecognized field is still preserved as an extra property
+    assert recur.model_dump().get("x-extra") == "foo"
+    assert recur.as_rrule_str() == "FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4;X-EXTRA=foo"
 
     # Test serialization inside an event to ICS format
     calendar = Calendar()
@@ -1070,7 +1073,7 @@ def test_recur_extra_fields_preservation() -> None:
         )
     )
     ics_output = IcsCalendarStream.calendar_to_ics(calendar)
-    assert "RRULE:FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4" in ics_output
+    assert "RRULE:FREQ=DAILY;BYYEARDAY=1,2,3;BYWEEKNO=4;X-EXTRA=foo" in ics_output
 
 
 def test_recur_freq_secondly() -> None:
