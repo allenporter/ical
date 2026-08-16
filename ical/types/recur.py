@@ -354,6 +354,21 @@ class Recur(BaseModel):
     by_setpos: list[int] = Field(alias="bysetpos", default_factory=list)
     """Values that corresponds to the nth occurrence within the set of instances."""
 
+    by_hour: list[int] = Field(alias="byhour", default_factory=list)
+    """Hours of the day between 0 and 23."""
+
+    by_minute: list[int] = Field(alias="byminute", default_factory=list)
+    """Minutes of the hour between 0 and 59."""
+
+    by_second: list[int] = Field(alias="bysecond", default_factory=list)
+    """Seconds of the minute between 0 and 60, where 60 is a leap second."""
+
+    by_year_day: list[int] = Field(alias="byyearday", default_factory=list)
+    """Days of the year between 1 and 366, or -1 to -366 counting backwards."""
+
+    by_week_no: list[int] = Field(alias="byweekno", default_factory=list)
+    """Weeks of the year between 1 and 53, or -1 to -53 counting backwards."""
+
     wkst: Optional[Weekday] = None
     """The day on which the workweek starts."""
 
@@ -440,6 +455,11 @@ class Recur(BaseModel):
             bymonthday=self.by_month_day if self.by_month_day else None,
             bymonth=self.by_month if self.by_month else None,
             bysetpos=self.by_setpos,
+            byhour=self.by_hour if self.by_hour else None,
+            byminute=self.by_minute if self.by_minute else None,
+            bysecond=self.by_second if self.by_second else None,
+            byyearday=self.by_year_day if self.by_year_day else None,
+            byweekno=self.by_week_no if self.by_week_no else None,
             wkst=wkst,
             cache=True,
         )
@@ -466,7 +486,16 @@ class Recur(BaseModel):
         result = []
         for key, value in data.items():
             # Need to encode based on field type also using json encoders
-            if key in ("bymonthday", "bymonth", "bysetpos"):
+            if key in (
+                "bymonthday",
+                "bymonth",
+                "bysetpos",
+                "byhour",
+                "byminute",
+                "bysecond",
+                "byyearday",
+                "byweekno",
+            ):
                 if not value:
                     continue
                 value = ",".join([str(val) for val in value])
@@ -529,7 +558,16 @@ class Recur(BaseModel):
                         ParsedProperty(name="ignored", value=value)
                     )
                 result[key] = new_value
-            elif key in ("bymonthday", "bymonth", "bysetpos"):
+            elif key in (
+                "bymonthday",
+                "bymonth",
+                "bysetpos",
+                "byhour",
+                "byminute",
+                "bysecond",
+                "byyearday",
+                "byweekno",
+            ):
                 result[key] = value.split(",")
             elif key == "byday":
                 # Build inputs for WeekdayValue dataclass
