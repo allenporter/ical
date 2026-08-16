@@ -419,6 +419,62 @@ class Recur(BaseModel):
                 )
         return values
 
+    @field_validator("by_hour")
+    @classmethod
+    def validate_by_hour(cls, values: list[int]) -> list[int]:
+        """Validate byhour is between 0 and 23."""
+        for val in values:
+            if val < 0 or val > 23:
+                raise ValueError(f"Hour must be between 0 and 23: {val}")
+        return values
+
+    @field_validator("by_minute")
+    @classmethod
+    def validate_by_minute(cls, values: list[int]) -> list[int]:
+        """Validate byminute is between 0 and 59."""
+        for val in values:
+            if val < 0 or val > 59:
+                raise ValueError(f"Minute must be between 0 and 59: {val}")
+        return values
+
+    @field_validator("by_second")
+    @classmethod
+    def validate_by_second(cls, values: list[int]) -> list[int]:
+        """Validate bysecond is between 0 and 60, mapping the leap second.
+
+        rfc5545 permits 60 for a leap second, which `dateutil` rejects, so
+        it is folded onto 59 rather than failing the calendar over a value
+        the spec allows.
+        """
+        result = []
+        for val in values:
+            if val < 0 or val > 60:
+                raise ValueError(f"Second must be between 0 and 60: {val}")
+            result.append(59 if val == 60 else val)
+        return result
+
+    @field_validator("by_year_day")
+    @classmethod
+    def validate_by_year_day(cls, values: list[int]) -> list[int]:
+        """Validate byyearday is between -366 and 366 (excluding 0)."""
+        for val in values:
+            if val < -366 or val > 366 or val == 0:
+                raise ValueError(
+                    f"Year day must be between -366 and 366 (excluding 0): {val}"
+                )
+        return values
+
+    @field_validator("by_week_no")
+    @classmethod
+    def validate_by_week_no(cls, values: list[int]) -> list[int]:
+        """Validate byweekno is between -53 and 53 (excluding 0)."""
+        for val in values:
+            if val < -53 or val > 53 or val == 0:
+                raise ValueError(
+                    f"Week number must be between -53 and 53 (excluding 0): {val}"
+                )
+        return values
+
     @field_validator("by_weekday")
     @classmethod
     def validate_by_weekday(cls, values: list[WeekdayValue]) -> list[WeekdayValue]:

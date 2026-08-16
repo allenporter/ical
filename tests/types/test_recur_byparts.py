@@ -17,6 +17,7 @@ import pytest
 from dateutil import rrule as dateutil_rrule
 
 from ical.calendar_stream import IcsCalendarStream
+from ical.exceptions import CalendarParseError
 
 UTC = datetime.timezone.utc
 DTSTART = datetime.datetime(2025, 7, 15, 14, 0, tzinfo=UTC)
@@ -142,3 +143,29 @@ def test_negative_byyearday_counts_from_the_end() -> None:
     (first,) = _occurrences("RRULE:FREQ=YEARLY;COUNT=1;BYYEARDAY=-1")
 
     assert first.date() == datetime.date(2025, 12, 31)
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "RRULE:FREQ=DAILY;COUNT=1;BYHOUR=24",
+        "RRULE:FREQ=DAILY;COUNT=1;BYMINUTE=-5",
+        "RRULE:FREQ=YEARLY;COUNT=1;BYYEARDAY=0",
+        "RRULE:FREQ=YEARLY;COUNT=1;BYWEEKNO=99",
+    ],
+    ids=["byhour", "byminute", "byyearday", "byweekno"],
+)
+def test_out_of_range_is_rejected_at_parse_time(rule: str) -> None:
+    """dateutil raises on these during expansion, which is far from the cause.
+
+    Rejecting here matches what `by_month_day` and `by_setpos` already do.
+    """
+    with pytest.raises(CalendarParseError):
+        IcsCalendarStream.calendar_from_ics(_ICS.format(rule=rule))
+
+
+def test_a_leap_second_is_accepted() -> None:
+    """rfc5545 allows BYSECOND=60; dateutil does not, so it folds onto 59."""
+    (occurrence,) = _occurrences("RRULE:FREQ=MINUTELY;COUNT=1;BYSECOND=60")
+
+    assert occurrence.second == 59
