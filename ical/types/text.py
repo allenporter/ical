@@ -1,11 +1,26 @@
 """Library for parsing TEXT values."""
 
+import re
+
+
 from ical.parsing.property import ParsedProperty, RE_CONTROL_CHARS
 
 from .data_types import DATA_TYPE
 
-UNESCAPE_CHAR = {"\\\\": "\\", "\\;": ";", "\\,": ",", "\\N": "\n", "\\n": "\n"}
-ESCAPE_CHAR = {v: k for k, v in UNESCAPE_CHAR.items()}
+_UNESCAPE_RE = re.compile(r"\\([\\;,Nn])")
+_UNESCAPE_MAP = {
+    "\\": "\\",
+    ";": ";",
+    ",": ",",
+    "N": "\n",
+    "n": "\n",
+}
+ESCAPE_CHAR = {
+    "\\": "\\\\",
+    ";": "\\;",
+    ",": "\\,",
+    "\n": "\\n",
+}
 
 
 @DATA_TYPE.register("TEXT")
@@ -19,11 +34,7 @@ class TextEncoder:
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> str:
         """Parse a rfc5545 into a text value."""
-        for key, vin in UNESCAPE_CHAR.items():
-            if key not in prop.value:
-                continue
-            prop.value = prop.value.replace(key, vin)
-        return prop.value
+        return _UNESCAPE_RE.sub(lambda m: _UNESCAPE_MAP[m.group(1)], prop.value)
 
     @classmethod
     def __encode_property__(cls, value: str) -> ParsedProperty:

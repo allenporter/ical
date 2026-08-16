@@ -1315,6 +1315,29 @@
     ]),
   })
 # ---
+# name: test_parse[todo_text_escaping]
+  dict({
+    'calendars': list([
+      dict({
+        'prodid': '-//example//1.2.3',
+        'todos': list([
+          dict({
+            'description': '''
+              Item with path C:\notes\todo.txt, semicolons \; and commas \, and actual
+              newline and uppercase 
+  
+            ''',
+            'dtstamp': '2026-08-16T17:00:00Z',
+            'status': 'NEEDS-ACTION',
+            'summary': 'old\\new',
+            'uid': 'todo-text-escaping-1',
+          }),
+        ]),
+        'version': '2.0',
+      }),
+    ]),
+  })
+# ---
 # name: test_parse[todo_valarm]
   dict({
     'calendars': list([
@@ -2183,6 +2206,22 @@
   PRIORITY:1
   STATUS:NEEDS-ACTION
   SUMMARY:Submit Revised Internet-Draft
+  END:VTODO
+  END:VCALENDAR
+  '''
+# ---
+# name: test_serialize[todo_text_escaping]
+  '''
+  BEGIN:VCALENDAR
+  PRODID:-//example//1.2.3
+  VERSION:2.0
+  BEGIN:VTODO
+  DTSTAMP:20260816T170000Z
+  UID:todo-text-escaping-1
+  DESCRIPTION:Item with path C:\\notes\\todo.txt\, semicolons \\\; and commas
+    \\\, and actual\nnewline and uppercase \n
+  STATUS:NEEDS-ACTION
+  SUMMARY:old\\new
   END:VTODO
   END:VCALENDAR
   '''

@@ -56,3 +56,59 @@ def test_text_control_characters() -> None:
             )
         ],
     )
+
+
+def test_text_escaping_combinations() -> None:
+    """Test parsing and encoding of various escaped characters."""
+    # Test rfc5545 escaped characters: \\n, \\N, \\;, \\,, \\\\
+    component = ParsedComponent(name="text-model")
+    component.properties.append(
+        ParsedProperty(
+            name="text_value",
+            value=r"old\\new and a\;b and c\,d and e\\f and g\nh and i\Nj",
+        )
+    )
+    model = Model.model_validate(component.as_dict())
+    assert model.text_value == "old\\new and a;b and c,d and e\\f and g\nh and i\nj"
+
+    # Test round trip encoding
+    encoded = model.__encode_component_root__()
+    assert encoded == ParsedComponent(
+        name="Model",
+        properties=[
+            ParsedProperty(
+                name="text_value",
+                value=r"old\\new and a\;b and c\,d and e\\f and g\nh and i\nj",
+            )
+        ],
+    )
+
+
+def test_text_literal_escaped_characters() -> None:
+    """Test that literal backslashes followed by delimiter characters are parsed correctly."""
+    # Input has escaped backslash followed by ;, ,, n
+    component = ParsedComponent(name="text-model")
+    component.properties.append(
+        ParsedProperty(
+            name="text_value",
+            value=r"path\\name and delim\\; and comma\\, and double\\\\slash",
+        )
+    )
+    model = Model.model_validate(component.as_dict())
+    assert model.text_value == r"path\name and delim\; and comma\, and double\\slash"
+
+    # When encoded, the literal backslashes and delimiters are properly escaped
+    encoded = model.__encode_component_root__()
+    assert encoded == ParsedComponent(
+        name="Model",
+        properties=[
+            ParsedProperty(
+                name="text_value",
+                value=r"path\\name and delim\\\; and comma\\\, and double\\\\slash",
+            )
+        ],
+    )
+
+    # When decoded again, we get the exact same text_value back
+    reparsed = Model.model_validate(encoded.as_dict())
+    assert reparsed.text_value == model.text_value
