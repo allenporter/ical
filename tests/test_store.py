@@ -2180,3 +2180,90 @@ def test_recurrence_id_naive_fallback_still_works(
     assert len(events) == 4
     first_dt = datetime.datetime(2025, 5, 5, 10, 0, 0, tzinfo=NY_TZ)
     assert first_dt not in [e.dtstart for e in events]
+
+
+def test_todo_store_escaping_roundtrip(
+    calendar: Calendar,
+    todo_store: TodoStore,
+) -> None:
+    """Test end-to-end that todo characters requiring escaping survive serialize/reload."""
+    original_summary = r"old\new"
+    original_description = (
+        "Multi-line:\n"
+        r"- Path C:\notes\todo.txt" + "\n"
+        r"- Escaped delimiters: \; and \," + "\n"
+        r"- Literal double backslash: \\" + "\n"
+        r"- Semicolon ; and comma ,"
+    )
+
+    todo_store.add(
+        Todo(
+            summary=original_summary,
+            description=original_description,
+        )
+    )
+
+    # Serialize to ICS string
+    ics_text = IcsCalendarStream.calendar_to_ics(calendar)
+
+    # Reload into a completely new Calendar and TodoStore
+    reloaded_calendar = IcsCalendarStream.calendar_from_ics(ics_text)
+    reloaded_store = TodoStore(reloaded_calendar, tzinfo=TZ)
+
+    todos = list(reloaded_store.todo_list())
+    assert len(todos) == 1
+    assert todos[0].summary == original_summary
+    assert todos[0].description == original_description
+
+    # Test editing with escaping characters and roundtripping again
+    updated_summary = r"edited\new summary with ; and ,"
+    updated_description = r"edited\new description with \;"
+    reloaded_store.edit(
+        uid=todos[0].uid,
+        item=Todo(
+            summary=updated_summary,
+            description=updated_description,
+        ),
+    )
+
+    ics_text_2 = IcsCalendarStream.calendar_to_ics(reloaded_calendar)
+    reloaded_calendar_2 = IcsCalendarStream.calendar_from_ics(ics_text_2)
+    reloaded_store_2 = TodoStore(reloaded_calendar_2, tzinfo=TZ)
+
+    todos_2 = list(reloaded_store_2.todo_list())
+    assert len(todos_2) == 1
+    assert todos_2[0].summary == updated_summary
+    assert todos_2[0].description == updated_description
+
+
+def test_event_store_escaping_roundtrip(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test end-to-end that event characters requiring escaping survive serialize/reload."""
+    original_summary = r"Meeting: Review old\new designs"
+    original_description = (
+        r"Notes: C:\docs\review.pdf; check items (a, b) and \n literal"
+    )
+    original_location = r"Room 101\; Building \B"
+
+    store.add(
+        Event(
+            summary=original_summary,
+            description=original_description,
+            location=original_location,
+            start=datetime.datetime(2025, 5, 5, 10, 0, 0, tzinfo=TZ),
+            end=datetime.datetime(2025, 5, 5, 11, 0, 0, tzinfo=TZ),
+        )
+    )
+
+    ics_text = IcsCalendarStream.calendar_to_ics(calendar)
+
+    reloaded_calendar = IcsCalendarStream.calendar_from_ics(ics_text)
+    reloaded_store = EventStore(reloaded_calendar)
+
+    events = list(reloaded_calendar.timeline)
+    assert len(events) == 1
+    assert events[0].summary == original_summary
+    assert events[0].description == original_description
+    assert events[0].location == original_location

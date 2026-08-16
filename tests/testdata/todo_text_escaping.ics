@@ -1,0 +1,11 @@
+BEGIN:VCALENDAR
+PRODID:-//example//1.2.3
+VERSION:2.0
+BEGIN:VTODO
+UID:todo-text-escaping-1
+DTSTAMP:20260816T170000Z
+SUMMARY:old\\new
+DESCRIPTION:Item with path C:\\notes\\todo.txt\, semicolons \\; and commas \\, and actual\nnewline and uppercase \N
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR
