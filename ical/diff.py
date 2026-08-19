@@ -24,6 +24,15 @@ def _identity(event: Event) -> tuple[str, str]:
     specific instance within it additionally needs `recurrence_id`. Two
     events sharing both identify the same occurrence, even across separate
     parses of separate fetches.
+
+    Compared as a plain string. `RecurrenceId` also carries `tzinfo` and
+    `range`, parsed from the TZID/RANGE property parameters, but they are
+    ordinary instance attributes bolted onto a `str` subclass rather than
+    part of its `__eq__` -- so two occurrences with the same recurrence_id
+    string but different tzinfo/range would still identify the same
+    occurrence here. That can't produce a missed content change: since
+    recurrence_id is the identity key, it is always equal-by-construction
+    within a pair `_content_equal` ever compares.
     """
     return (event.uid, event.recurrence_id or "")
 
