@@ -75,6 +75,19 @@ def _adjust_recurrence_date(
                 raise ValueError("DTSTART is date local but UNTIL was not")
             return date_value
 
+        if date_value.tzinfo is None:
+            # rfc5545 section 3.3.10: a timezone-aware DTSTART requires UNTIL
+            # in UTC. A naive UNTIL parses happily here and then fails much
+            # later inside the recurrence iterator, far from the cause, with
+            # "RRULE UNTIL values must be specified in UTC when DTSTART is
+            # timezone-aware". Producers that omit the Z mean UTC.
+            if dtstart_until_compat.is_dtstart_until_compat_enabled():
+                return date_value.replace(tzinfo=datetime.timezone.utc)
+            raise ValueError(
+                "DTSTART was timezone-aware but UNTIL had no timezone: "
+                "UNTIL must be specified in UTC"
+            )
+
         if date_value.utcoffset():
             raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
 
@@ -115,6 +128,16 @@ def _as_datetime(
     if not isinstance(date_value, datetime.datetime):
         new_dt = datetime.datetime.combine(date_value, dtstart.time())
         return new_dt.replace(tzinfo=dtstart.tzinfo)
+    if date_value.tzinfo is None and dtstart.tzinfo is not None:
+        # A DATE gets dtstart's tzinfo a few lines up, but a naive DATE-TIME
+        # was passed through untouched -- and the recurrence iterator cannot
+        # compare it against an aware dtstart, so the whole expansion raises
+        # rather than the date being applied. Align it the same way: read the
+        # naive value as dtstart's zone, the wall time the producer wrote it
+        # as. The mirror case (aware value, floating dtstart) already
+        # expanded correctly and is left alone, because dropping the offset
+        # here would silently rewrite it on the way back out.
+        return date_value.replace(tzinfo=dtstart.tzinfo)
     return date_value
 
 
