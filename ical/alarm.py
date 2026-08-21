@@ -2,16 +2,24 @@
 
 import datetime
 import enum
-from typing import Optional, Self, Union
+import logging
+from typing import Any, Optional, Self, Union
 
 from pydantic import Field, field_serializer, model_validator
 
 from .component import ComponentModel
+from .parsing.component import ParsedComponent
+from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .types import Attachment, CalAddress, ExtraProperty
 from .types.data_types import serialize_field
+from .util import normalize_datetime
 
 
-__all__ = ["Alarm", "Action"]
+__all__ = ["Alarm", "Action", "Related"]
+
+_LOGGER = logging.getLogger(__name__)
+
+_RELATED = "RELATED"
 
 
 class Action(str, enum.Enum):
@@ -34,6 +42,16 @@ class Action(str, enum.Enum):
     """
 
 
+class Related(str, enum.Enum):
+    """Whether a relative trigger is measured from the start or the end."""
+
+    START = "START"
+    """The trigger offset is relative to DTSTART. This is the default."""
+
+    END = "END"
+    """The trigger offset is relative to DTEND."""
+
+
 class Alarm(ComponentModel):
     """An alarm component for a calendar.
 
@@ -46,6 +64,14 @@ class Alarm(ComponentModel):
 
     trigger: Union[datetime.timedelta, datetime.datetime]
     """May be either a relative time or absolute time."""
+
+    trigger_related: Related = Related.START
+    """Whether a relative `trigger` is measured from the start or the end.
+
+    Read from the `RELATED` parameter on `TRIGGER`, and written back out as
+    that parameter rather than as a property of its own. Absolute triggers
+    ignore it.
+    """
 
     duration: Optional[datetime.timedelta] = None
     """A duration in time for the alarm.
@@ -111,5 +137,103 @@ class Alarm(ComponentModel):
                 "Duration and Repeat must both be specified or both omitted"
             )
         return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_trigger_related(cls, values: Any) -> Any:
+        """Lift the RELATED parameter off TRIGGER into its own field."""
+        if not isinstance(values, dict):
+            return values
+        # Only ics parsing puts ParsedProperty here; a directly constructed
+        # Alarm passes the resolved value and has nothing to lift.
+        trigger = values.get("trigger")
+        if not isinstance(trigger, list):
+            return values
+        for prop in trigger:
+            if not isinstance(prop, ParsedProperty):
+                continue
+            if not (related := prop.get_parameter_value(_RELATED)):
+                continue
+            if related.upper() not in Related.__members__:
+                # Before this parameter was read at all, an unrecognised value
+                # was simply ignored. Rejecting the calendar over it would be
+                # stricter than the parser used to be.
+                _LOGGER.debug("Ignoring unknown TRIGGER RELATED value %s", related)
+                continue
+            values["trigger_related"] = related.upper()
+        return values
+
+    @classmethod
+    def __encode_component__(
+        cls, name: str, model_data: dict[str, Any]
+    ) -> "ParsedComponent":
+        """Write `trigger_related` back as a TRIGGER parameter.
+
+        Left to the default encoder it would be emitted as a property of its
+        own, which is not valid ics.
+        """
+        component = super().__encode_component__(name, model_data)
+        related: str | None = None
+        properties = []
+        for prop in component.properties:
+            if prop.name == "trigger_related":
+                related = prop.value
+                continue
+            properties.append(prop)
+        component.properties = properties
+
+        if related and related.upper() != Related.START:
+            for prop in component.properties:
+                if prop.name != "trigger":
+                    continue
+                params = prop.params or []
+                params.append(
+                    ParsedPropertyParameter(name=_RELATED, values=[related.upper()])
+                )
+                prop.params = params
+        return component
+
+    def trigger_times(
+        self,
+        dtstart: datetime.datetime | datetime.date,
+        dtend: datetime.datetime | datetime.date | None = None,
+    ) -> list[datetime.datetime]:
+        """Resolve this alarm's trigger into absolute datetimes.
+
+        A list is returned because `REPEAT` and `DURATION` together produce
+        more than one time. It is sorted chronologically.
+
+        `dtstart` and `dtend` accept dates as well as datetimes, so an all day
+        event resolves against midnight in the local timezone.
+
+        Raises:
+            ValueError: if the trigger is relative to the end and no end was
+                given.
+        """
+        if isinstance(self.trigger, datetime.datetime):
+            # rfc5545 requires an absolute trigger to be UTC, but this library
+            # is deliberately lenient about what it will read. A naive value
+            # here would be uncomparable against the aware times every other
+            # branch produces, so callers sorting a mixed list would hit a
+            # TypeError. Aware values pass through untouched.
+            first = normalize_datetime(self.trigger)
+        else:
+            if self.trigger_related == Related.END:
+                if dtend is None:
+                    raise ValueError(
+                        "Alarm trigger is relative to the end, but no end was given"
+                    )
+                anchor = dtend
+            else:
+                anchor = dtstart
+            first = normalize_datetime(anchor) + self.trigger
+
+        times = [first]
+        if self.repeat and self.duration:
+            times.extend(first + self.duration * (i + 1) for i in range(self.repeat))
+        # A negative DURATION is malformed but readable, and would otherwise
+        # contradict the ordering promised above.
+        times.sort()
+        return times
 
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
