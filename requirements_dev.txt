@@ -1,7 +1,7 @@
 -e .
 coverage==7.15.4
 codecov-cli==11.3.1
-ty==0.0.73
+ty==0.0.74
 pdoc==16.0.0
 pip==26.2.1
 pre-commit==4.6.2
