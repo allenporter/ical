@@ -1,300 +1,1466 @@
 # serializer version: 1
 # name: test_from_ics[attendee]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='attendee', value='mailto: jsmith@example.com', params=[ParsedPropertyParameter(name='RSVP', values=['TRUE']), ParsedPropertyParameter(name='ROLE', values=['REQ-PARTICIPANT'])]),
-    ParsedProperty(name='attendee', value='mailto:jsmith@example.com', params=[ParsedPropertyParameter(name='DELEGATED-TO', values=['mailto:jdoe@example.com', 'mailto:jqpublic @example.com'])]),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='attendee',
+      params=list([
+        ParsedPropertyParameter(
+          name='RSVP',
+          values=list([
+            'TRUE',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='ROLE',
+          values=list([
+            'REQ-PARTICIPANT',
+          ]),
+        ),
+      ]),
+      value='mailto: jsmith@example.com',
+    ),
+    ParsedProperty(
+      name='attendee',
+      params=list([
+        ParsedPropertyParameter(
+          name='DELEGATED-TO',
+          values=list([
+            'mailto:jdoe@example.com',
+            'mailto:jqpublic @example.com',
+          ]),
+        ),
+      ]),
+      value='mailto:jsmith@example.com',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
 # name: test_from_ics[comma]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='description', value="The Fall'98 Wild Wizards Conference - - Las Vegas\\, NV\\, USA", params=[ParsedPropertyParameter(name='ALTREP', values=['cid:part1.0001@example.org'])]),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='description',
+      params=list([
+        ParsedPropertyParameter(
+          name='ALTREP',
+          values=list([
+            'cid:part1.0001@example.org',
+          ]),
+        ),
+      ]),
+      value="The Fall'98 Wild Wizards Conference - - Las Vegas\\, NV\\, USA",
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
 # name: test_from_ics[emoji]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='version', value='2.0', params=None),
-    ParsedProperty(name='prodid', value='-//hacksw/handcal//NONSGML v1.0//EN', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B2@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19971225', params=None),
-    ParsedProperty(name='dtend', value='19971226', params=None),
-    ParsedProperty(name='summary', value='🎄', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='version',
+      params=None,
+      value='2.0',
+    ),
+    ParsedProperty(
+      name='prodid',
+      params=None,
+      value='-//hacksw/handcal//NONSGML v1.0//EN',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B2@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19971225',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19971226',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='🎄',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[fold]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='description', value='This is a lo ng description that exists on a long line.', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='description',
+      params=None,
+      value='This is a lo ng description that exists on a long line.',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
 # name: test_from_ics[icalendar_object]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='version', value='2.0', params=None),
-    ParsedProperty(name='prodid', value='-//hacksw/handcal//NONSGML v1.0//EN', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B2@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='Bastille Day Party', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='version',
+      params=None,
+      value='2.0',
+    ),
+    ParsedProperty(
+      name='prodid',
+      params=None,
+      value='-//hacksw/handcal//NONSGML v1.0//EN',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B2@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='Bastille Day Party',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[languages]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='version', value='2.0', params=None),
-    ParsedProperty(name='prodid', value='-//hacksw/handcal//NONSGML v1.0//EN', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B2@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='žmogus', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B3@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='中文', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B4@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='кириллица', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B5@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='Ελληνικά', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B6@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='עִברִית', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B7@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='日本語', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B8@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='한국어', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B9@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='ไทย', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970610T172345Z-AF23B10@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970610T172345Z', params=None),
-    ParsedProperty(name='dtstart', value='19970714T170000Z', params=None),
-    ParsedProperty(name='dtend', value='19970715T040000Z', params=None),
-    ParsedProperty(name='summary', value='देवनागरी', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='version',
+      params=None,
+      value='2.0',
+    ),
+    ParsedProperty(
+      name='prodid',
+      params=None,
+      value='-//hacksw/handcal//NONSGML v1.0//EN',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B2@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='žmogus',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B3@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='中文',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B4@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='кириллица',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B5@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='Ελληνικά',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B6@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='עִברִית',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B7@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='日本語',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B8@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='한국어',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B9@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='ไทย',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970610T172345Z-AF23B10@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970610T172345Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970714T170000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970715T040000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='देवनागरी',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE1'])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM+VALUE2'])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM VALUE3'])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM:VALUE4'])]),
-    ParsedProperty(name='description', value='', params=None),
-    ParsedProperty(name='description', value='', params=[ParsedPropertyParameter(name='TYPE', values=[''])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM-VALUE1',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM+VALUE2',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM VALUE3',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM:VALUE4',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='description',
+      params=None,
+      value='',
+    ),
+    ParsedProperty(
+      name='description',
+      params=list([
+        ParsedPropertyParameter(
+          name='TYPE',
+          values=list([
+            '',
+          ]),
+        ),
+      ]),
+      value='',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_empty]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=[''])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['', 'Value2', '', 'VALUE4', 'VALUE5'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            '',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            '',
+            'Value2',
+            '',
+            'VALUE4',
+            'VALUE5',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_quoted]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM-VALUE'])]),
-    ParsedProperty(name='name', value='VALUE', params=[ParsedPropertyParameter(name='PARAM-NAME', values=['PARAM:VALUE'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM-VALUE',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='PARAM-NAME',
+          values=list([
+            'PARAM:VALUE',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_rfc6868_caret]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='x-test', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^'])]),
-    ParsedProperty(name='x-test-2', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['^n'])]),
-    ParsedProperty(name='x-test-3', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^'])]),
-    ParsedProperty(name='x-test-4', value='VALUE', params=[ParsedPropertyParameter(name='KEY', values=['a^x'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='x-test',
+      params=list([
+        ParsedPropertyParameter(
+          name='KEY',
+          values=list([
+            '^',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='x-test-2',
+      params=list([
+        ParsedPropertyParameter(
+          name='KEY',
+          values=list([
+            '^n',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='x-test-3',
+      params=list([
+        ParsedPropertyParameter(
+          name='KEY',
+          values=list([
+            'a^',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='x-test-4',
+      params=list([
+        ParsedPropertyParameter(
+          name='KEY',
+          values=list([
+            'a^x',
+          ]),
+        ),
+      ]),
+      value='VALUE',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_rfc6868_ical]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='attendee', value='mailto:babe@example.com', params=[ParsedPropertyParameter(name='CN', values=['George Herman "Babe" Ruth'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='attendee',
+      params=list([
+        ParsedPropertyParameter(
+          name='CN',
+          values=list([
+            'George Herman "Babe" Ruth',
+          ]),
+        ),
+      ]),
+      value='mailto:babe@example.com',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_rfc6868_vcard]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='geo', value='geo:40.446816,-80.00566', params=[ParsedPropertyParameter(name='X-ADDRESS', values=['Pittsburgh Pirates\n115 Federal St\nPittsburgh, PA 15212'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='geo',
+      params=list([
+        ParsedPropertyParameter(
+          name='X-ADDRESS',
+          values=list([
+            '''
+              Pittsburgh Pirates
+              115 Federal St
+              Pittsburgh, PA 15212
+            ''',
+          ]),
+        ),
+      ]),
+      value='geo:40.446816,-80.00566',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_rfc7986_calendar]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='name', value='My Calendar', params=[ParsedPropertyParameter(name='LANGUAGE', values=['en'])]),
-    ParsedProperty(name='description', value='Description of the calendar', params=[ParsedPropertyParameter(name='LANGUAGE', values=['en'])]),
-    ParsedProperty(name='uid', value='calendar-unique-id-123', params=None),
-    ParsedProperty(name='last-modified', value='20260708T144000Z', params=None),
-    ParsedProperty(name='url', value='http://example.com/calendar.ics', params=None),
-    ParsedProperty(name='categories', value='WORK,PROJECT', params=None),
-    ParsedProperty(name='refresh-interval', value='PT1H', params=[ParsedPropertyParameter(name='VALUE', values=['DURATION'])]),
-    ParsedProperty(name='source', value='http://example.com/source.ics', params=[ParsedPropertyParameter(name='VALUE', values=['URI'])]),
-    ParsedProperty(name='color', value='turquoise', params=None),
-    ParsedProperty(name='image', value='http://example.com/badge.png', params=[ParsedPropertyParameter(name='DISPLAY', values=['BADGE']), ParsedPropertyParameter(name='FMTTYPE', values=['image/png'])]),
-    ParsedProperty(name='image', value='aGVsbG8=', params=[ParsedPropertyParameter(name='VALUE', values=['BINARY']), ParsedPropertyParameter(name='ENCODING', values=['BASE64']), ParsedPropertyParameter(name='FMTTYPE', values=['image/png'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='name',
+      params=list([
+        ParsedPropertyParameter(
+          name='LANGUAGE',
+          values=list([
+            'en',
+          ]),
+        ),
+      ]),
+      value='My Calendar',
+    ),
+    ParsedProperty(
+      name='description',
+      params=list([
+        ParsedPropertyParameter(
+          name='LANGUAGE',
+          values=list([
+            'en',
+          ]),
+        ),
+      ]),
+      value='Description of the calendar',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='calendar-unique-id-123',
+    ),
+    ParsedProperty(
+      name='last-modified',
+      params=None,
+      value='20260708T144000Z',
+    ),
+    ParsedProperty(
+      name='url',
+      params=None,
+      value='http://example.com/calendar.ics',
+    ),
+    ParsedProperty(
+      name='categories',
+      params=None,
+      value='WORK,PROJECT',
+    ),
+    ParsedProperty(
+      name='refresh-interval',
+      params=list([
+        ParsedPropertyParameter(
+          name='VALUE',
+          values=list([
+            'DURATION',
+          ]),
+        ),
+      ]),
+      value='PT1H',
+    ),
+    ParsedProperty(
+      name='source',
+      params=list([
+        ParsedPropertyParameter(
+          name='VALUE',
+          values=list([
+            'URI',
+          ]),
+        ),
+      ]),
+      value='http://example.com/source.ics',
+    ),
+    ParsedProperty(
+      name='color',
+      params=None,
+      value='turquoise',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='DISPLAY',
+          values=list([
+            'BADGE',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='FMTTYPE',
+          values=list([
+            'image/png',
+          ]),
+        ),
+      ]),
+      value='http://example.com/badge.png',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='VALUE',
+          values=list([
+            'BINARY',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='ENCODING',
+          values=list([
+            'BASE64',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='FMTTYPE',
+          values=list([
+            'image/png',
+          ]),
+        ),
+      ]),
+      value='aGVsbG8=',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[params_rfc7986_component]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='event-1', params=None),
-    ParsedProperty(name='dtstart', value='20260708T150000Z', params=None),
-    ParsedProperty(name='dtend', value='20260708T160000Z', params=None),
-    ParsedProperty(name='color', value='blue', params=None),
-    ParsedProperty(name='image', value='http://example.com/event.jpg', params=[ParsedPropertyParameter(name='DISPLAY', values=['THUMBNAIL']), ParsedPropertyParameter(name='FMTTYPE', values=['image/jpeg'])]),
-    ParsedProperty(name='image', value='http://example.com/custom.jpg', params=[ParsedPropertyParameter(name='DISPLAY', values=['x-custom-display'])]),
-    ParsedProperty(name='conference', value='https://zoom.us/j/123456', params=[ParsedPropertyParameter(name='FEATURE', values=['AUDIO', 'VIDEO']), ParsedPropertyParameter(name='LABEL', values=['Zoom Meeting'])]),
-    ParsedProperty(name='conference', value='https://custom-conf.com', params=[ParsedPropertyParameter(name='FEATURE', values=['x-custom-feature'])]),
-    ParsedProperty(name='end', value='VEVENT', params=None),
-    ParsedProperty(name='begin', value='VTODO', params=None),
-    ParsedProperty(name='uid', value='todo-1', params=None),
-    ParsedProperty(name='dtstart', value='20260708T150000Z', params=None),
-    ParsedProperty(name='color', value='red', params=None),
-    ParsedProperty(name='image', value='http://example.com/todo.jpg', params=[ParsedPropertyParameter(name='DISPLAY', values=['FULLSIZE'])]),
-    ParsedProperty(name='conference', value='https://slack.com/123', params=[ParsedPropertyParameter(name='FEATURE', values=['CHAT']), ParsedPropertyParameter(name='LABEL', values=['Slack Channel'])]),
-    ParsedProperty(name='end', value='VTODO', params=None),
-    ParsedProperty(name='begin', value='VJOURNAL', params=None),
-    ParsedProperty(name='uid', value='journal-1', params=None),
-    ParsedProperty(name='dtstart', value='20260708T150000Z', params=None),
-    ParsedProperty(name='color', value='green', params=None),
-    ParsedProperty(name='image', value='http://example.com/journal.jpg', params=[ParsedPropertyParameter(name='DISPLAY', values=['BADGE'])]),
-    ParsedProperty(name='end', value='VJOURNAL', params=None),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='event-1',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='20260708T150000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='20260708T160000Z',
+    ),
+    ParsedProperty(
+      name='color',
+      params=None,
+      value='blue',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='DISPLAY',
+          values=list([
+            'THUMBNAIL',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='FMTTYPE',
+          values=list([
+            'image/jpeg',
+          ]),
+        ),
+      ]),
+      value='http://example.com/event.jpg',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='DISPLAY',
+          values=list([
+            'x-custom-display',
+          ]),
+        ),
+      ]),
+      value='http://example.com/custom.jpg',
+    ),
+    ParsedProperty(
+      name='conference',
+      params=list([
+        ParsedPropertyParameter(
+          name='FEATURE',
+          values=list([
+            'AUDIO',
+            'VIDEO',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='LABEL',
+          values=list([
+            'Zoom Meeting',
+          ]),
+        ),
+      ]),
+      value='https://zoom.us/j/123456',
+    ),
+    ParsedProperty(
+      name='conference',
+      params=list([
+        ParsedPropertyParameter(
+          name='FEATURE',
+          values=list([
+            'x-custom-feature',
+          ]),
+        ),
+      ]),
+      value='https://custom-conf.com',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VTODO',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='todo-1',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='20260708T150000Z',
+    ),
+    ParsedProperty(
+      name='color',
+      params=None,
+      value='red',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='DISPLAY',
+          values=list([
+            'FULLSIZE',
+          ]),
+        ),
+      ]),
+      value='http://example.com/todo.jpg',
+    ),
+    ParsedProperty(
+      name='conference',
+      params=list([
+        ParsedPropertyParameter(
+          name='FEATURE',
+          values=list([
+            'CHAT',
+          ]),
+        ),
+        ParsedPropertyParameter(
+          name='LABEL',
+          values=list([
+            'Slack Channel',
+          ]),
+        ),
+      ]),
+      value='https://slack.com/123',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VTODO',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VJOURNAL',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='journal-1',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='20260708T150000Z',
+    ),
+    ParsedProperty(
+      name='color',
+      params=None,
+      value='green',
+    ),
+    ParsedProperty(
+      name='image',
+      params=list([
+        ParsedPropertyParameter(
+          name='DISPLAY',
+          values=list([
+            'BADGE',
+          ]),
+        ),
+      ]),
+      value='http://example.com/journal.jpg',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VJOURNAL',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[rdate]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='rdate', value='19970304,19970504,19970704,19970904', params=[ParsedPropertyParameter(name='VALUE', values=['DATE'])]),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='rdate',
+      params=list([
+        ParsedPropertyParameter(
+          name='VALUE',
+          values=list([
+            'DATE',
+          ]),
+        ),
+      ]),
+      value='19970304,19970504,19970704,19970904',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[unicode]
   list([
-    ParsedProperty(name='begin', value='VCALENDAR', params=None),
-    ParsedProperty(name='prodid', value='-//ABC Corporation//NONSGML My Product//EN', params=None),
-    ParsedProperty(name='version', value='2.0', params=None),
-    ParsedProperty(name='begin', value='VTODO', params=None),
-    ParsedProperty(name='dtstamp', value='19980130T134500Z', params=None),
-    ParsedProperty(name='sequence', value='2', params=None),
-    ParsedProperty(name='uid', value='uid4@example.com', params=None),
-    ParsedProperty(name='due', value='19980415T000000', params=None),
-    ParsedProperty(name='status', value='NEEDS-ACTION', params=None),
-    ParsedProperty(name='summary', value='Birthday', params=None),
-    ParsedProperty(name='begin', value='VALARM', params=None),
-    ParsedProperty(name='action', value='AUDIO', params=None),
-    ParsedProperty(name='trigger', value='19980403T120000Z', params=None),
-    ParsedProperty(name='attach', value='https://someurl.com', params=[ParsedPropertyParameter(name='FILENAME', values=['Fødselsdag_40.pdf'])]),
-    ParsedProperty(name='repeat', value='4', params=None),
-    ParsedProperty(name='duration', value='PT1H', params=None),
-    ParsedProperty(name='end', value='VALARM', params=None),
-    ParsedProperty(name='end', value='VTODO', params=None),
-    ParsedProperty(name='end', value='VCALENDAR', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VCALENDAR',
+    ),
+    ParsedProperty(
+      name='prodid',
+      params=None,
+      value='-//ABC Corporation//NONSGML My Product//EN',
+    ),
+    ParsedProperty(
+      name='version',
+      params=None,
+      value='2.0',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VTODO',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19980130T134500Z',
+    ),
+    ParsedProperty(
+      name='sequence',
+      params=None,
+      value='2',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='uid4@example.com',
+    ),
+    ParsedProperty(
+      name='due',
+      params=None,
+      value='19980415T000000',
+    ),
+    ParsedProperty(
+      name='status',
+      params=None,
+      value='NEEDS-ACTION',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='Birthday',
+    ),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VALARM',
+    ),
+    ParsedProperty(
+      name='action',
+      params=None,
+      value='AUDIO',
+    ),
+    ParsedProperty(
+      name='trigger',
+      params=None,
+      value='19980403T120000Z',
+    ),
+    ParsedProperty(
+      name='attach',
+      params=list([
+        ParsedPropertyParameter(
+          name='FILENAME',
+          values=list([
+            'Fødselsdag_40.pdf',
+          ]),
+        ),
+      ]),
+      value='https://someurl.com',
+    ),
+    ParsedProperty(
+      name='repeat',
+      params=None,
+      value='4',
+    ),
+    ParsedProperty(
+      name='duration',
+      params=None,
+      value='PT1H',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VALARM',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VTODO',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VCALENDAR',
+    ),
   ])
 # ---
 # name: test_from_ics[vcalendar_emoji]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='dtstamp', value='20221202T075310', params=None),
-    ParsedProperty(name='uid', value='5deea302-7216-11ed-b1b6-48d2240d04ae', params=None),
-    ParsedProperty(name='dtstart', value='20221202T085500', params=None),
-    ParsedProperty(name='dtend', value='20221202T090000', params=None),
-    ParsedProperty(name='summary', value='🎄emojis!', params=None),
-    ParsedProperty(name='created', value='20221202T075310', params=None),
-    ParsedProperty(name='sequence', value='0', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='20221202T075310',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='5deea302-7216-11ed-b1b6-48d2240d04ae',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='20221202T085500',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='20221202T090000',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='🎄emojis!',
+    ),
+    ParsedProperty(
+      name='created',
+      params=None,
+      value='20221202T075310',
+    ),
+    ParsedProperty(
+      name='sequence',
+      params=None,
+      value='0',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
 # name: test_from_ics[vevent]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='uid', value='19970901T130000Z-123401@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='19970901T130000Z', params=None),
-    ParsedProperty(name='dtstart', value='19970903T163000Z', params=None),
-    ParsedProperty(name='dtend', value='19970903T190000Z', params=None),
-    ParsedProperty(name='summary', value='Annual Employee Review', params=None),
-    ParsedProperty(name='class', value='PRIVATE', params=None),
-    ParsedProperty(name='categories', value='BUSINESS,HUMAN RESOURCES', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='19970901T130000Z-123401@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='19970901T130000Z',
+    ),
+    ParsedProperty(
+      name='dtstart',
+      params=None,
+      value='19970903T163000Z',
+    ),
+    ParsedProperty(
+      name='dtend',
+      params=None,
+      value='19970903T190000Z',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='Annual Employee Review',
+    ),
+    ParsedProperty(
+      name='class',
+      params=None,
+      value='PRIVATE',
+    ),
+    ParsedProperty(
+      name='categories',
+      params=None,
+      value='BUSINESS,HUMAN RESOURCES',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
 # name: test_from_ics[vtodo]
   list([
-    ParsedProperty(name='begin', value='VTODO', params=None),
-    ParsedProperty(name='uid', value='20070313T123432Z-456553@example.com', params=None),
-    ParsedProperty(name='dtstamp', value='20070313T123432Z', params=None),
-    ParsedProperty(name='due', value='20070501', params=[ParsedPropertyParameter(name='VALUE', values=['DATE'])]),
-    ParsedProperty(name='summary', value='Submit Quebec Income Tax Return for 2006', params=None),
-    ParsedProperty(name='class', value='CONFIDENTIAL', params=None),
-    ParsedProperty(name='categories', value='FAMILY,FINANCE', params=None),
-    ParsedProperty(name='status', value='NEEDS-ACTION', params=None),
-    ParsedProperty(name='end', value='VTODO', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VTODO',
+    ),
+    ParsedProperty(
+      name='uid',
+      params=None,
+      value='20070313T123432Z-456553@example.com',
+    ),
+    ParsedProperty(
+      name='dtstamp',
+      params=None,
+      value='20070313T123432Z',
+    ),
+    ParsedProperty(
+      name='due',
+      params=list([
+        ParsedPropertyParameter(
+          name='VALUE',
+          values=list([
+            'DATE',
+          ]),
+        ),
+      ]),
+      value='20070501',
+    ),
+    ParsedProperty(
+      name='summary',
+      params=None,
+      value='Submit Quebec Income Tax Return for 2006',
+    ),
+    ParsedProperty(
+      name='class',
+      params=None,
+      value='CONFIDENTIAL',
+    ),
+    ParsedProperty(
+      name='categories',
+      params=None,
+      value='FAMILY,FINANCE',
+    ),
+    ParsedProperty(
+      name='status',
+      params=None,
+      value='NEEDS-ACTION',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VTODO',
+    ),
   ])
 # ---
 # name: test_from_ics[x-name]
   list([
-    ParsedProperty(name='begin', value='VEVENT', params=None),
-    ParsedProperty(name='x-description', value='This is a description', params=None),
-    ParsedProperty(name='x-ical-description', value='This is a description', params=None),
-    ParsedProperty(name='x-ical-1', value='This is another x-name', params=None),
-    ParsedProperty(name='end', value='VEVENT', params=None),
+    ParsedProperty(
+      name='begin',
+      params=None,
+      value='VEVENT',
+    ),
+    ParsedProperty(
+      name='x-description',
+      params=None,
+      value='This is a description',
+    ),
+    ParsedProperty(
+      name='x-ical-description',
+      params=None,
+      value='This is a description',
+    ),
+    ParsedProperty(
+      name='x-ical-1',
+      params=None,
+      value='This is another x-name',
+    ),
+    ParsedProperty(
+      name='end',
+      params=None,
+      value='VEVENT',
+    ),
   ])
 # ---
