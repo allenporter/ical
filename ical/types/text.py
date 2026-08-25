@@ -54,8 +54,7 @@ class TextEncoder:
     @classmethod
     def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue:
         """Encode as jCal parameters and value list."""
-        if isinstance(value, (list, tuple)):
-            values = [v.value if hasattr(v, "value") else str(v) for v in value]
-            return EncodedJcalValue({}, values)
-        str_val = value.value if hasattr(value, "value") else str(value)
-        return EncodedJcalValue({}, [str_val])
+        values = value if isinstance(value, (list, tuple)) else [value]
+        return EncodedJcalValue(
+            {}, [v.value if hasattr(v, "value") else str(v) for v in values]
+        )

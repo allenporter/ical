@@ -132,6 +132,15 @@ class CalendarStream(ComponentModel):
 
         return cls(calendars=[Calendar.from_jcal(c) for c in jcal_data])
 
+    @staticmethod
+    def _single_calendar(stream: "CalendarStream") -> Calendar:
+        """Return the single calendar in the stream, or raise an error."""
+        if len(stream.calendars) == 1:
+            return stream.calendars[0]
+        if len(stream.calendars) == 0:
+            return Calendar()
+        raise CalendarParseError("Calendar Stream had more than one calendar")
+
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
         return encode_content(self.__encode_component_root__().components)
@@ -164,15 +173,6 @@ class IcsCalendarStream(CalendarStream):
         stream = await cls.from_url(url, session=session)
         return cls._single_calendar(stream)
 
-    @staticmethod
-    def _single_calendar(stream: "CalendarStream") -> Calendar:
-        """Return the single calendar in the stream, or raise an error."""
-        if len(stream.calendars) == 1:
-            return stream.calendars[0]
-        if len(stream.calendars) == 0:
-            return Calendar()
-        raise CalendarParseError("Calendar Stream had more than one calendar")
-
     @classmethod
     def calendar_to_ics(cls, calendar: Calendar) -> str:
         """Serialize a calendar as an ICS stream."""
@@ -198,19 +198,9 @@ class JcalCalendarStream(CalendarStream):
             )
         if isinstance(jcal_data[0], str):
             return Calendar.from_jcal(jcal_data)
-        stream = cls.from_jcal(jcal_data)
-        return cls._single_calendar(stream)
+        return cls._single_calendar(cls.from_jcal(jcal_data))
 
     @classmethod
     def calendar_to_jcal(cls, calendar: Calendar) -> list[Any]:
         """Serialize a calendar as a jCal object."""
         return calendar.as_jcal()
-
-    @staticmethod
-    def _single_calendar(stream: "CalendarStream") -> Calendar:
-        """Return the single calendar in the stream, or raise an error."""
-        if len(stream.calendars) == 1:
-            return stream.calendars[0]
-        if len(stream.calendars) == 0:
-            return Calendar()
-        raise CalendarParseError("Calendar Stream had more than one calendar")

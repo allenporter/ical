@@ -2,6 +2,7 @@
 
 import datetime
 import re
+from typing import Any
 
 from ical.compat.duration_compat import is_duration_compat_enabled
 from ical.parsing.property import ParsedProperty
@@ -19,6 +20,24 @@ COMPAT_DATETIME_PART = f"(?:{DATE_PART})?(?:{COMPAT_TIME_PART})?"
 COMPAT_DURATION_REGEX = re.compile(f"([-+]?)P(?:{WEEKS_PART}{COMPAT_DATETIME_PART})$")
 
 
+def _parse_duration(value: str) -> datetime.timedelta:
+    """Parse an ISO 8601 / RFC 5545 duration string into a timedelta."""
+    match = DURATION_REGEX.fullmatch(value)
+    if not match and is_duration_compat_enabled():
+        match = COMPAT_DURATION_REGEX.fullmatch(value)
+    if not match:
+        raise ValueError(f"Expected value to match DURATION pattern: {value}")
+    sign, weeks, days, hours, minutes, seconds = match.groups()
+    result = datetime.timedelta(
+        weeks=int(weeks or 0),
+        days=int(days or 0),
+        hours=int(hours or 0),
+        minutes=int(minutes or 0),
+        seconds=int(seconds or 0),
+    )
+    return -result if sign == "-" else result
+
+
 @DATA_TYPE.register("DURATION")
 class DurationEncoder:
     """Class that can encode DURATION values."""
@@ -29,25 +48,10 @@ class DurationEncoder:
 
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.timedelta:
-        """Parse a rfc5545 into a datetime.date."""
+        """Parse an rfc5545 property into a datetime.timedelta."""
         if not isinstance(prop, ParsedProperty):
             raise ValueError(f"Expected ParsedProperty but was {prop}")
-        match = DURATION_REGEX.fullmatch(prop.value)
-        if not match and is_duration_compat_enabled():
-            match = COMPAT_DURATION_REGEX.fullmatch(prop.value)
-        if not match:
-            raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
-        sign, weeks, days, hours, minutes, seconds = match.groups()
-        result: datetime.timedelta = datetime.timedelta(
-            weeks=int(weeks or 0),
-            days=int(days or 0),
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-            seconds=int(seconds or 0),
-        )
-        if sign == "-":
-            result = -result
-        return result
+        return _parse_duration(prop.value)
 
     @classmethod
     def __parse_jcal_value__(
@@ -58,22 +62,7 @@ class DurationEncoder:
             return value
         if not isinstance(value, str):
             raise ValueError(f"Expected string for jCal duration, got {type(value)}")
-        match = DURATION_REGEX.fullmatch(value)
-        if not match and is_duration_compat_enabled():
-            match = COMPAT_DURATION_REGEX.fullmatch(value)
-        if not match:
-            raise ValueError(f"Expected value to match DURATION pattern: {value}")
-        sign, weeks, days, hours, minutes, seconds = match.groups()
-        result: datetime.timedelta = datetime.timedelta(
-            weeks=int(weeks or 0),
-            days=int(days or 0),
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-            seconds=int(seconds or 0),
-        )
-        if sign == "-":
-            result = -result
-        return result
+        return _parse_duration(value)
 
     @classmethod
     def __encode_property_json__(cls, duration: datetime.timedelta) -> str:
@@ -117,6 +106,9 @@ class DurationEncoder:
         cls, duration: str | datetime.timedelta
     ) -> EncodedJcalValue:
         """Encode as jCal parameters and value list."""
-        if isinstance(duration, str):
-            return EncodedJcalValue({}, [duration])
-        return EncodedJcalValue({}, [cls.__encode_property_json__(duration)])
+        val = (
+            duration
+            if isinstance(duration, str)
+            else cls.__encode_property_json__(duration)
+        )
+        return EncodedJcalValue({}, [val])

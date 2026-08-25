@@ -52,20 +52,19 @@ class ExtraPropertyEncoder:
     def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
         """Encode as jCal parameters and value list."""
         if isinstance(value, ExtraProperty):
-            params_dict: dict[str, Any] = {}
-            if value.params:
-                for p in value.params:
-                    params_dict[p.name.lower()] = (
-                        p.values[0] if len(p.values) == 1 else p.values
-                    )
-            return EncodedJcalValue(params_dict, [value.value])
+            params = {
+                p.name.lower(): (p.values[0] if len(p.values) == 1 else p.values)
+                for p in (value.params or [])
+            }
+            return EncodedJcalValue(params, [value.value])
         if isinstance(value, dict):
-            params_dict = {}
-            for p in value.get("params", []):
-                params_dict[p["name"].lower()] = (
+            params = {
+                p["name"].lower(): (
                     p["values"][0] if len(p["values"]) == 1 else p["values"]
                 )
-            return EncodedJcalValue(params_dict, [value["value"]])
+                for p in value.get("params", [])
+            }
+            return EncodedJcalValue(params, [value["value"]])
         return None
 
     @classmethod

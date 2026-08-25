@@ -51,11 +51,11 @@ class DateEncoder:
     @classmethod
     def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> datetime.date:
         """Parse an RFC 7265 jCal date into a datetime.date."""
-        if isinstance(value, datetime.date) and not isinstance(
-            value, datetime.datetime
-        ):
+        if type(value) is datetime.date:
             return value
         if isinstance(value, str):
+            if "T" in value:
+                raise ValueError(f"Expected date string without time in jCal: {value}")
             try:
                 return datetime.date.fromisoformat(value)
             except ValueError as err:
@@ -81,6 +81,6 @@ class DateEncoder:
     @classmethod
     def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
         """Encode as jCal parameters and value list."""
-        if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
+        if type(value) is not datetime.date:
             return None
         return EncodedJcalValue({}, [value.isoformat()])

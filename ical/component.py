@@ -271,10 +271,7 @@ class ComponentModel(BaseModel):
                 f"Invalid jCal component structure: expected 3 elements, got {jcal_data!r}"
             )
 
-        name = str(jcal_data[0]).lower()
-        raw_props = jcal_data[1]
-        raw_subcomps = jcal_data[2]
-
+        _, raw_props, raw_subcomps = jcal_data
         if not isinstance(raw_props, list) or not isinstance(raw_subcomps, list):
             raise CalendarParseError(
                 f"Invalid jCal component properties or subcomponents list: {jcal_data!r}"
@@ -310,32 +307,29 @@ class ComponentModel(BaseModel):
                 ):
                     is_subcomponent = True
                     if subcomp_list := subcomponents_by_name.get(key):
-                        if type_info.is_repeated:
-                            model_data[field_name] = [
-                                field_type.from_jcal(sc) for sc in subcomp_list
-                            ]
-                        else:
-                            model_data[field_name] = field_type.from_jcal(
-                                subcomp_list[0]
-                            )
+                        model_data[field_name] = (
+                            [field_type.from_jcal(sc) for sc in subcomp_list]
+                            if type_info.is_repeated
+                            else field_type.from_jcal(subcomp_list[0])
+                        )
                     break
 
-            if not is_subcomponent:
-                if prop_list := properties_by_name.get(key):
-                    matched_prop_keys.add(key)
-                    model_data[field_name] = DATA_TYPE.parse_jcal_field(
-                        field, key, prop_list
-                    )
+            if not is_subcomponent and (prop_list := properties_by_name.get(key)):
+                matched_prop_keys.add(key)
+                model_data[field_name] = DATA_TYPE.parse_jcal_field(
+                    field, key, prop_list
+                )
 
-        extras: list[ExtraProperty] = []
-        for prop_key, prop_list in properties_by_name.items():
-            if prop_key not in matched_prop_keys:
-                for p in prop_list:
-                    val = p[3] if len(p) == 4 else (p[3:] if len(p) > 4 else "")
-                    extras.append(
-                        ExtraPropertyEncoder.__parse_jcal_value__(val, p[1], name=p[0])
-                    )
-
+        extras = [
+            ExtraPropertyEncoder.__parse_jcal_value__(
+                p[3] if len(p) == 4 else (p[3:] if len(p) > 4 else ""),
+                p[1] if isinstance(p[1], dict) else {},
+                name=p[0],
+            )
+            for prop_key, prop_list in properties_by_name.items()
+            if prop_key not in matched_prop_keys
+            for p in prop_list
+        ]
         if extras:
             model_data["extras"] = extras
 
@@ -344,19 +338,20 @@ class ComponentModel(BaseModel):
         except ValidationError as err:
             raise CalendarParseError(f"Failed to parse jCal component: {err}") from err
 
-    def as_jcal(self) -> list[Any]:
+    def as_jcal(self, name: str | None = None) -> list[Any]:
         """Encode this component model as an RFC 7265 jCal array."""
-        name = self.__class__.__name__.lower()
-        if not name.startswith("v"):
-            name = f"v{name}"
+        if not name:
+            name = self.__class__.__name__.lower()
+            if not name.startswith("v"):
+                name = f"v{name}"
 
         properties: list[list[Any]] = []
         subcomponents: list[list[Any]] = []
         for field_name, field in self.__class__.model_fields.items():
-            key = field.alias or field_name
             if (val := getattr(self, field_name)) is None:
                 continue
 
+            key = field.alias or field_name
             type_info = get_field_type_info(field.annotation)
             if type_info.is_repeated and not val:
                 continue
@@ -368,15 +363,25 @@ class ComponentModel(BaseModel):
                     field_type, ComponentModel
                 ):
                     for subcomp in values:
-                        subcomponents.append(subcomp.as_jcal())
+                        subcomponents.append(subcomp.as_jcal(name=key.lower()))
                     break
             else:
                 if type_info.is_repeated and key.lower() in EXPAND_REPEATED_VALUES:
-                    properties.append(
-                        DATA_TYPE.encode_jcal_property(
-                            key.lower(), field.annotation, val
+                    encoded_props = [
+                        DATA_TYPE.encode_jcal_property(key.lower(), annotation, item)
+                        for item in values
+                    ]
+                    grouped: dict[tuple[str, str, str], list[Any]] = {}
+                    for prop in encoded_props:
+                        group_key = (
+                            prop[0],
+                            json.dumps(prop[1], sort_keys=True),
+                            prop[2],
                         )
-                    )
+                        if group_key not in grouped:
+                            grouped[group_key] = [prop[0], prop[1], prop[2]]
+                        grouped[group_key].extend(prop[3:])
+                    properties.extend(grouped.values())
                 else:
                     for item in values:
                         properties.append(

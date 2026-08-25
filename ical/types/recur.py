@@ -58,7 +58,7 @@ from ical.parsing.property import ParsedProperty
 from ical.util import parse_date_and_datetime
 from ical.tzif import timezoneinfo
 
-from .data_types import DATA_TYPE, serialize_field
+from .data_types import DATA_TYPE, EncodedJcalValue, serialize_field
 from .date import DateEncoder
 from .date_time import DateTimeEncoder
 
@@ -196,15 +196,23 @@ class RecurrenceId(str):
         """Convert a string RecurrenceId into a date or time value.
 
         Accepts three formats:
-
-        - Plain date: '20250511'
-        - Plain datetime (naive or UTC): '20250511T020000' or '20250511T020000Z'
+        - Plain date: '20250511' or '2025-05-11'
+        - Plain datetime (naive or UTC): '20250511T020000' or '2025-05-11T02:00:00'
         - Inline TZID parameter: 'TZID=America/New_York:20250511T020000'
         """
         # Handle the inline "TZID=tz:DATETIME" format by re-parsing via ParsedProperty
         if "=" in recurrence_id.split(":")[0]:
             prop = ParsedProperty.from_ics(f"RECURRENCE-ID;{recurrence_id}")
             return DateTimeEncoder.__parse_property_value__(prop)
+
+        # Try ISO 8601 format (from jCal)
+        try:
+            if "T" in recurrence_id:
+                return datetime.datetime.fromisoformat(recurrence_id)
+            if "-" in recurrence_id:
+                return datetime.date.fromisoformat(recurrence_id)
+        except ValueError:
+            pass
 
         errors = []
         try:
@@ -280,6 +288,56 @@ class RecurrenceId(str):
         # is accessible via the .tzinfo attribute.  Unparsable values are
         # stored as-is.
         return RecurrenceId(raw_str, tzinfo=tzinfo, range=range_val)
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> "RecurrenceId":
+        """Parse a jCal recurrence-id value, preserving TZID and RANGE params."""
+        tzinfo: datetime.tzinfo | None = None
+        if tzid := params.get("tzid") or params.get("TZID"):
+            try:
+                tzinfo = timezoneinfo.resolve_tzinfo(str(tzid))
+            except timezoneinfo.TimezoneInfoError:
+                _LOGGER.warning("RecurrenceId: unrecognised TZID '%s', ignoring", tzid)
+        range_val = Range.NONE
+        if (r := params.get("range") or params.get("RANGE")) and str(
+            r
+        ).upper() == "THISANDFUTURE":
+            range_val = Range.THIS_AND_FUTURE
+        raw_str = value if isinstance(value, str) else str(value)
+        return RecurrenceId(raw_str, tzinfo=tzinfo, range=range_val)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        params: dict[str, Any] = {}
+        tzinfo: datetime.tzinfo | None = None
+        range_val = Range.NONE
+        if isinstance(value, RecurrenceId):
+            tzinfo = value.tzinfo
+            range_val = value.range
+
+        if tzinfo and tzinfo != datetime.timezone.utc and str(tzinfo) != "UTC":
+            params["tzid"] = str(tzinfo)
+        if range_val == Range.THIS_AND_FUTURE:
+            params["range"] = "THISANDFUTURE"
+
+        val_str = str(value)
+        try:
+            parsed = cls.to_value(val_str)
+            if isinstance(parsed, datetime.datetime):
+                if tzinfo:
+                    parsed = parsed.replace(tzinfo=tzinfo)
+                if parsed.tzinfo and not parsed.utcoffset():
+                    formatted = parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    formatted = parsed.strftime("%Y-%m-%dT%H:%M:%S")
+                return EncodedJcalValue(params, [formatted], type_name="date-time")
+            if isinstance(parsed, datetime.date):
+                return EncodedJcalValue(params, [parsed.isoformat()], type_name="date")
+        except ValueError:
+            pass
+
+        return EncodedJcalValue(params, [val_str], type_name="date-time")
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -642,3 +700,83 @@ class Recur(BaseModel):
             else:
                 result[key] = value
         return result
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> "Recur":
+        """Parse an RFC 7265 jCal recur object into a Recur model."""
+        if isinstance(value, Recur):
+            return value
+        if isinstance(value, str):
+            return cls.from_rrule(value)
+        if not isinstance(value, dict):
+            raise ValueError(f"Expected dict for jCal recur, got {type(value)}")
+
+        data = dict(value)
+        if byday := data.get("byday"):
+            byday_list = byday if isinstance(byday, list) else [byday]
+            parsed_byday = []
+            for item in byday_list:
+                if isinstance(item, str) and (m := WEEKDAY_REGEX.fullmatch(item)):
+                    occ, wd = m.groups()
+                    parsed_byday.append(
+                        {"weekday": wd, "occurrence": int(occ)}
+                        if occ
+                        else {"weekday": wd}
+                    )
+                else:
+                    parsed_byday.append(item)
+            data["byday"] = parsed_byday
+
+        for key in (
+            "bymonth",
+            "bymonthday",
+            "byyearday",
+            "byweekno",
+            "bysetpos",
+            "byhour",
+            "byminute",
+            "bysecond",
+        ):
+            if (val := data.get(key)) is not None and not isinstance(val, list):
+                data[key] = [val]
+
+        return cls.model_validate(data)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode Recur as jCal parameters and value list."""
+        if isinstance(value, str):
+            value = cls.from_rrule(value)
+        if not isinstance(value, Recur):
+            return None
+
+        d: dict[str, Any] = {"freq": value.freq.value}
+        if value.until:
+            if isinstance(value.until, datetime.datetime):
+                if value.until.tzinfo and not value.until.utcoffset():
+                    d["until"] = value.until.strftime("%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    d["until"] = value.until.strftime("%Y-%m-%dT%H:%M:%S")
+            else:
+                d["until"] = value.until.isoformat()
+        if value.count is not None:
+            d["count"] = value.count
+        if value.interval > 1:
+            d["interval"] = value.interval
+        if value.by_weekday:
+            d["byday"] = [str(w) for w in value.by_weekday]
+        for field, key in [
+            (value.by_month, "bymonth"),
+            (value.by_month_day, "bymonthday"),
+            (value.by_year_day, "byyearday"),
+            (value.by_week_no, "byweekno"),
+            (value.by_setpos, "bysetpos"),
+            (value.by_hour, "byhour"),
+            (value.by_minute, "byminute"),
+            (value.by_second, "bysecond"),
+        ]:
+            if field:
+                d[key] = field
+        if value.wkst:
+            d["wkst"] = value.wkst.value
+        return EncodedJcalValue({}, [d])

@@ -38,6 +38,7 @@ class EncodedJcalValue(NamedTuple):
 
     params: dict[str, Any]
     values: list[Any]
+    type_name: str | None = None
 
 
 @dataclasses.dataclass
@@ -82,7 +83,9 @@ class DataType(Protocol):
         """Parse the specified property value as a python type."""
 
     @classmethod
-    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> Any:
+    def __parse_jcal_value__(
+        cls, value: Any, params: dict[str, Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """Parse the specified jCal property value as a python type."""
         return value
 
@@ -112,10 +115,8 @@ class Registry:
         self._type_names: dict[type, str] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
-        self._parse_jcal_value: dict[type, Callable[[Any, dict[str, Any]], Any]] = {}
-        self._parse_jcal_parameter_by_name: dict[
-            str, Callable[[Any, dict[str, Any]], Any]
-        ] = {}
+        self._parse_jcal_value: dict[type, Callable[..., Any]] = {}
+        self._parse_jcal_parameter_by_name: dict[str, Callable[..., Any]] = {}
         self._encode_property: dict[type, Callable[[Any], ParsedProperty | None]] = {}
         self._encode_property_json: dict[
             type, Callable[[Any], str | dict[str, str]]
@@ -303,6 +304,47 @@ class Registry:
     ) -> Any:
         """Parse an individual jCal value as the specified field type."""
         field_types = self.get_ordered_field_types(field_type)
+        errors = []
+
+        if type_name:
+            upper_name = type_name.upper()
+            matching = [
+                st for st in field_types if self._type_names.get(st) == upper_name
+            ]
+            non_matching = [
+                st for st in field_types if self._type_names.get(st) != upper_name
+            ]
+            search_types = matching + non_matching
+        else:
+            search_types = field_types
+
+        for sub_type in search_types:
+            if decoder := self._parse_jcal_value.get(sub_type):
+                try:
+                    try:
+                        return decoder(value, params, type_name=type_name)
+                    except TypeError:
+                        return decoder(value, params)
+                except (ValueError, TypeError) as err:
+                    _LOGGER.debug(
+                        "Unable to parse jCal value as type %s: %s", sub_type, err
+                    )
+                    errors.append(str(err))
+                    continue
+            if isinstance(sub_type, type):
+                if issubclass(sub_type, (str, int, float, bool)):
+                    try:
+                        return sub_type(value)
+                    except (ValueError, TypeError) as err:
+                        errors.append(str(err))
+                        continue
+                if issubclass(sub_type, BaseModel) and isinstance(value, dict):
+                    try:
+                        return sub_type.model_validate(value)
+                    except (ValueError, TypeError) as err:
+                        errors.append(str(err))
+                        continue
+
         if (
             type_name
             and (func := self._parse_jcal_parameter_by_name.get(type_name.upper()))
@@ -317,32 +359,14 @@ class Registry:
                     type_name,
                     err,
                 )
-
-        errors = []
-        for sub_type in field_types:
-            if decoder := self._parse_jcal_value.get(sub_type):
-                try:
-                    return decoder(value, params)
-                except (ValueError, TypeError) as err:
-                    _LOGGER.debug(
-                        "Unable to parse jCal value as type %s: %s", sub_type, err
-                    )
-                    errors.append(str(err))
-                    continue
-            if isinstance(sub_type, type) and issubclass(
-                sub_type, (str, int, float, bool)
-            ):
-                try:
-                    return sub_type(value)
-                except (ValueError, TypeError) as err:
-                    errors.append(str(err))
-                    continue
+                errors.append(str(err))
 
         if value is not None and not errors:
             return value
 
+        type_names = " or ".join(getattr(st, "__name__", str(st)) for st in field_types)
         raise ValueError(
-            f"Failed to validate jCal value: {value} as {' or '.join(getattr(st, '__name__', str(st)) for st in field_types)}, due to: ({errors})"
+            f"Failed to validate jCal value: {value} as {type_names}, due to: ({errors})"
         )
 
     def parse_jcal_field(
@@ -356,58 +380,81 @@ class Registry:
         if not type_info.annotation:
             raise ValueError(f"Unable to determine field type for field: {name}")
 
+        def _extract_meta(p: list[Any]) -> tuple[dict[str, Any], str | None]:
+            params = p[1] if len(p) > 1 and isinstance(p[1], dict) else {}
+            type_name = str(p[2]) if len(p) > 2 else None
+            return params, type_name
+
         if type_info.is_repeated:
             if name.lower() in EXPAND_REPEATED_VALUES:
-                all_values = []
-                for p in props:
-                    params = p[1] if len(p) > 1 and isinstance(p[1], dict) else {}
-                    type_name = str(p[2]) if len(p) > 2 else None
-                    raw_values = p[3:] if len(p) > 3 else []
-                    for val in raw_values:
-                        all_values.append(
-                            self.parse_jcal_single_value(
-                                type_info.annotation, val, params, type_name
-                            )
-                        )
-                return all_values
+                return [
+                    self.parse_jcal_single_value(
+                        type_info.annotation, val, params, type_name
+                    )
+                    for p in props
+                    for params, type_name in [_extract_meta(p)]
+                    for val in p[3:]
+                ]
             return [
                 self.parse_jcal_single_value(
                     type_info.annotation,
                     p[3] if len(p) > 3 else "",
-                    p[1] if len(p) > 1 and isinstance(p[1], dict) else {},
-                    str(p[2]) if len(p) > 2 else None,
+                    params,
+                    type_name,
                 )
                 for p in props
+                for params, type_name in [_extract_meta(p)]
             ]
 
         if len(props) > 1:
             raise ValueError(f"Expected one value for field: {name}")
 
         p = props[0]
-        params = p[1] if len(p) > 1 and isinstance(p[1], dict) else {}
-        type_name = str(p[2]) if len(p) > 2 else None
-        val = p[3] if len(p) > 3 else ""
+        params, type_name = _extract_meta(p)
         return self.parse_jcal_single_value(
-            type_info.annotation, val, params, type_name
+            type_info.annotation,
+            p[3] if len(p) > 3 else "",
+            params,
+            type_name,
         )
 
     def encode_jcal_property(self, key: str, field_type: type, value: Any) -> list[Any]:
         """Encode an individual property value into a jCal 4-element array."""
         errors = []
         for sub_type in self.get_ordered_field_types(field_type):
-            if sub_type in self._type_names:
-                encoder = self._encode_jcal_value.get(
-                    sub_type, lambda val: EncodedJcalValue({}, [val])
+            encoder = None
+            type_name = None
+            if isinstance(sub_type, type):
+                for base in sub_type.__mro__:
+                    if base in self._encode_jcal_value and encoder is None:
+                        encoder = self._encode_jcal_value[base]
+                    if base in self._type_names and type_name is None:
+                        type_name = self._type_names[base]
+                    if encoder and type_name:
+                        break
+
+            if encoder is None and type_name is not None:
+                encoder = lambda val: EncodedJcalValue(
+                    {}, [val.value if hasattr(val, "value") else val]
                 )
+
+            if encoder:
                 try:
                     if result := encoder(value):
-                        type_name = self._type_names[sub_type].lower()
+                        resolved_type_name = (
+                            result.type_name or type_name or "text"
+                        ).lower()
                         prop_name = (
                             value.name.lower()
                             if hasattr(value, "name") and key == "extras"
                             else key
                         )
-                        return [prop_name, result.params, type_name, *result.values]
+                        return [
+                            prop_name,
+                            result.params,
+                            resolved_type_name,
+                            *result.values,
+                        ]
                 except (ValueError, TypeError) as err:
                     _LOGGER.debug(
                         "jCal encoding failed for property type %s: %s", sub_type, err

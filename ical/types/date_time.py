@@ -87,9 +87,11 @@ class DateTimeEncoder:
             return value
         if not isinstance(value, str):
             raise ValueError(f"Expected string for jCal date-time, got {type(value)}")
+        if "T" not in value:
+            raise ValueError(f"Expected DATE-TIME with 'T' separator, got: {value}")
 
         timezone: datetime.tzinfo | None = None
-        if tzid := params.get("tzid"):
+        if tzid := params.get("tzid") or params.get("TZID"):
             try:
                 timezone = timezoneinfo.resolve_tzinfo(str(tzid), allow_invalid=False)
             except timezoneinfo.TimezoneInfoError as err:
@@ -105,9 +107,7 @@ class DateTimeEncoder:
 
         try:
             dt = datetime.datetime.fromisoformat(val)
-            if timezone is not None:
-                dt = dt.replace(tzinfo=timezone)
-            return dt
+            return dt.replace(tzinfo=timezone) if timezone is not None else dt
         except ValueError as err:
             raise ValueError(f"Invalid jCal date-time value: {value}") from err
 
