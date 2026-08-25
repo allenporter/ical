@@ -10,7 +10,7 @@ from ical.compat.date_compat import is_allow_invalid_dates_enabled
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class DateEncoder:
     def __parse_property_value__(cls, prop: ParsedProperty) -> datetime.date | None:
         """Parse a rfc5545 into a datetime.date."""
         val = prop.value
+        if isinstance(val, datetime.date):
+            return val
+
         if len(val) > 8 and "T" in val:
             if is_allow_invalid_dates_enabled():
                 _LOGGER.debug("Stripping time suffix from DATE value: %s", prop.value)
@@ -46,6 +49,20 @@ class DateEncoder:
         return result
 
     @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> datetime.date:
+        """Parse an RFC 7265 jCal date into a datetime.date."""
+        if isinstance(value, datetime.date) and not isinstance(
+            value, datetime.datetime
+        ):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.date.fromisoformat(value)
+            except ValueError as err:
+                raise ValueError(f"Invalid jCal date value: {value}") from err
+        raise ValueError(f"Expected string or date for jCal date, got {type(value)}")
+
+    @classmethod
     def __encode_property_json__(cls, value: datetime.date) -> str:
         """Serialize as an ICS value."""
         return value.strftime("%Y%m%d")
@@ -60,3 +77,10 @@ class DateEncoder:
                 params=[ParsedPropertyParameter(name="VALUE", values=["DATE"])],
             )
         return None
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if not isinstance(value, datetime.date) or isinstance(value, datetime.datetime):
+            return None
+        return EncodedJcalValue({}, [value.isoformat()])

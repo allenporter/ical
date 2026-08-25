@@ -21,15 +21,15 @@ import datetime
 import json
 from functools import cache
 import logging
-from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Self, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic.fields import FieldInfo
 
 from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .parsing.component import ParsedComponent
-from .types.extra import ExtraProperty
-from .types.data_types import DATA_TYPE, get_field_type_info
+from .types.extra import ExtraProperty, ExtraPropertyEncoder
+from .types.data_types import DATA_TYPE, EXPAND_REPEATED_VALUES, get_field_type_info
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
 from .compat import dtstart_until_compat
@@ -262,6 +262,130 @@ class ComponentModel(BaseModel):
                                 )
                         parent.properties.append(prop)
         return parent
+
+    @classmethod
+    def from_jcal(cls, jcal_data: list[Any]) -> Self:
+        """Parse an RFC 7265 jCal component array into a ComponentModel."""
+        if not isinstance(jcal_data, (list, tuple)) or len(jcal_data) != 3:
+            raise CalendarParseError(
+                f"Invalid jCal component structure: expected 3 elements, got {jcal_data!r}"
+            )
+
+        name = str(jcal_data[0]).lower()
+        raw_props = jcal_data[1]
+        raw_subcomps = jcal_data[2]
+
+        if not isinstance(raw_props, list) or not isinstance(raw_subcomps, list):
+            raise CalendarParseError(
+                f"Invalid jCal component properties or subcomponents list: {jcal_data!r}"
+            )
+
+        properties_by_name: dict[str, list[list[Any]]] = {}
+        for p in raw_props:
+            if not isinstance(p, (list, tuple)) or len(p) < 3:
+                raise CalendarParseError(
+                    f"Invalid jCal property structure: expected at least 3 elements, got {p!r}"
+                )
+            properties_by_name.setdefault(str(p[0]).lower(), []).append(p)
+
+        subcomponents_by_name: dict[str, list[list[Any]]] = {}
+        for c in raw_subcomps:
+            if not isinstance(c, (list, tuple)) or len(c) != 3:
+                raise CalendarParseError(
+                    f"Invalid jCal subcomponent structure: expected 3 elements, got {c!r}"
+                )
+            subcomponents_by_name.setdefault(str(c[0]).lower(), []).append(c)
+
+        model_data: dict[str, Any] = {}
+        matched_prop_keys: set[str] = set()
+
+        for field_name, field in cls.model_fields.items():
+            key = (field.alias or field_name).lower()
+            type_info = get_field_type_info(field.annotation)
+
+            is_subcomponent = False
+            for field_type in DATA_TYPE.get_ordered_field_types(type_info.annotation):
+                if isinstance(field_type, type) and issubclass(
+                    field_type, ComponentModel
+                ):
+                    is_subcomponent = True
+                    if subcomp_list := subcomponents_by_name.get(key):
+                        if type_info.is_repeated:
+                            model_data[field_name] = [
+                                field_type.from_jcal(sc) for sc in subcomp_list
+                            ]
+                        else:
+                            model_data[field_name] = field_type.from_jcal(
+                                subcomp_list[0]
+                            )
+                    break
+
+            if not is_subcomponent:
+                if prop_list := properties_by_name.get(key):
+                    matched_prop_keys.add(key)
+                    model_data[field_name] = DATA_TYPE.parse_jcal_field(
+                        field, key, prop_list
+                    )
+
+        extras: list[ExtraProperty] = []
+        for prop_key, prop_list in properties_by_name.items():
+            if prop_key not in matched_prop_keys:
+                for p in prop_list:
+                    val = p[3] if len(p) == 4 else (p[3:] if len(p) > 4 else "")
+                    extras.append(
+                        ExtraPropertyEncoder.__parse_jcal_value__(val, p[1], name=p[0])
+                    )
+
+        if extras:
+            model_data["extras"] = extras
+
+        try:
+            return cls(**model_data)
+        except ValidationError as err:
+            raise CalendarParseError(f"Failed to parse jCal component: {err}") from err
+
+    def as_jcal(self) -> list[Any]:
+        """Encode this component model as an RFC 7265 jCal array."""
+        name = self.__class__.__name__.lower()
+        if not name.startswith("v"):
+            name = f"v{name}"
+
+        properties: list[list[Any]] = []
+        subcomponents: list[list[Any]] = []
+        for field_name, field in self.__class__.model_fields.items():
+            key = field.alias or field_name
+            if (val := getattr(self, field_name)) is None:
+                continue
+
+            type_info = get_field_type_info(field.annotation)
+            if type_info.is_repeated and not val:
+                continue
+            annotation = type_info.annotation
+            values = val if type_info.is_repeated else [val]
+
+            for field_type in DATA_TYPE.get_ordered_field_types(annotation):
+                if isinstance(field_type, type) and issubclass(
+                    field_type, ComponentModel
+                ):
+                    for subcomp in values:
+                        subcomponents.append(subcomp.as_jcal())
+                    break
+            else:
+                if type_info.is_repeated and key.lower() in EXPAND_REPEATED_VALUES:
+                    properties.append(
+                        DATA_TYPE.encode_jcal_property(
+                            key.lower(), field.annotation, val
+                        )
+                    )
+                else:
+                    for item in values:
+                        properties.append(
+                            DATA_TYPE.encode_jcal_property(
+                                key.lower(), annotation, item
+                            )
+                        )
+
+        return [name.lower(), properties, subcomponents]
 
     model_config = ConfigDict(
         validate_assignment=True,

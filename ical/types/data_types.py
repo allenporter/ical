@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Any,
+    NamedTuple,
     Protocol,
     TypeVar,
     Union,
@@ -32,6 +33,13 @@ _LOGGER = logging.getLogger(__name__)
 T_TYPE = TypeVar("T_TYPE", bound=type)
 
 
+class EncodedJcalValue(NamedTuple):
+    """An encoded jCal property value pre-serialization."""
+
+    params: dict[str, Any]
+    values: list[Any]
+
+
 @dataclasses.dataclass
 class FieldTypeInfo:
     """Information about a field type."""
@@ -40,13 +48,13 @@ class FieldTypeInfo:
     """The base type of the field (e.g. without Optional or list)."""
 
     is_repeated: bool = False
-    """Whether the field is a list."""
+    """True if the field is a list."""
 
     is_optional: bool = False
-    """Whether the field is Optional."""
+    """True if the field is an Optional."""
 
 
-# Repeated values can either be specified as multiple separate values, but
+# Properties that are represented as a list in the python data model, but
 # also some values support repeated values within a single value with a
 # comma delimiter, listed here.
 EXPAND_REPEATED_VALUES = {
@@ -74,6 +82,11 @@ class DataType(Protocol):
         """Parse the specified property value as a python type."""
 
     @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> Any:
+        """Parse the specified jCal property value as a python type."""
+        return value
+
+    @classmethod
     def __encode_property__(cls, value: Any) -> ParsedProperty | None:
         """Encode the property from the object model to a ParsedProperty."""
         return ParsedProperty(name="", value=value)
@@ -81,6 +94,21 @@ class DataType(Protocol):
     @classmethod
     def __encode_property_json__(cls, value: Any) -> str | dict[str, str]:
         """Encode the property during pydantic serialization to object model."""
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode the property value as jCal parameters dict and value list."""
+        return EncodedJcalValue({}, [value])
+
+
+def unpack_jcal_property(
+    prop: list[Any],
+) -> tuple[dict[str, Any], str | None, list[Any]]:
+    """Unpack a jCal property array into (parameters_dict, type_name, values_list)."""
+    params = prop[1] if len(prop) > 1 and isinstance(prop[1], dict) else {}
+    type_name = str(prop[2]) if len(prop) > 2 else None
+    values = prop[3:] if len(prop) > 3 else []
+    return params, type_name, values
 
 
 class Registry:
@@ -91,11 +119,19 @@ class Registry:
     ) -> None:
         """Initialize Registry."""
         self._items: dict[str, type] = {}
+        self._type_names: dict[type, str] = {}
         self._parse_property_value: dict[type, Callable[[ParsedProperty], Any]] = {}
         self._parse_parameter_by_name: dict[str, Callable[[ParsedProperty], Any]] = {}
+        self._parse_jcal_value: dict[type, Callable[[Any, dict[str, Any]], Any]] = {}
+        self._parse_jcal_parameter_by_name: dict[
+            str, Callable[[Any, dict[str, Any]], Any]
+        ] = {}
         self._encode_property: dict[type, Callable[[Any], ParsedProperty | None]] = {}
         self._encode_property_json: dict[
             type, Callable[[Any], str | dict[str, str]]
+        ] = {}
+        self._encode_jcal_value: dict[
+            type, Callable[[Any], EncodedJcalValue | None]
         ] = {}
         self._disable_value_param: set[type] = set()
         self._parse_order: dict[type, int] = {}
@@ -244,14 +280,22 @@ class Registry:
             data_type = func
             if data_type_func := getattr(func, "__property_type__", None):
                 data_type = data_type_func()
+            if name:
+                self._type_names[data_type] = name
             if parse_property_value := getattr(func, "__parse_property_value__", None):
                 self._parse_property_value[data_type] = parse_property_value
                 if name:
                     self._parse_parameter_by_name[name] = parse_property_value
+            if parse_jcal_value := getattr(func, "__parse_jcal_value__", None):
+                self._parse_jcal_value[data_type] = parse_jcal_value
+                if name:
+                    self._parse_jcal_parameter_by_name[name] = parse_jcal_value
             if encode_property := getattr(func, "__encode_property__", None):
                 self._encode_property[data_type] = encode_property
             if encode_property_json := getattr(func, "__encode_property_json__", None):
                 self._encode_property_json[data_type] = encode_property_json
+            if encode_jcal_value := getattr(func, "__encode_jcal_value__", None):
+                self._encode_jcal_value[data_type] = encode_jcal_value
             if disable_value_param:
                 self._disable_value_param |= set({data_type})
             if parse_order:
@@ -259,6 +303,129 @@ class Registry:
             return func
 
         return decorator
+
+    def parse_jcal_single_value(
+        self,
+        field_type: type,
+        value: Any,
+        params: dict[str, Any],
+        type_name: str | None = None,
+    ) -> Any:
+        """Parse an individual jCal value as the specified field type."""
+        field_types = self.get_ordered_field_types(field_type)
+        if (
+            type_name
+            and (func := self._parse_jcal_parameter_by_name.get(type_name.upper()))
+            and field_type not in self._disable_value_param
+        ):
+            try:
+                return func(value, params)
+            except (ValueError, TypeError) as err:
+                _LOGGER.debug(
+                    "Parsing jCal value '%s' with type name '%s' failed: %s",
+                    value,
+                    type_name,
+                    err,
+                )
+
+        errors = []
+        for sub_type in field_types:
+            if decoder := self._parse_jcal_value.get(sub_type):
+                try:
+                    return decoder(value, params)
+                except (ValueError, TypeError) as err:
+                    _LOGGER.debug(
+                        "Unable to parse jCal value as type %s: %s", sub_type, err
+                    )
+                    errors.append(str(err))
+                    continue
+            if isinstance(sub_type, type) and issubclass(
+                sub_type, (str, int, float, bool)
+            ):
+                try:
+                    return sub_type(value)
+                except (ValueError, TypeError) as err:
+                    errors.append(str(err))
+                    continue
+
+        if value is not None and not errors:
+            return value
+
+        raise ValueError(
+            f"Failed to validate jCal value: {value} as {' or '.join(getattr(st, '__name__', str(st)) for st in field_types)}, due to: ({errors})"
+        )
+
+    def parse_jcal_field(
+        self,
+        field: FieldInfo,
+        name: str,
+        props: list[list[Any]],
+    ) -> Any:
+        """Parse a list of jCal property items for a specific model field."""
+        type_info = get_field_type_info(field.annotation)
+        if not type_info.annotation:
+            raise ValueError(f"Unable to determine field type for field: {name}")
+
+        if type_info.is_repeated:
+            if name.lower() in EXPAND_REPEATED_VALUES:
+                # Multi-valued jCal property array, e.g. ["categories", {}, "text", "Work", "Home"]
+                all_values = []
+                for p in props:
+                    params, type_name, raw_values = unpack_jcal_property(p)
+                    for val in raw_values:
+                        all_values.append(
+                            self.parse_jcal_single_value(
+                                type_info.annotation, val, params, type_name
+                            )
+                        )
+                return all_values
+
+            # Standard repeated property lines in component
+            parsed_items = []
+            for p in props:
+                params, type_name, raw_values = unpack_jcal_property(p)
+                val = raw_values[0] if raw_values else ""
+                parsed_items.append(
+                    self.parse_jcal_single_value(
+                        type_info.annotation, val, params, type_name
+                    )
+                )
+            return parsed_items
+
+        if len(props) > 1:
+            raise ValueError(f"Expected one value for field: {name}")
+
+        params, type_name, raw_values = unpack_jcal_property(props[0])
+        val = raw_values[0] if raw_values else ""
+        return self.parse_jcal_single_value(
+            type_info.annotation, val, params, type_name
+        )
+
+    def encode_jcal_property(self, key: str, field_type: type, value: Any) -> list[Any]:
+        """Encode an individual property value into a jCal 4-element array."""
+        errors = []
+        for sub_type in self.get_ordered_field_types(field_type):
+            if sub_type in self._type_names:
+                encoder = self._encode_jcal_value.get(
+                    sub_type, lambda val: EncodedJcalValue({}, [val])
+                )
+                try:
+                    if result := encoder(value):
+                        type_name = self._type_names[sub_type].lower()
+                        # The model field for unmodeled properties is "extras", but the jCal
+                        # property name is the actual dynamic name stored on the ExtraProperty.
+                        prop_name = value.name.lower() if key == "extras" else key
+                        return [prop_name, result.params, type_name, *result.values]
+                except (ValueError, TypeError) as err:
+                    _LOGGER.debug(
+                        "jCal encoding failed for property type %s: %s", sub_type, err
+                    )
+                    errors.append(str(err))
+                    continue
+
+        raise ValueError(
+            f"Unable to encode jCal property for field '{key}': {value}, errors: {errors}"
+        )
 
     @property
     def encode_property_json(self) -> dict[type, Callable[[Any], str | dict[str, str]]]:

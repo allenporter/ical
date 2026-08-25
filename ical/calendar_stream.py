@@ -38,7 +38,7 @@ stream = await IcsCalendarStream.from_url("https://example.com/calendar.ics")
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field, field_serializer
 
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["CalendarStream", "IcsCalendarStream"]
+__all__ = ["CalendarStream", "IcsCalendarStream", "JcalCalendarStream"]
 
 _ASYNC_EXTRA_ERROR = (
     "The aiohttp library is required for async URL fetching. Install it "
@@ -120,9 +120,27 @@ class CalendarStream(ComponentModel):
                 content = await _fetch(owned_session)
         return cls.from_ics(content)
 
+    @classmethod
+    def from_jcal(cls, jcal_data: list[Any]) -> "CalendarStream":
+        """Factory method to create a new instance from an RFC 7265 jCal content."""
+        if not isinstance(jcal_data, (list, tuple)) or not jcal_data:
+            raise CalendarParseError(
+                f"Invalid jCal data: expected non-empty list, got {jcal_data!r}"
+            )
+        if isinstance(jcal_data[0], str):
+            return cls(calendars=[Calendar.from_jcal(jcal_data)])
+
+        return cls(calendars=[Calendar.from_jcal(c) for c in jcal_data])
+
     def ics(self) -> str:
         """Encode the calendar stream as an rfc5545 iCalendar Stream content."""
         return encode_content(self.__encode_component_root__().components)
+
+    def jcal(self) -> list[Any]:
+        """Encode the calendar stream as an RFC 7265 jCal Stream content."""
+        if len(self.calendars) == 1:
+            return self.calendars[0].as_jcal()
+        return [cal.as_jcal() for cal in self.calendars]
 
 
 class IcsCalendarStream(CalendarStream):
@@ -166,3 +184,33 @@ class IcsCalendarStream(CalendarStream):
         populate_by_name=True,
     )
     serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
+
+
+class JcalCalendarStream(CalendarStream):
+    """A calendar stream that supports parsing and encoding jCal."""
+
+    @classmethod
+    def calendar_from_jcal(cls, jcal_data: list[Any]) -> Calendar:
+        """Load a single calendar from a jCal object or stream."""
+        if not isinstance(jcal_data, (list, tuple)) or not jcal_data:
+            raise CalendarParseError(
+                f"Invalid jCal data: expected non-empty list, got {jcal_data!r}"
+            )
+        if isinstance(jcal_data[0], str):
+            return Calendar.from_jcal(jcal_data)
+        stream = cls.from_jcal(jcal_data)
+        return cls._single_calendar(stream)
+
+    @classmethod
+    def calendar_to_jcal(cls, calendar: Calendar) -> list[Any]:
+        """Serialize a calendar as a jCal object."""
+        return calendar.as_jcal()
+
+    @staticmethod
+    def _single_calendar(stream: "CalendarStream") -> Calendar:
+        """Return the single calendar in the stream, or raise an error."""
+        if len(stream.calendars) == 1:
+            return stream.calendars[0]
+        if len(stream.calendars) == 0:
+            return Calendar()
+        raise CalendarParseError("Calendar Stream had more than one calendar")
