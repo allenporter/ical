@@ -11,7 +11,7 @@ from typing import Any
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.tzif import timezoneinfo
 from ical.exceptions import ParameterValueError
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,10 +24,7 @@ ATTR_VALUE = "VALUE"
 def parse_property_value(
     prop: ParsedProperty, allow_invalid_timezone: bool = False
 ) -> datetime.datetime:
-    """Parse a rfc5545 into a datetime.datetime."""
-    if not (match := DATETIME_REGEX.fullmatch(prop.value)):
-        raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
-
+    """Parse a rfc5545 or ISO 8601 string into a datetime.datetime."""
     # Example: TZID=America/New_York:19980119T020000
     timezone: datetime.tzinfo | None = None
     if param := prop.get_parameter(TZID):
@@ -43,7 +40,14 @@ def parse_property_value(
                     raise ParameterValueError(
                         f"Expected DATE-TIME TZID value '{value}' to be valid timezone"
                     )
-    elif match.group(3):  # Example: 19980119T070000Z
+
+    if isinstance(prop.value, datetime.datetime):
+        return prop.value.replace(tzinfo=timezone) if timezone else prop.value
+
+    if not (match := DATETIME_REGEX.fullmatch(prop.value)):
+        raise ValueError(f"Expected value to match DATE-TIME pattern: {prop.value}")
+
+    if not timezone and match.group(3):  # Example: 19980119T070000Z
         timezone = datetime.timezone.utc
 
     # Example: 19980118T230000
@@ -75,6 +79,39 @@ class DateTimeEncoder:
         return parse_property_value(prop, allow_invalid_timezone=False)
 
     @classmethod
+    def __parse_jcal_value__(
+        cls, value: Any, params: dict[str, Any]
+    ) -> datetime.datetime:
+        """Parse an RFC 7265 jCal date-time into a datetime.datetime."""
+        if isinstance(value, datetime.datetime):
+            return value
+        if not isinstance(value, str):
+            raise ValueError(f"Expected string for jCal date-time, got {type(value)}")
+        if "T" not in value:
+            raise ValueError(f"Expected DATE-TIME with 'T' separator, got: {value}")
+
+        timezone: datetime.tzinfo | None = None
+        if tzid := params.get("tzid") or params.get("TZID"):
+            try:
+                timezone = timezoneinfo.resolve_tzinfo(str(tzid), allow_invalid=False)
+            except timezoneinfo.TimezoneInfoError as err:
+                raise ParameterValueError(
+                    f"Expected DATE-TIME TZID value '{tzid}' to be valid timezone"
+                ) from err
+
+        val = value
+        if val.endswith("Z"):
+            if timezone is None:
+                timezone = datetime.timezone.utc
+            val = val[:-1]
+
+        try:
+            dt = datetime.datetime.fromisoformat(val)
+            return dt.replace(tzinfo=timezone) if timezone is not None else dt
+        except ValueError as err:
+            raise ValueError(f"Invalid jCal date-time value: {value}") from err
+
+    @classmethod
     def __encode_property_json__(cls, value: datetime.datetime) -> str | dict[str, str]:
         """Encode an ICS value during json serialization."""
         if value.tzinfo is None:
@@ -98,3 +135,16 @@ class DateTimeEncoder:
         if tzid := value.get(TZID):
             prop.params = [ParsedPropertyParameter(name=TZID, values=[str(tzid)])]
         return prop
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if not isinstance(value, datetime.datetime):
+            return None
+        if value.tzinfo is None:
+            return EncodedJcalValue({}, [value.strftime("%Y-%m-%dT%H:%M:%S")])
+        if not value.utcoffset():
+            return EncodedJcalValue({}, [value.strftime("%Y-%m-%dT%H:%M:%SZ")])
+        return EncodedJcalValue(
+            {"tzid": str(value.tzinfo)}, [value.strftime("%Y-%m-%dT%H:%M:%S")]
+        )

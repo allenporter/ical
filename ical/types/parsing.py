@@ -31,14 +31,28 @@ def parse_parameter_values(
         return values
     if params := values.get("params"):
         all_fields = _all_fields(cls)
-        for param in params:
-            if not (field := all_fields.get(param["name"])):
-                continue
-            type_info = get_field_type_info(field.annotation)
-            if type_info.is_repeated:
-                values[param["name"]] = param["values"]
-            else:
-                if len(param["values"]) > 1:
-                    raise ValueError("Unexpected repeated property parameter")
-                values[param["name"]] = param["values"][0]
+        if isinstance(params, dict):
+            for param_name, param_val in params.items():
+                if not (
+                    field := all_fields.get(param_name.upper())
+                    or all_fields.get(param_name)
+                ):
+                    continue
+                key = field.alias or param_name
+                type_info = get_field_type_info(field.annotation)
+                if type_info.is_repeated and not isinstance(param_val, list):
+                    values[key] = [param_val]
+                else:
+                    values[key] = param_val
+        elif isinstance(params, list):
+            for param in params:
+                if not (field := all_fields.get(param["name"])):
+                    continue
+                type_info = get_field_type_info(field.annotation)
+                if type_info.is_repeated:
+                    values[param["name"]] = param["values"]
+                else:
+                    if len(param["values"]) > 1:
+                        raise ValueError("Unexpected repeated property parameter")
+                    values[param["name"]] = param["values"][0]
     return values

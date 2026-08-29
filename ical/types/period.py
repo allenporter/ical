@@ -10,7 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE, encode_model_property_params, serialize_field
+from .data_types import (
+    DATA_TYPE,
+    EncodedJcalValue,
+    encode_model_property_params,
+    serialize_field,
+)
 from .date_time import DateTimeEncoder
 from .duration import DurationEncoder
 from .parsing import parse_parameter_values
@@ -121,6 +126,68 @@ class Period(BaseModel):
         if "/" not in prop.value:
             raise ValueError(f"Value does not contain a solidus: {prop.value}")
         return dataclasses.asdict(prop)
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> "Period":
+        """Parse an RFC 7265 jCal period property."""
+        if isinstance(value, Period):
+            return value
+        if isinstance(value, str) and "/" in value:
+            return cls.__parse_jcal_value__(value.split("/", 1), params)
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            start_str, end_or_dur = str(value[0]), str(value[1])
+            start = DateTimeEncoder.__parse_jcal_value__(start_str, params)
+            fbtype_val = None
+            if fbtype := params.get("fbtype") or params.get("FBTYPE"):
+                try:
+                    fbtype_val = FreeBusyType(str(fbtype).upper())
+                except ValueError:
+                    pass
+            if (
+                end_or_dur.startswith("P")
+                or end_or_dur.startswith("-P")
+                or end_or_dur.startswith("+P")
+            ):
+                duration = DurationEncoder.__parse_jcal_value__(end_or_dur, {})
+                return cls(
+                    start=start,
+                    duration=duration,
+                    FBTYPE=fbtype_val,
+                )
+            end = DateTimeEncoder.__parse_jcal_value__(end_or_dur, params)
+            return cls(
+                start=start,
+                end=end,
+                FBTYPE=fbtype_val,
+            )
+        raise ValueError(f"Invalid jCal period value: {value}")
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if not isinstance(value, Period):
+            return None
+        start_str = (
+            value.start.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if not value.start.utcoffset() and value.start.tzinfo
+            else value.start.strftime("%Y-%m-%dT%H:%M:%S")
+        )
+        params: dict[str, Any] = {}
+        if value.free_busy_type:
+            params["fbtype"] = value.free_busy_type.value
+        if value.start.tzinfo and value.start.utcoffset():
+            params["tzid"] = str(value.start.tzinfo)
+        if value.end:
+            end_str = (
+                value.end.strftime("%Y-%m-%dT%H:%M:%SZ")
+                if not value.end.utcoffset() and value.end.tzinfo
+                else value.end.strftime("%Y-%m-%dT%H:%M:%S")
+            )
+            return EncodedJcalValue(params, [[start_str, end_str]])
+        if value.duration:
+            dur_str = DurationEncoder.__encode_property_json__(value.duration)
+            return EncodedJcalValue(params, [[start_str, dur_str]])
+        return None
 
     @classmethod
     def __encode_property__(cls, model_data: Any) -> ParsedProperty | None:

@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE, encode_model_property_params
+from .data_types import DATA_TYPE, EncodedJcalValue, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
 
@@ -95,6 +95,42 @@ class CalAddress(BaseModel):
     _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     __parse_property_value__ = dataclasses.asdict
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> CalAddress:
+        """Parse an RFC 7265 jCal cal-address property."""
+        if isinstance(value, CalAddress):
+            return value
+        return cls.model_validate({"value": value, "params": params})
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if isinstance(value, CalAddress):
+            params: dict[str, Any] = {}
+            for name, field in cls.model_fields.items():
+                if name == "uri" or (val := getattr(value, name)) is None:
+                    continue
+                key = (field.alias or name).lower()
+                if isinstance(val, list):
+                    params[key] = [str(x) for x in val]
+                elif isinstance(val, enum.Enum):
+                    params[key] = val.value
+                elif isinstance(val, Uri):
+                    params[key] = str(val)
+                else:
+                    params[key] = val
+            return EncodedJcalValue(params, [str(value.uri)])
+        if isinstance(value, dict):
+            val = value.get("value", "")
+            params = {
+                p["name"].lower(): (
+                    p["values"][0] if len(p["values"]) == 1 else p["values"]
+                )
+                for p in value.get("params", [])
+            }
+            return EncodedJcalValue(params, [val])
+        return None
 
     @classmethod
     def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
