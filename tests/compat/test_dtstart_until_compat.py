@@ -190,3 +190,91 @@ def test_google_calendar_ics_file_compat() -> None:
     # UNTIL should have been converted from DATE to DATE-TIME
     assert isinstance(event.rrule.until, datetime.datetime)
     assert event.rrule.until.date() == datetime.date(2023, 12, 31)
+
+
+_NAIVE_UNTIL_ICS = """BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:20250715T100000Z
+UID:1
+DTSTART:20250715T140000Z
+RRULE:FREQ=DAILY;UNTIL={until}
+SUMMARY:Standup
+END:VEVENT
+END:VCALENDAR
+"""
+
+_NAIVE_UNTIL_TODO_ICS = """BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+BEGIN:VTODO
+DTSTAMP:20250715T100000Z
+UID:1
+SUMMARY:Water the plants
+DTSTART:20250715T140000Z
+DUE:20250715T150000Z
+RRULE:FREQ=DAILY;UNTIL=20250718T140000
+END:VTODO
+END:VCALENDAR
+"""
+
+
+def test_naive_until_read_as_utc_in_compat_mode() -> None:
+    """Producers that omit the Z mean UTC; the calendar should still work.
+
+    Without compat this is rejected, since rfc5545 3.3.10 requires UNTIL in
+    UTC when DTSTART is timezone-aware.
+    """
+    ics = _NAIVE_UNTIL_ICS.format(until="20250718T140000")
+
+    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
+        IcsCalendarStream.calendar_from_ics(
+            ics.replace("Google Inc//Google Calendar 70.9054", "Some Other Calendar")
+        )
+
+    with enable_compat_mode(ics) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    event = calendar.events[0]
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(
+        2025, 7, 18, 14, 0, tzinfo=datetime.timezone.utc
+    )
+    assert (
+        len(
+            list(
+                calendar.timeline.included(
+                    datetime.datetime(2025, 7, 1, tzinfo=datetime.timezone.utc),
+                    datetime.datetime(2025, 8, 1, tzinfo=datetime.timezone.utc),
+                )
+            )
+        )
+        == 4
+    )
+
+
+def test_naive_until_compat_leaves_a_conforming_until_alone() -> None:
+    """Compat must not rewrite what was already correct."""
+    ics = _NAIVE_UNTIL_ICS.format(until="20250718T140000Z")
+
+    with enable_compat_mode(ics) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    event = calendar.events[0]
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(
+        2025, 7, 18, 14, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_naive_until_read_as_utc_on_a_todo() -> None:
+    """`validate_until_dtstart` is shared by VEVENT, VTODO and VJOURNAL."""
+    with enable_compat_mode(_NAIVE_UNTIL_TODO_ICS) as compat_ics:
+        calendar = IcsCalendarStream.calendar_from_ics(compat_ics)
+
+    rrule = calendar.todos[0].rrule
+    assert rrule is not None
+    assert rrule.until == datetime.datetime(
+        2025, 7, 18, 14, 0, tzinfo=datetime.timezone.utc
+    )
