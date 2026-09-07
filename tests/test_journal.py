@@ -36,7 +36,7 @@ def test_status() -> None:
 
     with pytest.raises(
         CalendarParseError,
-        match="^Failed to parse calendar JOURNAL component: Input should be 'DRAFT', 'FINAL' or 'CANCELLED'$",
+        match="^The calendar is not valid: Failed to parse JOURNAL component: Input should be 'DRAFT', 'FINAL' or 'CANCELLED'$",
     ):
         Journal.model_validate({"status": "invalid-status"})
 

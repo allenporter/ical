@@ -189,7 +189,7 @@ def test_invalid_ics(content: str) -> None:
 def test_component_failure() -> None:
     with pytest.raises(
         CalendarParseError,
-        match="^Failed to parse calendar EVENT component: Value error, Unexpected dtstart value '2022-07-24 12:00:00' was datetime but dtend value '2022-07-24' was not datetime$",
+        match="^The calendar is not valid: Failed to parse EVENT component: Value error, Unexpected dtstart value '2022-07-24 12:00:00' was datetime but dtend value '2022-07-24' was not datetime$",
     ):
         IcsCalendarStream.calendar_from_ics(
             textwrap.dedent(

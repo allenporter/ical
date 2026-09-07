@@ -55,6 +55,6 @@ def test_parse_property_failed() -> None:
     prop = ParsedProperty(name="key", value="val")
     with pytest.raises(
         ValueError,
-        match=r"Failed to validate: val as FailType, due to: \(\['Parsing failed deliberately'\]\)",
+        match=r"Failed to validate 'val' as FailType: Parsing failed deliberately",
     ):
         registry.parse_property(FailType, prop)

@@ -155,7 +155,7 @@ class ComponentModel(BaseModel):
         except ValidationError as err:
             _LOGGER.debug("Failed to parse component %s", err)
             message = [
-                f"Failed to parse calendar {self.__class__.__name__.upper()} component"
+                f"The calendar is not valid: Failed to parse {self.__class__.__name__.upper()} component"
             ]
             for error in err.errors():
                 if msg := error.get("msg"):

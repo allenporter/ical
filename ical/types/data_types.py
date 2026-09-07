@@ -139,9 +139,11 @@ class Registry:
                     "Unable to parse property value as type %s: %s", sub_type, err
                 )
                 errors.append(str(err))
-                continue
+        err_msg = (
+            "; ".join(errors) if len(errors) > 1 else (errors[0] if errors else "")
+        )
         raise ValueError(
-            f"Failed to validate: {prop.value} as {' or '.join(sub_type.__name__ for sub_type in field_types)}, due to: ({errors})"
+            f"Failed to validate '{prop.value}' as {' or '.join(sub_type.__name__ for sub_type in field_types)}: {err_msg}"
         )
 
     def _parse_single_property(self, field_type: type, prop: ParsedProperty) -> Any:

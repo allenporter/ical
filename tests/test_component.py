@@ -208,7 +208,7 @@ def test_union_parser() -> None:
 
     with pytest.raises(
         CalendarParseError,
-        match=".*Failed to validate: .* as datetime or date, due to: .*Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
+        match=".*The calendar is not valid: Failed to parse TESTMODEL component: Value error, Failed to validate '2025NotADateOrADateTime' as datetime or date: Expected value to match DATE-TIME pattern: .*Expected value to match DATE pattern: .*",
     ):
         model = TestModel.model_validate(
             {
