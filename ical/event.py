@@ -357,6 +357,11 @@ class Event(ComponentModel):
         Sorted by time. Alarms using `REPEAT` and `DURATION` contribute one
         entry per repetition, each pointing back at the same alarm.
 
+        Resolved against this event's own `start` and `end`, so a recurring
+        event answers for that instance alone. Alarm times across a recurrence
+        come from iterating `Calendar.timeline` and calling this on each
+        occurrence, which carries its own adjusted start and end.
+
         `Event.end` always resolves to a value, so a trigger relative to the
         end cannot fail here the way `Alarm.trigger_times` allows for.
         """
