@@ -22,7 +22,11 @@ from typing import Annotated, Any, Optional, Self, Union
 
 from pydantic import BeforeValidator, Field, field_serializer, model_validator
 
-from ical.compat import duration_dtend_compat, same_day_dtend_compat
+from ical.compat import (
+    dtstart_dtend_compat,
+    duration_dtend_compat,
+    same_day_dtend_compat,
+)
 from ical.types.data_types import serialize_field
 
 from .alarm import Alarm
@@ -440,17 +444,37 @@ class Event(ComponentModel):
             return self
         if isinstance(dtstart, datetime.datetime):
             if not isinstance(dtend, datetime.datetime):
-                _LOGGER.debug("Unexpected data types for values: %s", self)
-                raise ValueError(
-                    f"Unexpected dtstart value '{dtstart}' was datetime but "
-                    f"dtend value '{dtend}' was not datetime"
-                )
+                if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
+                    if dtend == dtstart.date():
+                        self.dtend = datetime.datetime.combine(
+                            dtend + datetime.timedelta(days=1),
+                            datetime.time.min,
+                            tzinfo=dtstart.tzinfo,
+                        )
+                    else:
+                        self.dtend = datetime.datetime.combine(
+                            dtend,
+                            datetime.time.min,
+                            tzinfo=dtstart.tzinfo,
+                        )
+                else:
+                    _LOGGER.debug("Unexpected data types for values: %s", self)
+                    raise ValueError(
+                        f"Unexpected dtstart value '{dtstart}' was datetime but "
+                        f"dtend value '{dtend}' was not datetime"
+                    )
         elif isinstance(dtstart, datetime.date):
             if isinstance(dtend, datetime.datetime):
-                raise ValueError(
-                    f"Unexpected dtstart value '{dtstart}' was date but "
-                    f"dtend value '{dtend}' was datetime"
-                )
+                if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
+                    if dtend.time() == datetime.time.min:
+                        self.dtend = dtend.date()
+                    else:
+                        self.dtend = dtend.date() + datetime.timedelta(days=1)
+                else:
+                    raise ValueError(
+                        f"Unexpected dtstart value '{dtstart}' was date but "
+                        f"dtend value '{dtend}' was datetime"
+                    )
         return self
 
     @model_validator(mode="after")
