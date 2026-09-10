@@ -155,7 +155,7 @@ class Todo(ComponentModel):
     organizer: Optional[CalAddress] = None
     """The organizer of a group-scheduled calendar entity."""
 
-    percent: Optional[int] = None
+    percent: Optional[int] = Field(alias="percent-complete", default=None)
 
     priority: Optional[Priority] = None
     """Defines the relative priority of the todo item."""

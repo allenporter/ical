@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE, encode_model_property_params
+from .data_types import DATA_TYPE, EncodedJcalValue, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
 
@@ -77,6 +77,35 @@ class Attachment(BaseModel):
         return base64.b64encode(content).decode("ascii")
 
     __parse_property_value__ = dataclasses.asdict
+
+    @classmethod
+    def __parse_jcal_value__(
+        cls, value: Any, params: dict[str, Any], type_name: str | None = None
+    ) -> Attachment:
+        """Parse an RFC 7265 jCal attach property."""
+        if isinstance(value, Attachment):
+            return value
+        data: dict[str, Any] = {"value": value, "params": dict(params)}
+        if type_name and type_name.upper() == "BINARY":
+            data["params"]["VALUE"] = "BINARY"
+        return cls.model_validate(data)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if isinstance(value, Attachment):
+            params: dict[str, Any] = {}
+            if value.fmttype:
+                params["fmttype"] = value.fmttype
+            if value.content is not None:
+                content_str = (
+                    base64.b64encode(value.content).decode("ascii")
+                    if isinstance(value.content, bytes)
+                    else str(value.content)
+                )
+                return EncodedJcalValue(params, [content_str], type_name="binary")
+            return EncodedJcalValue(params, [str(value.uri or "")], type_name="uri")
+        return None
 
     @classmethod
     def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
