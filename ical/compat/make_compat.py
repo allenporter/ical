@@ -11,6 +11,7 @@ import re
 
 from . import (
     date_compat,
+    dtstart_dtend_compat,
     dtstart_until_compat,
     duration_compat,
     duration_dtend_compat,
@@ -47,6 +48,7 @@ def enable_compat_mode(ics: str) -> Generator[str]:
         date_compat.enable_allow_invalid_dates(),
         duration_compat.enable_duration_compat(),
         duration_dtend_compat.enable_duration_dtend_compat(),
+        dtstart_dtend_compat.enable_dtstart_dtend_compat(),
     ):
         # Check if the PRODID is from Microsoft Exchange Server
         prodid = _get_prodid(ics)

@@ -38,6 +38,10 @@ Some feeds contain date strings with an illegal time suffix (e.g., `20240115T000
 RFC 5545 Section 3.6.1 forbids specifying both `DTEND` and `DURATION` on the same event, but some real-world generators emit both anyway (often redundantly, with `DTEND` equal to `DTSTART` + `DURATION`).
 * **Fixup (`duration_dtend_compat`)**: Prefers the more explicit `DTEND` value and discards `DURATION` rather than failing to parse.
 
+### DTSTART and DTEND Type Mismatch
+RFC 5545 Section 3.8.2.2 requires `DTSTART` and `DTEND` to share the same value type (both `DATE` or both `DATE-TIME`). Some calendar feeds (such as Edlio webcal feeds) emit all-day events with a `DATE` start and a `DATE-TIME` end set to `23:59:59` of the final day, or vice-versa.
+* **Fixup (`dtstart_dtend_compat`)**: Coerces `DTEND` to match `DTSTART`'s type. For all-day events with a `DATE-TIME` end, non-zero time values are converted to the non-inclusive next day per RFC 5545 semantics.
+
 ## Audited But Not Fixed
 
 As part of auditing this module (see [issue #637](https://github.com/allenporter/ical/issues/637)), the following commonly-reported broken patterns were investigated and found to already parse correctly without any compatibility fixup, so no change was made for them:

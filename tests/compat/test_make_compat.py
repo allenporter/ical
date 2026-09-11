@@ -14,7 +14,15 @@ from syrupy import SnapshotAssertion
 from ical.exceptions import CalendarParseError
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 from ical.store import TodoStore
-from ical.compat import enable_compat_mode, timezone_compat
+from ical.compat import (
+    date_compat,
+    dtstart_dtend_compat,
+    duration_compat,
+    duration_dtend_compat,
+    enable_compat_mode,
+    same_day_dtend_compat,
+    timezone_compat,
+)
 
 TESTDATA_PATH = pathlib.Path("tests/compat/testdata/")
 
@@ -113,6 +121,16 @@ def test_make_compat_not_enabled(ics: str) -> None:
         assert compat_ics == ics
         assert not timezone_compat.is_allow_invalid_timezones_enabled()
         assert not timezone_compat.is_extended_timezones_enabled()
+
+
+def test_make_compat_always_enabled_flags() -> None:
+    """Test that global compat flags are always enabled in enable_compat_mode."""
+    with enable_compat_mode("invalid"):
+        assert same_day_dtend_compat.is_same_day_dtend_compat_enabled()
+        assert date_compat.is_allow_invalid_dates_enabled()
+        assert duration_compat.is_duration_compat_enabled()
+        assert duration_dtend_compat.is_duration_dtend_compat_enabled()
+        assert dtstart_dtend_compat.is_dtstart_dtend_compat_enabled()
 
 
 def test_non_iana_timezone_roundtrip() -> None:
