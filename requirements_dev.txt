@@ -1,5 +1,5 @@
 -e .
-coverage==7.16.0
+coverage==7.16.1
 codecov-cli==11.3.1
 ty==0.0.80
 pdoc==16.0.0
