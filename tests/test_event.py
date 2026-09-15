@@ -11,6 +11,7 @@ import pytest
 from freezegun import freeze_time
 from pydantic import ValidationError
 
+from ical.alarm import Alarm, Related
 from ical.calendar import Calendar
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 from ical.event import Event
@@ -665,3 +666,112 @@ def test_event_rdate_freezegun() -> None:
         )
         assert len(event.rdate) == 1
         assert event.rdate[0] == now
+
+
+_ALARM_START = datetime(2025, 7, 15, 14, 0, tzinfo=timezone.utc)
+_ALARM_END = datetime(2025, 7, 15, 15, 0, tzinfo=timezone.utc)
+
+_ALARM_ICS = """BEGIN:VCALENDAR
+PRODID:-//example//example//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:20250715T100000Z
+UID:1
+DTSTART:20250715T140000Z
+DTEND:20250715T150000Z
+RRULE:FREQ=DAILY;COUNT=3
+SUMMARY:Dentist
+BEGIN:VALARM
+TRIGGER;RELATED=END:-PT5M
+ACTION:DISPLAY
+DESCRIPTION:leaving
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+def _display_alarm(**kwargs: Any) -> Alarm:
+    """Build the smallest valid DISPLAY alarm."""
+    return Alarm(action="DISPLAY", description="x", **kwargs)
+
+
+def test_alarm_trigger_times_sorts_across_alarms() -> None:
+    """The convenience API sorts across alarms, not just within one."""
+    event = Event(
+        summary=SUMMARY,
+        start=_ALARM_START,
+        end=_ALARM_END,
+        alarm=[
+            _display_alarm(trigger=timedelta(minutes=-15)),
+            _display_alarm(trigger=timedelta(hours=-2)),
+        ],
+    )
+
+    triggers = event.alarm_trigger_times()
+
+    assert [trigger.time for trigger in triggers] == [
+        datetime(2025, 7, 15, 12, 0, tzinfo=timezone.utc),
+        datetime(2025, 7, 15, 13, 45, tzinfo=timezone.utc),
+    ]
+    assert all(trigger.alarm in event.alarm for trigger in triggers)
+
+
+def test_alarm_trigger_times_without_alarms() -> None:
+    """An event with no alarms resolves to nothing rather than failing."""
+    event = Event(summary=SUMMARY, start=_ALARM_START, end=_ALARM_END)
+
+    assert event.alarm_trigger_times() == []
+
+
+def test_alarm_trigger_times_always_has_an_end_to_resolve_against() -> None:
+    """`Event.end` falls back to the start, so RELATED=END cannot fail here."""
+    event = Event(
+        summary=SUMMARY,
+        start=_ALARM_START,
+        alarm=[
+            _display_alarm(trigger=timedelta(minutes=-5), trigger_related=Related.END)
+        ],
+    )
+
+    assert event.alarm_trigger_times()[0].time == datetime(
+        2025, 7, 15, 13, 55, tzinfo=timezone.utc
+    )
+
+
+def test_alarm_trigger_times_keeps_a_naive_absolute_trigger_comparable() -> None:
+    """Mixing a naive absolute trigger with a relative one broke sorting."""
+    event = Event(
+        summary=SUMMARY,
+        start=_ALARM_START,
+        end=_ALARM_END,
+        alarm=[
+            _display_alarm(trigger=datetime(2025, 7, 15, 12, 0)),
+            _display_alarm(trigger=timedelta(hours=-2)),
+        ],
+    )
+
+    triggers = event.alarm_trigger_times()
+
+    assert len(triggers) == 2
+    assert all(trigger.time.tzinfo is not None for trigger in triggers)
+
+
+def test_alarm_trigger_times_for_each_occurrence() -> None:
+    """The point of the API: a recurring event alarms on every occurrence."""
+    calendar = IcsCalendarStream.calendar_from_ics(_ALARM_ICS)
+
+    times = [
+        trigger.time
+        for event in calendar.timeline.included(
+            datetime(2025, 7, 14, tzinfo=timezone.utc),
+            datetime(2025, 7, 20, tzinfo=timezone.utc),
+        )
+        for trigger in event.alarm_trigger_times()
+    ]
+
+    assert times == [
+        datetime(2025, 7, 15, 14, 55, tzinfo=timezone.utc),
+        datetime(2025, 7, 16, 14, 55, tzinfo=timezone.utc),
+        datetime(2025, 7, 17, 14, 55, tzinfo=timezone.utc),
+    ]
