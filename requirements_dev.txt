@@ -20,7 +20,7 @@ types-PyYAML==6.0.12.20260906
 syrupy==6.1.1
 
 # emoji is a dev only dependency used by script/update_emoji.py
-emoji==2.15.0
+emoji==2.16.0
 # tzlocal is a dev only dependency used by script/update_tzlocal.py
 tzlocal==5.4.4
 
