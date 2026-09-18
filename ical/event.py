@@ -14,6 +14,7 @@ can have a start and a duration.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import enum
 import logging
@@ -79,6 +80,17 @@ class EventStatus(str, enum.Enum):
 
     CANCELLED = "CANCELLED"
     """Indicates event was cancelled."""
+
+
+@dataclasses.dataclass
+class AlarmTrigger:
+    """A resolved alarm trigger with its absolute time and source alarm."""
+
+    time: datetime.datetime
+    """The absolute time the alarm fires."""
+
+    alarm: Alarm
+    """The alarm the time was resolved from."""
 
 
 class Event(ComponentModel):
@@ -342,6 +354,27 @@ class Event(ComponentModel):
         if self.duration is not None:
             return self.duration
         return self.end - self.start
+
+    def alarm_trigger_times(self) -> list[AlarmTrigger]:
+        """Resolve every alarm on this event into absolute times.
+
+        Sorted by time. Alarms using `REPEAT` and `DURATION` contribute one
+        entry per repetition, each pointing back at the same alarm.
+
+        Resolved against this event's own `start` and `end`, so a recurring
+        event answers for that instance alone. Alarm times across a recurrence
+        come from iterating `Calendar.timeline` and calling this on each
+        occurrence, which carries its own adjusted start and end.
+
+        `Event.end` always resolves to a value, so a trigger relative to the
+        end cannot fail here the way `Alarm.trigger_times` allows for.
+        """
+        triggers: list[AlarmTrigger] = []
+        for alarm in self.alarm:
+            times = alarm.trigger_times(self.start, self.end)
+            triggers.extend(AlarmTrigger(time=time, alarm=alarm) for time in times)
+        triggers.sort(key=lambda trigger: trigger.time)
+        return triggers
 
     @property
     def timespan(self) -> Timespan:
