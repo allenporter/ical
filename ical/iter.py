@@ -18,6 +18,7 @@ backwards incompatibility due to the internal nature.
 from __future__ import annotations
 
 import bisect
+from collections import OrderedDict
 import datetime
 import heapq
 import logging
@@ -45,6 +46,7 @@ __all__ = [
     "ItemAdapter",
     "LazySortableItem",
     "CachedTransitionTimeline",
+    "LazyCachedIterable",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -148,6 +150,117 @@ def _defloat(
     return dt
 
 
+class LazyCachedIterable(Iterable[T]):
+    """A lazily materialized, append-only cached stream over an underlying iterable.
+
+    Iterating over this object yields previously cached values first, and
+    advances the underlying iterator only when new values are requested.
+    The internal ``_cache`` list is a gapless, contiguous prefix of the
+    underlying stream, allowing multiple independent iterations to share the
+    same materialized items.
+    """
+
+    def __init__(self, source: Iterable[T]) -> None:
+        """Initialize LazyCachedIterable.
+
+        Args:
+            source: The underlying iterable to consume and cache lazily.
+        """
+        self._source = source
+        self._cache: list[T] = []
+        self._iter: Iterator[T] | None = None
+        self._exhausted = False
+
+    def extend_through(self, predicate: Callable[[T], bool]) -> None:
+        """Advance the iterator until predicate(last_item) is false or exhausted."""
+        if not self._exhausted and (not self._cache or predicate(self._cache[-1])):
+            if self._iter is None:
+                self._iter = iter(self._source)
+            while not self._exhausted and (
+                not self._cache or predicate(self._cache[-1])
+            ):
+                try:
+                    val = next(self._iter)
+                except StopIteration:
+                    self._exhausted = True
+                    break
+                self._cache.append(val)
+
+    def __iter__(self) -> Iterator[T]:
+        """Return an iterator over the cached values, advancing as needed."""
+        idx = 0
+        while True:
+            if idx < len(self._cache):
+                yield self._cache[idx]
+                idx += 1
+                continue
+            if self._exhausted:
+                return
+            if self._iter is None:
+                self._iter = iter(self._source)
+            try:
+                val = next(self._iter)
+            except StopIteration:
+                self._exhausted = True
+                return
+            self._cache.append(val)
+            yield val
+            idx += 1
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> LazyCachedIterable[T]:
+        """Return an independent copy with an empty cache."""
+        return LazyCachedIterable(self._source)
+
+
+# Recurrence cache sizing constants:
+# Each materialized date/datetime consumes ~56-64 bytes (including object + list pointer).
+# In real-world calendar usage (where events have ~100 past instances), 1,024 rules
+# consume ~4.5 MB, staying safely within a ~10 MB budget.
+#
+# Real world headroom assumptions at 1,024 rules:
+# - Yearly events (e.g. birthdays/anniversaries): 1,024 distinct yearly rules over a century (~100 instances each).
+# - Monthly events: 1,024 distinct monthly rules over a decade (~120 instances each).
+# - Daily events: 1,024 distinct daily rules over a year (~365 instances each).
+_MAX_RECURRENCE_CACHE_RULES = 1024
+
+_RECURRENCE_CACHE: OrderedDict[
+    tuple[Any, ...], LazyCachedIterable[datetime.datetime | datetime.date]
+] = OrderedDict()
+
+
+def _rule_cache_key(
+    dtstart: datetime.datetime | datetime.date,
+    rrule: Sequence[Any],
+    rdate: Sequence[Any],
+    exdate: Sequence[Any],
+) -> tuple[Any, ...]:
+    return (
+        dtstart,
+        tuple(str(r) for r in rrule),
+        tuple((d.start, d.end) if isinstance(d, Period) else d for d in rdate),
+        tuple(exdate),
+    )
+
+
+def _get_cached_ruleset(
+    dtstart: datetime.datetime | datetime.date,
+    rrule: Sequence[Any],
+    rdate: Sequence[Any],
+    exdate: Sequence[Any],
+    ruleset_factory: Callable[[], Iterable[datetime.datetime | datetime.date]],
+) -> LazyCachedIterable[datetime.datetime | datetime.date]:
+    key = _rule_cache_key(dtstart, rrule, rdate, exdate)
+    if key in _RECURRENCE_CACHE:
+        _RECURRENCE_CACHE.move_to_end(key)
+        return _RECURRENCE_CACHE[key]
+
+    cached = LazyCachedIterable(ruleset_factory())
+    _RECURRENCE_CACHE[key] = cached
+    if len(_RECURRENCE_CACHE) > _MAX_RECURRENCE_CACHE_RULES:
+        _RECURRENCE_CACHE.popitem(last=False)
+    return cached
+
+
 class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     """A wrapper around the dateutil ruleset library to workaround limitations.
 
@@ -169,9 +282,9 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
     def __init__(
         self,
         dtstart: datetime.datetime | datetime.date,
-        recur: list[Iterable[datetime.datetime | datetime.date]],
-        rdate: list[datetime.datetime | datetime.date | Period],
-        exdate: list[datetime.datetime | datetime.date],
+        recur: Sequence[Iterable[datetime.datetime | datetime.date]],
+        rdate: Sequence[datetime.datetime | datetime.date | Period],
+        exdate: Sequence[datetime.datetime | datetime.date],
     ) -> None:
         """Create the RulesetIterable."""
         self._dtstart = dtstart
@@ -210,13 +323,30 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
 
     def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:
         """Return an iterator as a traversal over events in chronological order."""
+        cached = _get_cached_ruleset(
+            self._dtstart,
+            self._rrule,
+            self._rdate,
+            self._exdate,
+            self._ruleset,
+        )
         try:
-            for value in self._ruleset():
-                yield value
+            yield from cached
         except TypeError as err:
+            key = _rule_cache_key(self._dtstart, self._rrule, self._rdate, self._exdate)
+            _RECURRENCE_CACHE.pop(key, None)
             raise RecurrenceError(
                 f"Error evaluating recurrence rule ({self}): {str(err)}"
             ) from err
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> RulesetIterable:
+        """Return an independent copy with an empty cache."""
+        return RulesetIterable(
+            self._dtstart,
+            self._rrule,
+            self._rdate,
+            self._exdate,
+        )
 
     def __repr__(self) -> str:
         return (
@@ -468,29 +598,29 @@ class CachedTransitionTimeline(Generic[T]):
         transitions: Iterable[tuple[datetime.datetime | datetime.date, T]],
     ) -> None:
         """Initialize CachedTransitionTimeline with a sorted transition source."""
-        self._transitions = transitions
-        self._iter: Iterator[tuple[datetime.datetime | datetime.date, T]] | None = None
-        self._cache: list[tuple[datetime.datetime | datetime.date, T]] = []
-        self._exhausted = False
+        self._cached: LazyCachedIterable[
+            tuple[datetime.datetime | datetime.date, T]
+        ] = LazyCachedIterable(transitions)
+
+    @property
+    def _transitions(self) -> Iterable[tuple[datetime.datetime | datetime.date, T]]:
+        return self._cached._source
+
+    @property
+    def _cache(self) -> list[tuple[datetime.datetime | datetime.date, T]]:
+        return self._cached._cache
 
     def active_at(self, value: datetime.datetime | datetime.date) -> T | None:
         """Return the item active at ``value`` (latest onset <= value)."""
         # Extend the cache only when the request reaches past what has already
         # been materialized; the iterator is append-only and never restarted.
-        if not self._exhausted and (not self._cache or self._cache[-1][0] <= value):
-            if self._iter is None:
-                self._iter = iter(self._transitions)
-            while not self._exhausted and (
-                not self._cache or self._cache[-1][0] <= value
-            ):
-                try:
-                    self._cache.append(next(self._iter))
-                except StopIteration:
-                    self._exhausted = True
-        index = bisect.bisect_right(self._cache, value, key=lambda item: item[0])
+        self._cached.extend_through(lambda item: item[0] <= value)
+        index = bisect.bisect_right(
+            self._cached._cache, value, key=lambda item: item[0]
+        )
         if index == 0:
             return None
-        return self._cache[index - 1][1]
+        return self._cached._cache[index - 1][1]
 
     def __deepcopy__(self, memo: dict[int, Any]) -> CachedTransitionTimeline[T]:
         """Return an independent copy with an empty cache.
@@ -499,4 +629,4 @@ class CachedTransitionTimeline(Generic[T]):
         source is not deep-copied. It is re-iterable and shared, and the copy
         takes its own fresh iterator and rebuilds its cache lazily.
         """
-        return CachedTransitionTimeline(self._transitions)
+        return CachedTransitionTimeline(self._cached._source)

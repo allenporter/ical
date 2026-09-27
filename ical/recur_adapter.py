@@ -83,24 +83,27 @@ class RecurAdapter(Generic[ItemType]):
         self._item = item
         self._duration = item.computed_duration  # ty: ignore[invalid-attribute-access]
         self._tzinfo = tzinfo
+        self._period_starts: dict[_DateOrDatetime, Period] = {}
+        for p in self._item.rdate:
+            if isinstance(p, Period):
+                start = p.start
+                if isinstance(start, datetime.datetime) and start.tzinfo:
+                    start = start.replace(tzinfo=None)
+                self._period_starts[start] = p
 
     def get(
         self, dtstart: datetime.datetime | datetime.date
     ) -> SortableItem[Timespan, ItemType]:
         """Return a lazy sortable item."""
-
-        recurrence_id = _recurrence_id_for(dtstart)
-
-        # Check if the start matches a Period in rdate
-        period = next(
-            (
-                p
-                for p in self._item.rdate
-                if isinstance(p, Period)
-                and _recurrence_id_for(p.start) == recurrence_id
-            ),
-            None,
-        )
+        if self._period_starts:
+            dt_key = (
+                dtstart.replace(tzinfo=None)
+                if isinstance(dtstart, datetime.datetime) and dtstart.tzinfo
+                else dtstart
+            )
+            period = self._period_starts.get(dt_key)
+        else:
+            period = None
 
         if period:
             dtend = period.end_value
@@ -108,6 +111,7 @@ class RecurAdapter(Generic[ItemType]):
             dtend = dtstart + self._duration if self._duration else dtstart
 
         def build() -> ItemType:
+            recurrence_id = _recurrence_id_for(dtstart)
             updates = {
                 "dtstart": dtstart,
                 "recurrence_id": recurrence_id,
