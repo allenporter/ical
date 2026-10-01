@@ -473,10 +473,13 @@ def test_todo_recurrence_expansion_period() -> None:
     todos = [
         item.item for item in merge_and_expand_items([todo], datetime.timezone.utc)
     ]
-    assert len(todos) == 1
+    assert len(todos) == 2
 
-    assert todos[0].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
-    assert todos[0].due == datetime.datetime(2022, 8, 8, 12, 0, 0)
+    assert todos[0].dtstart == datetime.datetime(2022, 8, 7, 9, 0, 0)
+    assert todos[0].due == datetime.datetime(2022, 8, 7, 10, 0, 0)
+
+    assert todos[1].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
+    assert todos[1].due == datetime.datetime(2022, 8, 8, 12, 0, 0)
 
 
 def test_rfc7986_todo_properties() -> None:

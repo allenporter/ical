@@ -6,6 +6,7 @@ import copy
 import datetime
 import itertools
 import random
+import zoneinfo
 from collections.abc import Generator
 from typing import Any, Iterable, Iterator
 
@@ -13,6 +14,7 @@ import pytest
 from dateutil import rrule
 
 from ical.iter import (
+    AllDayConverter,
     CachedTransitionTimeline,
     MergedIterable,
     MergedIterator,
@@ -20,6 +22,7 @@ from ical.iter import (
     RecurrenceError,
     RulesetIterable,
 )
+from ical.types import Period
 
 EMPTY_LIST: list[bool] = []
 EMPTY_ITERATOR_LIST: list[Iterator[bool]] = []
@@ -148,6 +151,159 @@ def test_debug_invalid_rule_without_recur() -> None:
         "rdate=[datetime.date(2022, 12, 22)], "
         "exdate=[datetime.datetime(2022, 12, 23, 5, 0)]))"
     )
+
+
+_NY = zoneinfo.ZoneInfo("America/New_York")
+_UTC = datetime.timezone.utc
+
+
+@pytest.mark.parametrize(
+    ("dtstart", "rdate", "exdate", "expected"),
+    [
+        (
+            datetime.date(2026, 9, 22),
+            [datetime.date(2026, 10, 27), datetime.date(2026, 12, 1)],
+            [],
+            [
+                datetime.date(2026, 9, 22),
+                datetime.date(2026, 10, 27),
+                datetime.date(2026, 12, 1),
+            ],
+        ),
+        # DTSTART also listed in RDATE is a single instance
+        (
+            datetime.date(2026, 9, 22),
+            [datetime.date(2026, 9, 22), datetime.date(2026, 10, 27)],
+            [],
+            [datetime.date(2026, 9, 22), datetime.date(2026, 10, 27)],
+        ),
+        # EXDATE takes precedence over DTSTART
+        (
+            datetime.date(2026, 9, 22),
+            [datetime.date(2026, 10, 27)],
+            [datetime.date(2026, 9, 22)],
+            [datetime.date(2026, 10, 27)],
+        ),
+        # An RDATE before DTSTART is still returned in order
+        (
+            datetime.date(2026, 9, 22),
+            [datetime.date(2026, 9, 1)],
+            [],
+            [datetime.date(2026, 9, 1), datetime.date(2026, 9, 22)],
+        ),
+        # Floating times
+        (
+            datetime.datetime(2026, 9, 22, 12, 0),
+            [datetime.datetime(2026, 10, 27, 12, 0)],
+            [],
+            [
+                datetime.datetime(2026, 9, 22, 12, 0),
+                datetime.datetime(2026, 10, 27, 12, 0),
+            ],
+        ),
+        # Timezone aware times
+        (
+            datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_NY),
+            [datetime.datetime(2026, 10, 27, 16, 0, tzinfo=_UTC)],
+            [],
+            [
+                datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_NY),
+                datetime.datetime(2026, 10, 27, 16, 0, tzinfo=_UTC),
+            ],
+        ),
+        # The same instant spelled in another timezone is a single instance
+        (
+            datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_NY),
+            [
+                datetime.datetime(2026, 9, 22, 16, 0, tzinfo=_UTC),
+                datetime.datetime(2026, 10, 27, 16, 0, tzinfo=_UTC),
+            ],
+            [],
+            [
+                datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_NY),
+                datetime.datetime(2026, 10, 27, 16, 0, tzinfo=_UTC),
+            ],
+        ),
+        # RDATE as a PERIOD
+        (
+            datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_UTC),
+            [
+                Period(
+                    start=datetime.datetime(2026, 10, 27, 12, 0, tzinfo=_UTC),
+                    end=datetime.datetime(2026, 10, 27, 14, 0, tzinfo=_UTC),
+                )
+            ],
+            [],
+            [
+                datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_UTC),
+                datetime.datetime(2026, 10, 27, 12, 0, tzinfo=_UTC),
+            ],
+        ),
+    ],
+    ids=[
+        "date",
+        "dtstart-also-in-rdate",
+        "exdate-of-dtstart",
+        "rdate-before-dtstart",
+        "floating",
+        "timezone-aware",
+        "same-instant-other-timezone",
+        "period",
+    ],
+)
+def test_rdate_without_rrule_includes_dtstart(
+    dtstart: datetime.datetime | datetime.date,
+    rdate: list[datetime.datetime | datetime.date | Period],
+    exdate: list[datetime.datetime | datetime.date],
+    expected: list[datetime.datetime | datetime.date],
+) -> None:
+    """Test that DTSTART is the first instance of an RDATE only recurrence set."""
+    assert list(RulesetIterable(dtstart, [], rdate, exdate)) == expected
+
+
+@pytest.mark.parametrize(
+    ("dtstart", "rdate"),
+    [
+        (
+            datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_NY),
+            [datetime.datetime(2026, 10, 27, 12, 0)],
+        ),
+        (
+            datetime.date(2026, 9, 22),
+            [datetime.datetime(2026, 10, 27, 12, 0, tzinfo=_UTC)],
+        ),
+        (
+            datetime.datetime(2026, 9, 22, 12, 0, tzinfo=_UTC),
+            [datetime.date(2026, 10, 27)],
+        ),
+    ],
+    ids=["aware-dtstart-floating-rdate", "date-dtstart", "date-rdate"],
+)
+def test_rdate_without_rrule_incomparable_dtstart(
+    dtstart: datetime.datetime | datetime.date,
+    rdate: list[datetime.datetime | datetime.date | Period],
+) -> None:
+    """Test a DTSTART that can't be ordered against the RDATE values.
+
+    These sets evaluate today, so DTSTART is left out rather than failing.
+    """
+    assert list(RulesetIterable(dtstart, [], rdate, [])) == rdate
+
+
+def test_rrule_and_rdate_dtstart_not_duplicated() -> None:
+    """Test that an RRULE with RDATE still returns DTSTART exactly once."""
+    dtstart = datetime.date(2026, 9, 22)
+    recur_iter = RulesetIterable(
+        dtstart,
+        [AllDayConverter(rrule.rrule(freq=rrule.WEEKLY, dtstart=dtstart, count=2))],
+        [datetime.date(2026, 9, 22), datetime.date(2026, 12, 1)],
+        [],
+    )
+    assert list(recur_iter) == [
+        datetime.date(2026, 9, 22),
+        datetime.date(2026, 9, 29),
+        datetime.date(2026, 12, 1),
+    ]
 
 
 class _YearTransitions:
