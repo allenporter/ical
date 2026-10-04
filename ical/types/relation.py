@@ -9,7 +9,7 @@ from pydantic import model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 from .parsing import parse_parameter_values
 
 
@@ -58,6 +58,33 @@ class RelatedTo:
                 data[param.name] = param.values[0]
             return data
         return {"uid": prop}
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> "RelatedTo":
+        """Parse an RFC 7265 jCal related-to property."""
+        if isinstance(value, RelatedTo):
+            return value
+        reltype = RelationshipType.PARENT
+        if rt := params.get("reltype") or params.get("RELTYPE"):
+            try:
+                reltype = RelationshipType(str(rt).upper())
+            except ValueError:
+                pass
+        return RelatedTo(uid=str(value), reltype=reltype)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if isinstance(value, RelatedTo):
+            params: dict[str, Any] = {}
+            if value.reltype != RelationshipType.PARENT:
+                params["reltype"] = (
+                    value.reltype.value
+                    if isinstance(value.reltype, enum.Enum)
+                    else str(value.reltype)
+                )
+            return EncodedJcalValue(params, [value.uid], type_name="text")
+        return None
 
     _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 

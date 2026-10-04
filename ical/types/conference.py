@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ical.parsing.property import ParsedProperty
 
 from .const import ExtensibleEnum
-from .data_types import DATA_TYPE, encode_model_property_params
+from .data_types import DATA_TYPE, EncodedJcalValue, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
 
@@ -47,6 +47,30 @@ class Conference(BaseModel):
     _parse_parameter_values = model_validator(mode="before")(parse_parameter_values)
 
     __parse_property_value__ = dataclasses.asdict
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> Conference:
+        """Parse an RFC 7265 jCal conference property."""
+        if isinstance(value, Conference):
+            return value
+        return cls.model_validate({"value": value, "params": params})
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if isinstance(value, Conference):
+            params: dict[str, Any] = {}
+            if value.feature:
+                params["feature"] = [
+                    f.value if isinstance(f, enum.Enum) else str(f)
+                    for f in value.feature
+                ]
+            if value.label:
+                params["label"] = value.label
+            if value.language:
+                params["language"] = value.language
+            return EncodedJcalValue(params, [str(value.uri)], type_name="uri")
+        return None
 
     @classmethod
     def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:

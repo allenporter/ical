@@ -1,11 +1,11 @@
 """Library for parsing TEXT values."""
 
 import re
-
+from typing import Any
 
 from ical.parsing.property import ParsedProperty, RE_CONTROL_CHARS
 
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 
 _UNESCAPE_RE = re.compile(r"\\([\\;,Nn])")
 _UNESCAPE_MAP = {
@@ -37,6 +37,11 @@ class TextEncoder:
         return _UNESCAPE_RE.sub(lambda m: _UNESCAPE_MAP[m.group(1)], prop.value)
 
     @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> str:
+        """Parse an RFC 7265 jCal text into a string."""
+        return str(value)
+
+    @classmethod
     def __encode_property__(cls, value: str) -> ParsedProperty:
         """Serialize text as an ICS value."""
         for key, vin in ESCAPE_CHAR.items():
@@ -45,3 +50,11 @@ class TextEncoder:
             value = value.replace(key, vin)
         value = RE_CONTROL_CHARS.sub("", value)
         return ParsedProperty(name="", value=value)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue:
+        """Encode as jCal parameters and value list."""
+        values = value if isinstance(value, (list, tuple)) else [value]
+        return EncodedJcalValue(
+            {}, [v.value if hasattr(v, "value") else str(v) for v in values]
+        )

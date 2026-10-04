@@ -9,9 +9,9 @@ from typing import Any
 
 from ical.parsing.property import ParsedProperty
 
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 
-UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2})([0-9]{2})([0-9]{2})?$")
+UTC_OFFSET_REGEX = re.compile(r"^([-+]?)([0-9]{2}):?([0-9]{2}):?([0-9]{2})?$")
 
 
 @DATA_TYPE.register("UTC-OFFSET")
@@ -40,6 +40,30 @@ class UtcOffset:
         if sign == "-":
             result = -result
         return UtcOffset(result)
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> UtcOffset:
+        """Parse an RFC 7265 jCal utc-offset property."""
+        if isinstance(value, UtcOffset):
+            return value
+        if isinstance(value, datetime.timedelta):
+            return UtcOffset(value)
+        return cls.__parse_property_value__(value)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        offset = value.offset if isinstance(value, UtcOffset) else value
+        if not isinstance(offset, datetime.timedelta):
+            return None
+        sign = "-" if offset < datetime.timedelta(0) else "+"
+        total_sec = abs(int(offset.total_seconds()))
+        hours, rem = divmod(total_sec, 3600)
+        minutes, seconds = divmod(rem, 60)
+        formatted = f"{sign}{hours:02}:{minutes:02}"
+        if seconds:
+            formatted += f":{seconds:02}"
+        return EncodedJcalValue({}, [formatted])
 
     @classmethod
     def __encode_property_json__(cls, value: UtcOffset) -> str:
