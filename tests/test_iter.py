@@ -12,8 +12,10 @@ from typing import Any, Iterable, Iterator
 import pytest
 from dateutil import rrule
 
+import ical.iter as iter_mod
 from ical.iter import (
     CachedTransitionTimeline,
+    LazyCachedIterable,
     MergedIterable,
     MergedIterator,
     RecurIterable,
@@ -241,3 +243,124 @@ def test_cached_transition_timeline_deepcopy() -> None:
     assert timeline.active_at(_year(2020)) == 20
     # The copy took its own fresh iterator from the shared source.
     assert source.iterations == 2
+
+
+def test_lazy_cached_iterable() -> None:
+    """Test LazyCachedIterable materializes lazily and can be iterated repeatedly."""
+    calls = 0
+
+    def gen() -> Iterator[int]:
+        nonlocal calls
+        for i in range(10):
+            calls += 1
+            yield i
+
+    cached = LazyCachedIterable(gen())
+    # First consumer consumes 3 items
+    it1 = iter(cached)
+    assert next(it1) == 0
+    assert next(it1) == 1
+    assert next(it1) == 2
+    assert calls == 3
+
+    # Second consumer starts from the beginning without re-running source
+    it2 = iter(cached)
+    assert next(it2) == 0
+    assert next(it2) == 1
+    assert next(it2) == 2
+    assert calls == 3  # No extra pulls
+
+    # Second consumer advances past what was cached
+    assert next(it2) == 3
+    assert calls == 4
+
+    # Both can consume to exhaustion
+    assert list(it1) == list(range(3, 10))
+    assert list(iter(cached)) == list(range(10))
+    assert calls == 10
+
+
+def test_ruleset_iterable_shared_cache() -> None:
+    """Test that separate RulesetIterable instances for the same rule share occurrence cache."""
+    dtstart = datetime.date(2020, 1, 1)
+    rule = rrule.rrule(freq=rrule.YEARLY, dtstart=datetime.datetime(2020, 1, 1))
+
+    r1 = RulesetIterable(dtstart, [rule], [], [])
+    it1 = iter(r1)
+    # Pull first 3 items
+    first_3 = [next(it1) for _ in range(3)]
+    assert first_3 == [
+        datetime.date(2020, 1, 1),
+        datetime.date(2021, 1, 1),
+        datetime.date(2022, 1, 1),
+    ]
+
+    # New RulesetIterable instance with identical rule definition
+    r2 = RulesetIterable(dtstart, [rule], [], [])
+    it2 = iter(r2)
+    # The first 3 are already cached and served immediately
+    assert next(it2) == datetime.date(2020, 1, 1)
+    assert next(it2) == datetime.date(2021, 1, 1)
+    assert next(it2) == datetime.date(2022, 1, 1)
+    # Advance to item 4
+    assert next(it2) == datetime.date(2023, 1, 1)
+
+
+def test_ruleset_iterable_cache_different_rules() -> None:
+    """Test that modifying exdate produces an independent cache entry."""
+    dtstart = datetime.date(2020, 1, 1)
+    rule = rrule.rrule(freq=rrule.YEARLY, dtstart=datetime.datetime(2020, 1, 1))
+
+    r1 = RulesetIterable(dtstart, [rule], [], [])
+    it1 = iter(r1)
+    assert next(it1) == datetime.date(2020, 1, 1)
+    assert next(it1) == datetime.date(2021, 1, 1)
+
+    # With exdate excluding 2021-01-01
+    r2 = RulesetIterable(dtstart, [rule], [], [datetime.date(2021, 1, 1)])
+    it2 = iter(r2)
+    assert next(it2) == datetime.date(2020, 1, 1)
+    assert next(it2) == datetime.date(2022, 1, 1)
+
+
+def test_recurrence_cache_rule_lru_eviction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that cache evicts oldest rules when the rule count exceeds the limit."""
+    monkeypatch.setattr(iter_mod, "_MAX_RECURRENCE_CACHE_RULES", 2)
+    iter_mod._RECURRENCE_CACHE.clear()
+
+    rule1 = rrule.rrule(freq=rrule.YEARLY, dtstart=datetime.datetime(2020, 1, 1))
+    r1 = RulesetIterable(datetime.date(2020, 1, 1), [rule1], [], [])
+    it1 = iter(r1)
+    [next(it1) for _ in range(3)]
+    assert len(iter_mod._RECURRENCE_CACHE) == 1
+
+    rule2 = rrule.rrule(freq=rrule.YEARLY, dtstart=datetime.datetime(2030, 1, 1))
+    r2 = RulesetIterable(datetime.date(2030, 1, 1), [rule2], [], [])
+    it2 = iter(r2)
+    [next(it2) for _ in range(3)]
+    assert len(iter_mod._RECURRENCE_CACHE) == 2
+
+    # Add 3rd rule; since limit is 2, rule1 (oldest) must be evicted
+    rule3 = rrule.rrule(freq=rrule.YEARLY, dtstart=datetime.datetime(2040, 1, 1))
+    r3 = RulesetIterable(datetime.date(2040, 1, 1), [rule3], [], [])
+    it3 = iter(r3)
+    [next(it3) for _ in range(3)]
+    assert len(iter_mod._RECURRENCE_CACHE) == 2
+
+    key1 = iter_mod._rule_cache_key(datetime.date(2020, 1, 1), [rule1], [], [])
+    key2 = iter_mod._rule_cache_key(datetime.date(2030, 1, 1), [rule2], [], [])
+    key3 = iter_mod._rule_cache_key(datetime.date(2040, 1, 1), [rule3], [], [])
+    assert key1 not in iter_mod._RECURRENCE_CACHE
+    assert key2 in iter_mod._RECURRENCE_CACHE
+    assert key3 in iter_mod._RECURRENCE_CACHE
+
+    # Querying evicted rule1 again cleanly starts a fresh generator: zero missing data
+    r1_again = RulesetIterable(datetime.date(2020, 1, 1), [rule1], [], [])
+    it1_again = iter(r1_again)
+    assert [next(it1_again) for _ in range(3)] == [
+        datetime.date(2020, 1, 1),
+        datetime.date(2021, 1, 1),
+        datetime.date(2022, 1, 1),
+    ]

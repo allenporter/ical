@@ -406,3 +406,68 @@ def test_benchmark_office365_extended_timezone_timeline(
         next(calendar.timeline.active_after(now), None)
 
     benchmark(lookup_next)
+
+
+def _build_past_recurring_calendar(num_events: int) -> Calendar:
+    """Build a synthetic calendar with recurring events starting in the distant past."""
+    cal = Calendar()
+    base_year = 1920
+    for i in range(num_events):
+        year = base_year + (i % 60)
+        month = (i % 12) + 1
+        day = (i % 28) + 1
+        cal.events.append(
+            Event(
+                summary=f"Recurring Event {i}",
+                start=datetime.date(year, month, day),
+                end=datetime.date(year, month, day) + datetime.timedelta(days=1),
+                rrule=Recur.from_rrule("FREQ=YEARLY"),
+            )
+        )
+    return cal
+
+
+@pytest.mark.parametrize("num_events", [50, 100])
+@pytest.mark.benchmark(min_rounds=3, warmup=False)
+def test_benchmark_recurring_timeline_overlapping(
+    num_events: int, benchmark: Any
+) -> None:
+    """Benchmark timeline.overlapping() for recurring events with distant past DTSTART.
+
+    Tests the Home Assistant calendar entity polling pattern (issue #688),
+    where a calendar contains many recurring events whose DTSTART dates
+    are decades in the past, queried for a 1-day window in the present.
+    """
+    cal = _build_past_recurring_calendar(num_events)
+    tz = zoneinfo.ZoneInfo("America/Regina")
+    today = datetime.date(2026, 9, 27)
+    start = datetime.datetime.combine(today, datetime.time.min, tz)
+    end = datetime.datetime.combine(
+        today + datetime.timedelta(days=1), datetime.time.min, tz
+    )
+
+    def lookup_overlapping() -> list[Event]:
+        # Access timeline each time to mirror Home Assistant polling
+        return list(cal.timeline_tz(tz).overlapping(start, end))
+
+    benchmark(lookup_overlapping)
+
+
+@pytest.mark.parametrize("num_events", [50, 100])
+@pytest.mark.benchmark(min_rounds=3, warmup=False)
+def test_benchmark_recurring_timeline_active_after(
+    num_events: int, benchmark: Any
+) -> None:
+    """Benchmark timeline.active_after() for recurring events with distant past DTSTART.
+
+    Tests the Home Assistant calendar entity state update pattern (issue #688),
+    where the entity queries the next upcoming event from a calendar with
+    unbounded recurring events starting decades in the past.
+    """
+    cal = _build_past_recurring_calendar(num_events)
+    now = datetime.datetime(2026, 9, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+    def lookup_next() -> Event | None:
+        return next(cal.timeline.active_after(now), None)
+
+    benchmark(lookup_next)

@@ -20,7 +20,6 @@ import logging
 from dataclasses import dataclass
 from typing import Annotated, Any, Iterable, Optional, Self, Union
 
-from dateutil.rrule import rruleset
 from pydantic import (
     BeforeValidator,
     Field,
@@ -33,7 +32,12 @@ from pydantic import (
 from ical.types.data_types import serialize_field
 
 from .component import ComponentModel
-from .iter import CachedTransitionTimeline, MergedIterable, RecurIterable
+from .iter import (
+    CachedTransitionTimeline,
+    MergedIterable,
+    RecurIterable,
+    RulesetIterable,
+)
 from .types import ExtraProperty, Recur, Uri, UtcOffset
 from .tzif import timezoneinfo, tz_rule
 from .util import parse_date_and_datetime_list
@@ -99,14 +103,14 @@ class Observance(ComponentModel):
         assert self.dtstart is not None
         return self.dtstart
 
-    def as_ruleset(self) -> rruleset:
+    def as_ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Represent the occurrence as a rule of repeated dates or datetimes."""
-        ruleset = rruleset()
-        if self.rrule:
-            ruleset.rrule(self.rrule.as_rrule(self.start_datetime))
-        for rdate in self.rdate:
-            ruleset.rdate(rdate)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
-        return ruleset
+        return RulesetIterable(
+            self.start_datetime,
+            [self.rrule.as_rrule(self.start_datetime)] if self.rrule else [],
+            self.rdate,
+            [],
+        )
 
     @field_validator("dtstart")
     @classmethod
