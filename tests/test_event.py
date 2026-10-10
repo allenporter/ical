@@ -587,24 +587,54 @@ def test_event_recurrence_expansion_period() -> None:
         ],
     )
 
-    # Expand recurrence using timeline (does not include dtstart as there is no rrule)
+    # Expand recurrence using timeline (dtstart is the first instance)
     calendar = Calendar(vevent=[event])
     timeline = calendar.timeline
     events = list(timeline)
 
-    assert len(events) == 3
+    assert len(events) == 4
 
-    # 1. Period instance with explicit end (2 hours)
-    assert events[0].dtstart == datetime(2022, 8, 8, 10, 0, 0)
-    assert events[0].dtend == datetime(2022, 8, 8, 12, 0, 0)
+    # 1. The dtstart instance (uses default 1 hour)
+    assert events[0].dtstart == datetime(2022, 8, 7, 9, 0, 0)
+    assert events[0].dtend == datetime(2022, 8, 7, 10, 0, 0)
 
-    # 2. Period instance with duration (3 hours)
-    assert events[1].dtstart == datetime(2022, 8, 9, 10, 0, 0)
-    assert events[1].dtend == datetime(2022, 8, 9, 13, 0, 0)
+    # 2. Period instance with explicit end (2 hours)
+    assert events[1].dtstart == datetime(2022, 8, 8, 10, 0, 0)
+    assert events[1].dtend == datetime(2022, 8, 8, 12, 0, 0)
 
-    # 3. Standard datetime instance (uses default 1 hour)
-    assert events[2].dtstart == datetime(2022, 8, 10, 10, 0, 0)
-    assert events[2].dtend == datetime(2022, 8, 10, 11, 0, 0)
+    # 3. Period instance with duration (3 hours)
+    assert events[2].dtstart == datetime(2022, 8, 9, 10, 0, 0)
+    assert events[2].dtend == datetime(2022, 8, 9, 13, 0, 0)
+
+    # 4. Standard datetime instance (uses default 1 hour)
+    assert events[3].dtstart == datetime(2022, 8, 10, 10, 0, 0)
+    assert events[3].dtend == datetime(2022, 8, 10, 11, 0, 0)
+
+
+def test_rdate_without_rrule_includes_dtstart() -> None:
+    """Test that an RDATE only event keeps its DTSTART occurrence (#691)."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        "\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//repro//EN",
+                "BEGIN:VEVENT",
+                "UID:dish-1",
+                "DTSTAMP:20260901T000000Z",
+                "DTSTART;VALUE=DATE:20260922",
+                "RDATE;VALUE=DATE:20261027,20261201",
+                "SUMMARY:Meatloaf",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
+    )
+    assert [event.start for event in calendar.timeline] == [
+        date(2026, 9, 22),
+        date(2026, 10, 27),
+        date(2026, 12, 1),
+    ]
 
 
 def test_rfc7986_event_properties() -> None:
