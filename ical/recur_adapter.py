@@ -81,7 +81,7 @@ class RecurAdapter(Generic[ItemType]):
     ) -> None:
         """Initialize the RecurAdapter."""
         self._item = item
-        self._duration = item.computed_duration  # ty: ignore[invalid-attribute-access]
+        self._duration = item.computed_duration
         self._tzinfo = tzinfo
         self._period_starts: dict[_DateOrDatetime, Period] = {}
         for p in self._item.rdate:
@@ -163,12 +163,12 @@ def merge_and_expand_items(
         )
 
         for item in uid_items:
-            if not (recur := item.as_rrule()):  # ty: ignore[invalid-argument-type]
+            if not (recur := item.as_rrule()):
                 # Non-recurring item (includes edited instances)
                 iters.append(
                     [
                         SortableItemValue(
-                            item.timespan_of(tzinfo),  # ty: ignore[invalid-argument-type]
+                            item.timespan_of(tzinfo),
                             item,
                         )
                     ]
