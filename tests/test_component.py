@@ -7,6 +7,8 @@ import logging
 import zoneinfo
 from typing import Optional, Union
 
+from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.component import ComponentModel
 from ical.exceptions import CalendarParseError, ParameterValueError
 from ical.parsing.component import ParsedComponent
@@ -327,3 +329,194 @@ def test_unknown_value_type_warning_logged(caplog) -> None:
         for record in caplog.records
     )
     assert any("falling back to TEXT" in record.message for record in caplog.records)
+
+
+_UTC = datetime.timezone.utc
+
+
+def _event_ics(dtstart: str, recurrence: str) -> str:
+    """Build a calendar holding a single recurring event."""
+    return f"""BEGIN:VCALENDAR
+PRODID:-//Example//Example//EN
+VERSION:2.0
+BEGIN:VEVENT
+DTSTAMP:20250715T100000Z
+UID:1
+{dtstart}
+{recurrence}
+SUMMARY:Standup
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+_TODO_ICS = """BEGIN:VCALENDAR
+PRODID:-//Example//Example//EN
+VERSION:2.0
+BEGIN:VTODO
+DTSTAMP:20250715T100000Z
+UID:1
+SUMMARY:Water the plants
+DTSTART:20250715T140000Z
+DUE:20250715T150000Z
+RRULE:FREQ=DAILY;UNTIL={until}
+END:VTODO
+END:VCALENDAR
+"""
+
+
+def _until(calendar: Calendar) -> datetime.datetime | datetime.date:
+    """Read UNTIL off the first event, asserting the rule survived parsing."""
+    rrule = calendar.events[0].rrule
+    assert rrule is not None
+    assert rrule.until is not None
+    return rrule.until
+
+
+def _occurrences(calendar: Calendar) -> list[datetime.datetime | datetime.date]:
+    """Expand the first month of the calendar."""
+    return [
+        event.start
+        for event in calendar.timeline.included(
+            datetime.datetime(2025, 7, 1, tzinfo=_UTC),
+            datetime.datetime(2025, 8, 1, tzinfo=_UTC),
+        )
+    ]
+
+
+def test_naive_until_against_utc_dtstart_is_rejected() -> None:
+    """rfc5545 3.3.10 requires UNTIL in UTC when DTSTART is timezone-aware.
+
+    A naive UNTIL used to validate cleanly and then fail much later, inside
+    the recurrence iterator, with an error naming neither event nor rule.
+    """
+    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
+        IcsCalendarStream.calendar_from_ics(
+            _event_ics(
+                "DTSTART:20250715T140000Z", "RRULE:FREQ=DAILY;UNTIL=20250718T140000"
+            )
+        )
+
+
+def test_naive_until_against_a_tzid_dtstart_is_rejected() -> None:
+    """A TZID reference is timezone-aware too, so the same rule applies."""
+    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
+        IcsCalendarStream.calendar_from_ics(
+            _event_ics(
+                "DTSTART;TZID=America/Denver:20250715T140000",
+                "RRULE:FREQ=DAILY;UNTIL=20250718T140000",
+            )
+        )
+
+
+def test_naive_until_is_rejected_on_a_todo_as_well() -> None:
+    """`validate_until_dtstart` is shared by VEVENT, VTODO and VJOURNAL."""
+    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
+        IcsCalendarStream.calendar_from_ics(_TODO_ICS.format(until="20250718T140000"))
+
+
+def test_a_conforming_until_is_untouched() -> None:
+    """The valid case has to keep working, or this trades one break for another."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics(
+            "DTSTART:20250715T140000Z", "RRULE:FREQ=DAILY;UNTIL=20250718T140000Z"
+        )
+    )
+
+    assert _until(calendar) == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=_UTC)
+    assert len(_occurrences(calendar)) == 4
+
+
+def test_a_floating_dtstart_still_takes_a_floating_until() -> None:
+    """Both naive is the other legal combination, and must not be caught."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics("DTSTART:20250715T140000", "RRULE:FREQ=DAILY;UNTIL=20250718T140000")
+    )
+
+    assert _until(calendar) == datetime.datetime(2025, 7, 18, 14, 0)
+
+
+def _recur_date_calendar(dtstart: str, recur_date: str) -> Calendar:
+    return IcsCalendarStream.calendar_from_ics(
+        _event_ics(dtstart, f"RRULE:FREQ=DAILY;COUNT=3\n{recur_date}")
+    )
+
+
+def test_a_naive_exdate_against_an_aware_dtstart_still_excludes() -> None:
+    """It raised RecurrenceError out of the iterator instead of excluding."""
+    calendar = _recur_date_calendar(
+        "DTSTART:20250715T140000Z", "EXDATE:20250716T140000"
+    )
+
+    assert _occurrences(calendar) == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=_UTC),
+        datetime.datetime(2025, 7, 17, 14, 0, tzinfo=_UTC),
+    ]
+
+
+def test_a_naive_exdate_against_a_tzid_dtstart() -> None:
+    """A TZID reference is aware too, so it hit the same failure."""
+    calendar = _recur_date_calendar(
+        "DTSTART;TZID=America/Denver:20250715T140000", "EXDATE:20250716T140000"
+    )
+
+    denver = zoneinfo.ZoneInfo("America/Denver")
+    assert _occurrences(calendar) == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=denver),
+        datetime.datetime(2025, 7, 17, 14, 0, tzinfo=denver),
+    ]
+
+
+def test_a_naive_rdate_against_an_aware_dtstart_still_adds() -> None:
+    """RDATE took the whole expansion down the same way EXDATE did."""
+    calendar = _recur_date_calendar("DTSTART:20250715T140000Z", "RDATE:20250720T140000")
+
+    assert datetime.datetime(2025, 7, 20, 14, 0, tzinfo=_UTC) in _occurrences(calendar)
+
+
+def test_a_conforming_exdate_is_untouched() -> None:
+    """Matching awareness must not be rewritten."""
+    calendar = _recur_date_calendar(
+        "DTSTART:20250715T140000Z", "EXDATE:20250716T140000Z"
+    )
+
+    assert _occurrences(calendar) == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=_UTC),
+        datetime.datetime(2025, 7, 17, 14, 0, tzinfo=_UTC),
+    ]
+
+
+def test_an_exdate_in_another_zone_still_matches_by_instant() -> None:
+    """A different TZID is legal and already worked; it compares absolutely."""
+    calendar = _recur_date_calendar(
+        "DTSTART:20250715T140000Z", "EXDATE;TZID=America/Denver:20250716T080000"
+    )
+
+    assert len(_occurrences(calendar)) == 2
+
+
+def test_an_aware_recurrence_date_against_a_floating_dtstart_keeps_its_offset() -> None:
+    """The mirror case already expanded correctly and must not be rewritten.
+
+    Aligning it too would drop the offset, so an EXDATE naming a zone and an
+    RDATE in UTC would both come back out as floating times -- a different
+    instant than the producer wrote, and a silent change on round trip.
+    """
+    ics = _event_ics(
+        "DTSTART:20250715T140000",
+        "RRULE:FREQ=DAILY;COUNT=3\n"
+        "EXDATE;TZID=America/Denver:20250716T140000\n"
+        "RDATE:20250725T190000Z",
+    )
+
+    event = IcsCalendarStream.calendar_from_ics(ics).events[0]
+    assert event.exdate == [
+        datetime.datetime(
+            2025, 7, 16, 14, 0, tzinfo=zoneinfo.ZoneInfo("America/Denver")
+        )
+    ]
+    assert event.rdate == [datetime.datetime(2025, 7, 25, 19, 0, tzinfo=_UTC)]
+
+    output = IcsCalendarStream.calendar_to_ics(IcsCalendarStream.calendar_from_ics(ics))
+    assert "EXDATE;TZID=America/Denver:20250716T140000" in output
+    assert "RDATE:20250725T190000Z" in output
