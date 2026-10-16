@@ -104,9 +104,10 @@ def test_journal_recurrence_expansion_period() -> None:
     journals = [
         item.item for item in merge_and_expand_items([journal], datetime.timezone.utc)
     ]
-    assert len(journals) == 1
+    assert len(journals) == 2
 
-    assert journals[0].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
+    assert journals[0].dtstart == datetime.datetime(2022, 8, 7, 9, 0, 0)
+    assert journals[1].dtstart == datetime.datetime(2022, 8, 8, 10, 0, 0)
 
 
 def test_rfc7986_journal_properties() -> None:
