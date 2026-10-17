@@ -60,3 +60,25 @@ def test_parse_contentlines_benchmark(
         json.loads(json_encoder.encode(values))
 
     benchmark(parse)
+
+
+def test_unfold_preserves_leading_pipe() -> None:
+    """Test that a newline followed by '|' is not treated as a fold."""
+    ics = "BEGIN:VEVENT\nSUMMARY:Line1\n|Line2\nEND:VEVENT"
+    with pytest.raises(CalendarParseError):
+        parse_content(ics)
+
+
+@pytest.mark.parametrize(
+    "invalid_ics",
+    [
+        "END:STREAM",
+        "END:VCALENDAR",
+        "BEGIN:VCALENDAR\nEND:VEVENT",
+        "BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT",
+    ],
+)
+def test_unbalanced_components_raise_parse_error(invalid_ics: str) -> None:
+    """Test that unmatched END or unclosed BEGIN raises CalendarParseError."""
+    with pytest.raises(CalendarParseError):
+        parse_content(invalid_ics)

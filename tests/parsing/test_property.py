@@ -235,3 +235,15 @@ def test_rfc6868_caret_parameter_encoding(input_value: str, expected_ics: str) -
         params=[ParsedPropertyParameter(name="KEY", values=[input_value])],
     )
     assert prop.ics() == expected_ics
+
+
+def test_lowercase_parameter_names() -> None:
+    """Test that lowercase parameter names are accepted and normalized to uppercase."""
+    prop = ParsedProperty.from_ics(
+        "DTSTART;tzid=America/New_York;value=DATE-TIME:20250501T090000"
+    )
+    assert prop.name == "dtstart"
+    assert prop.params == [
+        ParsedPropertyParameter(name="TZID", values=["America/New_York"]),
+        ParsedPropertyParameter(name="VALUE", values=["DATE-TIME"]),
+    ]

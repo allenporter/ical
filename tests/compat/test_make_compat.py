@@ -169,3 +169,19 @@ END:VCALENDAR"""
     # 4. Verify standard/non-compat parser parses output successfully
     new_calendar = IcsCalendarStream.calendar_from_ics(output_ics)
     assert new_calendar is not None
+
+
+def test_prodid_does_not_match_across_newlines() -> None:
+    """Test that PRODID regex only inspects the PRODID line and not subsequent lines."""
+    ics = (
+        "BEGIN:VCALENDAR\n"
+        "PRODID:-//Other//Product//EN\n"
+        "VERSION:2.0\n"
+        "BEGIN:VEVENT\n"
+        "SUMMARY:Mention of Microsoft Exchange Server in summary\n"
+        "END:VEVENT\n"
+        "END:VCALENDAR"
+    )
+    with enable_compat_mode(ics):
+        assert not timezone_compat.is_allow_invalid_timezones_enabled()
+        assert not timezone_compat.is_extended_timezones_enabled()
