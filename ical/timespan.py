@@ -72,7 +72,7 @@ class Timespan:
 
     def ends_within(self, other: "Timespan") -> bool:
         """Return True if this timespan ends while the other event is active."""
-        return other.start <= self.end < other.end
+        return other.start < self.end <= other.end
 
     def intersects(self, other: "Timespan") -> bool:
         """Return True if this timespan overlaps with the other event."""
@@ -85,13 +85,15 @@ class Timespan:
 
     def includes(self, other: "Timespan") -> bool:
         """Return True if the other timespan starts and ends within this event."""
+        if self.start == self.end:
+            return self.start == other.start == other.end
         return (
-            self.start <= other.start < self.end and self.start <= other.end < self.end
+            self.start <= other.start < self.end and self.start <= other.end <= self.end
         )
 
     def is_included_in(self, other: "Timespan") -> bool:
         """Return True if this timespan starts and ends within the other event."""
-        return other.start <= self.start and self.end < other.end
+        return other.start <= self.start and self.end <= other.end
 
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):

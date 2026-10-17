@@ -35,7 +35,7 @@ Supports iteration and range queries such as
 
 def calendar_timeline(events: list[Event], tzinfo: datetime.tzinfo) -> Timeline:
     """Create a timeline for events on a calendar, including recurrence."""
-    return Timeline(merge_and_expand_items(events, tzinfo))
+    return Timeline(merge_and_expand_items(events, tzinfo), tzinfo)
 
 
 def generic_timeline(
@@ -51,7 +51,8 @@ def generic_timeline(
         merge_and_expand_items(
             items,
             tzinfo,
-        )
+        ),
+        tzinfo,
     )
 
 
@@ -72,9 +73,10 @@ def materialize_timeline(
     Either stop or max_number_of_events must be specified to provide an
     upper bound on the materialized timeline.
     """
-    start_dt = normalize_datetime(start)
+    tzinfo = timeline._tzinfo
+    start_dt = normalize_datetime(start, tzinfo)
     if stop:
-        timespan = Timespan.of(start, stop)
+        timespan = Timespan.of(start, stop, tzinfo)
     elif max_number_of_events is not None:
         timespan = None
     else:
@@ -94,4 +96,4 @@ def materialize_timeline(
             if item.key.end > start_dt:
                 items.append(SortableItemValue(item.key, item.item))
 
-    return SortableItemTimeline[ItemType](items)
+    return SortableItemTimeline[ItemType](items, tzinfo)

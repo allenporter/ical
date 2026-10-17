@@ -471,3 +471,120 @@ def test_benchmark_recurring_timeline_active_after(
         return next(cal.timeline.active_after(now), None)
 
     benchmark(lookup_next)
+
+
+def test_timeline_included_does_not_break_early_on_long_event() -> None:
+    """Test that included() does not prematurely break when an event overflows the end."""
+    ev_long = Event(
+        summary="Long",
+        dtstart=datetime.datetime(2025, 5, 2, 9, 0, tzinfo=datetime.timezone.utc),
+        dtend=datetime.datetime(2025, 5, 12, 9, 0, tzinfo=datetime.timezone.utc),
+    )
+    ev_inside = Event(
+        summary="Inside",
+        dtstart=datetime.datetime(2025, 5, 3, 9, 0, tzinfo=datetime.timezone.utc),
+        dtend=datetime.datetime(2025, 5, 3, 10, 0, tzinfo=datetime.timezone.utc),
+    )
+    ev_after = Event(
+        summary="After",
+        dtstart=datetime.datetime(2025, 5, 11, 9, 0, tzinfo=datetime.timezone.utc),
+        dtend=datetime.datetime(2025, 5, 11, 10, 0, tzinfo=datetime.timezone.utc),
+    )
+    tl = calendar_timeline([ev_long, ev_inside, ev_after], datetime.timezone.utc)
+    result = list(
+        tl.included(
+            datetime.datetime(2025, 5, 1, 0, 0, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2025, 5, 10, 0, 0, tzinfo=datetime.timezone.utc),
+        )
+    )
+    assert [e.summary for e in result] == ["Inside"]
+
+
+def test_timeline_included_all_day_exact_bounds() -> None:
+    """Test that an all-day event is included in its exact date range."""
+    ev_all_day = Event(
+        summary="All Day",
+        dtstart=datetime.date(2025, 5, 1),
+        dtend=datetime.date(2025, 5, 2),
+    )
+    tl = calendar_timeline([ev_all_day], datetime.timezone.utc)
+    result = list(tl.included(datetime.date(2025, 5, 1), datetime.date(2025, 5, 2)))
+    assert [e.summary for e in result] == ["All Day"]
+
+
+def test_timeline_at_instant_zero_duration_event() -> None:
+    """Test that at_instant() returns zero-duration events at that exact instant."""
+    ev_zero = Event(
+        summary="Zero Duration",
+        dtstart=datetime.datetime(2025, 5, 1, 9, 0, tzinfo=datetime.timezone.utc),
+    )
+    ev_normal = Event(
+        summary="Normal",
+        dtstart=datetime.datetime(2025, 5, 1, 8, 0, tzinfo=datetime.timezone.utc),
+        dtend=datetime.datetime(2025, 5, 1, 9, 0, tzinfo=datetime.timezone.utc),
+    )
+    tl = calendar_timeline([ev_zero, ev_normal], datetime.timezone.utc)
+    # At 09:00, ev_normal has just ended (exclusive) and ev_zero is active
+    result = list(
+        tl.at_instant(datetime.datetime(2025, 5, 1, 9, 0, tzinfo=datetime.timezone.utc))
+    )
+    assert [e.summary for e in result] == ["Zero Duration"]
+
+
+def test_timeline_preserves_tzinfo_across_queries() -> None:
+    """Test that timeline queries and materialize_timeline use the timeline's tzinfo."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    ev_all_day = Event(
+        summary="NY All Day",
+        dtstart=datetime.date(2025, 5, 1),
+        dtend=datetime.date(2025, 5, 2),
+    )
+    ev_timed = Event(
+        summary="NY Timed",
+        dtstart=datetime.datetime(2025, 5, 1, 10, 0, tzinfo=tz),
+        dtend=datetime.datetime(2025, 5, 1, 11, 0, tzinfo=tz),
+    )
+
+    with patch(
+        "ical.util.local_timezone", side_effect=AssertionError("local_timezone called")
+    ):
+        tl = calendar_timeline([ev_all_day, ev_timed], tz)
+
+        assert [
+            e.summary
+            for e in tl.included(datetime.date(2025, 5, 1), datetime.date(2025, 5, 2))
+        ] == ["NY All Day", "NY Timed"]
+
+        assert [
+            e.summary
+            for e in tl.overlapping(
+                datetime.date(2025, 5, 1), datetime.date(2025, 5, 2)
+            )
+        ] == ["NY All Day", "NY Timed"]
+
+        assert [e.summary for e in tl.on_date(datetime.date(2025, 5, 1))] == [
+            "NY All Day",
+            "NY Timed",
+        ]
+
+        assert [
+            e.summary for e in tl.start_after(datetime.datetime(2025, 5, 1, 9, 0))
+        ] == ["NY Timed"]
+
+        assert [
+            e.summary for e in tl.active_after(datetime.datetime(2025, 5, 1, 10, 30))
+        ] == ["NY All Day", "NY Timed"]
+
+        assert [
+            e.summary for e in tl.at_instant(datetime.datetime(2025, 5, 1, 10, 30))
+        ] == ["NY All Day", "NY Timed"]
+
+        materialized = materialize_timeline(
+            tl,
+            datetime.date(2025, 5, 1),
+            datetime.date(2025, 5, 2),
+        )
+        assert [e.summary for e in materialized.on_date(datetime.date(2025, 5, 1))] == [
+            "NY All Day",
+            "NY Timed",
+        ]

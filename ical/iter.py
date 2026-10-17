@@ -460,8 +460,13 @@ class SortedItemIterable(Iterable[SortableItem[K, T]]):
 class SortableItemTimeline(Iterable[T]):
     """A set of components on a calendar."""
 
-    def __init__(self, iterable: Iterable[SpanOrderedItem[T]]) -> None:
+    def __init__(
+        self,
+        iterable: Iterable[SpanOrderedItem[T]],
+        tzinfo: datetime.tzinfo | None = None,
+    ) -> None:
         self._iterable = iterable
+        self._tzinfo = tzinfo
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator as a traversal over events in chronological order."""
@@ -477,11 +482,11 @@ class SortableItemTimeline(Iterable[T]):
 
         The end date is exclusive.
         """
-        timespan = Timespan.of(start, end)
+        timespan = Timespan.of(start, end, self._tzinfo)
         for item in self._iterable:
             if item.key.is_included_in(timespan):
                 yield item.item
-            elif item.key > timespan:
+            elif item.key.start > timespan.end:
                 break
 
     def overlapping(
@@ -493,7 +498,7 @@ class SortableItemTimeline(Iterable[T]):
 
         The end date is exclusive.
         """
-        timespan = Timespan.of(start, end)
+        timespan = Timespan.of(start, end, self._tzinfo)
         for item in self._iterable:
             if item.key.intersects(timespan):
                 yield item.item
@@ -505,12 +510,7 @@ class SortableItemTimeline(Iterable[T]):
         instant: datetime.datetime | datetime.date,
     ) -> Iterator[T]:
         """Return an iterator containing events starting after the specified time."""
-        instant_value = normalize_datetime(instant)
-        if not instant_value.tzinfo:
-            raise ValueError(
-                "Expected a timezone-aware datetime; pass a datetime with tzinfo set "
-                "(e.g. datetime.datetime.now(tz=zoneinfo.ZoneInfo('America/Los_Angeles')))"
-            )
+        instant_value = normalize_datetime(instant, self._tzinfo)
         for item in self._iterable:
             if item.key.start > instant_value:
                 yield item.item
@@ -520,12 +520,7 @@ class SortableItemTimeline(Iterable[T]):
         instant: datetime.datetime | datetime.date,
     ) -> Iterator[T]:
         """Return an iterator containing events active after the specified time."""
-        instant_value = normalize_datetime(instant)
-        if not instant_value.tzinfo:
-            raise ValueError(
-                "Expected a timezone-aware datetime; pass a datetime with tzinfo set "
-                "(e.g. datetime.datetime.now(tz=zoneinfo.ZoneInfo('America/Los_Angeles')))"
-            )
+        instant_value = normalize_datetime(instant, self._tzinfo)
         for item in self._iterable:
             if item.key.start > instant_value or item.key.end > instant_value:
                 yield item.item
@@ -535,7 +530,7 @@ class SortableItemTimeline(Iterable[T]):
         instant: datetime.date | datetime.datetime,
     ) -> Iterator[T]:
         """Return an iterator containing events active at the specified instant."""
-        timespan = Timespan.of(instant, instant)
+        timespan = Timespan.of(instant, instant, self._tzinfo)
         for item in self._iterable:
             if item.key.includes(timespan):
                 yield item.item
@@ -548,11 +543,15 @@ class SortableItemTimeline(Iterable[T]):
 
     def today(self) -> Iterator[T]:
         """Return an iterator containing all events active today."""
-        return self.on_date(datetime.date.today())
+        if self._tzinfo is not None:
+            today = datetime.datetime.now(tz=self._tzinfo).date()
+        else:
+            today = datetime.date.today()
+        return self.on_date(today)
 
     def now(self, tz: datetime.tzinfo | None = None) -> Iterator[T]:
         """Return an iterator containing all events active at the current instant."""
-        return self.at_instant(datetime.datetime.now(tz=tz))
+        return self.at_instant(datetime.datetime.now(tz=tz or self._tzinfo))
 
 
 def as_rrule(
