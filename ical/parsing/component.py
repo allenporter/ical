@@ -13,9 +13,10 @@ data needed to interpret based on the type (e.g. by a pydantic model)
 from __future__ import annotations
 
 import re
-import textwrap
 from dataclasses import dataclass, field
 from collections.abc import Generator
+
+from ical.exceptions import CalendarParseError
 
 from .const import (
     ATTR_BEGIN,
@@ -67,15 +68,38 @@ class ParsedComponent:
 
 
 def _fold(contentline: str) -> list[str]:
-    return textwrap.wrap(
-        contentline,
-        width=FOLD_LEN,
-        subsequent_indent=FOLD_INDENT,
-        drop_whitespace=False,
-        replace_whitespace=False,
-        expand_tabs=False,
-        break_on_hyphens=False,
-    )
+    if not contentline:
+        return []
+    n = len(contentline)
+    if n <= FOLD_LEN:
+        return [contentline]
+    lines: list[str] = []
+    pos = 0
+    width = FOLD_LEN
+    indent = ""
+    stride = FOLD_LEN - len(FOLD_INDENT)
+    while pos < n:
+        if n - pos <= width:
+            lines.append(indent + contentline[pos:])
+            break
+        split_at = pos + width
+        space = contentline.rfind(" ", pos, split_at + 1)
+        tab = contentline.rfind("\t", pos, split_at + 1)
+        ws = max(space, tab)
+        if ws >= pos:
+            if ws == split_at:
+                start_ws = ws
+                while start_ws > pos and contentline[start_ws - 1] in (" ", "\t"):
+                    start_ws -= 1
+                if start_ws > pos:
+                    split_at = start_ws
+            else:
+                split_at = ws + 1
+        lines.append(indent + contentline[pos:split_at])
+        pos = split_at
+        width = stride
+        indent = FOLD_INDENT
+    return lines
 
 
 def parse_content(content: str) -> list[ParsedComponent]:
@@ -96,14 +120,26 @@ def parse_content(content: str) -> list[ParsedComponent]:
         if prop.name == ATTR_BEGIN_LOWER:
             stack.append(ParsedComponent(name=prop.value.lower()))
         elif prop.name == ATTR_END_LOWER:
+            if len(stack) <= 1:
+                raise CalendarParseError(
+                    "Calendar contents are not valid ICS format, see the detailed_error for more information",
+                    detailed_error=f"Unexpected '{prop.ics()}' without matching BEGIN",
+                )
             component = stack.pop()
             if prop.value.lower() != component.name:
-                raise ValueError(
-                    f"Unexpected '{prop}', expected {ATTR_END}:{component.name}"
+                raise CalendarParseError(
+                    "Calendar contents are not valid ICS format, see the detailed_error for more information",
+                    detailed_error=f"Unexpected '{prop}', expected {ATTR_END}:{component.name}",
                 )
             stack[-1].components.append(component)
         else:
             stack[-1].properties.append(prop)
+
+    if len(stack) > 1:
+        raise CalendarParseError(
+            "Calendar contents are not valid ICS format, see the detailed_error for more information",
+            detailed_error=f"Unexpected end of input, missing {ATTR_END}:{stack[-1].name.upper()}",
+        )
 
     return stack[0].components
 
