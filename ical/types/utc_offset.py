@@ -32,10 +32,15 @@ class UtcOffset:
         if not (match := UTC_OFFSET_REGEX.fullmatch(value)):
             raise ValueError(f"Expected value to match UTC-OFFSET pattern: {value}")
         sign, hours, minutes, seconds = match.groups()
+        hours_int = int(hours or 0)
+        minutes_int = int(minutes or 0)
+        seconds_int = int(seconds or 0)
+        if hours_int >= 24 or minutes_int >= 60 or seconds_int >= 60:
+            raise ValueError(f"UTC-OFFSET out of range: {value}")
         result = datetime.timedelta(
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-            seconds=int(seconds or 0),
+            hours=hours_int,
+            minutes=minutes_int,
+            seconds=seconds_int,
         )
         if sign == "-":
             result = -result
@@ -51,11 +56,13 @@ class UtcOffset:
             duration = -duration
         else:
             parts.append("+")
-        seconds = duration.seconds
-        hours = int(seconds / 3600)
+        seconds = int(duration.total_seconds())
+        hours = int(seconds // 3600)
         seconds %= 3600
         parts.append(f"{hours:02}")
-        minutes = int(seconds / 60)
+        minutes = int(seconds // 60)
         seconds %= 60
         parts.append(f"{minutes:02}")
+        if seconds:
+            parts.append(f"{seconds:02}")
         return "".join(parts)

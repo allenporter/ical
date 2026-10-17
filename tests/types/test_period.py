@@ -1,6 +1,7 @@
 """Tests for DURATION data types."""
 
 import datetime
+import zoneinfo
 
 from pydantic import field_serializer
 import pytest
@@ -8,7 +9,7 @@ from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types import Period
 from ical.types.period import FreeBusyType
 from ical.types.data_types import serialize_field
@@ -160,3 +161,43 @@ def test_period_validation_non_dict() -> None:
     """Test validating Period with a non-dict input (like a datetime or string) raises ValidationError, not AttributeError."""
     with pytest.raises(CalendarParseError):
         FakeModel.model_validate({"example": datetime.datetime(2022, 8, 3, 6, 0, 0)})
+
+
+def test_encode_period_with_tzid_and_zero_duration() -> None:
+    """Test encoding a Period with a non-UTC TZID and with timedelta(0) duration."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    model = FakeModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 8, 7, 6, 30, 0, tzinfo=tz),
+        )
+    )
+    assert model.__encode_component_root__() == ParsedComponent(
+        name="FakeModel",
+        properties=[
+            ParsedProperty(
+                name="example",
+                value="20220807T060000/20220807T063000",
+                params=[
+                    ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+                ],
+            )
+        ],
+    )
+
+    zero_period = Period(
+        start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz),
+        duration=datetime.timedelta(0),
+    )
+    assert zero_period.end_value == datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz)
+    prop = Period.__encode_property__(
+        {
+            "start": {"VALUE": "20220807T060000", "TZID": "America/New_York"},
+            "duration": datetime.timedelta(0),
+        }
+    )
+    assert prop is not None
+    assert prop.value.startswith("20220807T060000/")
+    assert prop.params == [
+        ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+    ]
