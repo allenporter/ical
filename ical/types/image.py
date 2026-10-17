@@ -63,6 +63,8 @@ class Image(BaseModel):
         values = parse_parameter_values(cls, values)
 
         # Determine if it's binary or URI
+        if isinstance(values.get("content"), str):
+            values["content"] = base64.b64decode(values["content"])
         value = values.pop("value", None)
         if (
             value is not None
@@ -85,7 +87,7 @@ class Image(BaseModel):
                 values["uri"] = Uri(value)
         return values
 
-    @field_serializer("content")
+    @field_serializer("content", when_used="json")
     def serialize_content(self, content: Optional[bytes]) -> Optional[str]:
         """Serialize content to base64 string."""
         if content is None:

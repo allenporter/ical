@@ -30,6 +30,7 @@ from .parsing.property import ParsedProperty, ParsedPropertyParameter
 from .parsing.component import ParsedComponent
 from .types.extra import ExtraProperty
 from .types.data_types import DATA_TYPE, get_field_type_info
+from .types.period import Period
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
 from .compat import dtstart_until_compat
@@ -75,7 +76,7 @@ def _adjust_recurrence_date(
                 raise ValueError("DTSTART is date local but UNTIL was not")
             return date_value
 
-        if date_value.utcoffset():
+        if date_value.tzinfo is None or date_value.utcoffset():
             raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
 
         return date_value
@@ -91,13 +92,17 @@ def validate_until_dtstart(self: ModelT) -> ModelT:
     """Verify the until time and dtstart are the same."""
     if not (rule := self.rrule) or not rule.until or not (dtstart := self.dtstart):
         return self
-    rule.until = _adjust_recurrence_date(rule.until, dtstart)
+    adjusted_until = _adjust_recurrence_date(rule.until, dtstart)
+    if adjusted_until != rule.until or type(adjusted_until) is not type(rule.until):
+        rule = copy.copy(rule)
+        rule.until = adjusted_until
+        self.__dict__["rrule"] = rule
     return self
 
 
 def validate_duration_unit(self: ModelV) -> ModelV:
     """Validate the duration is the appropriate units."""
-    if not (duration := self.duration):
+    if (duration := self.duration) is None:
         return self
     dtstart = self.dtstart
     if type(dtstart) is datetime.date:
@@ -109,9 +114,11 @@ def validate_duration_unit(self: ModelV) -> ModelV:
 
 
 def _as_datetime(
-    date_value: datetime.datetime | datetime.date,
+    date_value: datetime.datetime | datetime.date | Period,
     dtstart: datetime.datetime,
-) -> datetime.datetime:
+) -> datetime.datetime | Period:
+    if isinstance(date_value, Period):
+        return date_value
     if not isinstance(date_value, datetime.datetime):
         new_dt = datetime.datetime.combine(date_value, dtstart.time())
         return new_dt.replace(tzinfo=dtstart.tzinfo)
@@ -119,9 +126,11 @@ def _as_datetime(
 
 
 def _as_date(
-    date_value: datetime.datetime | datetime.date,
+    date_value: datetime.datetime | datetime.date | Period,
     dtstart: datetime.date,
-) -> datetime.date:
+) -> datetime.date | Period:
+    if isinstance(date_value, Period):
+        return date_value
     if isinstance(date_value, datetime.datetime):
         return datetime.date.fromordinal(date_value.toordinal())
     return date_value
@@ -129,7 +138,7 @@ def _as_date(
 
 def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
-    if not self.rrule or not (dtstart := self.dtstart):
+    if not (dtstart := self.dtstart):
         return self
     for field in ("exdate", "rdate"):
         if not (date_values := self.__dict__.get(field)):
@@ -251,7 +260,11 @@ class ComponentModel(BaseModel):
                         break
                 else:
                     if prop := DATA_TYPE.encode_property(key, annotation, value):
-                        if key == "rdate" and isinstance(value, dict):
+                        if (
+                            key == "rdate"
+                            and isinstance(value, dict)
+                            and "start" in value
+                        ):
                             if not prop.params:
                                 prop.params = []
                             if not any(param.name == "VALUE" for param in prop.params):

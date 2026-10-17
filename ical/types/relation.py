@@ -3,7 +3,6 @@
 import enum
 from dataclasses import dataclass
 from typing import Any, Self
-import logging
 
 from pydantic import model_validator
 
@@ -23,8 +22,11 @@ class RelationshipType(str, enum.Enum):
     CHILD = "CHILD"
     """Child relationship."""
 
-    SIBBLING = "SIBBLING"
+    SIBLING = "SIBLING"
     """Sibling relationship."""
+
+    SIBBLING = "SIBBLING"
+    """Backwards-compatible alias for misspelled sibling relationship."""
 
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
@@ -48,14 +50,13 @@ class RelatedTo:
 
     @classmethod
     def __parse_property_value__(cls, prop: Any) -> dict[str, Any]:
-        """Parse a rfc5545 int value."""
-        logging.info("prop=%s", prop)
+        """Parse a rfc5545 RELATED-TO value."""
         if isinstance(prop, ParsedProperty):
             data: dict[str, Any] = {"uid": prop.value}
             for param in prop.params or ():
                 if len(param.values) > 1:
                     raise ValueError("Expected only one value for RELATED-TO parameter")
-                data[param.name] = param.values[0]
+                data[param.name.lower()] = param.values[0]
             return data
         return {"uid": prop}
 
@@ -64,9 +65,17 @@ class RelatedTo:
     @classmethod
     def __encode_property__(cls, model_data: dict[str, Any]) -> ParsedProperty:
         """Encode the property."""
+        model_data = dict(model_data)
         prop = ParsedProperty(name="", value=model_data.pop("uid"))
         if reltype := model_data.get("reltype"):
             prop.params = [
-                ParsedPropertyParameter(name="RELTYPE", values=[str(reltype)])
+                ParsedPropertyParameter(
+                    name="RELTYPE",
+                    values=[
+                        reltype.value
+                        if isinstance(reltype, enum.Enum)
+                        else str(reltype)
+                    ],
+                )
             ]
         return prop

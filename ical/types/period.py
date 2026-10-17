@@ -65,9 +65,9 @@ class Period(BaseModel):
     @property
     def end_value(self) -> datetime.datetime:
         """A computed end value based on either end or duration."""
-        if self.end:
+        if self.end is not None:
             return self.end
-        if not self.duration:
+        if self.duration is None:
             raise ValueError("Invalid period missing both end and duration")
         return self.start + self.duration
 
@@ -128,31 +128,48 @@ class Period(BaseModel):
         if not isinstance(model_data, dict):
             return None
         model_data = dict(model_data)
-        if not (start := model_data.pop("start", None)):
+        start = model_data.pop("start", None)
+        tzid = None
+        if isinstance(start, dict):
+            tzid = start.get("TZID")
+            start = start.get("VALUE")
+        if not start:
             raise ValueError(f"Invalid period object missing start: {model_data}")
         end = model_data.pop("end", None)
+        if isinstance(end, dict):
+            if not tzid:
+                tzid = end.get("TZID")
+            end = end.get("VALUE")
         duration = model_data.pop("duration", None)
-        if not end and not duration:
+        if isinstance(duration, datetime.timedelta):
+            duration = DurationEncoder.__encode_property_json__(duration)
+        if end is None and duration is None:
             raise ValueError(
                 f"Invalid period missing both end and duration: {model_data}"
             )
         # End and duration are already encoded values
-        if end:
+        if end is not None:
             value = "/".join([start, end])
         else:
-            value = "/".join([start, duration])
+            value = "/".join([start, str(duration)])
 
-        return ParsedProperty(
-            name="",
-            value=value,
-            params=encode_model_property_params(
+        params = (
+            encode_model_property_params(
                 cls.model_fields,
                 {
                     k: v
                     for k, v in model_data.items()
                     if k not in ("end", "duration", "start")
                 },
-            ),
+            )
+            or []
+        )
+        if tzid:
+            params.append(ParsedPropertyParameter(name="TZID", values=[str(tzid)]))
+        return ParsedProperty(
+            name="",
+            value=value,
+            params=params or None,
         )
 
     model_config = ConfigDict(populate_by_name=True)

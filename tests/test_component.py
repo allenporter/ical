@@ -7,10 +7,14 @@ import logging
 import zoneinfo
 from typing import Optional, Union
 
+from ical.calendar import Calendar
+from ical.calendar_stream import IcsCalendarStream
 from ical.component import ComponentModel
+from ical.event import Event
 from ical.exceptions import CalendarParseError, ParameterValueError
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
+from ical.types import Attachment, Frequency, Image, Period, Recur
 from ical.types.data_types import serialize_field
 
 
@@ -327,3 +331,117 @@ def test_unknown_value_type_warning_logged(caplog) -> None:
         for record in caplog.records
     )
     assert any("falling back to TEXT" in record.message for record in caplog.records)
+
+
+def test_rdate_tzid_does_not_inject_value_period() -> None:
+    """Test that RDATE with a TZID datetime does not inject VALUE=PERIOD on serialization."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    event = Event(
+        uid="rdate-tzid-test",
+        dtstamp=datetime.datetime(2022, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc),
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=tz),
+        summary="Meeting",
+        rdate=[datetime.datetime(2022, 1, 5, 9, 0, 0, tzinfo=tz)],
+    )
+    cal = Calendar(events=[event])
+    ics_text = IcsCalendarStream.calendar_to_ics(cal)
+    assert "VALUE=PERIOD" not in ics_text
+    assert "RDATE;TZID=America/New_York:20220105T090000" in ics_text
+
+    parsed = IcsCalendarStream.calendar_from_ics(ics_text)
+    assert parsed.events[0].rdate == [datetime.datetime(2022, 1, 5, 9, 0, 0, tzinfo=tz)]
+
+
+def test_event_rrule_and_period_rdate_validation() -> None:
+    """Test that combining rrule and Period in rdate does not crash validate_recurrence_dates."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    p = Period(
+        start=datetime.datetime(2022, 1, 5, 14, 0, 0, tzinfo=tz),
+        duration=datetime.timedelta(hours=2),
+    )
+    event = Event(
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=tz),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        rdate=[p, datetime.date(2022, 1, 6)],
+    )
+    assert event.rdate[0] == p
+    assert event.rdate[1] == datetime.datetime(2022, 1, 6, 9, 0, 0, tzinfo=tz)
+
+    # All-day event with Period in rdate
+    all_day = Event(
+        dtstart=datetime.date(2022, 1, 1),
+        dtend=datetime.date(2022, 1, 2),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=2"),
+        rdate=[p, datetime.datetime(2022, 1, 6, 9, 0, 0)],
+    )
+    assert all_day.rdate[0] == p
+    assert all_day.rdate[1] == datetime.date(2022, 1, 6)
+
+
+def test_validate_until_dtstart_naive_until_rejected_and_no_mutation() -> None:
+    """Test that naive UNTIL with aware DTSTART is rejected and shared Recur is not mutated."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    with pytest.raises(
+        CalendarParseError, match="DTSTART had UTC or local and UNTIL must be UTC"
+    ):
+        Event(
+            dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+            dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=tz),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2022, 1, 10, 9, 0, 0),
+            ),
+        )
+
+    shared_rule = Recur(
+        freq=Frequency.DAILY,
+        until=datetime.datetime(2022, 1, 10, 0, 0, 0, tzinfo=datetime.timezone.utc),
+    )
+    ev = Event(
+        dtstart=datetime.date(2022, 1, 1),
+        dtend=datetime.date(2022, 1, 2),
+        rrule=shared_rule,
+    )
+    assert ev.rrule is not None
+    assert ev.rrule.until == datetime.date(2022, 1, 10)
+    assert isinstance(shared_rule.until, datetime.datetime)
+
+
+def test_copy_and_validate_preserves_binary_attachment_and_image() -> None:
+    """Test that copy_and_validate does not corrupt binary Attachment or Image content."""
+    raw_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+    event = Event(
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0),
+        summary="Original",
+        attach=[Attachment(content=raw_bytes, FMTTYPE="image/png")],
+        image=[Image(content=raw_bytes, FMTTYPE="image/png")],
+    )
+    updated = event.copy_and_validate({"summary": "Updated"})
+    assert isinstance(updated, Event)
+    assert updated.attach[0].content == raw_bytes
+    assert updated.image[0].content == raw_bytes
+
+    updated2 = updated.copy_and_validate({"summary": "Updated Twice"})
+    assert isinstance(updated2, Event)
+    assert updated2.attach[0].content == raw_bytes
+    assert updated2.image[0].content == raw_bytes
+
+
+def test_escaped_commas_in_categories_and_resources_roundtrip() -> None:
+    """Test that escaped commas in CATEGORIES and RESOURCES do not split prematurely."""
+    event = Event(
+        uid="cat-escape-test",
+        dtstamp=datetime.datetime(2022, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc),
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=datetime.timezone.utc),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc),
+        categories=["Work, Urgent", "Personal"],
+        resources=["Room A, Floor 2", "Projector"],
+    )
+    cal = Calendar(events=[event])
+    ics_text = IcsCalendarStream.calendar_to_ics(cal)
+    parsed = IcsCalendarStream.calendar_from_ics(ics_text)
+    assert parsed.events[0].categories == ["Work, Urgent", "Personal"]
+    assert parsed.events[0].resources == ["Room A, Floor 2", "Projector"]

@@ -42,11 +42,12 @@ def test_default_reltype() -> None:
     [
         ("PARENT"),
         ("CHILD"),
+        ("SIBLING"),
         ("SIBBLING"),
     ],
 )
 def test_reltype(reltype: str) -> None:
-    """Test for no explicit reltype specified."""
+    """Test explicit reltype specified with both lowercase and uppercase parameter name."""
 
     model = FakeModel.model_validate(
         {
@@ -54,7 +55,7 @@ def test_reltype(reltype: str) -> None:
                 ParsedProperty(
                     name="example",
                     value="example-uid@example.com",
-                    params=[ParsedPropertyParameter(name="reltype", values=[reltype])],
+                    params=[ParsedPropertyParameter(name="RELTYPE", values=[reltype])],
                 )
             ]
         },
@@ -133,4 +134,16 @@ def test_encode_reltype() -> None:
                 params=[ParsedPropertyParameter(name="RELTYPE", values=["CHILD"])],
             ),
         ],
+    )
+
+    data = {"uid": "example-uid@example.com", "reltype": RelationshipType.SIBLING}
+    prop = RelatedTo.__encode_property__(data)
+    assert data == {
+        "uid": "example-uid@example.com",
+        "reltype": RelationshipType.SIBLING,
+    }
+    assert prop == ParsedProperty(
+        name="",
+        value="example-uid@example.com",
+        params=[ParsedPropertyParameter(name="RELTYPE", values=["SIBLING"])],
     )
