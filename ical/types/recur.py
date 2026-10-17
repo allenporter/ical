@@ -204,7 +204,14 @@ class RecurrenceId(str):
         # Handle the inline "TZID=tz:DATETIME" format by re-parsing via ParsedProperty
         if "=" in recurrence_id.split(":")[0]:
             prop = ParsedProperty.from_ics(f"RECURRENCE-ID;{recurrence_id}")
+            if prop.get_parameter_value("VALUE") == "DATE":
+                if date_value := DateEncoder.__parse_property_value__(prop):
+                    return date_value
             return DateTimeEncoder.__parse_property_value__(prop)
+
+        tzinfo = (
+            recurrence_id.tzinfo if isinstance(recurrence_id, RecurrenceId) else None
+        )
 
         errors = []
         try:
@@ -221,6 +228,8 @@ class RecurrenceId(str):
                 ParsedProperty(name="", value=recurrence_id)
             )
             if date_time_value:
+                if date_time_value.tzinfo is None and tzinfo is not None:
+                    date_time_value = date_time_value.replace(tzinfo=tzinfo)
                 return date_time_value
         except ValueError as err:
             errors.append(err)
@@ -237,10 +246,20 @@ class RecurrenceId(str):
         if isinstance(value, RecurrenceId):
             return value
 
+        if isinstance(value, str) and "=" in value.split(":")[0]:
+            try:
+                value = ParsedProperty.from_ics(f"RECURRENCE-ID;{value}")
+            except ValueError:
+                pass
+
+        tzinfo: datetime.tzinfo | None = None
+        range_val: Range = Range.NONE
+
         # Handle datetime/date objects directly (e.g. from recur_adapter._recurrence_id_for).
         # Convert to the canonical ICS string first; datetime must be checked before date
         # since datetime is a subclass of date.
         if isinstance(value, datetime.datetime):
+            tzinfo = value.tzinfo
             encoded = DateTimeEncoder.__encode_property_json__(value)
             raw_str = (
                 encoded.get("VALUE", value.strftime("%Y%m%dT%H%M%S"))
@@ -253,9 +272,6 @@ class RecurrenceId(str):
             raw_str = value.value
         else:
             raw_str = str(value)
-
-        tzinfo: datetime.tzinfo | None = None
-        range_val: Range = Range.NONE
 
         if isinstance(value, ParsedProperty):
             # Extract TZID and RANGE from property parameters before discarding them.
@@ -274,6 +290,9 @@ class RecurrenceId(str):
                 elif param.name.upper() == "RANGE" and param.values:
                     if any(str(v).upper() == "THISANDFUTURE" for v in param.values):
                         range_val = Range.THIS_AND_FUTURE
+
+        if tzinfo is None and len(raw_str) == 16 and raw_str.endswith("Z"):
+            tzinfo = datetime.timezone.utc
 
         # The string value is always the plain ICS datetime without TZID
         # (e.g. "20250511T020000") for backward compatibility.  The timezone

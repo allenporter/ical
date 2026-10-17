@@ -216,6 +216,31 @@ def test_recurrence_id_to_value_inline_tzid_returns_aware() -> None:
     assert result.hour == 9
 
 
+def test_recurrence_id_to_value_preserves_instance_tzinfo() -> None:
+    """Test that RecurrenceId.to_value preserves .tzinfo attached to a RecurrenceId instance."""
+    ny_tz = zoneinfo.ZoneInfo("America/New_York")
+    rid = RecurrenceId("20250511T020000", tzinfo=ny_tz)
+    result = RecurrenceId.to_value(rid)
+    assert result == datetime.datetime(2025, 5, 11, 2, 0, 0, tzinfo=ny_tz)
+    assert isinstance(result, datetime.datetime)
+    assert result.tzinfo == ny_tz
+
+
+def test_recurrence_id_parse_inline_tzid_and_range_string() -> None:
+    """Test that RecurrenceId.__parse_property_value__ handles inline TZID=... strings cleanly."""
+    ny_tz = zoneinfo.ZoneInfo("America/New_York")
+    rid = RecurrenceId.__parse_property_value__(
+        "TZID=America/New_York;RANGE=THISANDFUTURE:20250512T100000"
+    )
+    assert rid == "20250512T100000"
+    assert rid.tzinfo == ny_tz
+    assert rid.range == Range.THIS_AND_FUTURE
+    assert RecurrenceId.to_value(rid) == datetime.datetime(
+        2025, 5, 12, 10, 0, 0, tzinfo=ny_tz
+    )
+    assert RecurrenceId.to_value("VALUE=DATE:20250512") == datetime.date(2025, 5, 12)
+
+
 @pytest.mark.parametrize(
     "start,end,rrule,expected",
     [

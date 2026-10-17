@@ -6,6 +6,7 @@ import copy
 import datetime
 import itertools
 import random
+import zoneinfo
 from collections.abc import Generator
 from typing import Any, Iterable, Iterator
 
@@ -13,6 +14,7 @@ import pytest
 from dateutil import rrule
 
 import ical.iter as iter_mod
+from ical.event import Event
 from ical.iter import (
     CachedTransitionTimeline,
     LazyCachedIterable,
@@ -22,6 +24,7 @@ from ical.iter import (
     RecurrenceError,
     RulesetIterable,
 )
+from ical.types.recur import Frequency, Recur
 
 EMPTY_LIST: list[bool] = []
 EMPTY_ITERATOR_LIST: list[Iterator[bool]] = []
@@ -363,4 +366,75 @@ def test_recurrence_cache_rule_lru_eviction(
         datetime.date(2020, 1, 1),
         datetime.date(2021, 1, 1),
         datetime.date(2022, 1, 1),
+    ]
+
+
+def test_recurrence_cache_distinct_timezones_with_same_initial_offset() -> None:
+    """Test that _RECURRENCE_CACHE does not collide across timezones with the same initial UTC offset."""
+    tz_ny = zoneinfo.ZoneInfo("America/New_York")
+    tz_cancun = zoneinfo.ZoneInfo("America/Cancun")
+
+    # On 2025-03-08 09:00, both America/New_York and America/Cancun are at UTC-5,
+    # so their dtstart datetimes compare equal (dt_ny == dt_cancun) and hash equal.
+    # On 2025-03-09, New York springs forward to EDT (UTC-4) while Cancun stays at EST (UTC-5).
+    e_ny = Event(
+        summary="NY",
+        dtstart=datetime.datetime(2025, 3, 8, 9, 0, tzinfo=tz_ny),
+        dtend=datetime.datetime(2025, 3, 8, 10, 0, tzinfo=tz_ny),
+        rrule=Recur(freq=Frequency.DAILY, count=3),
+    )
+    e_cancun = Event(
+        summary="Cancun",
+        dtstart=datetime.datetime(2025, 3, 8, 9, 0, tzinfo=tz_cancun),
+        dtend=datetime.datetime(2025, 3, 8, 10, 0, tzinfo=tz_cancun),
+        rrule=Recur(freq=Frequency.DAILY, count=3),
+    )
+
+    ny_Rule = e_ny.as_rrule()
+    assert ny_Rule is not None
+    ny_dates = list(ny_Rule)
+    assert all(isinstance(d, datetime.datetime) and d.tzinfo is tz_ny for d in ny_dates)
+
+    cancun_rule = e_cancun.as_rrule()
+    assert cancun_rule is not None
+    cancun_dates = list(cancun_rule)
+    assert all(
+        isinstance(d, datetime.datetime) and d.tzinfo is tz_cancun for d in cancun_dates
+    )
+    # On March 9, 09:00 NY (UTC-4) != 09:00 Cancun (UTC-5)
+    assert ny_dates[1] != cancun_dates[1]
+
+
+def test_ruleset_iterable_naive_and_aware_coercion() -> None:
+    """Test RulesetIterable normalizes naive rdate/exdate when dtstart is aware and vice versa."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    dtstart_aware = datetime.datetime(2025, 5, 1, 9, 0, tzinfo=tz)
+    rule_aware = rrule.rrule(freq=rrule.DAILY, dtstart=dtstart_aware, count=3)
+
+    # Aware dtstart with naive exdate and naive rdate
+    rs_aware = RulesetIterable(
+        dtstart_aware,
+        [rule_aware],
+        [datetime.datetime(2025, 5, 4, 9, 0)],
+        [datetime.datetime(2025, 5, 2, 9, 0)],
+    )
+    assert list(rs_aware) == [
+        datetime.datetime(2025, 5, 1, 9, 0, tzinfo=tz),
+        datetime.datetime(2025, 5, 3, 9, 0, tzinfo=tz),
+        datetime.datetime(2025, 5, 4, 9, 0, tzinfo=tz),
+    ]
+
+    # Naive dtstart with aware exdate and aware rdate
+    dtstart_naive = datetime.datetime(2025, 5, 1, 9, 0)
+    rule_naive = rrule.rrule(freq=rrule.DAILY, dtstart=dtstart_naive, count=3)
+    rs_naive = RulesetIterable(
+        dtstart_naive,
+        [rule_naive],
+        [datetime.datetime(2025, 5, 4, 9, 0, tzinfo=tz)],
+        [datetime.datetime(2025, 5, 2, 9, 0, tzinfo=tz)],
+    )
+    assert list(rs_naive) == [
+        datetime.datetime(2025, 5, 1, 9, 0),
+        datetime.datetime(2025, 5, 3, 9, 0),
+        datetime.datetime(2025, 5, 4, 9, 0),
     ]

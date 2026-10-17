@@ -14,7 +14,13 @@ from collections.abc import Iterable
 from typing import Annotated, Union, Self
 
 from dateutil import rrule
-from pydantic import BeforeValidator, ConfigDict, Field, field_serializer
+from pydantic import (
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_serializer,
+    model_validator,
+)
 
 from .parsing.property import (
     parse_contentlines,
@@ -25,7 +31,12 @@ from .types.data_types import serialize_field
 from .types.date import DateEncoder
 from .types.recur import Recur
 from .types.date_time import DateTimeEncoder
-from .component import ComponentModel
+from .component import (
+    ComponentModel,
+    _adjust_recurrence_date,
+    _as_date,
+    _as_datetime,
+)
 from .exceptions import CalendarParseError
 from .iter import RulesetIterable
 from .util import (
@@ -64,6 +75,47 @@ class Recurrences(ComponentModel):
         BeforeValidator(parse_date_and_datetime_list),
     ] = Field(default_factory=list)
     """Excluded dates for the event."""
+
+    @model_validator(mode="after")
+    def _validate_until_dtstart(self) -> Self:
+        """Verify the until time and dtstart are the same."""
+        if not self.rrule or not (dtstart := self.dtstart):
+            return self
+        for rule in self.rrule:
+            if rule.until:
+                rule.until = _adjust_recurrence_date(rule.until, dtstart)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_recurrence_dates(self) -> Self:
+        """Verify the recurrence dates have the correct types."""
+        if not self.rrule or not (dtstart := self.dtstart):
+            return self
+        for field in ("exdate", "rdate"):
+            if not (date_values := self.__dict__.get(field)):
+                continue
+
+            if isinstance(dtstart, datetime.datetime):
+                normalized: list[datetime.date | datetime.datetime | Period] = []
+                for date_value in date_values:
+                    if isinstance(date_value, Period):
+                        normalized.append(date_value)
+                    else:
+                        dt_val = _as_datetime(date_value, dtstart)
+                        if dtstart.tzinfo is not None and dt_val.tzinfo is None:
+                            dt_val = dt_val.replace(tzinfo=dtstart.tzinfo)
+                        elif dtstart.tzinfo is None and dt_val.tzinfo is not None:
+                            dt_val = dt_val.replace(tzinfo=None)
+                        normalized.append(dt_val)
+                self.__dict__[field] = normalized
+            else:
+                self.__dict__[field] = [
+                    date_value
+                    if isinstance(date_value, Period)
+                    else _as_date(date_value, dtstart)
+                    for date_value in date_values
+                ]
+        return self
 
     @classmethod
     def from_basic_contentlines(cls, contentlines: list[str]) -> Self:
