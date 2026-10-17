@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ical.parsing.property import ParsedProperty
-from .data_types import DATA_TYPE
+from .data_types import DATA_TYPE, EncodedJcalValue
 from .text import TextEncoder
 
 
@@ -25,6 +25,22 @@ class Geo:
         if len(parts) != 2:
             raise ValueError(f"Value was not valid geo lat;long: {value}")
         return Geo(lat=float(parts[0]), lng=float(parts[1]))
+
+    @classmethod
+    def __parse_jcal_value__(cls, value: Any, params: dict[str, Any]) -> Geo:
+        """Parse an RFC 7265 jCal geo property."""
+        if isinstance(value, Geo):
+            return value
+        if isinstance(value, (list, tuple)) and len(value) == 2:
+            return Geo(lat=float(value[0]), lng=float(value[1]))
+        return cls.__parse_property_value__(value)
+
+    @classmethod
+    def __encode_jcal_value__(cls, value: Any) -> EncodedJcalValue | None:
+        """Encode as jCal parameters and value list."""
+        if isinstance(value, Geo):
+            return EncodedJcalValue({}, [[value.lat, value.lng]], type_name="float")
+        return None
 
     @classmethod
     def __encode_property_json__(cls, value: Geo) -> str:
