@@ -228,6 +228,16 @@ _RECURRENCE_CACHE: OrderedDict[
 ] = OrderedDict()
 
 
+def _dt_cache_key(
+    d: datetime.datetime | datetime.date | Period | Any,
+) -> tuple[Any, ...]:
+    if isinstance(d, Period):
+        return (Period, _dt_cache_key(d.start), _dt_cache_key(d.end), d.duration)
+    if isinstance(d, datetime.datetime):
+        return (datetime.datetime, d, repr(d.tzinfo), d.fold)
+    return (type(d), d)
+
+
 def _rule_cache_key(
     dtstart: datetime.datetime | datetime.date,
     rrule: Sequence[Any],
@@ -235,10 +245,10 @@ def _rule_cache_key(
     exdate: Sequence[Any],
 ) -> tuple[Any, ...]:
     return (
-        dtstart,
+        _dt_cache_key(dtstart),
         tuple(str(r) for r in rrule),
-        tuple((d.start, d.end) if isinstance(d, Period) else d for d in rdate),
-        tuple(exdate),
+        tuple(_dt_cache_key(d) for d in rdate),
+        tuple(_dt_cache_key(d) for d in exdate),
     )
 
 
@@ -304,6 +314,16 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
             and self._dtstart.tzinfo is None
         ):
             self._defloat = _defloat
+        elif (
+            isinstance(self._dtstart, datetime.datetime)
+            and self._dtstart.tzinfo is not None
+        ):
+            tzinfo = self._dtstart.tzinfo
+            self._defloat = lambda dt: (
+                dt.replace(tzinfo=tzinfo)
+                if isinstance(dt, datetime.datetime) and dt.tzinfo is None
+                else dt
+            )
         else:
             self._defloat = lambda x: x
 

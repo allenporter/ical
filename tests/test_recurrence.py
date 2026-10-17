@@ -235,8 +235,8 @@ def test_as_rrule_without_date() -> None:
         list(recurrences.as_rrule())
 
 
-def test_rrule_failure() -> None:
-    """Test parsing a recurrence rule from a string."""
+def test_rrule_naive_exdate_with_aware_dtstart() -> None:
+    """Test parsing a recurrence rule with aware DTSTART and naive EXDATE coerces timezone."""
     recurrences = Recurrences.from_basic_contentlines(
         [
             "DTSTART:20220802T060000Z",
@@ -244,8 +244,40 @@ def test_rrule_failure() -> None:
             "EXDATE:20220803T060000",
         ]
     )
-    with pytest.raises(RecurrenceError, match="can't compare offset-naive"):
-        list(recurrences.as_rrule())
+    assert list(recurrences.as_rrule()) == [
+        datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=datetime.UTC),
+    ]
+
+
+def test_recurrences_validators_normalize_dates_and_until() -> None:
+    """Test that Recurrences normalizes exdate/rdate types and validates until against dtstart."""
+    recurrences = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART:20220802T060000Z",
+            "RRULE:FREQ=DAILY;COUNT=3",
+            "EXDATE;VALUE=DATE:20220803",
+            "RDATE;VALUE=DATE:20220805",
+        ]
+    )
+    assert list(recurrences.as_rrule()) == [
+        datetime.datetime(2022, 8, 2, 6, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2022, 8, 4, 6, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2022, 8, 5, 6, 0, 0, tzinfo=datetime.UTC),
+    ]
+
+    recurrences_date = Recurrences.from_basic_contentlines(
+        [
+            "DTSTART;VALUE=DATE:20220802",
+            "RRULE:FREQ=DAILY;UNTIL=20220804T000000Z",
+            "EXDATE:20220803T060000Z",
+        ]
+    )
+    assert recurrences_date.rrule[0].until == datetime.date(2022, 8, 4)
+    assert list(recurrences_date.as_rrule()) == [
+        datetime.date(2022, 8, 2),
+        datetime.date(2022, 8, 4),
+    ]
 
 
 def test_ics() -> None:
