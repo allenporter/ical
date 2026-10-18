@@ -65,11 +65,31 @@ class Period(BaseModel):
     @property
     def end_value(self) -> datetime.datetime:
         """A computed end value based on either end or duration."""
-        if self.end:
+        if self.end is not None:
             return self.end
-        if not self.duration:
+        if self.duration is None:
             raise ValueError("Invalid period missing both end and duration")
         return self.start + self.duration
+
+    @model_validator(mode="after")
+    def _validate_period(self) -> Self:
+        """Validate period start, end, and duration fields."""
+        if self.end is None and self.duration is None:
+            raise ValueError("Invalid period missing both end and duration")
+        if self.end is not None and self.duration is not None:
+            raise ValueError("Invalid period cannot specify both end and duration")
+        if self.end is not None:
+            if (self.start.tzinfo is None) != (self.end.tzinfo is None):
+                raise ValueError(
+                    "Period start and end must both be timezone-aware or both be naive"
+                )
+            if self.start.tzinfo is not None and str(self.start.tzinfo) != str(
+                self.end.tzinfo
+            ):
+                raise ValueError(
+                    f"Period start and end must have the same timezone: {self.start.tzinfo} != {self.end.tzinfo}"
+                )
+        return self
 
     @model_validator(mode="before")
     @classmethod
@@ -128,9 +148,24 @@ class Period(BaseModel):
         if not isinstance(model_data, dict):
             return None
         model_data = dict(model_data)
-        if not (start := model_data.pop("start", None)):
+        start_raw = model_data.pop("start", None)
+        start_tzid = None
+        if isinstance(start_raw, dict):
+            start_tzid = start_raw.get("TZID")
+            start = start_raw.get("VALUE")
+        else:
+            start = start_raw
+        if not start or not isinstance(start, str):
             raise ValueError(f"Invalid period object missing start: {model_data}")
-        end = model_data.pop("end", None)
+
+        end_raw = model_data.pop("end", None)
+        end_tzid = None
+        if isinstance(end_raw, dict):
+            end_tzid = end_raw.get("TZID")
+            end = end_raw.get("VALUE")
+        else:
+            end = end_raw
+
         duration = model_data.pop("duration", None)
         if not end and not duration:
             raise ValueError(
@@ -138,21 +173,37 @@ class Period(BaseModel):
             )
         # End and duration are already encoded values
         if end:
+            if (
+                not isinstance(end, str)
+                or start_tzid != end_tzid
+                or (start_tzid is None and start.endswith("Z") != end.endswith("Z"))
+            ):
+                raise ValueError(
+                    f"Period start and end have mismatched timezones: {start_raw} vs {end_raw}"
+                )
             value = "/".join([start, end])
         else:
             value = "/".join([start, duration])
 
-        return ParsedProperty(
-            name="",
-            value=value,
-            params=encode_model_property_params(
+        params = (
+            encode_model_property_params(
                 cls.model_fields,
                 {
                     k: v
                     for k, v in model_data.items()
                     if k not in ("end", "duration", "start")
                 },
-            ),
+            )
+            or []
+        )
+        if start_tzid:
+            params.append(
+                ParsedPropertyParameter(name="TZID", values=[str(start_tzid)])
+            )
+        return ParsedProperty(
+            name="",
+            value=value,
+            params=params or None,
         )
 
     model_config = ConfigDict(populate_by_name=True)
