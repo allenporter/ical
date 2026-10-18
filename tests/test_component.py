@@ -388,6 +388,48 @@ def test_event_rrule_and_period_rdate_validation() -> None:
             rdate=[p],
         )
 
+    # Even without rrule, Period in rdate on an all-day event is rejected
+    with pytest.raises(
+        CalendarParseError,
+        match="RDATE PERIOD values are not supported when DTSTART is a DATE",
+    ):
+        Event(
+            dtstart=datetime.date(2022, 1, 1),
+            dtend=datetime.date(2022, 1, 2),
+            rdate=[p],
+        )
+
+    # Naive Period in rdate against timezone-aware dtstart is aligned to dtstart.tzinfo
+    naive_period = Period(
+        start=datetime.datetime(2022, 1, 5, 14, 0, 0),
+        end=datetime.datetime(2022, 1, 5, 16, 0, 0),
+    )
+    aware_event = Event(
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=tz),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=2"),
+        rdate=[naive_period],
+    )
+    aligned_period = aware_event.rdate[0]
+    assert isinstance(aligned_period, Period)
+    assert aligned_period.start == datetime.datetime(2022, 1, 5, 14, 0, 0, tzinfo=tz)
+    assert aligned_period.end == datetime.datetime(2022, 1, 5, 16, 0, 0, tzinfo=tz)
+    aware_iter = aware_event.as_rrule()
+    assert aware_iter is not None
+    assert list(aware_iter) == [
+        datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+        datetime.datetime(2022, 1, 2, 9, 0, 0, tzinfo=tz),
+        datetime.datetime(2022, 1, 5, 14, 0, 0, tzinfo=tz),
+    ]
+
+    # Without rrule, date in rdate on a datetime event is coerced to datetime
+    rdate_only_event = Event(
+        dtstart=datetime.datetime(2022, 1, 1, 9, 0, 0, tzinfo=tz),
+        dtend=datetime.datetime(2022, 1, 1, 10, 0, 0, tzinfo=tz),
+        rdate=[datetime.date(2022, 1, 6)],
+    )
+    assert rdate_only_event.rdate == [datetime.datetime(2022, 1, 6, 9, 0, 0, tzinfo=tz)]
+
 
 def test_validate_until_dtstart_does_not_mutate_shared_recur() -> None:
     """Test that validate_until_dtstart copies Recur before adjusting until."""

@@ -114,11 +114,9 @@ def validate_duration_unit(self: ModelV) -> ModelV:
 
 
 def _as_datetime(
-    date_value: datetime.datetime | datetime.date | Period,
+    date_value: datetime.datetime | datetime.date,
     dtstart: datetime.datetime,
-) -> datetime.datetime | Period:
-    if isinstance(date_value, Period):
-        return date_value
+) -> datetime.datetime:
     if not isinstance(date_value, datetime.datetime):
         new_dt = datetime.datetime.combine(date_value, dtstart.time())
         return new_dt.replace(tzinfo=dtstart.tzinfo)
@@ -126,19 +124,31 @@ def _as_datetime(
 
 
 def _as_date(
-    date_value: datetime.datetime | datetime.date | Period,
+    date_value: datetime.datetime | datetime.date,
     dtstart: datetime.date,
 ) -> datetime.date:
-    if isinstance(date_value, Period):
-        raise ValueError("RDATE PERIOD values are not supported when DTSTART is a DATE")
     if isinstance(date_value, datetime.datetime):
         return datetime.date.fromordinal(date_value.toordinal())
     return date_value
 
 
+def _validate_rdate_period(
+    period: Period,
+    dtstart: datetime.datetime,
+) -> Period:
+    if period.start.tzinfo is None and dtstart.tzinfo is not None:
+        updates: dict[str, Any] = {
+            "start": period.start.replace(tzinfo=dtstart.tzinfo),
+        }
+        if period.end is not None:
+            updates["end"] = period.end.replace(tzinfo=dtstart.tzinfo)
+        return period.model_copy(update=updates)
+    return period
+
+
 def validate_recurrence_dates(self: ModelT) -> ModelT:
     """Verify the recurrence dates have the correct types."""
-    if not self.rrule or not (dtstart := self.dtstart):
+    if not (dtstart := self.dtstart):
         return self
     for field in ("exdate", "rdate"):
         if not (date_values := self.__dict__.get(field)):
@@ -146,9 +156,17 @@ def validate_recurrence_dates(self: ModelT) -> ModelT:
 
         if isinstance(dtstart, datetime.datetime):
             self.__dict__[field] = [
-                _as_datetime(date_value, dtstart) for date_value in date_values
+                _validate_rdate_period(date_value, dtstart)
+                if isinstance(date_value, Period)
+                else _as_datetime(date_value, dtstart)
+                for date_value in date_values
             ]
         else:
+            for date_value in date_values:
+                if isinstance(date_value, Period):
+                    raise ValueError(
+                        "RDATE PERIOD values are not supported when DTSTART is a DATE"
+                    )
             self.__dict__[field] = [
                 _as_date(date_value, dtstart) for date_value in date_values
             ]
