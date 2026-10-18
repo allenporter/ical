@@ -34,6 +34,16 @@ _VERSION = "2.0"
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
 
+# Properties that may hold DATE-TIME values subject to X-WR-TIMEZONE promotion
+_DATETIME_PROPERTIES = {
+    "dtstart",
+    "dtend",
+    "due",
+    "exdate",
+    "rdate",
+    "recurrence-id",
+}
+
 __all__ = ["Calendar"]
 
 
@@ -157,6 +167,8 @@ class Calendar(ComponentModel):
         DATE-TIME parser will use this instead of the TZID string. We prefer
         to use any python timezones when present.
         """
+        if not isinstance(values, dict):
+            return values
         # Run when initially parsing a VTIMEZONE or when X-WR-TIMEZONE is present
         if "vtimezone" not in values and "x-wr-timezone" not in values:
             return values
@@ -182,7 +194,7 @@ class Calendar(ComponentModel):
         # Resolve X-WR-TIMEZONE if present
         default_tzinfo = cls._resolve_x_wr_timezone(values, tzinfos, timezone_model)
 
-        if not tzinfos:
+        if not tzinfos and default_tzinfo is None:
             return values
 
         # Replace any TZID objects with a reference to tzinfo from this calendar. The
@@ -192,8 +204,12 @@ class Calendar(ComponentModel):
             [values.get(component, []) for component in _TZID_COMPONENTS]
         )
         for event in components:
+            if not isinstance(event, dict):
+                continue
             for field_values in event.values():
-                for value in field_values or []:
+                if not isinstance(field_values, list):
+                    continue
+                for value in field_values:
                     if not isinstance(value, ParsedProperty):
                         continue
 
@@ -207,8 +223,10 @@ class Calendar(ComponentModel):
 
                     elif (
                         default_tzinfo
-                        and DATETIME_REGEX.match(value.value)
-                        and not value.value.endswith("Z")
+                        and value.name in _DATETIME_PROPERTIES
+                        and (first_val := value.value.split(",", 1)[0].split("/", 1)[0])
+                        and DATETIME_REGEX.match(first_val)
+                        and not first_val.endswith("Z")
                     ):
                         if not value.params:
                             value.params = []

@@ -16,6 +16,7 @@ from freezegun import freeze_time
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
+from ical.timezone import Timezone
 from ical.types.recur import Recur
 from ical.types import Uri, Image
 from pathlib import Path
@@ -684,3 +685,65 @@ def test_programmatic_initialization_serialization() -> None:
     assert reparsed.events[0].dtstart == datetime.datetime(
         2026, 7, 9, 9, 0, 0, tzinfo=tz
     )
+
+
+def test_x_wr_timezone_with_native_vtimezone() -> None:
+    """Verify X-WR-TIMEZONE promotes floating events even when native VTIMEZONE is present."""
+    ics = """BEGIN:VCALENDAR
+VERSION:2.0
+X-WR-TIMEZONE:America/New_York
+BEGIN:VTIMEZONE
+TZID:America/New_York
+BEGIN:STANDARD
+DTSTART:20071104T020000
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:20070311T020000
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:floating-with-vtimezone
+SUMMARY:20260709T090000
+DESCRIPTION:20260709T100000
+DTSTART:20260709T090000
+DTEND:20260709T100000
+RRULE:FREQ=DAILY;UNTIL=20260711T130000Z
+EXDATE:20260710T090000,20260711T090000
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert len(calendar.events) == 1
+    event = calendar.events[0]
+    expected_tz = zoneinfo.ZoneInfo("America/New_York")
+    assert event.dtstart == datetime.datetime(2026, 7, 9, 9, 0, 0, tzinfo=expected_tz)
+    assert event.dtend == datetime.datetime(2026, 7, 9, 10, 0, 0, tzinfo=expected_tz)
+    assert event.summary == "20260709T090000"
+    assert event.description == "20260709T100000"
+
+    # Timeline should expand RRULE and apply comma-separated EXDATEs without crashing
+    timeline_events = list(calendar.timeline)
+    assert len(timeline_events) == 1
+    assert timeline_events[0].dtstart == datetime.datetime(
+        2026, 7, 9, 9, 0, 0, tzinfo=expected_tz
+    )
+
+
+def test_programmatic_calendar_with_vtimezone_and_vevent() -> None:
+    """Verify programmatic Calendar construction with vtimezone and vevent objects."""
+    tz = Timezone.from_tzif("America/New_York")
+    ev = Event(
+        uid="prog-1",
+        summary="Meeting",
+        dtstart=datetime.datetime(2026, 7, 9, 9, 0, 0),
+        dtend=datetime.datetime(2026, 7, 9, 10, 0, 0),
+    )
+    cal = Calendar(vtimezone=[tz], vevent=[ev])
+    assert len(cal.timezones) == 1
+    assert len(cal.events) == 1
