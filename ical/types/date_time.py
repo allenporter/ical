@@ -80,7 +80,9 @@ class DateTimeEncoder:
         if value.tzinfo is None:
             return value.strftime("%Y%m%dT%H%M%S")
         # Does not yet handle timezones and encoding property parameters
-        if not value.utcoffset():
+        if value.tzinfo == datetime.timezone.utc or (
+            not value.utcoffset() and str(value.tzinfo) in ("UTC", "Etc/UTC")
+        ):
             return value.strftime("%Y%m%dT%H%M%SZ")
         return {
             ATTR_VALUE: value.strftime("%Y%m%dT%H%M%S"),

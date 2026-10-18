@@ -21,7 +21,7 @@ from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
-from ical.store import EventStore, TodoStore, StoreError
+from ical.store import EventStore, TodoStore, TodoStoreError, StoreError
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types.recur import Range, Recur, RecurrenceId
 from ical.types import RelationshipType, RelatedTo
@@ -2107,6 +2107,12 @@ def test_edit_recurring_event_with_tzid_recurrence_id(
     summaries = [e.summary for e in events]
     assert "Weekly meeting (rescheduled)" in summaries
     assert summaries.count("Weekly meeting") == 4
+    rescheduled = next(e for e in events if e.summary == "Weekly meeting (rescheduled)")
+    assert rescheduled.recurrence_id == "20250512T100000"
+    assert rescheduled.dtstart == datetime.datetime(2025, 5, 12, 10, 0, tzinfo=NY_TZ)
+    ics = IcsCalendarStream.calendar_to_ics(calendar)
+    reloaded = IcsCalendarStream.calendar_from_ics(ics)
+    assert len(list(reloaded.timeline)) == 5
 
 
 def test_delete_recurring_event_with_tzid_recurrence_id(
@@ -2267,3 +2273,320 @@ def test_event_store_escaping_roundtrip(
     assert events[0].summary == original_summary
     assert events[0].description == original_description
     assert events[0].location == original_location
+
+
+def test_edit_parent_and_partial_delete_preserve_children(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test that editing a parent or deleting a single occurrence preserves RelatedTo children."""
+    parent = store.add(
+        Event(
+            uid="parent-uid",
+            summary="Parent series",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    child = store.add(
+        Event(
+            uid="child-uid",
+            summary="Child event",
+            start="2025-05-01T10:00:00",
+            end="2025-05-01T10:30:00",
+            related_to=[
+                RelatedTo(uid=parent.uid, reltype=RelationshipType.PARENT),
+                RelatedTo(uid=parent.uid, reltype=RelationshipType.PARENT),
+            ],
+        )
+    )
+    # Put child before parent in calendar.events to also test index stability
+    calendar.events[:] = [child, parent]
+
+    # 1. Editing the parent series should NOT delete the child
+    store.edit("parent-uid", Event(summary="Parent series (renamed)"))
+    assert any(e.uid == "child-uid" for e in calendar.events)
+    assert any(
+        e.uid == "parent-uid" and e.summary == "Parent series (renamed)"
+        for e in calendar.events
+    )
+
+    # 2. Deleting a single occurrence should NOT delete the child
+    store.delete("parent-uid", recurrence_id="20250502T090000")
+    assert any(e.uid == "child-uid" for e in calendar.events)
+
+    # 3. Editing a single occurrence and then deleting that overridden occurrence should NOT delete the child
+    store.edit(
+        "parent-uid",
+        Event(summary="Overridden instance"),
+        recurrence_id="20250503T090000",
+    )
+    assert any(e.uid == "child-uid" for e in calendar.events)
+    store.delete("parent-uid", recurrence_id="20250503T090000")
+    assert any(e.uid == "child-uid" for e in calendar.events)
+
+    # 4. Truncating THIS_AND_FUTURE after the first occurrence should NOT delete the child
+    store.delete(
+        "parent-uid",
+        recurrence_id="20250504T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert any(e.uid == "child-uid" for e in calendar.events)
+
+    # 5. Deleting the parent series completely deletes the child cleanly (even with duplicate RelatedTo)
+    store.delete("parent-uid")
+    assert calendar.events == []
+
+
+def test_edit_recurring_series_preserves_overrides_and_splits(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test editing a recurring series with recurrence_id=None after overrides or splits."""
+    store.add(
+        Event(
+            uid="series-uid",
+            summary="Daily standup",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=4"),
+        )
+    )
+    # Create a single-instance override on May 2
+    store.edit(
+        "series-uid",
+        Event(start="2025-05-02T10:00:00", summary="Late standup"),
+        recurrence_id="20250502T090000",
+    )
+    assert len(calendar.events) == 2
+
+    # Reverse order so master is first and override is second (like many ICS files)
+    calendar.events.reverse()
+
+    # Edit the whole series summary (recurrence_id=None)
+    store.edit("series-uid", Event(summary="Updated standup"))
+    assert len(calendar.events) == 2
+    events = list(calendar.timeline)
+    assert len(events) == 4
+    assert all(e.summary == "Updated standup" for e in events)
+    may2 = next(e for e in events if e.recurrence_id == "20250502T090000")
+    assert may2.dtstart == datetime.datetime(2025, 5, 2, 10, 0)
+
+    # Now split the series on May 3 with THIS_AND_FUTURE
+    store.edit(
+        "series-uid",
+        Event(summary="Future standup"),
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    # Edit the whole series location (recurrence_id=None) across all segments
+    store.edit("series-uid", Event(location="Room B"))
+    events_after = list(calendar.timeline)
+    assert len(events_after) == 4
+    assert all(e.location == "Room B" for e in events_after)
+
+
+def test_edit_single_occurrence_updates_dtstart_dtend_and_clears_exdate(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.NONE edit without explicit dtstart/dtend sets instance dates and clears exdate/rdate."""
+    store.add(
+        Event(
+            uid="rec-uid",
+            summary="Recurring",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T10:00:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=4"),
+            rdate=[datetime.datetime(2025, 5, 10, 9, 0)],
+        )
+    )
+    # Delete May 2 so parent has an exdate
+    store.delete("rec-uid", recurrence_id="20250502T090000")
+
+    # Edit May 3 summary without passing start or end
+    store.edit(
+        "rec-uid",
+        Event(summary="May 3 special"),
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.NONE,
+    )
+    override = next(e for e in calendar.events if e.recurrence_id == "20250503T090000")
+    assert override.dtstart == datetime.datetime(2025, 5, 3, 9, 0)
+    assert override.dtend == datetime.datetime(2025, 5, 3, 10, 0)
+    assert override.exdate == []
+    assert override.rdate == []
+
+
+def test_edit_todo_this_and_future_updates_due(
+    calendar: Calendar,
+    todo_store: TodoStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE edit on a Todo without explicit due updates due properly."""
+    todo_store.add(
+        Todo(
+            uid="todo-rec-uid",
+            summary="Daily chore",
+            dtstart="2025-05-01",
+            due="2025-05-02",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    todo_store.edit(
+        "todo-rec-uid",
+        Todo(summary="Updated daily chore"),
+        recurrence_id="20250503",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    forked = next(t for t in calendar.todos if t.recurrence_id == "20250503")
+    assert forked.dtstart == datetime.date(2025, 5, 3)
+    assert forked.due == datetime.date(2025, 5, 4)
+    assert forked.rrule is not None
+    assert forked.rrule.count == 3
+
+
+def test_this_and_future_timezone_aware_and_hourly(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE on tz-aware events with COUNT/UNTIL and on HOURLY events."""
+    # 1. Tz-aware event with COUNT, edited at middle instance without explicit dtstart,
+    # and with dtstart moved later on the same day.
+    store.add(
+        Event(
+            uid="tz-count-uid",
+            summary="Morning sync",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    store.edit(
+        "tz-count-uid",
+        Event(
+            summary="Later sync",
+            start=datetime.datetime(2025, 5, 6, 11, 0, tzinfo=NY_TZ),
+        ),
+        recurrence_id="20250506T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    events = [e for e in calendar.timeline if e.uid == "tz-count-uid"]
+    assert len(events) == 3
+    assert [e.dtstart for e in events] == [
+        datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+        datetime.datetime(2025, 5, 6, 11, 0, tzinfo=NY_TZ),
+        datetime.datetime(2025, 5, 7, 11, 0, tzinfo=NY_TZ),
+    ]
+
+    # 2. First-instance THIS_AND_FUTURE delete on tz-aware event removes the series
+    store.add(
+        Event(
+            uid="tz-first-del",
+            summary="To delete",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    store.delete(
+        "tz-first-del",
+        recurrence_id="20250505T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    assert not any(e.uid == "tz-first-del" for e in calendar.events)
+
+    # 3. HOURLY event THIS_AND_FUTURE delete preserves earlier same-day occurrences
+    store.add(
+        Event(
+            uid="hourly-uid",
+            summary="Hourly check",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 15, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=4"),
+        )
+    )
+    store.delete(
+        "hourly-uid",
+        recurrence_id="20250505T110000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    hourly_events = [e for e in calendar.timeline if e.uid == "hourly-uid"]
+    assert [e.dtstart for e in hourly_events] == [
+        datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+        datetime.datetime(2025, 5, 5, 10, 0, tzinfo=NY_TZ),
+    ]
+
+
+def test_this_and_future_on_overridden_date_cleans_up_future_overrides(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test THIS_AND_FUTURE targeting an already-overridden date truncates master and removes future overrides."""
+    store.add(
+        Event(
+            uid="override-split-uid",
+            summary="Daily",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    # Override May 2, May 3, and May 5
+    store.edit(
+        "override-split-uid",
+        Event(summary="May 2 override"),
+        recurrence_id="20250502T090000",
+    )
+    store.edit(
+        "override-split-uid",
+        Event(summary="May 3 override"),
+        recurrence_id="20250503T090000",
+    )
+    store.edit(
+        "override-split-uid",
+        Event(summary="May 5 override"),
+        recurrence_id="20250505T090000",
+    )
+    # Delete THIS_AND_FUTURE starting at the already-overridden May 3 occurrence
+    store.delete(
+        "override-split-uid",
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    events = list(calendar.timeline)
+    assert [(e.recurrence_id, e.summary) for e in events] == [
+        ("20250501T090000", "Daily"),
+        ("20250502T090000", "May 2 override"),
+    ]
+
+
+def test_timezone_europe_london_winter_and_todo_store_error(
+    calendar: Calendar,
+    store: EventStore,
+    todo_store: TodoStore,
+) -> None:
+    """Test that Europe/London in winter (UTC+0) adds VTIMEZONE and preserves TZID, and TodoStore raises TodoStoreError."""
+    london_tz = zoneinfo.ZoneInfo("Europe/London")
+    store.add(
+        Event(
+            uid="london-winter-event",
+            summary="London winter meeting",
+            start=datetime.datetime(2025, 1, 15, 10, 0, tzinfo=london_tz),
+            end=datetime.datetime(2025, 1, 15, 11, 0, tzinfo=london_tz),
+            rrule=Recur.from_rrule("FREQ=MONTHLY;COUNT=6"),
+        )
+    )
+    assert any(tz.tz_id == "Europe/London" for tz in calendar.timezones)
+    ics = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "DTSTART;TZID=Europe/London:20250115T100000" in ics
+
+    # Verify TodoStore raises TodoStoreError (not EventStoreError) on invalid fixed offset
+    bad_tz = datetime.timezone(datetime.timedelta(hours=3))
+    with pytest.raises(TodoStoreError):
+        todo_store.add(
+            Todo(
+                summary="Bad tz todo",
+                due=datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz),
+            )
+        )
