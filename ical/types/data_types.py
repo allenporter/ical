@@ -114,7 +114,7 @@ class Registry:
                 for arg in args
                 if arg is not type(None)  # noqa: E721
             ]
-            sortable_args.sort(reverse=True)
+            sortable_args.sort(key=lambda x: x[0], reverse=True)
             return [arg for (order, arg) in sortable_args]
         return [type_info.annotation]
 
@@ -151,8 +151,15 @@ class Registry:
         if (
             value_type := prop.get_parameter_value("VALUE")
         ) and field_type not in self._disable_value_param:
+            value_type = value_type.upper()
             # Property parameter specified a strong type
             if func := self._parse_parameter_by_name.get(value_type):
+                if (
+                    decoder := self._parse_property_value.get(field_type)
+                ) and func != decoder:
+                    raise ValueError(
+                        f"Property '{prop.name}' VALUE type '{value_type}' does not match {field_type}"
+                    )
                 _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
                 return func(prop)
 
@@ -311,15 +318,40 @@ def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any
     return value
 
 
+def _split_unescaped(value: str, delimiter: str) -> list[str]:
+    """Split a string on unescaped occurrences of delimiter."""
+    parts: list[str] = []
+    current: list[str] = []
+    escaped = False
+    for ch in value:
+        if escaped:
+            current.append(ch)
+            escaped = False
+        elif ch == "\\":
+            current.append(ch)
+            escaped = True
+        elif ch == delimiter:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return parts
+
+
 def _expand_repeated_property(value: list[ParsedProperty]) -> list[ParsedProperty]:
     """Expand properties with repeated values into separate properties."""
     result: list[ParsedProperty] = []
     for prop in value:
         if "," in prop.value:
-            for sub_value in prop.value.split(","):
-                sub_prop = copy.deepcopy(prop)
-                sub_prop.value = sub_value
-                result.append(sub_prop)
+            sub_values = _split_unescaped(prop.value, ",")
+            if len(sub_values) > 1:
+                for sub_value in sub_values:
+                    sub_prop = copy.deepcopy(prop)
+                    sub_prop.value = sub_value
+                    result.append(sub_prop)
+            else:
+                result.append(prop)
         else:
             result.append(prop)
     return result
