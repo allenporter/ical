@@ -289,7 +289,7 @@ class Todo(ComponentModel):
 
         If dtstart is a datetime and neither due nor duration is set, due is assumed to be equal to dtstart
         and the result is zero."""
-        if self.duration:
+        if self.duration is not None:
             return self.duration
         if self.dtstart:
             assert self.end
@@ -355,30 +355,29 @@ class Todo(ComponentModel):
         """
         if not self.rrule and not self.rdate:
             return None
-        if not self.due and not self.duration:
-            raise CalendarParseError(
-                "Event must have a due date or duration to be recurring"
-            )
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
-    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
-    _validate_recurrence_dates = model_validator(mode="after")(
-        validate_recurrence_dates
-    )
     _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
 
     @model_validator(mode="after")
     def _validate_one_due_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
-        if self.due and self.duration:
+        if self.due is not None and self.duration is not None:
             raise ValueError("Only one of due or duration may be set.")
         return self
 
     @model_validator(mode="after")
     def _validate_duration_requires_start(self) -> Self:
         """Validate that a duration requires the dtstart."""
-        if self.duration and not self.dtstart:
+        if self.duration is not None and not self.dtstart:
             raise ValueError("Duration requires that dtstart is specified")
+        if self.duration is not None and self.dtstart is not None:
+            try:
+                _ = self.dtstart + self.duration
+            except OverflowError as err:
+                raise ValueError(
+                    f"Duration {self.duration} overflows dtstart {self.dtstart}"
+                ) from err
         return self
 
     @model_validator(mode="after")
@@ -430,14 +429,24 @@ class Todo(ComponentModel):
         """Validate that the due property is later than dtstart."""
         if not (due := self.due) or not (dtstart := self.dtstart):
             return self
-        if due <= dtstart:
+        if due < dtstart:
             _LOGGER.debug(
                 "Due date %s is earlier than start date %s, adjusting start date",
                 due,
                 dtstart,
             )
-            self.dtstart = due - datetime.timedelta(days=1)
+            try:
+                self.dtstart = due - datetime.timedelta(days=1)
+            except OverflowError as err:
+                raise ValueError(
+                    f"Due date {due} cannot be earlier than minimum start date {dtstart}"
+                ) from err
         return self
+
+    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
+    _validate_recurrence_dates = model_validator(mode="after")(
+        validate_recurrence_dates
+    )
 
     @classmethod
     def _parse_property(

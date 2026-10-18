@@ -10,6 +10,7 @@ import pytest
 
 from ical.exceptions import CalendarParseError
 from ical.journal import Journal, JournalStatus
+from ical.timeline import generic_timeline
 from ical.timespan import Timespan
 from ical.types import Period, Uri, Image
 from ical.recur_adapter import merge_and_expand_items
@@ -127,3 +128,13 @@ def test_rfc7986_journal_properties() -> None:
     output_ics = IcsCalendarStream.calendar_to_ics(calendar)
     assert "COLOR:green" in output_ics
     assert "IMAGE;DISPLAY=BADGE:http://example.com/journal.jpg" in output_ics
+
+
+def test_journal_without_dtstart_timespan() -> None:
+    """Test that a Journal without dtstart does not crash timespan or generic_timeline."""
+    journal = Journal(summary="Note without start")
+    assert journal.dtstart is None
+    ts = journal.timespan_of(datetime.timezone.utc)
+    assert ts.duration == datetime.timedelta(days=1)
+    timeline = generic_timeline([journal], datetime.timezone.utc)
+    assert list(timeline) == [journal]

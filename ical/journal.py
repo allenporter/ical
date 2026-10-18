@@ -161,9 +161,10 @@ class Journal(ComponentModel):
 
     def timespan_of(self, tzinfo: datetime.tzinfo) -> Timespan:
         """Return a timespan representing the item start and due date."""
-        assert self.dtstart is not None
-        dtstart = normalize_datetime(self.dtstart, tzinfo) or datetime.datetime.now(
-            tz=tzinfo
+        dtstart = (
+            normalize_datetime(self.dtstart, tzinfo)
+            if self.dtstart is not None
+            else datetime.datetime.now(tz=tzinfo)
         )
         return Timespan.of(dtstart, dtstart + self.computed_duration, tzinfo)
 

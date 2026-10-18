@@ -696,3 +696,38 @@ def test_event_rdate_freezegun() -> None:
         )
         assert len(event.rdate) == 1
         assert event.rdate[0] == now
+
+
+def test_event_zero_duration() -> None:
+    """Test Event with duration=timedelta(0) and conflict with dtend."""
+    with pytest.raises(
+        CalendarParseError,
+        match="Only one of dtend or duration may be set.",
+    ):
+        Event(
+            dtstart=date(2025, 5, 1),
+            dtend=date(2025, 5, 2),
+            duration=timedelta(0),
+        )
+
+    event = Event(dtstart=date(2025, 5, 1), duration=timedelta(0))
+    assert event.end == date(2025, 5, 1)
+    assert event.computed_duration == timedelta(0)
+
+
+def test_event_boundary_date_overflow() -> None:
+    """Test that boundary dates in Event raise CalendarParseError instead of OverflowError."""
+    with pytest.raises(CalendarParseError):
+        Event(dtstart=date(9999, 12, 31))
+    with pytest.raises(CalendarParseError):
+        Event(dtstart=date(9999, 12, 31), duration=timedelta(days=1))
+
+
+def test_event_mixed_exdate_list() -> None:
+    """Test parse_date_and_datetime_list with mixed date and str elements."""
+    event = Event(
+        dtstart=date(2025, 5, 1),
+        dtend=date(2025, 5, 2),
+        exdate=[date(2025, 5, 2), "2025-05-03"],  # type: ignore[list-item]
+    )
+    assert event.exdate == [date(2025, 5, 2), date(2025, 5, 3)]
