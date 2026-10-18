@@ -69,7 +69,7 @@ class Attachment(BaseModel):
                 values["uri"] = Uri(value)
         return values
 
-    @field_serializer("content")
+    @field_serializer("content", when_used="json")
     def serialize_content(self, content: Optional[bytes]) -> Optional[str]:
         """Serialize content to base64 string."""
         if content is None:
