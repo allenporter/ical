@@ -105,3 +105,30 @@ def test_daily_recurring_item_due_yesterday(status: str) -> None:
     assert view[0].due == datetime.date(2024, 1, 12)
     assert view[0].recurrence_id == "20240111"
     assert view[0].status == status
+
+
+def test_recurring_todo_all_occurrences_excluded() -> None:
+    """Test that a recurring todo with all occurrences excluded via exdate does not raise StopIteration."""
+    todo = Todo(
+        uid="todo-exdate-all",
+        dtstart=datetime.date(2024, 1, 10),
+        summary="Excluded daily",
+        due=datetime.date(2024, 1, 11),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=2"),
+        exdate=[datetime.date(2024, 1, 10), datetime.date(2024, 1, 11)],
+    )
+    assert list(todo_list_view([todo])) == []
+
+
+def test_todo_list_view_naive_dtstart() -> None:
+    """Test passing a naive datetime as dtstart to todo_list_view."""
+    todo = Todo(
+        uid="todo-naive-dtstart",
+        dtstart=datetime.date(2024, 1, 9),
+        summary="Daily item",
+        due=datetime.date(2024, 1, 10),
+        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+    )
+    view = list(todo_list_view([todo], dtstart=datetime.datetime(2024, 1, 10, 12, 0)))
+    assert len(view) == 1
+    assert view[0].recurrence_id == "20240110"

@@ -20,7 +20,7 @@ __all__: list[str] = []
 _LOGGER = logging.getLogger(__name__)
 
 
-def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo:
+def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo | None:
     """Pick a todo to return in a list from a list of recurring todos.
 
     The items passed in must all be for the same original todo (either a
@@ -34,7 +34,8 @@ def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo:
     root_iter = merge_and_expand_items(todos, dtstart.tzinfo or local_timezone())
 
     it = iter(root_iter)
-    last = next(it)
+    if (last := next(it, None)) is None:
+        return None
     while cur := next(it, None):
         if cur.item.start_datetime is None or cur.item.start_datetime > dtstart:
             break
@@ -45,14 +46,20 @@ def _pick_todo(todos: list[Todo], dtstart: datetime.datetime) -> Todo:
 def todo_list_view(
     todos: list[Todo],
     dtstart: datetime.datetime | None = None,
+    tzinfo: datetime.tzinfo | None = None,
 ) -> Generator[Todo, None, None]:
     """Create a list view for todos on a calendar, including recurrence.
 
     The dtstart value is used to determine the current time for the list and
     for deciding which instance of a recurring todo to return.
     """
+    if tzinfo is None:
+        tzinfo = local_timezone()
     if dtstart is None:
-        dtstart = datetime.datetime.now(tz=local_timezone())
+        dtstart = datetime.datetime.now(tz=tzinfo)
+    elif dtstart.tzinfo is None:
+        dtstart = dtstart.replace(tzinfo=tzinfo)
     todos_by_uid = items_by_uid(todos)
-    for todos in todos_by_uid.values():
-        yield _pick_todo(todos, dtstart)
+    for uid_todos in todos_by_uid.values():
+        if (todo := _pick_todo(uid_todos, dtstart)) is not None:
+            yield todo
