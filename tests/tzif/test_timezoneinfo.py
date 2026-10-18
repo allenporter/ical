@@ -129,6 +129,37 @@ def test_invalid_zoneinfo() -> None:
             "NZDT",
             datetime.timedelta(hours=13),
         ),
+        (
+            "Europe/Dublin",
+            [
+                # GMT (winter time, explicit 0 offset in IST-1GMT0)
+                datetime.datetime(2024, 1, 15, 12, 0, 0),
+                datetime.datetime(2024, 10, 27, 2, 0, 0),
+                datetime.datetime(2024, 3, 31, 0, 59, 0),
+            ],
+            "GMT",
+            datetime.timedelta(hours=0),
+        ),
+        (
+            "Atlantic/Azores",
+            [
+                datetime.datetime(2024, 1, 15, 12, 0, 0),
+                datetime.datetime(2024, 3, 30, 23, 59, 0),
+                datetime.datetime(2024, 10, 27, 1, 0, 0),
+            ],
+            "<-01>",
+            datetime.timedelta(hours=-1),
+        ),
+        (
+            "Atlantic/Azores",
+            [
+                datetime.datetime(2024, 3, 31, 0, 0, 0),
+                datetime.datetime(2024, 7, 15, 12, 0, 0),
+                datetime.datetime(2024, 10, 27, 0, 59, 0),
+            ],
+            "<+00>",
+            datetime.timedelta(hours=0),
+        ),
     ],
 )
 def test_tzinfo(
