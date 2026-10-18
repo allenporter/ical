@@ -1,14 +1,15 @@
 """Tests for DURATION data types."""
 
 import datetime
+import zoneinfo
 
-from pydantic import field_serializer
+from pydantic import ValidationError, field_serializer
 import pytest
 from ical.exceptions import CalendarParseError
 
 from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types import Period
 from ical.types.period import FreeBusyType
 from ical.types.data_types import serialize_field
@@ -160,3 +161,113 @@ def test_period_validation_non_dict() -> None:
     """Test validating Period with a non-dict input (like a datetime or string) raises ValidationError, not AttributeError."""
     with pytest.raises(CalendarParseError):
         FakeModel.model_validate({"example": datetime.datetime(2022, 8, 3, 6, 0, 0)})
+
+
+def test_encode_period_with_tzid() -> None:
+    """Test encoding and round-tripping a Period with a non-UTC TZID."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    model = FakeModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz),
+            end=datetime.datetime(2022, 8, 7, 6, 30, 0, tzinfo=tz),
+        )
+    )
+    encoded = model.__encode_component_root__()
+    assert encoded == ParsedComponent(
+        name="FakeModel",
+        properties=[
+            ParsedProperty(
+                name="example",
+                value="20220807T060000/20220807T063000",
+                params=[
+                    ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+                ],
+            )
+        ],
+    )
+    reparsed = FakeModel.model_validate({"example": encoded.properties})
+    assert reparsed.example == model.example
+
+    dur_model = FakeModel(
+        example=Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz),
+            duration=datetime.timedelta(hours=1),
+        )
+    )
+    assert dur_model.__encode_component_root__() == ParsedComponent(
+        name="FakeModel",
+        properties=[
+            ParsedProperty(
+                name="example",
+                value="20220807T060000/PT1H",
+                params=[
+                    ParsedPropertyParameter(name="TZID", values=["America/New_York"])
+                ],
+            )
+        ],
+    )
+
+
+def test_period_zero_duration_end_value() -> None:
+    """Test that Period.end_value handles a zero timedelta duration."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    start = datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz)
+    zero_period = Period(start=start, duration=datetime.timedelta(0))
+    assert zero_period.end_value == start
+
+
+def test_period_validation_errors() -> None:
+    """Test Period validation for missing/conflicting fields and mismatched timezones."""
+    tz_ny = zoneinfo.ZoneInfo("America/New_York")
+    tz_la = zoneinfo.ZoneInfo("America/Los_Angeles")
+
+    with pytest.raises(
+        ValidationError, match="Invalid period missing both end and duration"
+    ):
+        Period(start=datetime.datetime(2022, 8, 7, 6, 0, 0))
+
+    with pytest.raises(
+        ValidationError, match="Invalid period cannot specify both end and duration"
+    ):
+        Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0),
+            end=datetime.datetime(2022, 8, 7, 7, 0, 0),
+            duration=datetime.timedelta(hours=1),
+        )
+
+    with pytest.raises(
+        ValidationError,
+        match="Period start and end must both be timezone-aware or both be naive",
+    ):
+        Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz_ny),
+            end=datetime.datetime(2022, 8, 7, 7, 0, 0),
+        )
+
+    with pytest.raises(
+        ValidationError, match="Period start and end must have the same timezone"
+    ):
+        Period(
+            start=datetime.datetime(2022, 8, 7, 6, 0, 0, tzinfo=tz_ny),
+            end=datetime.datetime(2022, 8, 7, 7, 0, 0, tzinfo=tz_la),
+        )
+
+    with pytest.raises(
+        ValueError, match="Period start and end have mismatched timezones"
+    ):
+        Period.__encode_property__(
+            {
+                "start": {"VALUE": "20220807T060000", "TZID": "America/New_York"},
+                "end": {"VALUE": "20220807T040000", "TZID": "America/Los_Angeles"},
+            }
+        )
+
+    with pytest.raises(
+        ValueError, match="Period start and end have mismatched timezones"
+    ):
+        Period.__encode_property__(
+            {
+                "start": "20220807T100000Z",
+                "end": "20220807T060000",
+            }
+        )
