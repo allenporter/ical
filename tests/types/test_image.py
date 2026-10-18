@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError, field_serializer
 
+from ical.component import ComponentModel
 from ical.types import Image, Display, Uri
+from ical.types.data_types import serialize_field
+
+
+class FakeImageModel(ComponentModel):
+    """Model under test for Image."""
+
+    image: list[Image] = Field(default_factory=list)
+
+    serialize_fields = field_serializer("*")(serialize_field)  # type: ignore[pydantic-field]
 
 
 def test_image_parse_non_dict_error() -> None:
@@ -66,3 +76,20 @@ def test_display_enum() -> None:
     assert Display("badge") == Display.BADGE  # case insensitive fallback lookup
     assert Display("x-custom") == "x-custom"  # custom token fallback
     assert Display._missing_(None) is None
+
+
+def test_copy_and_validate_binary_image() -> None:
+    """Test that copy_and_validate does not double-encode binary image content."""
+    raw_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+    model = FakeImageModel(
+        image=[Image(content=raw_bytes, FMTTYPE="image/png")],
+    )
+    assert model.image[0].model_dump()["content"] == raw_bytes
+
+    updated = model.copy_and_validate({})
+    assert isinstance(updated, FakeImageModel)
+    assert updated.image[0].content == raw_bytes
+
+    updated_twice = updated.copy_and_validate({})
+    assert isinstance(updated_twice, FakeImageModel)
+    assert updated_twice.image[0].content == raw_bytes

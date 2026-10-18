@@ -219,3 +219,20 @@ def test_encode_property_empty() -> None:
     """Test encoding property when both content and uri are None."""
     prop = Attachment.__encode_property__({})
     assert prop.value == ""
+
+
+def test_copy_and_validate_binary_attachment() -> None:
+    """Test that copy_and_validate does not double-encode binary attachment content."""
+    raw_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+    model = FakeModel(
+        attach=[Attachment(content=raw_bytes, FMTTYPE="image/png")],
+    )
+    assert model.attach[0].model_dump()["content"] == raw_bytes
+
+    updated = model.copy_and_validate({})
+    assert isinstance(updated, FakeModel)
+    assert updated.attach[0].content == raw_bytes
+
+    updated_twice = updated.copy_and_validate({})
+    assert isinstance(updated_twice, FakeModel)
+    assert updated_twice.attach[0].content == raw_bytes
