@@ -34,7 +34,57 @@ _VERSION = "2.0"
 # Components that may contain TZID objects
 _TZID_COMPONENTS = ["vevent", "vtodo", "vjournal", "vfreebusy"]
 
+# Properties that may hold DATE-TIME values subject to X-WR-TIMEZONE promotion
+_DATETIME_PROPERTIES = {
+    "dtstart",
+    "dtend",
+    "due",
+    "exdate",
+    "rdate",
+    "recurrence-id",
+    "dtstamp",
+    "created",
+    "last-modified",
+    "completed",
+}
+
 __all__ = ["Calendar"]
+
+
+def _has_floating_datetime(prop_value: str) -> bool:
+    """Return True if a property value contains a floating DATE-TIME."""
+    for part in prop_value.split(","):
+        dt_part = part.split("/", 1)[0] if "/" in part else part
+        if DATETIME_REGEX.match(dt_part) and not dt_part.endswith("Z"):
+            return True
+    return False
+
+
+def _promote_rrule_until(rrule_value: str, default_tzinfo: datetime.tzinfo) -> str:
+    """Convert a floating UNTIL datetime in an RRULE string to UTC using default_tzinfo."""
+    parts = rrule_value.split(";")
+    new_parts: list[str] = []
+    for part in parts:
+        if "=" in part:
+            key, val = part.split("=", 1)
+            if (
+                key.upper() == "UNTIL"
+                and (match := DATETIME_REGEX.fullmatch(val))
+                and not match.group(3)
+            ):
+                date_val, time_val = match.group(1), match.group(2)
+                dt = datetime.datetime(
+                    int(date_val[0:4]),
+                    int(date_val[4:6]),
+                    int(date_val[6:8]),
+                    int(time_val[0:2]),
+                    int(time_val[2:4]),
+                    int(time_val[4:6]),
+                    tzinfo=default_tzinfo,
+                ).astimezone(datetime.timezone.utc)
+                part = f"{key}={dt.strftime('%Y%m%dT%H%M%SZ')}"
+        new_parts.append(part)
+    return ";".join(new_parts)
 
 
 class Calendar(ComponentModel):
@@ -157,6 +207,8 @@ class Calendar(ComponentModel):
         DATE-TIME parser will use this instead of the TZID string. We prefer
         to use any python timezones when present.
         """
+        if not isinstance(values, dict):
+            return values
         # Run when initially parsing a VTIMEZONE or when X-WR-TIMEZONE is present
         if "vtimezone" not in values and "x-wr-timezone" not in values:
             return values
@@ -182,7 +234,7 @@ class Calendar(ComponentModel):
         # Resolve X-WR-TIMEZONE if present
         default_tzinfo = cls._resolve_x_wr_timezone(values, tzinfos, timezone_model)
 
-        if not tzinfos:
+        if not tzinfos and default_tzinfo is None:
             return values
 
         # Replace any TZID objects with a reference to tzinfo from this calendar. The
@@ -192,8 +244,13 @@ class Calendar(ComponentModel):
             [values.get(component, []) for component in _TZID_COMPONENTS]
         )
         for event in components:
+            if not isinstance(event, dict):
+                continue
+            has_floating_dtstart = False
             for field_values in event.values():
-                for value in field_values or []:
+                if not isinstance(field_values, list):
+                    continue
+                for value in field_values:
                     if not isinstance(value, ParsedProperty):
                         continue
 
@@ -207,14 +264,25 @@ class Calendar(ComponentModel):
 
                     elif (
                         default_tzinfo
-                        and DATETIME_REGEX.match(value.value)
-                        and not value.value.endswith("Z")
+                        and value.name in _DATETIME_PROPERTIES
+                        and _has_floating_datetime(value.value)
                     ):
+                        if value.name == "dtstart":
+                            has_floating_dtstart = True
                         if not value.params:
                             value.params = []
                         value.params.append(
                             ParsedPropertyParameter(name=TZID, values=[default_tzinfo])
                         )
+
+            if default_tzinfo and has_floating_dtstart:
+                rrule_values = event.get("rrule")
+                if isinstance(rrule_values, list):
+                    for value in rrule_values:
+                        if isinstance(value, ParsedProperty):
+                            value.value = _promote_rrule_until(
+                                value.value, default_tzinfo
+                            )
         return values
 
     @classmethod

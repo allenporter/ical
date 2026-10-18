@@ -333,3 +333,65 @@ END:VCALENDAR"""
     assert isinstance(copied_events[0].dtstart, datetime.datetime)
     assert copied_events[0].dtstart.tzname() == events[0].dtstart.tzname()
     assert copied_events[0].dtstart.utcoffset() == events[0].dtstart.utcoffset()
+
+
+def test_vtimezone_rrule_with_utc_until() -> None:
+    """Verify RFC 5545 VTIMEZONE with UTC UNTIL in observance RRULE parses and resolves."""
+    ics_content = """BEGIN:VCALENDAR
+PRODID:-//Example Corp//Cal//EN
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:Custom/Historical_Eastern
+BEGIN:DAYLIGHT
+DTSTART:19670430T020000
+RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=-1SU;UNTIL=19730429T070000Z
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+END:DAYLIGHT
+BEGIN:STANDARD
+DTSTART:19671029T020000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:event-hist
+SUMMARY:Historical Event
+DTSTART;TZID=Custom/Historical_Eastern:19730429T120000
+DTEND;TZID=Custom/Historical_Eastern:19730429T130000
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = IcsCalendarStream.calendar_from_ics(ics_content)
+    assert len(calendar.events) == 1
+    ev = calendar.events[0]
+    assert isinstance(ev.dtstart, datetime.datetime)
+    assert ev.dtstart.utcoffset() == datetime.timedelta(hours=-4)
+    assert ev.dtstart.tzname() == "EDT"
+    # Serialization should preserve the UTC UNTIL value
+    serialized = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "UNTIL=19730429T070000Z" in serialized
+
+
+def test_from_tzif_dublin_and_azores() -> None:
+    """Verify Timezone.from_tzif handles 0 DST offsets for Europe/Dublin and Atlantic/Azores."""
+    dublin_tz = Timezone.from_tzif("Europe/Dublin")
+    dublin_info = IcsTimezoneInfo.from_timezone(dublin_tz)
+    assert dublin_info.utcoffset(
+        datetime.datetime(2024, 1, 15, 12, 0)
+    ) == datetime.timedelta(hours=0)
+    assert dublin_info.utcoffset(
+        datetime.datetime(2024, 7, 15, 12, 0)
+    ) == datetime.timedelta(hours=1)
+
+    azores_tz = Timezone.from_tzif("Atlantic/Azores")
+    azores_info = IcsTimezoneInfo.from_timezone(azores_tz)
+    assert azores_info.utcoffset(
+        datetime.datetime(2024, 1, 15, 12, 0)
+    ) == datetime.timedelta(hours=-1)
+    assert azores_info.utcoffset(
+        datetime.datetime(2024, 7, 15, 12, 0)
+    ) == datetime.timedelta(hours=0)

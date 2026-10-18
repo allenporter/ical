@@ -24,14 +24,14 @@ DST: std offset dst [offset],start[/time],end[/time]
 from __future__ import annotations
 
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 import datetime
 import logging
 import re
-from typing import Any, Optional, Self, Union
+from typing import Any, Optional, Union
 
 from dateutil import rrule
-from pydantic import BaseModel, field_validator, model_validator
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,6 +61,18 @@ def _parse_time(values: dict[str, Any]) -> datetime.timedelta | None:
 
 
 @dataclass
+class _OffsetRrule:
+    """Wrapper around rrule that applies a timedelta offset to each occurrence."""
+
+    rule: rrule.rrule
+    offset: datetime.timedelta
+
+    def __iter__(self) -> Iterator[datetime.datetime]:
+        for dt in self.rule:
+            yield dt + self.offset
+
+
+@dataclass
 class RuleDay:
     """A date referenced in a timezone rule for a julian day."""
 
@@ -87,33 +99,85 @@ class RuleDate:
     time: datetime.timedelta
     """Offset of time in current local time when the rule goes into effect, default of 02:00:00."""
 
-    def as_rrule(self, dtstart: datetime.datetime | None = None) -> rrule.rrule:
+    def as_rrule(
+        self, dtstart: datetime.datetime | None = None
+    ) -> Iterable[datetime.datetime]:
         """Return a recurrence rule for this timezone occurrence (no start date)."""
         dst_start_weekday = self._rrule_byday(self._rrule_week_of_month)
+        if self.time.days == 0:
+            if dtstart:
+                dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
+            return rrule.rrule(
+                freq=rrule.YEARLY,
+                bymonth=self.month,
+                byweekday=dst_start_weekday,
+                dtstart=dtstart,
+            )
         if dtstart:
-            dtstart = dtstart.replace(hour=0, minute=0, second=0) + self.time
-        return rrule.rrule(
-            freq=rrule.YEARLY,
-            bymonth=self.month,
-            byweekday=dst_start_weekday,
-            dtstart=dtstart,
+            dtstart = dtstart.replace(hour=0, minute=0, second=0)
+        else:
+            dtstart = datetime.datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+        return _OffsetRrule(
+            rrule.rrule(
+                freq=rrule.YEARLY,
+                bymonth=self.month,
+                byweekday=dst_start_weekday,
+                dtstart=dtstart,
+            ),
+            self.time,
         )
 
     @property
     def rrule_str(self) -> str:
         """Return a recurrence rule string for this timezone occurrence."""
+        day_offset = self.time.days
+        if day_offset == 0:
+            return ";".join(
+                [
+                    "FREQ=YEARLY",
+                    f"BYMONTH={self.month}",
+                    f"BYDAY={self._rrule_week_of_month}{self._rrule_byday}",
+                ]
+            )
+        shifted_weekday = rrule.weekdays[(self.day_of_week + day_offset - 1) % 7]
+        if self.week_of_month < 5:
+            start_day = 7 * (self.week_of_month - 1) + 1 + day_offset
+            monthdays = [
+                str(d) for d in range(start_day, start_day + 7) if 1 <= d <= 31
+            ]
+            return ";".join(
+                [
+                    "FREQ=YEARLY",
+                    f"BYMONTH={self.month}",
+                    f"BYDAY={shifted_weekday}",
+                    f"BYMONTHDAY={','.join(monthdays)}",
+                ]
+            )
+        if day_offset < 0:
+            monthdays = [
+                str(d) for d in range(-7 + day_offset, day_offset) if -31 <= d <= -1
+            ]
+            return ";".join(
+                [
+                    "FREQ=YEARLY",
+                    f"BYMONTH={self.month}",
+                    f"BYDAY={shifted_weekday}",
+                    f"BYMONTHDAY={','.join(monthdays)}",
+                ]
+            )
         return ";".join(
             [
                 "FREQ=YEARLY",
                 f"BYMONTH={self.month}",
-                f"BYDAY={self._rrule_week_of_month}{self._rrule_byday}",
+                f"BYDAY={self._rrule_week_of_month}{shifted_weekday}",
             ]
         )
 
     def rrule_dtstart(self, start: datetime.datetime) -> datetime.datetime:
         """Return an rrule dtstart starting at the specified date with the time applied."""
-        dt_start = start.replace(hour=0, minute=0, second=0) + self.time
-        return next(iter(self.as_rrule(dt_start)))
+        return next(iter(self.as_rrule(start)))
 
     @property
     def _rrule_byday(self) -> rrule.weekday:
@@ -135,12 +199,13 @@ class RuleOccurrence:
     name: str
     """The name of the timezone occurrence e.g. EST."""
 
-    offset: datetime.timedelta
+    offset: datetime.timedelta | None = None
     """UTC offset for this timezone occurrence (not time added to local time)."""
 
     def __post_init__(self) -> None:
         """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        self.offset = _ZERO - self.offset
+        if self.offset is not None:
+            self.offset = _ZERO - self.offset
 
 
 @dataclass
@@ -161,7 +226,9 @@ class Rule:
 
     def __post_init__(self) -> None:
         """Infer the default DST offset if not specified."""
-        if self.dst and not self.dst.offset:
+        if self.std.offset is None:
+            self.std.offset = _ZERO
+        if self.dst and self.dst.offset is None:
             # If the dst offset is omitted, it defaults to one hour ahead of standard time.
             self.dst.offset = self.std.offset + datetime.timedelta(hours=1)
 
@@ -179,25 +246,34 @@ _START_END_RE_PATTERN = re.compile(
 )
 
 
-def _rule_occurrence_from_match(match: re.Match[str]) -> RuleOccurrence:
+def _rule_occurrence_from_match(
+    match: re.Match[str], default_offset: datetime.timedelta | None = None
+) -> RuleOccurrence:
     """Create a rule occurrence from a regex match."""
+    offset = _parse_time(match.groupdict())
+    if offset is None:
+        offset = default_offset
     return RuleOccurrence(
-        name=match.group("name"), offset=_parse_time(match.groupdict()) or _ZERO
+        name=match.group("name"),
+        offset=offset,
     )
 
 
 def _rule_date_from_match(match: re.Match[str]) -> Union[RuleDay, RuleDate]:
     """Create a rule date from a regex match."""
+    time = _parse_time(match.groupdict())
+    if time is None:
+        time = _DEFAULT_TIME_DELTA
     if match["day_of_year"] is not None:
         return RuleDay(
             day_of_year=int(match.group("day_of_year")),
-            time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
+            time=time,
         )
     return RuleDate(
         month=int(match.group("month")),
         week_of_month=int(match.group("week_of_month")),
         day_of_week=int(match.group("day_of_week")),
-        time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
+        time=time,
     )
 
 
@@ -222,7 +298,7 @@ def parse_tz_rule(tz_str: str) -> Rule:
             f"Unable to parse TZ string, unexpected trailing data: {tz_str}"
         )
     return Rule(
-        std=_rule_occurrence_from_match(std_match),
+        std=_rule_occurrence_from_match(std_match, default_offset=_ZERO),
         dst=_rule_occurrence_from_match(dst_match) if dst_match else None,
         dst_start=_rule_date_from_match(std_start) if std_start else None,
         dst_end=_rule_date_from_match(std_end) if std_end else None,

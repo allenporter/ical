@@ -100,12 +100,10 @@ def _read_cache(key: str) -> TimezoneInfo:
     try:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
-    except ModuleNotFoundError:
-        # Unexpected given we previously read the list of timezones
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Package or resource not in tzdata; fall back to local disk
         pass
     except ValueError as err:
-        raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
-    except FileNotFoundError as err:
         raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
 
     # Fallback to zoneinfo file on local disk
@@ -184,7 +182,7 @@ class TzInfo(datetime.tzinfo):
         """Return offset of local time from UTC, as a timedelta object."""
         if not dt:
             return _ZERO
-        result = self._rule.std.offset
+        result = self._rule.std.offset or _ZERO
         if dst_offset := self.dst(dt):
             result += dst_offset
         return result
@@ -204,7 +202,7 @@ class TzInfo(datetime.tzinfo):
             or not self._rule.dst
             or not isinstance(self._rule.dst_start, RuleDate)
             or not isinstance(self._rule.dst_end, RuleDate)
-            or not self._rule.dst.offset
+            or self._rule.dst.offset is None
         ):
             return None
 
@@ -223,7 +221,7 @@ class TzInfo(datetime.tzinfo):
             dt.year,
         )
         dt_naive = dt.replace(tzinfo=None)
-        dst_offset = self._rule.dst.offset - self._rule.std.offset
+        dst_offset = self._rule.dst.offset - (self._rule.std.offset or _ZERO)
 
         if dst_start < dst_end:
             # Northern Hemisphere: DST is between start and end

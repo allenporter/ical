@@ -124,13 +124,18 @@ class _Header:
         ) = struct.unpack(_Header.STRUCT_FORMAT, header_bytes)
         if magic != _Header.MAGIC:
             raise ValueError("zoneinfo file did not contain magic header")
+        if any(
+            count < 0
+            for count in (isutccnt, isstdcnt, leapcnt, timecnt, typecnt, charcnt)
+        ):
+            raise ValueError("Header counts must be non-negative")
         if isutccnt not in (0, typecnt):
             raise ValueError(
                 f"UTC/local indicators in datablock mismatched ({isutccnt}, {typecnt})"
             )
         if isstdcnt not in (0, typecnt):
             raise ValueError(
-                f"standard/wall indicators in datablock mismatched ({isutccnt}, {typecnt})"
+                f"standard/wall indicators in datablock mismatched ({isstdcnt}, {typecnt})"
             )
         return _Header(version, isutccnt, isstdcnt, leapcnt, timecnt, typecnt, charcnt)
 
@@ -200,11 +205,17 @@ def _read_datablock(
 
     # An array of NUL-terminated time zone designation strings
     tz_designations = buf.read(header.charcnt)
+    if len(tz_designations) != header.charcnt:
+        raise ValueError("Invalid TZif data: truncated designation bytes")
 
     @cache
     def get_tz_designations(idx: int) -> str:
         """Find the null terminated string starting at the specified index."""
+        if idx < 0 or idx >= len(tz_designations):
+            raise ValueError(f"Designation index out of bounds: {idx}")
         end = tz_designations.find(b"\x00", idx)
+        if end == -1:
+            raise ValueError(f"Designation string not null-terminated at index: {idx}")
         return tz_designations[idx:end].decode("UTF-8")
 
     leap_seconds: list[LeapSecond] = [
@@ -218,7 +229,7 @@ def _read_datablock(
     ]
 
     # Standard/wall indicators determine if the transition times are standard time (1)
-    # or wall clock time (0).
+    # or wall clock time (0). Indexed by local time type (0 .. typecnt - 1).
     isstdcnt_types: list[bool] = []
     if header.isstdcnt > 0:
         isstdcnt_types.extend(
@@ -227,23 +238,33 @@ def _read_datablock(
                 buf.read(header.isstdcnt),
             )
         )
-    isstdcnt_types.extend([False] * (header.timecnt - header.isstdcnt))
+    isstdcnt_types.extend([False] * (header.typecnt - header.isstdcnt))
 
     # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
+    # Indexed by local time type (0 .. typecnt - 1).
     isutccnt_types: list[bool] = []
     if header.isutccnt > 0:
         isutccnt_types.extend(
             struct.unpack(f">{header.isutccnt}?", buf.read(header.isutccnt))
         )
-    isutccnt_types.extend([False] * (header.timecnt - header.isutccnt))
+    isutccnt_types.extend([False] * (header.typecnt - header.isutccnt))
 
     transitions = [
         _new_transition(
-            _TransitionBlock(*values), local_time_types, get_tz_designations
+            _TransitionBlock(
+                transition_time,
+                transition_type,
+                isstdcnt_types[transition_type]
+                if transition_type < len(isstdcnt_types)
+                else False,
+                isutccnt_types[transition_type]
+                if transition_type < len(isutccnt_types)
+                else False,
+            ),
+            local_time_types,
+            get_tz_designations,
         )
-        for values in zip(
-            transition_times, transition_types, isstdcnt_types, isutccnt_types
-        )
+        for transition_time, transition_type in zip(transition_times, transition_types)
     ]
 
     return (transitions, leap_seconds)
@@ -253,25 +274,28 @@ def read_tzif(content: bytes) -> TimezoneInfo:
     """Read the TZif file and parse and return the timezone records."""
     buf = io.BytesIO(content)
 
-    # V1 header and block
-    header = _Header.from_bytes(buf.read(_Header.SIZE))
-    if header.version == _TZifVersion.V1.version:
+    try:
+        # V1 header and block
+        header = _Header.from_bytes(buf.read(_Header.SIZE))
+        if header.version == _TZifVersion.V1.version:
+            if header.typecnt == 0:
+                raise ValueError("Local time records in block is zero")
+            if header.charcnt == 0:
+                raise ValueError("Total number of octets is zero")
+        (transitions, leap_seconds) = _read_datablock(header, _TZifVersion.V1, buf)
+        if header.version == _TZifVersion.V1.version:
+            return TimezoneInfo(transitions, leap_seconds)
+
+        # V2+ header and block
+        header = _Header.from_bytes(buf.read(_Header.SIZE))
         if header.typecnt == 0:
             raise ValueError("Local time records in block is zero")
         if header.charcnt == 0:
             raise ValueError("Total number of octets is zero")
-    (transitions, leap_seconds) = _read_datablock(header, _TZifVersion.V1, buf)
-    if header.version == _TZifVersion.V1.version:
-        return TimezoneInfo(transitions, leap_seconds)
 
-    # V2+ header and block
-    header = _Header.from_bytes(buf.read(_Header.SIZE))
-    if header.typecnt == 0:
-        raise ValueError("Local time records in block is zero")
-    if header.charcnt == 0:
-        raise ValueError("Total number of octets is zero")
-
-    (transitions, leap_seconds) = _read_datablock(header, _TZifVersion.V2, buf)
+        (transitions, leap_seconds) = _read_datablock(header, _TZifVersion.V2, buf)
+    except struct.error as err:
+        raise ValueError("Invalid TZif data") from err
 
     # V2+ footer
     footer = buf.read()

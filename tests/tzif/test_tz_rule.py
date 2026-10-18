@@ -222,3 +222,56 @@ def test_parse_tz_rule_benchmark(benchmark: Any) -> None:
         tz_rule.parse_tz_rule("<-03>3<-02>,M3.5.0/-2,M10.5.0/-1")
 
     benchmark(parse)
+
+
+def test_explicit_zero_dst_offset_dublin() -> None:
+    """Test explicit 0 DST offset (Europe/Dublin) is not overwritten."""
+    rule = tz_rule.parse_tz_rule("IST-1GMT0,M10.5.0,M3.5.0/1")
+    assert rule.std.name == "I" + "ST"
+    assert rule.std.offset == datetime.timedelta(hours=1)
+    assert rule.dst is not None
+    assert rule.dst.name == "GMT"
+    assert rule.dst.offset == datetime.timedelta(hours=0)
+
+
+def test_zero_transition_time_azores() -> None:
+    """Test /0 transition time and implicit 0 DST offset (Atlantic/Azores)."""
+    rule = tz_rule.parse_tz_rule("<-01>1<+00>,M3.5.0/0,M10.5.0/1")
+    assert rule.std.offset == datetime.timedelta(hours=-1)
+    assert rule.dst is not None
+    assert rule.dst.offset == datetime.timedelta(hours=0)
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
+    assert rule.dst_start.time == datetime.timedelta(hours=0)
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
+    assert rule.dst_end.time == datetime.timedelta(hours=1)
+
+
+def test_rule_date_time_outside_0_to_24h() -> None:
+    """Test RuleDate.as_rrule, rrule_dtstart, and rrule_str when time is < 0 or >= 24h."""
+    # Asia/Jerusalem: M3.4.4/26 (Friday 02:00 after 4th Thursday of March)
+    jerusalem = tz_rule.parse_tz_rule("IST-2IDT,M3.4.4/26,M10.5.0")
+    assert isinstance(jerusalem.dst_start, tz_rule.RuleDate)
+    # In 2022, 4th Thursday of March is March 24 -> +26h is Friday March 25 02:00
+    assert jerusalem.dst_start.rrule_dtstart(
+        datetime.datetime(2022, 1, 1)
+    ) == datetime.datetime(2022, 3, 25, 2, 0)
+    # In 2024, March 1 is Friday, 4th Thursday is March 28 -> +26h is Friday March 29 02:00
+    assert jerusalem.dst_start.rrule_dtstart(
+        datetime.datetime(2024, 1, 1)
+    ) == datetime.datetime(2024, 3, 29, 2, 0)
+    assert (
+        jerusalem.dst_start.rrule_str
+        == "FREQ=YEARLY;BYMONTH=3;BYDAY=FR;BYMONTHDAY=23,24,25,26,27,28,29"
+    )
+
+    # America/Nuuk: M3.5.0/-2 (Saturday 22:00 before last Sunday of March)
+    nuuk = tz_rule.parse_tz_rule("<-03>3<-02>,M3.5.0/-2,M10.5.0/-1")
+    assert isinstance(nuuk.dst_start, tz_rule.RuleDate)
+    # In 2022, last Sunday of March is March 27 -> -2h is Saturday March 26 22:00
+    assert nuuk.dst_start.rrule_dtstart(
+        datetime.datetime(2022, 1, 1)
+    ) == datetime.datetime(2022, 3, 26, 22, 0)
+    assert (
+        nuuk.dst_start.rrule_str
+        == "FREQ=YEARLY;BYMONTH=3;BYDAY=SA;BYMONTHDAY=-8,-7,-6,-5,-4,-3,-2"
+    )

@@ -105,9 +105,21 @@ class Observance(ComponentModel):
 
     def as_ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Represent the occurrence as a rule of repeated dates or datetimes."""
+        rrule = self.rrule
+        if (
+            rrule is not None
+            and isinstance(rrule.until, datetime.datetime)
+            and rrule.until.tzinfo is not None
+            and self.start_datetime.tzinfo is None
+        ):
+            local_until = (
+                rrule.until.astimezone(datetime.timezone.utc)
+                + self.tz_offset_from.offset
+            ).replace(tzinfo=None)
+            rrule = rrule.model_copy(update={"until": local_until})
         return RulesetIterable(
             self.start_datetime,
-            [self.rrule.as_rrule(self.start_datetime)] if self.rrule else [],
+            [rrule.as_rrule(self.start_datetime)] if rrule else [],
             self.rdate,
             [],
         )
@@ -187,19 +199,21 @@ class Timezone(ComponentModel):
         if not rule:
             raise ValueError("Unsupported timezoneinfo had no rule")
 
-        dst_offset = rule.std.offset
-        if rule.dst and rule.dst.offset:
+        std_offset = rule.std.offset or _ZERO
+        dst_offset = std_offset
+        if rule.dst and rule.dst.offset is not None:
             dst_offset = rule.dst.offset
 
         std_timezone_info = Observance(
             tz_name=[rule.std.name],
-            tz_offset_to=UtcOffset(offset=rule.std.offset),
+            tz_offset_to=UtcOffset(offset=std_offset),
             tz_offset_from=UtcOffset(dst_offset),
             dtstart=start,
         )
         daylight = []
         if (
             rule.dst
+            and rule.dst.offset is not None
             and rule.dst_start
             and isinstance(rule.dst_start, tz_rule.RuleDate)
             and rule.dst_end
@@ -213,7 +227,7 @@ class Timezone(ComponentModel):
                 Observance(
                     tz_name=[rule.dst.name],
                     tz_offset_to=UtcOffset(offset=rule.dst.offset),
-                    tz_offset_from=UtcOffset(offset=rule.std.offset),
+                    tz_offset_from=UtcOffset(offset=std_offset),
                     rrule=Recur.model_validate(
                         Recur.__parse_property_value__(rule.dst_start.rrule_str)
                     ),

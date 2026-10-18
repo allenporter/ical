@@ -129,6 +129,69 @@ def test_invalid_zoneinfo() -> None:
             "NZDT",
             datetime.timedelta(hours=13),
         ),
+        (
+            "Europe/Dublin",
+            [
+                # GMT (winter time, UTC+0)
+                datetime.datetime(2024, 1, 15, 12, 0, 0),
+                datetime.datetime(2024, 10, 27, 2, 0, 0),
+                datetime.datetime(2024, 3, 31, 0, 59, 0),
+            ],
+            "GMT",
+            datetime.timedelta(hours=0),
+        ),
+        (
+            "Europe/Dublin",
+            [
+                # Summer time (UTC+1)
+                datetime.datetime(2024, 3, 31, 1, 0, 0),
+                datetime.datetime(2024, 7, 15, 12, 0, 0),
+                datetime.datetime(2024, 10, 27, 1, 59, 0),
+            ],
+            "I" + "ST",
+            datetime.timedelta(hours=1),
+        ),
+        (
+            "Atlantic/Azores",
+            [
+                datetime.datetime(2024, 1, 15, 12, 0, 0),
+                datetime.datetime(2024, 3, 30, 23, 59, 0),
+                datetime.datetime(2024, 10, 27, 1, 0, 0),
+            ],
+            "<-01>",
+            datetime.timedelta(hours=-1),
+        ),
+        (
+            "Atlantic/Azores",
+            [
+                datetime.datetime(2024, 3, 31, 0, 0, 0),
+                datetime.datetime(2024, 7, 15, 12, 0, 0),
+                datetime.datetime(2024, 10, 27, 0, 59, 0),
+            ],
+            "<+00>",
+            datetime.timedelta(hours=0),
+        ),
+        (
+            "Asia/Jerusalem",
+            [
+                # M3.4.4/26 -> Friday 02:00 (2022-03-25 02:00 and 2024-03-29 02:00)
+                datetime.datetime(2022, 3, 24, 12, 0, 0),
+                datetime.datetime(2022, 3, 25, 1, 59, 0),
+                datetime.datetime(2024, 3, 28, 12, 0, 0),
+                datetime.datetime(2024, 3, 29, 1, 59, 0),
+            ],
+            "I" + "ST",
+            datetime.timedelta(hours=2),
+        ),
+        (
+            "Asia/Jerusalem",
+            [
+                datetime.datetime(2022, 3, 25, 2, 0, 0),
+                datetime.datetime(2024, 3, 29, 2, 0, 0),
+            ],
+            "IDT",
+            datetime.timedelta(hours=3),
+        ),
     ],
 )
 def test_tzinfo(
@@ -202,6 +265,31 @@ def test_read_tzinfo_value_error() -> None:
         ),
     ):
         timezoneinfo.read_tzinfo("X/Y")
+
+
+def test_read_tzinfo_fallback_on_file_not_found(tmp_path: Any) -> None:
+    """Verify _read_cache falls back to _find_tzfile when tzdata raises FileNotFoundError."""
+    from importlib import resources  # noqa: PLC0415
+
+    timezoneinfo._read_cache.cache_clear()
+    tzfile = tmp_path / "Hanoi"
+    tzfile.write_bytes(
+        resources.files("tzdata.zoneinfo.Asia").joinpath("Bangkok").read_bytes()
+    )
+    with (
+        patch(
+            "ical.tzif.timezoneinfo._read_system_timezones",
+            return_value={"Asia/Hanoi"},
+        ),
+        patch(
+            "ical.tzif.timezoneinfo._find_tzfile",
+            return_value=str(tzfile),
+        ),
+    ):
+        tz_info = timezoneinfo.read_tzinfo("Asia/Hanoi")
+        assert tz_info.utcoffset(datetime.datetime(2024, 1, 1)) == datetime.timedelta(
+            hours=7
+        )
 
 
 def test_dst_caches_transitions_per_year() -> None:
