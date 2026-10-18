@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator
 import itertools
 
+from ical.parsing.component import unfolded_lines
+
 
 __all__ = [
     "redact_ics",
@@ -53,9 +55,33 @@ def redact_ics(
     component_allowlist: set[str] | None = None,
 ) -> Generator[str, None, None]:
     """Generate redacted ics file contents one line at a time."""
-    contentlines = ics.split("\n")
+    if component_allowlist is None:
+        component_allowlist = COMPONENT_ALLOWLIST
+    contentlines = unfolded_lines(ics)
+    raw_lines = ics.splitlines()
+    raw_idx = 0
+    raw_len = len(raw_lines)
+    emitted = 0
     for contentline in itertools.islice(contentlines, max_contentlines):
+        fold_count = 0
+        if raw_idx < raw_len:
+            raw_idx += 1
+            while (
+                raw_idx < raw_len
+                and raw_lines[raw_idx]
+                and raw_lines[raw_idx][0] in (" ", "\t")
+            ):
+                fold_count += 1
+                raw_idx += 1
         if contentline:
-            yield redact_contentline(
-                contentline, component_allowlist or COMPONENT_ALLOWLIST
-            )
+            if emitted >= max_contentlines:
+                break
+            redacted = redact_contentline(contentline, component_allowlist)
+            yield redacted
+            emitted += 1
+            if redacted.endswith(f":{REDACT}") or redacted == REDACT:
+                for _ in range(fold_count):
+                    if emitted >= max_contentlines:
+                        break
+                    yield REDACT
+                    emitted += 1

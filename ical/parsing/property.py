@@ -260,6 +260,7 @@ def _parse_line(line: str) -> ParsedProperty:
             f"Invalid property name '{property_name}'", detailed_error=line
         )
     for param in params:
+        param.name = param.name.upper()
         if not _RE_NAME.fullmatch(param.name):
             raise CalendarParseError(
                 f"Invalid parameter name '{param.name}'", detailed_error=line

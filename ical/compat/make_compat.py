@@ -23,7 +23,7 @@ from . import (
 _LOGGER = logging.getLogger(__name__)
 
 # Capture group that extracts the PRODID from the ics content.
-_PRODID_RE = r"PRODID:(?P<prodid>.*[^\\r\\n]+)"
+_PRODID_RE = r"PRODID:(?P<prodid>[^\r\n]+)"
 
 _EXCHANGE_PRODID = "Microsoft Exchange Server"
 _GOOGLE_PRODID = "Google Inc//Google Calendar"
