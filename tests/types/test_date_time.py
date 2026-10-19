@@ -207,9 +207,8 @@ def test_bogus_timezone_allow_invalid() -> None:
 
 def test_datetime_encoder_utc_zero_offset_named_timezone() -> None:
     """Test that UTC+0 IANA timezones like Europe/London in winter preserve TZID instead of Z."""
-    london_winter = datetime.datetime(
-        2025, 1, 15, 10, 0, 0, tzinfo=zoneinfo.ZoneInfo("Europe/London")
-    )
+    london_tz = zoneinfo.ZoneInfo("Europe/London")
+    london_winter = datetime.datetime(2025, 1, 15, 10, 0, 0, tzinfo=london_tz)
     assert london_winter.utcoffset() == datetime.timedelta(0)
     assert DateTimeEncoder.__encode_property_json__(london_winter) == {
         "VALUE": "20250115T100000",
@@ -218,10 +217,3 @@ def test_datetime_encoder_utc_zero_offset_named_timezone() -> None:
 
     utc_dt = datetime.datetime(2025, 1, 15, 10, 0, 0, tzinfo=datetime.timezone.utc)
     assert DateTimeEncoder.__encode_property_json__(utc_dt) == "20250115T100000Z"
-
-    zoneinfo_utc_dt = datetime.datetime(
-        2025, 1, 15, 10, 0, 0, tzinfo=zoneinfo.ZoneInfo("UTC")
-    )
-    assert (
-        DateTimeEncoder.__encode_property_json__(zoneinfo_utc_dt) == "20250115T100000Z"
-    )
