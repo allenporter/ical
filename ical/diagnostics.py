@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Generator
 import itertools
 
-from ical.parsing.component import unfolded_lines
-
 
 __all__ = [
     "redact_ics",
@@ -41,6 +39,8 @@ def component_sep(contentline: str) -> int:
 
 def redact_contentline(contentline: str, component_allowlist: set[str]) -> str:
     """Return a redacted version of an ics content line."""
+    if contentline.startswith((" ", "\t")):
+        return REDACT
     if (i := component_sep(contentline)) and i > -1:
         component = contentline[0:i]
         if component in component_allowlist:
@@ -57,31 +57,7 @@ def redact_ics(
     """Generate redacted ics file contents one line at a time."""
     if component_allowlist is None:
         component_allowlist = COMPONENT_ALLOWLIST
-    contentlines = unfolded_lines(ics)
-    raw_lines = ics.splitlines()
-    raw_idx = 0
-    raw_len = len(raw_lines)
-    emitted = 0
+    contentlines = ics.split("\n")
     for contentline in itertools.islice(contentlines, max_contentlines):
-        fold_count = 0
-        if raw_idx < raw_len:
-            raw_idx += 1
-            while (
-                raw_idx < raw_len
-                and raw_lines[raw_idx]
-                and raw_lines[raw_idx][0] in (" ", "\t")
-            ):
-                fold_count += 1
-                raw_idx += 1
         if contentline:
-            if emitted >= max_contentlines:
-                break
-            redacted = redact_contentline(contentline, component_allowlist)
-            yield redacted
-            emitted += 1
-            if redacted.endswith(f":{REDACT}") or redacted == REDACT:
-                for _ in range(fold_count):
-                    if emitted >= max_contentlines:
-                        break
-                    yield REDACT
-                    emitted += 1
+            yield redact_contentline(contentline, component_allowlist)
