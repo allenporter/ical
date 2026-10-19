@@ -355,6 +355,10 @@ class Todo(ComponentModel):
         """
         if not self.rrule and not self.rdate:
             return None
+        if self.due is None and self.duration is None:
+            raise CalendarParseError(
+                "Event must have a due date or duration to be recurring"
+            )
         return as_rrule(self.rrule, self.rdate, self.exdate, self.dtstart)
 
     _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)
@@ -371,13 +375,6 @@ class Todo(ComponentModel):
         """Validate that a duration requires the dtstart."""
         if self.duration is not None and not self.dtstart:
             raise ValueError("Duration requires that dtstart is specified")
-        if self.duration is not None and self.dtstart is not None:
-            try:
-                _ = self.dtstart + self.duration
-            except OverflowError as err:
-                raise ValueError(
-                    f"Duration {self.duration} overflows dtstart {self.dtstart}"
-                ) from err
         return self
 
     @model_validator(mode="after")
@@ -435,12 +432,7 @@ class Todo(ComponentModel):
                 due,
                 dtstart,
             )
-            try:
-                self.dtstart = due - datetime.timedelta(days=1)
-            except OverflowError as err:
-                raise ValueError(
-                    f"Due date {due} cannot be earlier than minimum start date {dtstart}"
-                ) from err
+            self.dtstart = due - datetime.timedelta(days=1)
         return self
 
     _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)

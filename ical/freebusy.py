@@ -125,17 +125,13 @@ class FreeBusy(ComponentModel):
     @classmethod
     def verify_freebusy_utc(cls, values: list[Period]) -> list[Period]:
         """Validate that the free/busy periods must be in UTC."""
+        _LOGGER.info("verify_freebusy_utc")
         for value in values:
             if not value.start:
                 continue
             if (
                 offset := value.start.utcoffset()
             ) is None or offset.total_seconds() != 0:
-                raise ValueError(f"Freebusy time must be in UTC format: {value}")
-            if value.end is not None and (
-                (end_offset := value.end.utcoffset()) is None
-                or end_offset.total_seconds() != 0
-            ):
                 raise ValueError(f"Freebusy time must be in UTC format: {value}")
 
         return values

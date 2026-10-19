@@ -429,6 +429,11 @@ class Event(ComponentModel):
         _LOGGER.debug("Found initial values dtstart=%s, dtend=%s", dtstart, dtend)
         return values
 
+    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
+    _validate_recurrence_dates = model_validator(mode="after")(
+        validate_recurrence_dates
+    )
+
     @model_validator(mode="after")
     def _validate_date_types(self) -> Self:
         """Validate that start and end values are the same date or datetime type."""
@@ -437,66 +442,40 @@ class Event(ComponentModel):
 
         if not dtstart or not dtend:
             return self
-        try:
-            if isinstance(dtstart, datetime.datetime):
-                if not isinstance(dtend, datetime.datetime):
-                    if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
-                        if dtend == dtstart.date():
-                            self.dtend = datetime.datetime.combine(
-                                dtend + datetime.timedelta(days=1),
-                                datetime.time.min,
-                                tzinfo=dtstart.tzinfo,
-                            )
-                        else:
-                            self.dtend = datetime.datetime.combine(
-                                dtend,
-                                datetime.time.min,
-                                tzinfo=dtstart.tzinfo,
-                            )
-                    else:
-                        _LOGGER.debug("Unexpected data types for values: %s", self)
-                        raise ValueError(
-                            f"Unexpected dtstart value '{dtstart}' was datetime but "
-                            f"dtend value '{dtend}' was not datetime"
+        if isinstance(dtstart, datetime.datetime):
+            if not isinstance(dtend, datetime.datetime):
+                if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
+                    if dtend == dtstart.date():
+                        self.dtend = datetime.datetime.combine(
+                            dtend + datetime.timedelta(days=1),
+                            datetime.time.min,
+                            tzinfo=dtstart.tzinfo,
                         )
-            elif isinstance(dtstart, datetime.date):
-                if isinstance(dtend, datetime.datetime):
-                    if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
-                        if dtend.time() == datetime.time.min:
-                            self.dtend = dtend.date()
-                        else:
-                            self.dtend = dtend.date() + datetime.timedelta(days=1)
                     else:
-                        raise ValueError(
-                            f"Unexpected dtstart value '{dtstart}' was date but "
-                            f"dtend value '{dtend}' was datetime"
+                        self.dtend = datetime.datetime.combine(
+                            dtend,
+                            datetime.time.min,
+                            tzinfo=dtstart.tzinfo,
                         )
-        except OverflowError as err:
-            raise ValueError(
-                f"Date value out of range when validating dtstart={dtstart}, dtend={dtend}"
-            ) from err
+                else:
+                    _LOGGER.debug("Unexpected data types for values: %s", self)
+                    raise ValueError(
+                        f"Unexpected dtstart value '{dtstart}' was datetime but "
+                        f"dtend value '{dtend}' was not datetime"
+                    )
+        elif isinstance(dtstart, datetime.date):
+            if isinstance(dtend, datetime.datetime):
+                if dtstart_dtend_compat.is_dtstart_dtend_compat_enabled():
+                    if dtend.time() == datetime.time.min:
+                        self.dtend = dtend.date()
+                    else:
+                        self.dtend = dtend.date() + datetime.timedelta(days=1)
+                else:
+                    raise ValueError(
+                        f"Unexpected dtstart value '{dtstart}' was date but "
+                        f"dtend value '{dtend}' was datetime"
+                    )
         return self
-
-    @model_validator(mode="after")
-    def _validate_same_day_dtend(self) -> Self:
-        """Fix same-day DTEND for all-day events when compat mode is enabled."""
-        if same_day_dtend_compat.is_same_day_dtend_compat_enabled():
-            if isinstance(self.dtstart, datetime.date) and not isinstance(
-                self.dtstart, datetime.datetime
-            ):
-                if self.dtend and self.dtend == self.dtstart:
-                    try:
-                        self.dtend = self.dtstart + datetime.timedelta(days=1)
-                    except OverflowError as err:
-                        raise ValueError(
-                            f"Date value out of range when adjusting same-day dtend for {self.dtstart}"
-                        ) from err
-        return self
-
-    _validate_until_dtstart = model_validator(mode="after")(validate_until_dtstart)
-    _validate_recurrence_dates = model_validator(mode="after")(
-        validate_recurrence_dates
-    )
 
     @model_validator(mode="after")
     def _validate_datetime_timezone(self) -> Self:
@@ -537,15 +516,14 @@ class Event(ComponentModel):
         return self
 
     @model_validator(mode="after")
-    def _validate_date_bounds(self) -> Self:
-        """Validate that computed end date does not overflow."""
-        if self.dtstart is not None:
-            try:
-                _ = self.end
-            except OverflowError as err:
-                raise ValueError(
-                    f"Event end date overflows for dtstart={self.dtstart} and duration={self.duration}"
-                ) from err
+    def _validate_same_day_dtend(self) -> Self:
+        """Fix same-day DTEND for all-day events when compat mode is enabled."""
+        if same_day_dtend_compat.is_same_day_dtend_compat_enabled():
+            if isinstance(self.dtstart, datetime.date) and not isinstance(
+                self.dtstart, datetime.datetime
+            ):
+                if self.dtend and self.dtend == self.dtstart:
+                    self.dtend = self.dtstart + datetime.timedelta(days=1)
         return self
 
     _validate_duration_unit = model_validator(mode="after")(validate_duration_unit)

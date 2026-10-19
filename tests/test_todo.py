@@ -93,6 +93,11 @@ def test_computed_duration_no_start_duration():
         ({}),
         (
             {
+                "start": datetime.datetime(2022, 9, 6, 6, 0, 0),
+            }
+        ),
+        (
+            {
                 "due": datetime.datetime(2022, 9, 6, 6, 0, 0),
             }
         ),
@@ -146,24 +151,6 @@ def test_is_recurring() -> None:
         datetime.date(2024, 2, 2),
         datetime.date(2024, 2, 3),
         datetime.date(2024, 2, 4),
-    ]
-
-
-def test_is_recurring_with_dtstart_only() -> None:
-    """Test that a recurring Todo with only dtstart (no due or duration) expands properly."""
-    todo = Todo(
-        summary="Todo 1",
-        rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
-        dtstart=datetime.datetime(2022, 9, 6, 6, 0, 0),
-    )
-    assert todo.recurring
-    assert todo.computed_duration == datetime.timedelta(0)
-    rrule = todo.as_rrule()
-    assert rrule is not None
-    assert list(rrule) == [
-        datetime.datetime(2022, 9, 6, 6, 0, 0),
-        datetime.datetime(2022, 9, 7, 6, 0, 0),
-        datetime.datetime(2022, 9, 8, 6, 0, 0),
     ]
 
 
@@ -572,17 +559,3 @@ def test_todo_validator_ordering_with_until_and_date_repair() -> None:
     assert todo.rrule.until == datetime.datetime(
         2025, 5, 5, 10, 0, tzinfo=datetime.timezone.utc
     )
-
-
-def test_todo_boundary_date_overflow() -> None:
-    """Test that boundary dates in Todo raise CalendarParseError instead of OverflowError."""
-    with pytest.raises(CalendarParseError):
-        Todo(
-            dtstart=datetime.date(1, 1, 2),
-            due=datetime.date(1, 1, 1),
-        )
-    with pytest.raises(CalendarParseError):
-        Todo(
-            dtstart=datetime.date(9999, 12, 31),
-            duration=datetime.timedelta(days=1),
-        )

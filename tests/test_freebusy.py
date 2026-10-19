@@ -130,28 +130,3 @@ def test_free_busy_requires_utc() -> None:
                 ),
             ],
         )
-
-    with pytest.raises(
-        CalendarParseError, match=r"Freebusy time must be in UTC format.*"
-    ):
-        FreeBusy(
-            start=datetime.date(2022, 8, 7),
-            end=datetime.date(2022, 8, 10),
-            freebusy=[
-                Period(
-                    start=datetime.datetime(
-                        2022, 8, 7, 5, 0, 0, tzinfo=datetime.timezone.utc
-                    ),
-                    end=datetime.datetime(
-                        2022,
-                        8,
-                        7,
-                        7,
-                        0,
-                        0,
-                        tzinfo=datetime.timezone(datetime.timedelta(hours=2)),
-                    ),
-                    FBTYPE=FreeBusyType.BUSY,
-                ),
-            ],
-        )
