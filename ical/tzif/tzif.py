@@ -130,14 +130,10 @@ class _Header:
             )
         if isstdcnt not in (0, typecnt):
             raise ValueError(
-                f"standard/wall indicators in datablock mismatched ({isutccnt}, {typecnt})"
+                f"standard/wall indicators in datablock mismatched ({isstdcnt}, {typecnt})"
             )
         return _Header(version, isutccnt, isstdcnt, leapcnt, timecnt, typecnt, charcnt)
 
-
-_TransitionBlock = namedtuple(
-    "_TransitionBlock", ["transition_time", "time_type", "isstdcnt", "isutccnt"]
-)
 
 # A series of records specifying the local time type:
 #  - utoff (4 bytes): Number of seconds to add to UTC to determine local time
@@ -148,24 +144,29 @@ _LocalTimeType = namedtuple("_LocalTimeType", ["utoff", "dst", "idx"])
 
 
 def _new_transition(
-    transition: _TransitionBlock,
+    transition_time: int,
+    time_type: int,
     local_time_types: list[_LocalTimeType],
+    isstdcnt_types: list[bool],
+    isutccnt_types: list[bool],
     get_tz_designations: Callable[[int], str],
 ) -> Transition:
-    """ddd."""
-    if transition.time_type >= len(local_time_types):
+    """Create a Transition record for a transition time and local time type."""
+    if time_type >= len(local_time_types):
         raise ValueError(
-            f"transition_type out of bounds {transition.time_type} >= {len(local_time_types)}"
+            f"transition_type out of bounds {time_type} >= {len(local_time_types)}"
         )
-    if transition.isutccnt and not transition.isstdcnt:
+    isstd = isstdcnt_types[time_type]
+    isutc = isutccnt_types[time_type]
+    if isutc and not isstd:
         raise ValueError("isutccnt was True but isstdcnt was False")
-    (utoff, dst, idx) = local_time_types[transition.time_type]
+    (utoff, dst, idx) = local_time_types[time_type]
     return Transition(
-        transition.transition_time,
+        transition_time,
         utoff,
         dst,
-        transition.isstdcnt,
-        transition.isutccnt,
+        isstd,
+        isutc,
         get_tz_designations(idx),
     )
 
@@ -218,7 +219,7 @@ def _read_datablock(
     ]
 
     # Standard/wall indicators determine if the transition times are standard time (1)
-    # or wall clock time (0).
+    # or wall clock time (0). Indexed by local time type (0 .. typecnt - 1).
     isstdcnt_types: list[bool] = []
     if header.isstdcnt > 0:
         isstdcnt_types.extend(
@@ -227,23 +228,27 @@ def _read_datablock(
                 buf.read(header.isstdcnt),
             )
         )
-    isstdcnt_types.extend([False] * (header.timecnt - header.isstdcnt))
+    isstdcnt_types.extend([False] * (header.typecnt - header.isstdcnt))
 
     # UTC/local indicators determine if the transition times are UTC (1) or local time (0).
+    # Indexed by local time type (0 .. typecnt - 1).
     isutccnt_types: list[bool] = []
     if header.isutccnt > 0:
         isutccnt_types.extend(
             struct.unpack(f">{header.isutccnt}?", buf.read(header.isutccnt))
         )
-    isutccnt_types.extend([False] * (header.timecnt - header.isutccnt))
+    isutccnt_types.extend([False] * (header.typecnt - header.isutccnt))
 
     transitions = [
         _new_transition(
-            _TransitionBlock(*values), local_time_types, get_tz_designations
+            transition_time,
+            transition_type,
+            local_time_types,
+            isstdcnt_types,
+            isutccnt_types,
+            get_tz_designations,
         )
-        for values in zip(
-            transition_times, transition_types, isstdcnt_types, isutccnt_types
-        )
+        for transition_time, transition_type in zip(transition_times, transition_types)
     ]
 
     return (transitions, leap_seconds)
