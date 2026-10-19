@@ -74,21 +74,19 @@ def parse_date_and_datetime(value: str | datetime.date | None) -> datetime.date 
 
 
 def parse_date_and_datetime_list(
-    values: Sequence[str] | Sequence[datetime.date],
+    values: Sequence[str | datetime.date | datetime.datetime],
 ) -> list[datetime.date | datetime.datetime]:
     """Coerce list[str] into list[date | datetime] values."""
     if not values:
         return []
-    if not isinstance(values[0], str):
-        if TYPE_CHECKING:
-            values = cast(list[datetime.date | datetime.datetime], values)
-        return values
-    if TYPE_CHECKING:
-        values = cast(Sequence[str], values)
     return [
-        datetime.datetime.fromisoformat(val)
-        if "T" in val or " " in val
-        else datetime.date.fromisoformat(val)
+        (
+            datetime.datetime.fromisoformat(val)
+            if "T" in val or " " in val
+            else datetime.date.fromisoformat(val)
+        )
+        if isinstance(val, str)
+        else val
         for val in values
     ]
 

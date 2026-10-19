@@ -39,6 +39,8 @@ def component_sep(contentline: str) -> int:
 
 def redact_contentline(contentline: str, component_allowlist: set[str]) -> str:
     """Return a redacted version of an ics content line."""
+    if contentline.startswith((" ", "\t")):
+        return REDACT
     if (i := component_sep(contentline)) and i > -1:
         component = contentline[0:i]
         if component in component_allowlist:
@@ -53,9 +55,9 @@ def redact_ics(
     component_allowlist: set[str] | None = None,
 ) -> Generator[str, None, None]:
     """Generate redacted ics file contents one line at a time."""
+    if component_allowlist is None:
+        component_allowlist = COMPONENT_ALLOWLIST
     contentlines = ics.split("\n")
     for contentline in itertools.islice(contentlines, max_contentlines):
         if contentline:
-            yield redact_contentline(
-                contentline, component_allowlist or COMPONENT_ALLOWLIST
-            )
+            yield redact_contentline(contentline, component_allowlist)

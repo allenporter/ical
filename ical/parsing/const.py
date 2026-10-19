@@ -1,7 +1,7 @@
 """Constants for ical parsing library."""
 
 # Related to rfc5545 text parsing
-FOLD = r"\r?\n[ |\t]"
+FOLD = r"\r?\n[ \t]"
 FOLD_LEN = 75
 FOLD_INDENT = " "
 WSP = [" ", "\t"]

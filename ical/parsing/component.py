@@ -17,6 +17,8 @@ import textwrap
 from dataclasses import dataclass, field
 from collections.abc import Generator
 
+from ical.exceptions import CalendarParseError
+
 from .const import (
     ATTR_BEGIN,
     ATTR_END,
@@ -96,14 +98,26 @@ def parse_content(content: str) -> list[ParsedComponent]:
         if prop.name == ATTR_BEGIN_LOWER:
             stack.append(ParsedComponent(name=prop.value.lower()))
         elif prop.name == ATTR_END_LOWER:
+            if len(stack) <= 1:
+                raise CalendarParseError(
+                    "Calendar contents are not valid ICS format, see the detailed_error for more information",
+                    detailed_error=f"Unexpected '{prop.ics()}' without matching BEGIN",
+                )
             component = stack.pop()
             if prop.value.lower() != component.name:
-                raise ValueError(
-                    f"Unexpected '{prop}', expected {ATTR_END}:{component.name}"
+                raise CalendarParseError(
+                    "Calendar contents are not valid ICS format, see the detailed_error for more information",
+                    detailed_error=f"Unexpected '{prop}', expected {ATTR_END}:{component.name}",
                 )
             stack[-1].components.append(component)
         else:
             stack[-1].properties.append(prop)
+
+    if len(stack) > 1:
+        raise CalendarParseError(
+            "Calendar contents are not valid ICS format, see the detailed_error for more information",
+            detailed_error=f"Unexpected end of input, missing {ATTR_END}:{stack[-1].name.upper()}",
+        )
 
     return stack[0].components
 
