@@ -204,9 +204,6 @@ class RecurrenceId(str):
         # Handle the inline "TZID=tz:DATETIME" format by re-parsing via ParsedProperty
         if "=" in recurrence_id.split(":")[0]:
             prop = ParsedProperty.from_ics(f"RECURRENCE-ID;{recurrence_id}")
-            if prop.get_parameter_value("VALUE") == "DATE":
-                if date_value := DateEncoder.__parse_property_value__(prop):
-                    return date_value
             return DateTimeEncoder.__parse_property_value__(prop)
 
         tzinfo = (
@@ -245,12 +242,6 @@ class RecurrenceId(str):
         # unchanged so that tzinfo/range metadata is not lost.
         if isinstance(value, RecurrenceId):
             return value
-
-        if isinstance(value, str) and "=" in value.split(":")[0]:
-            try:
-                value = ParsedProperty.from_ics(f"RECURRENCE-ID;{value}")
-            except ValueError:
-                pass
 
         tzinfo: datetime.tzinfo | None = None
         range_val: Range = Range.NONE

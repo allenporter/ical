@@ -58,48 +58,11 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
         """Initialize the filtered iterable."""
         self._recur = recur
         self._exclude_ids = exclude_ids
-        self._aware_dts: set[datetime.datetime] = set()
-        self._naive_dts: set[datetime.datetime] = set()
-        self._dates: set[datetime.date] = set()
-        self._raw_ids: set[str] = set()
-        for rid in exclude_ids:
-            try:
-                val = RecurrenceId.to_value(rid)
-            except ValueError:
-                self._raw_ids.add(rid)
-                continue
-            if isinstance(val, datetime.datetime):
-                if val.tzinfo is not None:
-                    self._aware_dts.add(val)
-                else:
-                    self._naive_dts.add(val)
-            else:
-                self._dates.add(val)
-
-    def _is_excluded(self, dt: _DateOrDatetime) -> bool:
-        if isinstance(dt, datetime.datetime):
-            if dt.tzinfo is not None:
-                if dt in self._aware_dts:
-                    return True
-                if self._naive_dts and dt.replace(tzinfo=None) in self._naive_dts:
-                    return True
-            else:
-                if dt in self._naive_dts:
-                    return True
-                if self._aware_dts and any(
-                    dt == a.replace(tzinfo=None) for a in self._aware_dts
-                ):
-                    return True
-        elif dt in self._dates:
-            return True
-        if self._raw_ids and _recurrence_id_for(dt) in self._raw_ids:
-            return True
-        return False
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
         for dt in self._recur:
-            if not self._is_excluded(dt):
+            if _recurrence_id_for(dt) not in self._exclude_ids:
                 yield dt
 
 
@@ -121,12 +84,10 @@ class RecurAdapter(Generic[ItemType]):
         self._duration = item.computed_duration
         self._tzinfo = tzinfo
         self._period_starts: dict[_DateOrDatetime, Period] = {}
-        self._aware_period_starts: dict[datetime.datetime, Period] = {}
         for p in self._item.rdate:
             if isinstance(p, Period):
                 start = p.start
-                if isinstance(start, datetime.datetime) and start.tzinfo is not None:
-                    self._aware_period_starts[start] = p
+                if isinstance(start, datetime.datetime) and start.tzinfo:
                     start = start.replace(tzinfo=None)
                 self._period_starts[start] = p
 
@@ -134,33 +95,18 @@ class RecurAdapter(Generic[ItemType]):
         self, dtstart: datetime.datetime | datetime.date
     ) -> SortableItem[Timespan, ItemType]:
         """Return a lazy sortable item."""
-        period: Period | None = None
         if self._period_starts:
-            if isinstance(dtstart, datetime.datetime) and dtstart.tzinfo is not None:
-                period = self._aware_period_starts.get(dtstart)
-                if period is None:
-                    period = self._period_starts.get(dtstart.replace(tzinfo=None))
-            else:
-                dt_key = (
-                    dtstart.replace(tzinfo=None)
-                    if isinstance(dtstart, datetime.datetime) and dtstart.tzinfo
-                    else dtstart
-                )
-                period = self._period_starts.get(dt_key)
+            dt_key = (
+                dtstart.replace(tzinfo=None)
+                if isinstance(dtstart, datetime.datetime) and dtstart.tzinfo
+                else dtstart
+            )
+            period = self._period_starts.get(dt_key)
+        else:
+            period = None
 
         if period:
-            dtend: datetime.datetime | datetime.date = period.end_value
-            if isinstance(dtstart, datetime.datetime) and isinstance(
-                dtend, datetime.datetime
-            ):
-                if dtstart.tzinfo is None and dtend.tzinfo is not None:
-                    dtend = dtend.replace(tzinfo=None)
-                elif dtstart.tzinfo is not None and dtend.tzinfo is None:
-                    dtend = dtend.replace(tzinfo=dtstart.tzinfo)
-            elif not isinstance(dtstart, datetime.datetime) and isinstance(
-                dtend, datetime.datetime
-            ):
-                dtend = dtend.date()
+            dtend = period.end_value
         else:
             dtend = dtstart + self._duration if self._duration else dtstart
 

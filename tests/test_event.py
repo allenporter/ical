@@ -638,6 +638,29 @@ def test_event_recurrence_expansion_period() -> None:
     assert events[2].dtend == datetime(2022, 8, 10, 11, 0, 0)
 
 
+def test_event_duration_recurrence_expansion_period() -> None:
+    """Test that an RDATE Period overrides a master Event's duration."""
+    event = Event(
+        summary="Duration Event",
+        dtstart=datetime(2022, 8, 7, 9, 0, 0),
+        duration=timedelta(hours=1),
+        rdate=[
+            Period(
+                start=datetime(2022, 8, 8, 10, 0, 0),
+                end=datetime(2022, 8, 8, 13, 0, 0),
+            ),
+        ],
+    )
+    calendar = Calendar(vevent=[event])
+    events = list(calendar.timeline)
+    assert len(events) == 1
+    assert events[0].dtstart == datetime(2022, 8, 8, 10, 0, 0)
+    assert events[0].dtend == datetime(2022, 8, 8, 13, 0, 0)
+    assert events[0].duration is None
+    assert events[0].end == datetime(2022, 8, 8, 13, 0, 0)
+    assert events[0].computed_duration == timedelta(hours=3)
+
+
 def test_rfc7986_event_properties() -> None:
     """Test parsing and serialization of event-level RFC 7986 properties."""
     ics_path = (
