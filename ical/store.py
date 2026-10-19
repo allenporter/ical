@@ -51,8 +51,8 @@ def _ensure_timezone(
     """Create a timezone object for the specified date if it does not already exist."""
     if (
         not isinstance(dtvalue, datetime.datetime)
-        or not dtvalue.utcoffset()
         or not dtvalue.tzinfo
+        or dtvalue.tzinfo == datetime.timezone.utc
     ):
         return None
 

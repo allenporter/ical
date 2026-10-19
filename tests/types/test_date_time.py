@@ -2,6 +2,7 @@
 
 import datetime
 from typing import Union
+import zoneinfo
 
 from pydantic import field_serializer
 import pytest
@@ -12,6 +13,7 @@ from ical.component import ComponentModel
 from ical.parsing.component import ParsedComponent
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types.data_types import serialize_field
+from ical.types.date_time import DateTimeEncoder
 from ical.tzif import timezoneinfo
 from ical.compat import timezone_compat
 
@@ -201,3 +203,17 @@ def test_bogus_timezone_allow_invalid() -> None:
             }
         )
         assert model.dt == datetime.datetime(2022, 7, 24, 12, 0, 0, tzinfo=None)
+
+
+def test_datetime_encoder_utc_zero_offset_named_timezone() -> None:
+    """Test that UTC+0 IANA timezones like Europe/London in winter preserve TZID instead of Z."""
+    london_tz = zoneinfo.ZoneInfo("Europe/London")
+    london_winter = datetime.datetime(2025, 1, 15, 10, 0, 0, tzinfo=london_tz)
+    assert london_winter.utcoffset() == datetime.timedelta(0)
+    assert DateTimeEncoder.__encode_property_json__(london_winter) == {
+        "VALUE": "20250115T100000",
+        "TZID": "Europe/London",
+    }
+
+    utc_dt = datetime.datetime(2025, 1, 15, 10, 0, 0, tzinfo=datetime.timezone.utc)
+    assert DateTimeEncoder.__encode_property_json__(utc_dt) == "20250115T100000Z"

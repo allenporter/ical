@@ -2267,3 +2267,26 @@ def test_event_store_escaping_roundtrip(
     assert events[0].summary == original_summary
     assert events[0].description == original_description
     assert events[0].location == original_location
+
+
+def test_add_event_utc_zero_offset_iana_timezone(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test that adding an event in Europe/London during winter (UTC+0) creates VTIMEZONE and preserves TZID."""
+    london_tz = zoneinfo.ZoneInfo("Europe/London")
+    store.add(
+        Event(
+            summary="London Winter Meeting",
+            start=datetime.datetime(2025, 1, 15, 10, 0, 0, tzinfo=london_tz),
+            end=datetime.datetime(2025, 1, 15, 11, 0, 0, tzinfo=london_tz),
+        )
+    )
+    assert [tz.tz_id for tz in calendar.timezones] == ["Europe/London"]
+    ics_text = IcsCalendarStream.calendar_to_ics(calendar)
+    assert "DTSTART;TZID=Europe/London:20250115T100000" in ics_text
+    assert "TZID:Europe/London" in ics_text
+    reloaded = IcsCalendarStream.calendar_from_ics(ics_text)
+    assert len(reloaded.events) == 1
+    assert isinstance(reloaded.events[0].dtstart, datetime.datetime)
+    assert str(reloaded.events[0].dtstart.tzinfo) == "Europe/London"
