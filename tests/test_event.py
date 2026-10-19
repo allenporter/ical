@@ -565,6 +565,37 @@ END:VCALENDAR"""
     assert "REQUEST-STATUS:3.1;Invalid property value;DTSTART:96-Apr-01" in out_ics
 
 
+def test_escaped_delimiters_roundtrip() -> None:
+    """Test parsing and round-trip serialization of escaped delimiters in CATEGORIES, RESOURCES, and REQUEST-STATUS."""
+    ics = r"""BEGIN:VCALENDAR
+PRODID:-//example//1.2.3
+VERSION:2.0
+BEGIN:VEVENT
+UID:event-id
+DTSTAMP:20220916T060000
+DTSTART:20220916T060000
+CATEGORIES:Meeting\, Urgent,Project\\,Subproject
+RESOURCES:Room A\, Bldg 1,Projector
+REQUEST-STATUS:2.0;Success\, fallback\; ok;KEY=VAL\;OTHER=1
+END:VEVENT
+END:VCALENDAR"""
+
+    calendar = CalendarStream.from_ics(ics)
+    event = calendar.calendars[0].events[0]
+    assert event.categories == ["Meeting, Urgent", "Project\\", "Subproject"]
+    assert event.resources == ["Room A, Bldg 1", "Projector"]
+    assert len(event.request_status) == 1
+    assert event.request_status[0].statcode == 2.0
+    assert event.request_status[0].statdesc == "Success, fallback; ok"
+    assert event.request_status[0].exdata == "KEY=VAL;OTHER=1"
+
+    roundtripped = CalendarStream.from_ics(calendar.ics())
+    rt_event = roundtripped.calendars[0].events[0]
+    assert rt_event.categories == event.categories
+    assert rt_event.resources == event.resources
+    assert rt_event.request_status == event.request_status
+
+
 def test_event_recurrence_expansion_period() -> None:
     """Test that event recurrence expansion uses the period's duration."""
     event = Event(

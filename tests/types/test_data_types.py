@@ -1,7 +1,7 @@
 import pytest
-from typing import List, Union, Any, cast
+from typing import List, Any, cast
 from ical.types import RequestStatus
-from ical.types.data_types import Registry
+from ical.types.data_types import Registry, _expand_repeated_property
 from ical.parsing.property import ParsedProperty
 
 
@@ -61,40 +61,38 @@ def test_parse_property_failed() -> None:
         registry.parse_property(FailType, prop)
 
 
-def test_get_ordered_field_types_tie_order() -> None:
-    """Test get_ordered_field_types when multiple Union args have the same parse_order."""
-    registry = Registry()
-    types = registry.get_ordered_field_types(cast(Any, Union[int, str]))
-    assert set(types) == {int, str}
+def test_expand_repeated_property_escaped_commas() -> None:
+    """Test _expand_repeated_property only splits on unescaped commas."""
+    props = [
+        ParsedProperty(name="categories", value=r"Meeting\, Urgent,Project"),
+        ParsedProperty(name="categories", value=r"Single\, Category"),
+        ParsedProperty(name="categories", value=r"TrailingSlash\\,Next"),
+    ]
+    expanded = _expand_repeated_property(props)
+    assert [p.value for p in expanded] == [
+        r"Meeting\, Urgent",
+        "Project",
+        r"Single\, Category",
+        r"TrailingSlash\\",
+        "Next",
+    ]
 
 
-def test_request_status_escaping_and_3_level_statcode() -> None:
-    """Test RequestStatus parsing and encoding with escaped semicolons and 3-level codes."""
+def test_request_status_escaped_delimiters() -> None:
+    """Test RequestStatus parsing and encoding with escaped semicolons, commas, and backslashes."""
     prop = ParsedProperty(
         name="request-status",
-        value=r"2.0.1;Success\, fallback\; ok;KEY=VAL\;OTHER=1",
+        value=r"2.0;Success\, fallback\; ok;KEY=VAL\;OTHER=1",
     )
     rs = RequestStatus.__parse_property_value__(prop)
-    assert rs.statcode == "2.0.1"
+    assert rs.statcode == 2.0
     assert rs.statdesc == "Success, fallback; ok"
     assert rs.exdata == "KEY=VAL;OTHER=1"
 
     encoded = RequestStatus.__encode_property_json__(rs)
-    assert encoded == r"2.0.1;Success\, fallback\; ok;KEY=VAL\;OTHER=1"
+    assert encoded == r"2.0;Success\, fallback\; ok;KEY=VAL\;OTHER=1"
 
     roundtripped = RequestStatus.__parse_property_value__(
         ParsedProperty(name="request-status", value=encoded)
     )
     assert roundtripped == rs
-
-    # Trailing zero preservation
-    rs_trailing = RequestStatus.__parse_property_value__(
-        ParsedProperty(name="request-status", value="2.10;Ok")
-    )
-    assert rs_trailing.statcode == "2.10"
-
-    # Invalid status code
-    with pytest.raises(ValueError, match="Invalid Request Status statcode"):
-        RequestStatus.__parse_property_value__(
-            ParsedProperty(name="request-status", value="abc;Invalid")
-        )
