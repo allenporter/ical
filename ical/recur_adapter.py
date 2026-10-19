@@ -112,14 +112,18 @@ class RecurAdapter(Generic[ItemType]):
 
         def build() -> ItemType:
             recurrence_id = _recurrence_id_for(dtstart)
-            updates = {
+            updates: dict[str, object] = {
                 "dtstart": dtstart,
                 "recurrence_id": recurrence_id,
             }
             if isinstance(self._item, Event) and (self._item.dtend or period):
                 updates["dtend"] = dtend
+                if period:
+                    updates["duration"] = None
             elif isinstance(self._item, Todo) and (self._item.due or period):
                 updates["due"] = dtend
+                if period:
+                    updates["duration"] = None
             return self._item.model_copy(update=updates)
 
         ts = Timespan.of(dtstart, dtend, self._tzinfo)

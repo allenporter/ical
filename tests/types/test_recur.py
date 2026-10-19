@@ -216,6 +216,16 @@ def test_recurrence_id_to_value_inline_tzid_returns_aware() -> None:
     assert result.hour == 9
 
 
+def test_recurrence_id_to_value_preserves_instance_tzinfo() -> None:
+    """Test that RecurrenceId.to_value preserves .tzinfo attached to a RecurrenceId instance."""
+    ny_tz = zoneinfo.ZoneInfo("America/New_York")
+    rid = RecurrenceId("20250511T020000", tzinfo=ny_tz)
+    result = RecurrenceId.to_value(rid)
+    assert result == datetime.datetime(2025, 5, 11, 2, 0, 0, tzinfo=ny_tz)
+    assert isinstance(result, datetime.datetime)
+    assert result.tzinfo == ny_tz
+
+
 @pytest.mark.parametrize(
     "start,end,rrule,expected",
     [
