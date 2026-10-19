@@ -311,15 +311,40 @@ def serialize_field(self: BaseModel, value: Any, info: SerializationInfo) -> Any
     return value
 
 
+def _split_unescaped(value: str, delimiter: str) -> list[str]:
+    """Split a string on unescaped occurrences of delimiter."""
+    parts: list[str] = []
+    current: list[str] = []
+    escaped = False
+    for ch in value:
+        if escaped:
+            current.append(ch)
+            escaped = False
+        elif ch == "\\":
+            current.append(ch)
+            escaped = True
+        elif ch == delimiter:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return parts
+
+
 def _expand_repeated_property(value: list[ParsedProperty]) -> list[ParsedProperty]:
     """Expand properties with repeated values into separate properties."""
     result: list[ParsedProperty] = []
     for prop in value:
         if "," in prop.value:
-            for sub_value in prop.value.split(","):
-                sub_prop = copy.deepcopy(prop)
-                sub_prop.value = sub_value
-                result.append(sub_prop)
+            sub_values = _split_unescaped(prop.value, ",")
+            if len(sub_values) > 1:
+                for sub_value in sub_values:
+                    sub_prop = copy.deepcopy(prop)
+                    sub_prop.value = sub_value
+                    result.append(sub_prop)
+            else:
+                result.append(prop)
         else:
             result.append(prop)
     return result
