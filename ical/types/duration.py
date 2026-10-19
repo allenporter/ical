@@ -38,20 +38,29 @@ class DurationEncoder:
         if not match:
             raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
         sign, weeks, days, hours, minutes, seconds = match.groups()
-        result: datetime.timedelta = datetime.timedelta(
-            weeks=int(weeks or 0),
-            days=int(days or 0),
-            hours=int(hours or 0),
-            minutes=int(minutes or 0),
-            seconds=int(seconds or 0),
-        )
-        if sign == "-":
-            result = -result
+        if not any((weeks, days, hours, minutes, seconds)) or (
+            "T" in prop.value and not any((hours, minutes, seconds))
+        ):
+            raise ValueError(f"Expected value to match DURATION pattern: {prop.value}")
+        try:
+            result: datetime.timedelta = datetime.timedelta(
+                weeks=int(weeks or 0),
+                days=int(days or 0),
+                hours=int(hours or 0),
+                minutes=int(minutes or 0),
+                seconds=int(seconds or 0),
+            )
+            if sign == "-":
+                result = -result
+        except OverflowError as err:
+            raise ValueError(f"Duration value out of range: {prop.value}") from err
         return result
 
     @classmethod
     def __encode_property_json__(cls, duration: datetime.timedelta) -> str:
         """Serialize a time delta as a DURATION ICS value."""
+        if duration == datetime.timedelta(0):
+            return "PT0S"
         parts = []
         if duration < datetime.timedelta(days=0):
             parts.append("-")

@@ -6,6 +6,7 @@ from pydantic import field_serializer
 import pytest
 
 from ical.component import ComponentModel
+from ical.exceptions import CalendarParseError
 from ical.parsing.property import ParsedProperty
 from ical.types.data_types import serialize_field
 
@@ -54,3 +55,35 @@ def test_duration_from_object() -> None:
     component = model.__encode_component_root__()
     assert component.name == "FakeModel"
     assert component.properties == [ParsedProperty(name="duration", value="PT1H")]
+
+
+def test_duration_zero_encoding() -> None:
+    """Test that timedelta(0) serializes as PT0S rather than invalid P."""
+    model = FakeModel(duration=datetime.timedelta(0))
+    assert model.duration == datetime.timedelta(0)
+
+    component = model.__encode_component_root__()
+    assert component.properties == [ParsedProperty(name="duration", value="PT0S")]
+
+    roundtripped = FakeModel.model_validate({"duration": component.properties})
+    assert roundtripped.duration == datetime.timedelta(0)
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    [
+        "P",
+        "-P",
+        "+P",
+        "PT",
+        "-PT",
+        "P1DT",
+        "P1000000000D",
+    ],
+)
+def test_invalid_duration_values(invalid_value: str) -> None:
+    """Test that bare P/PT and overflowing durations raise CalendarParseError."""
+    with pytest.raises((CalendarParseError, ValueError)):
+        FakeModel.model_validate(
+            {"duration": [ParsedProperty(name="duration", value=invalid_value)]}
+        )
