@@ -317,7 +317,7 @@ class Event(ComponentModel):
     @property
     def end(self) -> datetime.datetime | datetime.date:
         """Return the end time for the event."""
-        if self.duration:
+        if self.duration is not None:
             return self.start + self.duration
         if self.dtend:
             return self.dtend
@@ -498,7 +498,7 @@ class Event(ComponentModel):
     @model_validator(mode="after")
     def _validate_one_end_or_duration(self) -> Self:
         """Validate that only one of duration or end date may be set."""
-        if self.dtend and self.duration:
+        if self.dtend is not None and self.duration is not None:
             if duration_dtend_compat.is_duration_dtend_compat_enabled():
                 # RFC 5545 3.6.1 forbids specifying both DTEND and DURATION,
                 # but some real-world generators emit both anyway (often

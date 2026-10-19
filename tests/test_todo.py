@@ -13,7 +13,7 @@ import pytest
 
 from ical.exceptions import CalendarParseError
 from ical.todo import Todo
-from ical.types.recur import Recur
+from ical.types.recur import Frequency, Recur
 from ical.calendar import Calendar
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
 from ical.types import Period, Uri, Image, Conference
@@ -120,11 +120,6 @@ def test_computed_duration_no_start_duration():
                     2022, 9, 6, 6, 0, 0, tzinfo=zoneinfo.ZoneInfo("America/Regina")
                 ),
                 "due": datetime.datetime(2022, 9, 7, 6, 0, 0),  # floating
-            }
-        ),
-        (
-            {
-                "duration": datetime.timedelta(hours=1),
             }
         ),
     ],
@@ -509,4 +504,58 @@ def test_rfc7986_todo_properties() -> None:
         in output_ics
         or "CONFERENCE;LABEL=Slack Channel;FEATURE=CHAT:https://slack.com/123"
         in output_ics
+    )
+
+
+def test_todo_zero_duration_validation() -> None:
+    """Test that duration=timedelta(0) is validated properly in Todo."""
+    with pytest.raises(
+        CalendarParseError,
+        match="Duration requires that dtstart is specified",
+    ):
+        Todo(duration=datetime.timedelta(0))
+
+    with pytest.raises(
+        CalendarParseError,
+        match="Only one of due or duration may be set.",
+    ):
+        Todo(
+            dtstart=datetime.datetime(2025, 5, 1, 10, 0, tzinfo=datetime.timezone.utc),
+            due=datetime.datetime(2025, 5, 1, 11, 0, tzinfo=datetime.timezone.utc),
+            duration=datetime.timedelta(0),
+        )
+
+    todo = Todo(
+        dtstart=datetime.date(2025, 5, 1),
+        duration=datetime.timedelta(0),
+    )
+    assert todo.end == datetime.date(2025, 5, 1)
+    assert todo.computed_duration == datetime.timedelta(0)
+
+
+def test_todo_due_equal_dtstart_preserved() -> None:
+    """Test that a zero-duration task where due == dtstart does not shift dtstart backward."""
+    dt = datetime.datetime(2025, 5, 1, 10, 0, tzinfo=datetime.timezone.utc)
+    todo = Todo(dtstart=dt, due=dt)
+    assert todo.dtstart == dt
+    assert todo.due == dt
+    assert todo.computed_duration == datetime.timedelta(0)
+
+
+def test_todo_validator_ordering_with_until_and_date_repair() -> None:
+    """Test that dtstart type repair happens before rrule.until validation."""
+    todo = Todo(
+        dtstart=datetime.date(2025, 5, 1),
+        due=datetime.datetime(2025, 5, 2, 10, 0, tzinfo=datetime.timezone.utc),
+        rrule=Recur(
+            freq=Frequency.DAILY,
+            until=datetime.datetime(2025, 5, 5, 10, 0, tzinfo=datetime.timezone.utc),
+        ),
+    )
+    assert todo.dtstart == datetime.datetime(
+        2025, 5, 1, 0, 0, tzinfo=datetime.timezone.utc
+    )
+    assert todo.rrule is not None
+    assert todo.rrule.until == datetime.datetime(
+        2025, 5, 5, 10, 0, tzinfo=datetime.timezone.utc
     )

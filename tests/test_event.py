@@ -696,3 +696,20 @@ def test_event_rdate_freezegun() -> None:
         )
         assert len(event.rdate) == 1
         assert event.rdate[0] == now
+
+
+def test_event_zero_duration() -> None:
+    """Test Event with duration=timedelta(0) and conflict with dtend."""
+    with pytest.raises(
+        CalendarParseError,
+        match="Only one of dtend or duration may be set.",
+    ):
+        Event(
+            dtstart=date(2025, 5, 1),
+            dtend=date(2025, 5, 2),
+            duration=timedelta(0),
+        )
+
+    event = Event(dtstart=date(2025, 5, 1), duration=timedelta(0))
+    assert event.end == date(2025, 5, 1)
+    assert event.computed_duration == timedelta(0)
