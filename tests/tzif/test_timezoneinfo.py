@@ -204,6 +204,31 @@ def test_read_tzinfo_value_error() -> None:
         timezoneinfo.read_tzinfo("X/Y")
 
 
+def test_read_tzinfo_fallback_on_file_not_found(tmp_path: Any) -> None:
+    """Verify _read_cache falls back to _find_tzfile when tzdata raises FileNotFoundError."""
+    from importlib import resources  # noqa: PLC0415
+
+    timezoneinfo._read_cache.cache_clear()
+    tzfile = tmp_path / "Hanoi"
+    tzfile.write_bytes(
+        resources.files("tzdata.zoneinfo.Asia").joinpath("Bangkok").read_bytes()
+    )
+    with (
+        patch(
+            "ical.tzif.timezoneinfo._read_system_timezones",
+            return_value={"Asia/Hanoi"},
+        ),
+        patch(
+            "ical.tzif.timezoneinfo._find_tzfile",
+            return_value=str(tzfile),
+        ),
+    ):
+        tz_info = timezoneinfo.read_tzinfo("Asia/Hanoi")
+        assert tz_info.utcoffset(datetime.datetime(2024, 1, 1)) == datetime.timedelta(
+            hours=7
+        )
+
+
 def test_dst_caches_transitions_per_year() -> None:
     """TzInfo.dst() should compute year transitions at most once per year.
 
