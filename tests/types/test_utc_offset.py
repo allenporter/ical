@@ -59,3 +59,23 @@ def test_optional_seconds() -> None:
         {"example": [ParsedProperty(name="example", value="-001932")]}
     )
     assert model.example.offset == datetime.timedelta(minutes=-19, seconds=-32)
+    assert UtcOffset.__encode_property_json__(model.example) == "-001932"
+    assert (
+        UtcOffset.__encode_property_json__(
+            UtcOffset(datetime.timedelta(minutes=19, seconds=32))
+        )
+        == "+001932"
+    )
+    assert (
+        UtcOffset.__encode_property_json__(UtcOffset(datetime.timedelta(hours=-5)))
+        == "-0500"
+    )
+
+
+def test_utc_offset_out_of_range() -> None:
+    """Test that out-of-range hours, minutes, or seconds are rejected."""
+    for invalid in ("+2400", "-2500", "+0060", "+000060"):
+        with pytest.raises(CalendarParseError, match="UTC-OFFSET out of range"):
+            FakeModel.model_validate(
+                {"example": [ParsedProperty(name="example", value=invalid)]}
+            )
