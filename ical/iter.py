@@ -22,6 +22,7 @@ from collections import OrderedDict
 import datetime
 import heapq
 import logging
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from typing import Any, Generic, TypeVar, Union, cast
@@ -158,6 +159,15 @@ class LazyCachedIterable(Iterable[T]):
     The internal ``_cache`` list is a gapless, contiguous prefix of the
     underlying stream, allowing multiple independent iterations to share the
     same materialized items.
+
+    Threading model:
+    - Instances may be shared across threads (e.g. via ``_RECURRENCE_CACHE`` or
+      shared ``Timezone`` instances).
+    - ``_cache`` is strictly append-only; already-materialized items at
+      ``idx < len(_cache)`` are read without locking.
+    - Advancing the underlying generator ``_iter`` and appending to ``_cache``
+      is serialized by ``_lock``. The lock is never held across ``yield`` so
+      paused or abandoned iterators do not block other threads or deadlock.
     """
 
     def __init__(self, source: Iterable[T]) -> None:
@@ -170,21 +180,29 @@ class LazyCachedIterable(Iterable[T]):
         self._cache: list[T] = []
         self._iter: Iterator[T] | None = None
         self._exhausted = False
+        self._lock = threading.Lock()
 
     def extend_through(self, predicate: Callable[[T], bool]) -> None:
         """Advance the iterator until predicate(last_item) is false or exhausted."""
         if not self._exhausted and (not self._cache or predicate(self._cache[-1])):
-            if self._iter is None:
-                self._iter = iter(self._source)
-            while not self._exhausted and (
-                not self._cache or predicate(self._cache[-1])
-            ):
-                try:
-                    val = next(self._iter)
-                except StopIteration:
-                    self._exhausted = True
-                    break
-                self._cache.append(val)
+            with self._lock:
+                if not self._exhausted and (
+                    not self._cache or predicate(self._cache[-1])
+                ):
+                    if self._iter is None:
+                        self._iter = iter(self._source)
+                    while not self._exhausted and (
+                        not self._cache or predicate(self._cache[-1])
+                    ):
+                        try:
+                            val = next(self._iter)
+                        except StopIteration:
+                            self._exhausted = True
+                            break
+                        except Exception:
+                            self._iter = None
+                            raise
+                        self._cache.append(val)
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator over the cached values, advancing as needed."""
@@ -194,16 +212,23 @@ class LazyCachedIterable(Iterable[T]):
                 yield self._cache[idx]
                 idx += 1
                 continue
-            if self._exhausted:
-                return
-            if self._iter is None:
-                self._iter = iter(self._source)
-            try:
-                val = next(self._iter)
-            except StopIteration:
-                self._exhausted = True
-                return
-            self._cache.append(val)
+            with self._lock:
+                if idx < len(self._cache):
+                    val = self._cache[idx]
+                elif self._exhausted:
+                    return
+                else:
+                    if self._iter is None:
+                        self._iter = iter(self._source)
+                    try:
+                        val = next(self._iter)
+                    except StopIteration:
+                        self._exhausted = True
+                        return
+                    except Exception:
+                        self._iter = None
+                        raise
+                    self._cache.append(val)
             yield val
             idx += 1
 
@@ -226,6 +251,12 @@ _MAX_RECURRENCE_CACHE_RULES = 1024
 _RECURRENCE_CACHE: OrderedDict[
     tuple[Any, ...], LazyCachedIterable[datetime.datetime | datetime.date]
 ] = OrderedDict()
+# Protects _RECURRENCE_CACHE lookups, LRU reordering, and eviction across threads.
+# Lock ordering: _RECURRENCE_CACHE_LOCK is a leaf lock (never held while advancing
+# iterators or acquiring LazyCachedIterable._lock). LazyCachedIterable._lock for
+# higher-level streams (e.g. CachedTransitionTimeline) may acquire _RECURRENCE_CACHE_LOCK
+# or a child LazyCachedIterable._lock in a strict DAG.
+_RECURRENCE_CACHE_LOCK = threading.Lock()
 
 
 def _dt_cache_key(
@@ -266,15 +297,16 @@ def _get_cached_ruleset(
     ruleset_factory: Callable[[], Iterable[datetime.datetime | datetime.date]],
 ) -> LazyCachedIterable[datetime.datetime | datetime.date]:
     key = _rule_cache_key(dtstart, rrule, rdate, exdate)
-    if key in _RECURRENCE_CACHE:
-        _RECURRENCE_CACHE.move_to_end(key)
-        return _RECURRENCE_CACHE[key]
+    with _RECURRENCE_CACHE_LOCK:
+        if key in _RECURRENCE_CACHE:
+            _RECURRENCE_CACHE.move_to_end(key)
+            return _RECURRENCE_CACHE[key]
 
-    cached = LazyCachedIterable(ruleset_factory())
-    _RECURRENCE_CACHE[key] = cached
-    if len(_RECURRENCE_CACHE) > _MAX_RECURRENCE_CACHE_RULES:
-        _RECURRENCE_CACHE.popitem(last=False)
-    return cached
+        cached = LazyCachedIterable(ruleset_factory())
+        _RECURRENCE_CACHE[key] = cached
+        if len(_RECURRENCE_CACHE) > _MAX_RECURRENCE_CACHE_RULES:
+            _RECURRENCE_CACHE.popitem(last=False)
+        return cached
 
 
 class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
@@ -350,7 +382,8 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
             yield from cached
         except TypeError as err:
             key = _rule_cache_key(self._dtstart, self._rrule, self._rdate, self._exdate)
-            _RECURRENCE_CACHE.pop(key, None)
+            with _RECURRENCE_CACHE_LOCK:
+                _RECURRENCE_CACHE.pop(key, None)
             raise RecurrenceError(
                 f"Error evaluating recurrence rule ({self}): {str(err)}"
             ) from err
