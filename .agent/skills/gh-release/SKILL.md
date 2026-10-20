@@ -21,40 +21,43 @@ Example: `1.0.0` -> `1.1.0` (new feature), `1.1.0` -> `1.1.1` (bug fix), `1.1.1`
 
 ## Usage
 
-To use this skill, execute the `create-release.sh` script from the root of your project with the desired new version number as an argument.
+All releases are cut from a `release/X.Y` branch.
 
-### Standard Release (from `main`)
+### Major / Minor Release (e.g. `14.4.0` from `main`)
 
-```bash
-.agent/skills/gh-release/scripts/create-release.sh 0.9.1
-```
-
-This will perform the following actions:
-
-1. Ensure the working directory is clean and in the `main` (or `release/*`) branch.
-2. Update the `version` field in `pyproject.toml` to `0.9.1`.
-3. Stage the `pyproject.toml` file.
-4. Commit the change with the message `chore(release): 0.9.1`.
-5. Push the changes to the remote branch.
-6. Create a GitHub release named `0.9.1` targeting that branch with auto-generated release notes using `gh release create "0.9.1" --target "$BRANCH" --generate-notes`.
-
-### Targeted Patch Release (Cherry-Pick onto `release/X.Y`)
-
-When `main` has accumulated additional changes that should not be included in a targeted patch release (for example, releasing `14.3.1` with a single bug fix on top of `14.3.0`):
-
-1. Create and checkout a `release/X.Y` branch from the base release tag:
+1. Create and checkout a new `release/X.Y` branch from `main`:
    ```bash
-   git checkout -b release/14.3 14.3.0
+   git fetch origin
+   git checkout -b release/14.4 origin/main
    ```
-2. Cherry-pick the specific commit(s) from `main`:
+2. Run the release script with the new version:
+   ```bash
+   .agent/skills/gh-release/scripts/create-release.sh 14.4.0
+   ```
+
+### Patch Release (e.g. `14.3.1` with targeted cherry-picks)
+
+1. Checkout the existing `release/X.Y` branch (or create it from the `X.Y.0` tag if it does not exist yet):
+   ```bash
+   git fetch origin
+   git checkout release/14.3 || git checkout -b release/14.3 14.3.0
+   ```
+2. Cherry-pick the target commit(s) from `main`:
    ```bash
    git cherry-pick <commit-sha>
    ```
-3. Run the release script on the `release/X.Y` branch:
+3. Run the release script with the patch version:
    ```bash
    .agent/skills/gh-release/scripts/create-release.sh 14.3.1
    ```
-   When run from a `release/*` branch, `create-release.sh` will publish the release from `release/X.Y` and automatically port the `pyproject.toml` version bump commit back to `main`.
+
+### What `create-release.sh` does
+
+1. Ensures the working directory is clean and on a `release/*` branch.
+2. Updates the `version` field in `pyproject.toml` to `<version>`.
+3. Commits `pyproject.toml` with the message `chore(release): <version>`.
+4. Pushes the `release/*` branch to `origin`.
+5. Creates a GitHub release named `<version>` targeting that `release/*` branch with auto-generated release notes (`gh release create "<version>" --target "$BRANCH" --generate-notes`).
 
 ## Requirements
 
