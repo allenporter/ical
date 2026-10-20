@@ -37,11 +37,13 @@ All releases are cut from a `release/X.Y` branch.
 
 ### Patch Release (e.g. `14.3.1` with targeted cherry-picks)
 
-1. Checkout the existing `release/X.Y` branch (or create it from the `X.Y.0` tag if it does not exist yet):
+1. Checkout the `release/X.Y` branch:
    ```bash
    git fetch origin
-   git checkout release/14.3 || git checkout -b release/14.3 14.3.0
+   git checkout release/14.3
+   git pull --ff-only origin release/14.3
    ```
+   *(Note: If the `release/X.Y` branch was not yet created for an older `X.Y.0` tag, create it from that tag first with `git checkout -b release/14.3 14.3.0`.)*
 2. Cherry-pick the target commit(s) from `main`:
    ```bash
    git cherry-pick <commit-sha>
@@ -53,11 +55,12 @@ All releases are cut from a `release/X.Y` branch.
 
 ### What `create-release.sh` does
 
-1. Ensures the working directory is clean and on a `release/*` branch.
+1. Ensures the working directory is clean and currently checked out to a `release/*` branch.
 2. Updates the `version` field in `pyproject.toml` to `<version>`.
 3. Commits `pyproject.toml` with the message `chore(release): <version>`.
 4. Pushes the `release/*` branch to `origin`.
 5. Creates a GitHub release named `<version>` targeting that `release/*` branch with auto-generated release notes (`gh release create "<version>" --target "$BRANCH" --generate-notes`).
+6. Checks out `main`, applies and pushes the `chore(release): <version>` bump to `pyproject.toml` on `main` so `main` stays in sync with the latest released version, and switches back to the `release/*` branch.
 
 ## Requirements
 
