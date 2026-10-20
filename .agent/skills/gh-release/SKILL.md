@@ -21,19 +21,21 @@ Example: `1.0.0` -> `1.1.0` (new feature), `1.1.0` -> `1.1.1` (bug fix), `1.1.1`
 
 ## Usage
 
-All releases are cut from a `release/X.Y` branch.
+- **Major / Minor releases (`X.Y.0`)** are cut from `main`, which commits `chore(release): X.Y.0` to `main`, pushes `release/X.Y` at that commit, and creates the GitHub release.
+- **Patch releases (`X.Y.Z`)** are cut from `release/X.Y` by cherry-picking fixes onto `release/X.Y` and running `create-release.sh X.Y.Z` without touching `main`.
 
 ### Major / Minor Release (e.g. `14.4.0` from `main`)
 
-1. Create and checkout a new `release/X.Y` branch from `main`:
+1. Checkout `main` and pull the latest changes:
    ```bash
-   git fetch origin
-   git checkout -b release/14.4 origin/main
+   git checkout main
+   git pull --ff-only origin main
    ```
-2. Run the release script with the new version:
+2. Run the release script with the new `X.Y.0` version:
    ```bash
    .agent/skills/gh-release/scripts/create-release.sh 14.4.0
    ```
+   This commits `chore(release): 14.4.0` to `main`, creates and pushes the `release/14.4` branch at that commit, and creates the `14.4.0` GitHub release.
 
 ### Patch Release (e.g. `14.3.1` with targeted cherry-picks)
 
@@ -52,15 +54,7 @@ All releases are cut from a `release/X.Y` branch.
    ```bash
    .agent/skills/gh-release/scripts/create-release.sh 14.3.1
    ```
-
-### What `create-release.sh` does
-
-1. Ensures the working directory is clean and currently checked out to a `release/*` branch.
-2. Updates the `version` field in `pyproject.toml` to `<version>`.
-3. Commits `pyproject.toml` with the message `chore(release): <version>`.
-4. Pushes the `release/*` branch to `origin`.
-5. Creates a GitHub release named `<version>` targeting that `release/*` branch with auto-generated release notes (`gh release create "<version>" --target "$BRANCH" --generate-notes`).
-6. Checks out `main`, applies and pushes the `chore(release): <version>` bump to `pyproject.toml` on `main` so `main` stays in sync with the latest released version, and switches back to the `release/*` branch.
+   This commits `chore(release): 14.3.1` on `release/14.3`, pushes `release/14.3`, and creates the `14.3.1` GitHub release targeting `release/14.3`.
 
 ## Requirements
 
