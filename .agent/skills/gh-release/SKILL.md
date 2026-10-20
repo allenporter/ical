@@ -23,7 +23,7 @@ Example: `1.0.0` -> `1.1.0` (new feature), `1.1.0` -> `1.1.1` (bug fix), `1.1.1`
 
 To use this skill, execute the `create-release.sh` script from the root of your project with the desired new version number as an argument.
 
-**Example:**
+### Standard Release (from `main`)
 
 ```bash
 .agent/skills/gh-release/scripts/create-release.sh 0.9.1
@@ -31,12 +31,30 @@ To use this skill, execute the `create-release.sh` script from the root of your 
 
 This will perform the following actions:
 
-1. Ensure the working directory is clean and in the `main` branch.
+1. Ensure the working directory is clean and in the `main` (or `release/*`) branch.
 2. Update the `version` field in `pyproject.toml` to `0.9.1`.
 3. Stage the `pyproject.toml` file.
 4. Commit the change with the message `chore(release): 0.9.1`.
-5. Push the changes to the `main` branch.
-6. Create a GitHub release named `0.9.1` with auto-generated release notes using `gh release create "0.9.1" --generate-notes`.
+5. Push the changes to the remote branch.
+6. Create a GitHub release named `0.9.1` targeting that branch with auto-generated release notes using `gh release create "0.9.1" --target "$BRANCH" --generate-notes`.
+
+### Targeted Patch Release (Cherry-Pick onto `release/X.Y`)
+
+When `main` has accumulated additional changes that should not be included in a targeted patch release (for example, releasing `14.3.1` with a single bug fix on top of `14.3.0`):
+
+1. Create and checkout a `release/X.Y` branch from the base release tag:
+   ```bash
+   git checkout -b release/14.3 14.3.0
+   ```
+2. Cherry-pick the specific commit(s) from `main`:
+   ```bash
+   git cherry-pick <commit-sha>
+   ```
+3. Run the release script on the `release/X.Y` branch:
+   ```bash
+   .agent/skills/gh-release/scripts/create-release.sh 14.3.1
+   ```
+   When run from a `release/*` branch, `create-release.sh` will publish the release from `release/X.Y` and automatically port the `pyproject.toml` version bump commit back to `main`.
 
 ## Requirements
 
