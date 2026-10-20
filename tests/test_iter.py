@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import datetime
 import itertools
 import random
+import threading
 import zoneinfo
 from collections.abc import Generator
 from typing import Any, Iterable, Iterator
@@ -432,3 +434,32 @@ def test_recurrence_cache_distinct_timezones_with_same_initial_offset() -> None:
     assert iter_mod._rule_cache_key(
         e_ny.dtstart, [], [p1], []
     ) != iter_mod._rule_cache_key(e_ny.dtstart, [], [p2], [])
+
+
+def test_ruleset_iterable_concurrent_error() -> None:
+    """Test that concurrent consumers all receive RecurrenceError when a shared rule fails."""
+    iter_mod._RECURRENCE_CACHE.clear()
+    num_threads = 4
+    barrier = threading.Barrier(num_threads)
+
+    def consume_invalid() -> None:
+        recur_iter = RulesetIterable(
+            datetime.datetime(2022, 12, 19, 5, 0, 0),
+            [
+                rrule.rrule(
+                    freq=rrule.DAILY,
+                    dtstart=datetime.datetime(2022, 12, 19, 5, 0, 0),
+                    count=3,
+                )
+            ],
+            [datetime.date(2022, 12, 22)],
+            [datetime.date(2022, 12, 23)],
+        )
+        barrier.wait()
+        with pytest.raises(RecurrenceError):
+            list(recur_iter)
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(consume_invalid) for _ in range(num_threads)]
+        for f in futures:
+            f.result()

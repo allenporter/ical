@@ -1,13 +1,16 @@
 """Tests for the timeline library."""
 
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import random
+import threading
 import zoneinfo
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
+import ical.iter as iter_mod
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.compat import enable_compat_mode
@@ -588,3 +591,31 @@ def test_timeline_preserves_tzinfo_across_queries() -> None:
             "NY All Day",
             "NY Timed",
         ]
+
+
+def test_materialize_timeline_concurrent_threads() -> None:
+    """Test concurrent materialize_timeline calls across threads (issue #734)."""
+    iter_mod._RECURRENCE_CACHE.clear()
+    num_threads = 8
+    calendars = [_build_past_recurring_calendar(20) for _ in range(num_threads)]
+    start = datetime.datetime(2026, 9, 27, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    barrier = threading.Barrier(num_threads)
+
+    def worker(cal: Calendar) -> list[str | None]:
+        barrier.wait()
+        mat = materialize_timeline(cal.timeline, start, max_number_of_events=50)
+        return [e.summary for e in mat]
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(worker, cal) for cal in calendars]
+        results = [f.result() for f in futures]
+
+    expected = [
+        e.summary
+        for e in materialize_timeline(
+            calendars[0].timeline, start, max_number_of_events=50
+        )
+    ]
+    assert len(expected) == 50
+    for res in results:
+        assert res == expected
