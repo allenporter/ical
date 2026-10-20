@@ -21,22 +21,46 @@ Example: `1.0.0` -> `1.1.0` (new feature), `1.1.0` -> `1.1.1` (bug fix), `1.1.1`
 
 ## Usage
 
-To use this skill, execute the `create-release.sh` script from the root of your project with the desired new version number as an argument.
+All releases are cut from a `release/X.Y` branch.
 
-**Example:**
+### Major / Minor Release (e.g. `14.4.0` from `main`)
 
-```bash
-.agent/skills/gh-release/scripts/create-release.sh 0.9.1
-```
+1. Create and checkout a new `release/X.Y` branch from `main`:
+   ```bash
+   git fetch origin
+   git checkout -b release/14.4 origin/main
+   ```
+2. Run the release script with the new version:
+   ```bash
+   .agent/skills/gh-release/scripts/create-release.sh 14.4.0
+   ```
 
-This will perform the following actions:
+### Patch Release (e.g. `14.3.1` with targeted cherry-picks)
 
-1. Ensure the working directory is clean and in the `main` branch.
-2. Update the `version` field in `pyproject.toml` to `0.9.1`.
-3. Stage the `pyproject.toml` file.
-4. Commit the change with the message `chore(release): 0.9.1`.
-5. Push the changes to the `main` branch.
-6. Create a GitHub release named `0.9.1` with auto-generated release notes using `gh release create "0.9.1" --generate-notes`.
+1. Checkout the `release/X.Y` branch:
+   ```bash
+   git fetch origin
+   git checkout release/14.3
+   git pull --ff-only origin release/14.3
+   ```
+   *(Note: If the `release/X.Y` branch was not yet created for an older `X.Y.0` tag, create it from that tag first with `git checkout -b release/14.3 14.3.0`.)*
+2. Cherry-pick the target commit(s) from `main`:
+   ```bash
+   git cherry-pick <commit-sha>
+   ```
+3. Run the release script with the patch version:
+   ```bash
+   .agent/skills/gh-release/scripts/create-release.sh 14.3.1
+   ```
+
+### What `create-release.sh` does
+
+1. Ensures the working directory is clean and currently checked out to a `release/*` branch.
+2. Updates the `version` field in `pyproject.toml` to `<version>`.
+3. Commits `pyproject.toml` with the message `chore(release): <version>`.
+4. Pushes the `release/*` branch to `origin`.
+5. Creates a GitHub release named `<version>` targeting that `release/*` branch with auto-generated release notes (`gh release create "<version>" --target "$BRANCH" --generate-notes`).
+6. Checks out `main`, applies and pushes the `chore(release): <version>` bump to `pyproject.toml` on `main` so `main` stays in sync with the latest released version, and switches back to the `release/*` branch.
 
 ## Requirements
 
