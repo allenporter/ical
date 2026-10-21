@@ -57,12 +57,13 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
-        self._exclude_ids = exclude_ids
         # A RECURRENCE-ID may be written as a date, a floating time, a time
         # with a TZID or a UTC time, independently of how DTSTART is written.
         # Timed values with a zone name an instant, so they are compared as
-        # instants. A floating value is read in the zone of the series, and a
-        # floating series is matched by the wall time the value was written in.
+        # instants. A floating value is read in the zone of the series. A
+        # floating series has no instant to compare against, so it is matched
+        # by the wall time each value was written in, zoned values included,
+        # as a TZID RECURRENCE-ID was already matched by its string.
         self._dates: set[datetime.date] = set()
         self._wall_times: set[datetime.datetime] = set()
         self._floating: set[datetime.datetime] = set()
