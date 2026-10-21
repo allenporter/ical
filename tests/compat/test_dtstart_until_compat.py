@@ -81,20 +81,30 @@ def test_dtstart_until_compat_context_manager() -> None:
     assert not dtstart_until_compat.is_dtstart_until_compat_enabled()
 
 
-def test_dtstart_datetime_until_date_fails_without_compat() -> None:
-    """Test that DTSTART DATE-TIME with UNTIL DATE raises an error without compat."""
-    with pytest.raises(
-        CalendarParseError, match="DTSTART was DATE-TIME but UNTIL was DATE"
-    ):
-        IcsCalendarStream.calendar_from_ics(_DATETIME_DTSTART_DATE_UNTIL_ICS)
+def test_dtstart_datetime_until_date_without_compat() -> None:
+    """Test that DTSTART DATE-TIME with UNTIL DATE is coerced without compat.
+
+    The DATE is read as the end of that day, so an occurrence on it is kept.
+    """
+    calendar = IcsCalendarStream.calendar_from_ics(_DATETIME_DTSTART_DATE_UNTIL_ICS)
+
+    event = calendar.events[0]
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(
+        2023, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc
+    )
 
 
-def test_dtstart_datetime_until_date_fails_without_compat_tzid() -> None:
-    """Test that DTSTART DATE-TIME (with TZID) with UNTIL DATE raises without compat."""
-    with pytest.raises(
-        CalendarParseError, match="DTSTART was DATE-TIME but UNTIL was DATE"
-    ):
-        IcsCalendarStream.calendar_from_ics(_TZID_DTSTART_DATE_UNTIL_ICS)
+def test_dtstart_datetime_until_date_without_compat_tzid() -> None:
+    """Test that the end of the UNTIL day is taken in the DTSTART zone."""
+    calendar = IcsCalendarStream.calendar_from_ics(_TZID_DTSTART_DATE_UNTIL_ICS)
+
+    event = calendar.events[0]
+    assert event.rrule is not None
+    # 2023-12-31 23:59:59 in New York is 2024-01-01 04:59:59 UTC
+    assert event.rrule.until == datetime.datetime(
+        2024, 1, 1, 4, 59, 59, tzinfo=datetime.timezone.utc
+    )
 
 
 def test_dtstart_datetime_until_date_compat_utc() -> None:
@@ -107,18 +117,18 @@ def test_dtstart_datetime_until_date_compat_utc() -> None:
     event = calendar.events[0]
     assert event.rrule is not None
     assert event.rrule.until is not None
-    # UNTIL should be converted to a datetime matching DTSTART timezone (UTC)
+    # UNTIL should be converted to the end of the day in UTC
     assert isinstance(event.rrule.until, datetime.datetime)
     assert event.rrule.until == datetime.datetime(
-        2023, 12, 31, 0, 0, 0, tzinfo=datetime.timezone.utc
+        2023, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc
     )
 
 
 def test_dtstart_datetime_until_date_compat_tzid() -> None:
     """Test that DTSTART DATE-TIME with TZID and UNTIL DATE is handled with compat mode.
 
-    Per RFC 5545, UNTIL must be in UTC when DTSTART has a timezone. The compat
-    mode converts UNTIL DATE to midnight UTC DATE-TIME.
+    Per RFC 5545, UNTIL must be in UTC when DTSTART has a timezone. The UNTIL
+    DATE becomes the end of that day in the DTSTART zone, converted to UTC.
     """
     with dtstart_until_compat.enable_dtstart_until_compat():
         calendar = IcsCalendarStream.calendar_from_ics(_TZID_DTSTART_DATE_UNTIL_ICS)
@@ -132,7 +142,7 @@ def test_dtstart_datetime_until_date_compat_tzid() -> None:
     # UNTIL when DTSTART has a timezone)
     assert isinstance(event.rrule.until, datetime.datetime)
     assert event.rrule.until == datetime.datetime(
-        2023, 12, 31, 0, 0, 0, tzinfo=datetime.timezone.utc
+        2024, 1, 1, 4, 59, 59, tzinfo=datetime.timezone.utc
     )
 
 
@@ -187,9 +197,12 @@ def test_google_calendar_ics_file_compat() -> None:
     assert event.summary == "Weekly Meeting (Google Calendar UNTIL mismatch)"
     assert event.rrule is not None
     assert event.rrule.until is not None
-    # UNTIL should have been converted from DATE to DATE-TIME
+    # UNTIL should have been converted from DATE to DATE-TIME: the end of
+    # 2023-12-31 in New York, in UTC
     assert isinstance(event.rrule.until, datetime.datetime)
-    assert event.rrule.until.date() == datetime.date(2023, 12, 31)
+    assert event.rrule.until == datetime.datetime(
+        2024, 1, 1, 4, 59, 59, tzinfo=datetime.timezone.utc
+    )
 
 
 _NAIVE_UNTIL_ICS = """BEGIN:VCALENDAR
@@ -221,17 +234,16 @@ END:VCALENDAR
 
 
 def test_naive_until_read_as_utc_in_compat_mode() -> None:
-    """Producers that omit the Z mean UTC; the calendar should still work.
-
-    Without compat this is rejected, since rfc5545 3.3.10 requires UNTIL in
-    UTC when DTSTART is timezone-aware.
-    """
+    """A naive UNTIL under a UTC DTSTART is read as UTC, with or without compat."""
     ics = _NAIVE_UNTIL_ICS.format(until="20250718T140000")
 
-    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
-        IcsCalendarStream.calendar_from_ics(
-            ics.replace("Google Inc//Google Calendar 70.9054", "Some Other Calendar")
-        )
+    calendar = IcsCalendarStream.calendar_from_ics(
+        ics.replace("Google Inc//Google Calendar 70.9054", "Some Other Calendar")
+    )
+    assert calendar.events[0].rrule is not None
+    assert calendar.events[0].rrule.until == datetime.datetime(
+        2025, 7, 18, 14, 0, tzinfo=datetime.timezone.utc
+    )
 
     with enable_compat_mode(ics) as compat_ics:
         calendar = IcsCalendarStream.calendar_from_ics(compat_ics)

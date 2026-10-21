@@ -500,35 +500,44 @@ def _occurrences(calendar: Calendar) -> list[datetime.datetime | datetime.date]:
     ]
 
 
-def test_naive_until_against_utc_dtstart_is_rejected() -> None:
+def test_naive_until_against_utc_dtstart() -> None:
     """rfc5545 3.3.10 requires UNTIL in UTC when DTSTART is timezone-aware.
 
     A naive UNTIL used to validate cleanly and then fail much later, inside
     the recurrence iterator, with an error naming neither event nor rule.
+    Under a UTC DTSTART it is read as UTC.
     """
-    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
-        IcsCalendarStream.calendar_from_ics(
-            _event_ics(
-                "DTSTART:20250715T140000Z", "RRULE:FREQ=DAILY;UNTIL=20250718T140000"
-            )
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics("DTSTART:20250715T140000Z", "RRULE:FREQ=DAILY;UNTIL=20250718T140000")
+    )
+
+    assert _until(calendar) == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=_UTC)
+    assert len(_occurrences(calendar)) == 4
+
+
+def test_naive_until_against_a_tzid_dtstart() -> None:
+    """A floating UNTIL is the same wall-clock time as a TZID DTSTART."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics(
+            "DTSTART;TZID=America/Denver:20250715T140000",
+            "RRULE:FREQ=DAILY;UNTIL=20250718T140000",
         )
+    )
+
+    # 14:00 in Denver (MDT, UTC-6) is 20:00 UTC; the last day is kept
+    assert _until(calendar) == datetime.datetime(2025, 7, 18, 20, 0, tzinfo=_UTC)
+    assert len(_occurrences(calendar)) == 4
 
 
-def test_naive_until_against_a_tzid_dtstart_is_rejected() -> None:
-    """A TZID reference is timezone-aware too, so the same rule applies."""
-    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
-        IcsCalendarStream.calendar_from_ics(
-            _event_ics(
-                "DTSTART;TZID=America/Denver:20250715T140000",
-                "RRULE:FREQ=DAILY;UNTIL=20250718T140000",
-            )
-        )
-
-
-def test_naive_until_is_rejected_on_a_todo_as_well() -> None:
+def test_naive_until_on_a_todo_as_well() -> None:
     """`validate_until_dtstart` is shared by VEVENT, VTODO and VJOURNAL."""
-    with pytest.raises(CalendarParseError, match="UNTIL must be specified in UTC"):
-        IcsCalendarStream.calendar_from_ics(_TODO_ICS.format(until="20250718T140000"))
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _TODO_ICS.format(until="20250718T140000")
+    )
+
+    rrule = calendar.todos[0].rrule
+    assert rrule is not None
+    assert rrule.until == datetime.datetime(2025, 7, 18, 14, 0, tzinfo=_UTC)
 
 
 def test_a_conforming_until_is_untouched() -> None:
@@ -636,3 +645,67 @@ def test_an_aware_recurrence_date_against_a_floating_dtstart_keeps_its_offset() 
     output = IcsCalendarStream.calendar_to_ics(IcsCalendarStream.calendar_from_ics(ics))
     assert "EXDATE;TZID=America/Denver:20250716T140000" in output
     assert "RDATE:20250725T190000Z" in output
+
+
+# Real-world shapes from Home Assistant issues: each producer below writes a
+# recurrence that rfc5545 doesn't allow, and each must still expand.
+
+
+def test_date_until_keeps_the_occurrence_on_that_day() -> None:
+    """Google Calendar writes UNTIL as a DATE under a DATE-TIME DTSTART.
+
+    Read as midnight, UNTIL fell before the 14:00 occurrence on the last day
+    and silently dropped it.
+    """
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics("DTSTART:20250715T140000Z", "RRULE:FREQ=DAILY;UNTIL=20250718")
+    )
+
+    assert _occurrences(calendar) == [
+        datetime.datetime(2025, 7, day, 14, 0, tzinfo=_UTC) for day in range(15, 19)
+    ]
+
+
+def test_date_until_against_a_tzid_dtstart() -> None:
+    """The end of the UNTIL day is taken in DTSTART's zone, not in UTC."""
+    calendar = IcsCalendarStream.calendar_from_ics(
+        _event_ics(
+            "DTSTART;TZID=America/Denver:20250715T200000",
+            "RRULE:FREQ=DAILY;UNTIL=20250718",
+        )
+    )
+
+    # 20:00 in Denver is 02:00 UTC the next day: still on the 18th locally
+    assert _until(calendar) == datetime.datetime(2025, 7, 19, 5, 59, 59, tzinfo=_UTC)
+    assert len(_occurrences(calendar)) == 4
+
+
+def test_x_wr_timezone_floating_until_and_exdate_list() -> None:
+    """Evolution and Thunderbird exports: floating values under X-WR-TIMEZONE.
+
+    DTSTART is promoted to the calendar's zone, while UNTIL (inside RRULE) and
+    the second value of an EXDATE list were left floating, so the expansion
+    raised instead of returning the series.
+    """
+    calendar = IcsCalendarStream.calendar_from_ics(
+        """BEGIN:VCALENDAR
+PRODID:-//Example//Example//EN
+VERSION:2.0
+X-WR-TIMEZONE:America/Denver
+BEGIN:VEVENT
+DTSTAMP:20250715T100000Z
+UID:1
+DTSTART:20250715T140000
+RRULE:FREQ=DAILY;UNTIL=20250718T140000
+EXDATE:20250716T140000,20250717T140000
+SUMMARY:Standup
+END:VEVENT
+END:VCALENDAR
+"""
+    )
+
+    denver = zoneinfo.ZoneInfo("America/Denver")
+    assert _occurrences(calendar) == [
+        datetime.datetime(2025, 7, 15, 14, 0, tzinfo=denver),
+        datetime.datetime(2025, 7, 18, 14, 0, tzinfo=denver),
+    ]
