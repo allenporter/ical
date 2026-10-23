@@ -32,6 +32,11 @@ def test_image_parse_binary_padding() -> None:
     )
     assert img_padded.content == b"hello"
 
+    img_lower = Image.model_validate(
+        {"value": "aGVsbG8=", "VALUE": "binary", "ENCODING": "base64"}
+    )
+    assert img_lower.content == b"hello"
+
 
 def test_image_parse_invalid_base64_error() -> None:
     """Test that parsing invalid base64 content raises a ValidationError."""

@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from ical.calendar import Calendar
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
-from ical.event import Event
+from ical.event import Event, EventStatus
 from ical.exceptions import CalendarParseError
 from ical.types.recur import Recur
 from ical.types import Period, Uri, Image, Conference
@@ -736,3 +736,33 @@ def test_event_zero_duration() -> None:
     event = Event(dtstart=date(2025, 5, 1), duration=timedelta(0))
     assert event.end == date(2025, 5, 1)
     assert event.computed_duration == timedelta(0)
+
+
+@pytest.mark.parametrize(
+    ("raw_status", "expected"),
+    [
+        ("CONFIRMED", EventStatus.CONFIRMED),
+        ("Confirmed", EventStatus.CONFIRMED),
+        ("confirmed", EventStatus.CONFIRMED),
+        ("Tentative", EventStatus.TENTATIVE),
+        ("cancelled", EventStatus.CANCELLED),
+    ],
+)
+def test_event_status_case_insensitive(raw_status: str, expected: EventStatus) -> None:
+    """Test that Event STATUS values are parsed case-insensitively per RFC 5545."""
+    ics = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ddaysoftware.com//NONSGML DDay.iCal 1.0//EN
+BEGIN:VEVENT
+UID:repro-1@example.invalid
+DTSTAMP:20261015T080000Z
+DTSTART:20261020T090000Z
+DTEND:20261020T100000Z
+SUMMARY:Test event
+STATUS:{raw_status}
+END:VEVENT
+END:VCALENDAR"""
+    calendar = IcsCalendarStream.calendar_from_ics(ics)
+    assert len(calendar.events) == 1
+    assert calendar.events[0].status == expected
+    assert f"STATUS:{expected.value}" in IcsCalendarStream.calendar_to_ics(calendar)

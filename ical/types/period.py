@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
+from .const import CaseInsensitiveEnum
 from .data_types import DATA_TYPE, encode_model_property_params, serialize_field
 from .date_time import DateTimeEncoder
 from .duration import DurationEncoder
@@ -19,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @DATA_TYPE.register("FBTYPE")
-class FreeBusyType(str, enum.Enum):
+class FreeBusyType(CaseInsensitiveEnum):
     """Specifies the free/busy time type."""
 
     FREE = "FREE"

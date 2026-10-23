@@ -1175,3 +1175,16 @@ def test_weekday_value_validation_errors(occurrence: int) -> None:
         ValueError, match="Weekday occurrence must be between -53 and 53"
     ):
         WeekdayValue(Weekday.MONDAY, occurrence)
+
+
+def test_recur_case_insensitive_enums() -> None:
+    """Test case-insensitive parsing of RRULE Frequency, Weekday, and WKST."""
+    recur = Recur.from_rrule("freq=weekly;byday=mo,-1Fr;wkst=su;count=2")
+    assert recur.freq == Frequency.WEEKLY
+    assert recur.by_weekday == [
+        WeekdayValue(Weekday.MONDAY),
+        WeekdayValue(Weekday.FRIDAY, occurrence=-1),
+    ]
+    assert recur.wkst == Weekday.SUNDAY
+    assert Range("thisandfuture") == Range.THIS_AND_FUTURE
+    assert Frequency._missing_(123) is None
