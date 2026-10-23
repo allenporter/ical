@@ -22,7 +22,7 @@ syrupy==6.1.1
 # emoji is a dev only dependency used by script/update_emoji.py
 emoji==2.16.0
 # tzlocal is a dev only dependency used by script/update_tzlocal.py
-tzlocal==5.4.4
+tzlocal==5.4.5
 
 # aiohttp is the optional dependency backing the `ical[async]` extra, and
 # pytest-aiohttp/pytest-asyncio are used to test it.
