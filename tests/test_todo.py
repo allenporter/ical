@@ -12,7 +12,7 @@ from freezegun import freeze_time
 import pytest
 
 from ical.exceptions import CalendarParseError
-from ical.todo import Todo
+from ical.todo import Todo, TodoStatus
 from ical.types.recur import Frequency, Recur
 from ical.calendar import Calendar
 from ical.calendar_stream import CalendarStream, IcsCalendarStream
@@ -559,3 +559,20 @@ def test_todo_validator_ordering_with_until_and_date_repair() -> None:
     assert todo.rrule.until == datetime.datetime(
         2025, 5, 5, 10, 0, tzinfo=datetime.timezone.utc
     )
+
+
+@pytest.mark.parametrize(
+    ("raw_status", "expected"),
+    [
+        ("NEEDS-ACTION", TodoStatus.NEEDS_ACTION),
+        ("Needs-Action", TodoStatus.NEEDS_ACTION),
+        ("needs-action", TodoStatus.NEEDS_ACTION),
+        ("Completed", TodoStatus.COMPLETED),
+        ("In-Process", TodoStatus.IN_PROCESS),
+        ("cancelled", TodoStatus.CANCELLED),
+    ],
+)
+def test_todo_status_case_insensitive(raw_status: str, expected: TodoStatus) -> None:
+    """Test that Todo STATUS values are parsed case-insensitively per RFC 5545."""
+    todo = Todo.model_validate({"status": raw_status})
+    assert todo.status == expected

@@ -35,6 +35,7 @@ from .timespan import Timespan
 from .types import (
     Attachment,
     CalAddress,
+    CaseInsensitiveEnum,
     Classification,
     Conference,
     ExtraProperty,
@@ -64,7 +65,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["Todo", "TodoStatus"]
 
 
-class TodoStatus(str, enum.Enum):
+class TodoStatus(CaseInsensitiveEnum):
     """Status or confirmation of the to-do."""
 
     NEEDS_ACTION = "NEEDS-ACTION"

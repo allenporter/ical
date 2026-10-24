@@ -16,9 +16,10 @@ class BooleanEncoder:
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> bool:
         """Parse an rfc5545 property into a boolean."""
-        if prop.value == "TRUE":
+        upper_val = prop.value.upper()
+        if upper_val == "TRUE":
             return True
-        if prop.value == "FALSE":
+        if upper_val == "FALSE":
             return False
         raise ValueError(f"Unable to parse value as boolean: {prop}")
 

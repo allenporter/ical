@@ -41,6 +41,7 @@ from .timespan import Timespan
 from .types import (
     Attachment,
     CalAddress,
+    CaseInsensitiveEnum,
     Classification,
     Conference,
     ExtraProperty,
@@ -68,7 +69,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["Event", "EventStatus"]
 
 
-class EventStatus(str, enum.Enum):
+class EventStatus(CaseInsensitiveEnum):
     """Status or confirmation of the event set by the organizer."""
 
     CONFIRMED = "CONFIRMED"
