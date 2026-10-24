@@ -21,7 +21,7 @@ from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
 from ical.todo import Todo
-from ical.store import EventStore, TodoStore, StoreError
+from ical.store import EventStore, TodoStore, StoreError, TodoStoreError
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.types.recur import Range, Recur, RecurrenceId
 from ical.types import RelationshipType, RelatedTo
@@ -2448,20 +2448,10 @@ def test_this_and_future_timezone_aware(
     ]
 
     bad_tz = datetime.timezone(datetime.timedelta(hours=3))
-    # BROKEN: GenericStore.add checks item.dtstart (None before default assignment) and never
-    # calls _ensure_timezone(item.due) on Todo items, so adding a Todo with an invalid due
-    # timezone silently succeeds instead of raising TodoStoreError.
-    # with pytest.raises(TodoStoreError):
-    #     todo_store.add(
-    #         Todo(
-    #             summary="Bad tz todo",
-    #             due=datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz),
-    #         )
-    #     )
-    added_todo = todo_store.add(
-        Todo(
-            summary="Bad tz todo",
-            due=datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz),
+    with pytest.raises(TodoStoreError):
+        todo_store.add(
+            Todo(
+                summary="Bad tz todo",
+                due=datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz),
+            )
         )
-    )
-    assert added_todo.due == datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz)
