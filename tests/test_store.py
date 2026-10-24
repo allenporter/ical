@@ -2366,15 +2366,10 @@ def test_edit_single_occurrence_updates_dtstart_dtend_and_clears_exdate(
         recurrence_range=Range.NONE,
     )
     override = next(e for e in calendar.events if e.recurrence_id == "20250503T090000")
-    # BROKEN: _prepare_update skips updating dtstart/dtend when recurrence_range == Range.NONE,
-    # leaving the single-instance override with the original series start/end (May 1) and rdate.
-    # assert override.dtstart == datetime.datetime(2025, 5, 3, 9, 0)
-    # assert override.dtend == datetime.datetime(2025, 5, 3, 10, 0)
-    assert override.dtstart == datetime.datetime(2025, 5, 1, 9, 0)
-    assert override.dtend == datetime.datetime(2025, 5, 1, 10, 0)
+    assert override.dtstart == datetime.datetime(2025, 5, 3, 9, 0)
+    assert override.dtend == datetime.datetime(2025, 5, 3, 10, 0)
     assert override.exdate == []
-    # assert override.rdate == []
-    assert override.rdate == [datetime.datetime(2025, 5, 10, 9, 0)]
+    assert override.rdate == []
 
 
 def test_edit_todo_this_and_future_updates_due(
@@ -2398,12 +2393,8 @@ def test_edit_todo_this_and_future_updates_due(
         recurrence_range=Range.THIS_AND_FUTURE,
     )
     forked = next(t for t in calendar.todos if t.recurrence_id == "20250503")
-    # BROKEN: _prepare_update only adjusts Event.dtend and ignores Todo.due, leaving due at
-    # 2025-05-02 (< dtstart 2025-05-03), which causes Todo validation to clamp dtstart back to 2025-05-01.
-    # assert forked.dtstart == datetime.date(2025, 5, 3)
-    # assert forked.due == datetime.date(2025, 5, 4)
-    assert forked.dtstart == datetime.date(2025, 5, 1)
-    assert forked.due == datetime.date(2025, 5, 2)
+    assert forked.dtstart == datetime.date(2025, 5, 3)
+    assert forked.due == datetime.date(2025, 5, 4)
     assert forked.rrule is not None
     assert forked.rrule.count == 3
 
@@ -2433,18 +2424,10 @@ def test_this_and_future_timezone_aware(
         recurrence_range=Range.THIS_AND_FUTURE,
     )
     events = [e for e in calendar.timeline if e.uid == "tz-count-uid"]
-    # BROKEN:
-    # 1) _apply_delete parses recurrence_id as a naive datetime for Range.THIS_AND_FUTURE and
-    #    converts it to UTC using system local time, setting UNTIL before the May 5 occurrence.
-    # 2) _apply_edit compares ruleset occurrences against the new dtstart (11:00) instead of
-    #    the original occurrence time (09:00), decrementing COUNT twice (3 -> 1) and dropping May 7.
-    # assert [e.dtstart for e in events] == [
-    #     datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
-    #     datetime.datetime(2025, 5, 6, 11, 0, tzinfo=NY_TZ),
-    #     datetime.datetime(2025, 5, 7, 11, 0, tzinfo=NY_TZ),
-    # ]
     assert [e.dtstart for e in events] == [
+        datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
         datetime.datetime(2025, 5, 6, 11, 0, tzinfo=NY_TZ),
+        datetime.datetime(2025, 5, 7, 11, 0, tzinfo=NY_TZ),
     ]
 
     bad_tz = datetime.timezone(datetime.timedelta(hours=3))
