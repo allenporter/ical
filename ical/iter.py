@@ -501,14 +501,7 @@ class SortedItemIterable(Iterable[SortableItem[K, T]]):
 
     def __iter__(self) -> Iterator[SortableItem[K, T]]:
         """Return an iterator as a traversal over events in chronological order."""
-        # Using a heap is faster than sorting if the number of events (n) is
-        # much bigger than the number of events we extract from the iterator (k).
-        # Complexity: O(n + k log n).
-        heap: list[SortableItem[K, T]] = []
-        for item in self._iterable():
-            heapq.heappush(heap, item)
-        while heap:
-            yield heapq.heappop(heap)
+        return iter(sorted(self._iterable()))
 
 
 class SortableItemTimeline(Iterable[T]):

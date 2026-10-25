@@ -619,3 +619,38 @@ def test_materialize_timeline_concurrent_threads() -> None:
     assert len(expected) == 50
     for res in results:
         assert res == expected
+
+
+@pytest.mark.benchmark(min_rounds=3, warmup=False)
+def test_benchmark_recurring_with_recurrence_id_overrides(benchmark: Any) -> None:
+    """Benchmark timeline queries on recurring series with RECURRENCE-ID overrides."""
+    cal = Calendar()
+    for i in range(50):
+        uid = f"recurring-override-{i}@example.invalid"
+        base_date = datetime.date(2020, 1, 1) + datetime.timedelta(days=i % 28)
+        cal.events.append(
+            Event(
+                uid=uid,
+                summary=f"Weekly Sync {i}",
+                start=base_date,
+                end=base_date + datetime.timedelta(days=1),
+                rrule=Recur.from_rrule("FREQ=WEEKLY;COUNT=300"),
+            )
+        )
+        override_date = base_date + datetime.timedelta(weeks=10)
+        cal.events.append(
+            Event(
+                uid=uid,
+                summary=f"Weekly Sync {i} (Rescheduled)",
+                start=override_date + datetime.timedelta(days=1),
+                end=override_date + datetime.timedelta(days=2),
+                recurrence_id=override_date.strftime("%Y%m%d"),
+            )
+        )
+
+    now = datetime.datetime(2025, 6, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
+    def lookup_next() -> Event | None:
+        return next(cal.timeline.active_after(now), None)
+
+    benchmark(lookup_next)
