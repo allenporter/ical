@@ -23,9 +23,8 @@ import datetime
 import heapq
 import logging
 import threading
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from typing import Any, Generic, TypeVar, Union, cast
+from typing import Any, Generic, TypeVar, Union
 
 from dateutil import rrule
 
@@ -63,13 +62,15 @@ the callback returns an object at that time (e.g. event with updated time)
 """
 
 
-class SortableItem(Generic[K, T], ABC):
+class SortableItem(Generic[K, T]):
     """A SortableItem is used to sort an item by an arbitrary key.
 
     This object is used as a holder of the actual event or recurring event
     such that the sort key used is independent of the event to avoid extra
     copies and comparisons of a large event object.
     """
+
+    __slots__ = ("_key",)
 
     def __init__(self, key: K) -> None:
         """Initialize SortableItem."""
@@ -81,15 +82,15 @@ class SortableItem(Generic[K, T], ABC):
         return self._key
 
     @property
-    @abstractmethod
     def item(self) -> T:
         """Return the underlying item."""
+        raise NotImplementedError
 
     def __lt__(self, other: Any) -> bool:
         """Compare sortable items together."""
         if not isinstance(other, SortableItem):
             return NotImplemented
-        return cast(bool, self._key < other.key)
+        return bool(self._key < other._key)
 
 
 SpanOrderedItem = SortableItem[Timespan, T]
@@ -98,6 +99,8 @@ SpanOrderedItem = SortableItem[Timespan, T]
 
 class SortableItemValue(SortableItem[K, T]):
     """Concrete value implementation of SortableItem."""
+
+    __slots__ = ("_value",)
 
     def __init__(self, key: K, value: T) -> None:
         """Initialize SortableItemValue."""
@@ -112,6 +115,8 @@ class SortableItemValue(SortableItem[K, T]):
 
 class LazySortableItem(SortableItem[K, T]):
     """A SortableItem that has its value built lazily."""
+
+    __slots__ = ("_item_cb",)
 
     def __init__(
         self,
