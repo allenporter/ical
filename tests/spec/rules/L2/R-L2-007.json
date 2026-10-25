@@ -2,7 +2,7 @@
   "id": "R-L2-007",
   "title": "Disallowing Recurrence Rule Modification on Single-Instance Edit (Range.NONE)",
   "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
-  "authority": "RFC_8984_CALEXT",
+  "authority": "STORE_POLICY",
   "citations": [
     {
       "doc": "rfc8984.txt",
@@ -26,7 +26,7 @@
       "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
     }
   ],
-  "rationale": "Per RFC 8984 Sections 4.3.1 and 4.3.5 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2, a single recurrence instance override represents a single occurrence and MUST NOT define its own `recurrenceRules` (RRULE). Changing the recurrence rule of a series is only meaningful when editing the entire series (no recurrence_id) or splitting the series (THISANDFUTURE range), or when converting a non-recurring component into a recurring one. Consequently, attempting to modify the RRULE during a single-instance edit (where recurrence_id is specified and range is NONE) is invalid, while supplying an unchanged RRULE in a patch payload is treated as a no-op and omitted from the single-instance override component.",
+  "rationale": "Per RFC 8984 Sections 4.3.1 and 4.3.5 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2, a single recurrence instance override represents a single occurrence and MUST NOT define its own `recurrenceRules` (RRULE). Changing the recurrence rule of a series is only meaningful when editing the entire series (no recurrence_id) or splitting the series (THISANDFUTURE range), or when converting a non-recurring component into a recurring one. Consequently, attempting to modify the RRULE during a single-instance edit (where recurrence_id is specified and range is NONE) is invalid, while supplying an unchanged RRULE in a patch payload is treated as a no-op and omitted from the single-instance override component. Rejecting (rather than silently dropping) a differing RRULE is a STORE_POLICY choice: within the JSCalendar data model, RFC 8984 Section 4.3.5 requires a `recurrenceRules` pointer in an override PatchObject to be ignored, so the RFCs support the invariant (an override never carries its own rule) but not the specific rejection behavior.",
   "store_implication": "When a single-instance edit is invoked (with a recurrence identifier and single-instance range): (1) if the patch specifies an RRULE that differs from the master component's RRULE (or if re-editing an already-overridden single instance with a non-null RRULE), the calendar store MUST reject the operation with an error; (2) if the patch specifies an RRULE identical to the master component's RRULE, the store treats the RRULE in the patch as a no-op and still sets RRULE to null on the single-instance override component; (3) when editing a component as a whole (no recurrence identifier), setting or updating RRULE is permitted.",
   "edge_cases_and_counterexamples": [
     "Attempting to edit a single occurrence (e.g., recurrence_id='20220905T090000' with single-instance range) of a FREQ=WEEKLY;COUNT=3 series with a patch containing RRULE='FREQ=DAILY;COUNT=3' MUST be rejected with an error.",
@@ -57,7 +57,7 @@
           "dtstart": "2022-09-06T09:00:00",
           "rrule": "FREQ=DAILY;COUNT=3"
         },
-        "expect_error": "Can't update single instance with rrule"
+        "expect_error": true
       },
       "expected_components": [
         {

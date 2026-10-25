@@ -3,6 +3,11 @@
   "title": "Whole-Series Metadata Edit (recurrence_id=None) Preserves Valid Overrides and Updates In-Place",
   "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
   "authority": "STORE_POLICY",
+  "applies_under": {
+    "series_edit_override_mode": [
+      "PROPAGATE_PATCH"
+    ]
+  },
   "citations": [
     {
       "doc": "rfc8984.txt",
@@ -27,7 +32,7 @@
     }
   ],
   "rationale": "In RFC 8984 Section 4.3.5 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2, a recurring series consists of a main component and zero or more recurrenceOverrides keyed by RECURRENCE-ID, where each occurrence inherits base properties from the main object unless overridden. When a whole-series edit (recurrence_id=None) updates series-wide descriptive or status metadata without invalidating existing recurrence instances, the store must update the master component in place and preserve all valid RECURRENCE-ID override components rather than performing a whole-series delete that destroys sibling components or cascades to delete RELATED-TO child components. Non-schedule metadata updates explicitly provided in the patch apply across the series while preserving each valid override component's instance-specific schedule (dtstart, dtend, due, duration, recurrence_id, and rrule=None) as well as any unpatched override properties.",
-  "store_implication": "When editing a series with recurrence_id=None: (1) the store MUST NOT execute a whole-series delete that removes sibling components sharing the UID or cascades to delete RELATED-TO child components; (2) the master component (recurrence_id is None) MUST be updated in place; (3) for each existing override component (uid == target_uid and recurrence_id is not None) whose recurrence_id remains a valid occurrence of the updated master series, the override component MUST be retained in the calendar, with only the non-schedule metadata fields explicitly present in the patch applied and its own instance-specific dtstart, dtend, due, duration, recurrence_id, rrule=None, and unpatched metadata properties preserved.",
+  "store_implication": "When editing a series with recurrence_id=None: (1) the store MUST NOT execute a whole-series delete that removes sibling components sharing the UID or cascades to delete RELATED-TO child components; (2) the master component (recurrence_id is None) MUST be updated in place; (3) for each existing override component (uid == target_uid, recurrence_id is not None, and neither rrule nor rdate is present) whose recurrence_id remains a valid occurrence of the updated master series, the override component MUST be retained in the calendar, with only the non-schedule metadata fields explicitly present in the patch applied and its own instance-specific dtstart, dtend, due, duration, recurrence_id, rrule=None, and unpatched metadata properties preserved.",
   "edge_cases_and_counterexamples": [
     "Editing summary, description, or location of a series with recurrence_id=None when a single-instance override exists at 20250503T090000: both the master component and the override component remain in the calendar, and the override retains its rescheduled start and end times.",
     "Selective metadata patching: If an override has a custom summary ('Special standup') and the whole-series edit patches only location ('Room 101') without specifying summary in the patch, both master and override receive location='Room 101' while the override preserves its custom summary ('Special standup').",

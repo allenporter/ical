@@ -41,16 +41,20 @@
     }
   ],
   "rationale": "RFC 5545 Section 3.8.4.4 mandates that RECURRENCE-ID MUST have the same value type (DATE vs DATE-TIME, and floating local time vs UTC/timezone-qualified time) as the DTSTART property of the recurring component; if DTSTART is a DATE value, RECURRENCE-ID MUST be the calendar DATE for the recurrence instance (e.g., YYYYMMDD). Similarly, RFC 5545 Section 3.3.10 requires the RRULE UNTIL part to have the exact same value type as DTSTART (and forbids BYSECOND, BYMINUTE, BYHOUR when DTSTART is a DATE), Section 3.8.2.2 requires DTEND to have the same value type as DTSTART, and draft-ietf-calext-jscalendar-icalendar Section 3.2 requires DTSTART, DUE, RECURRENCE-ID, UNTIL, and recurrenceOverrides keys to share a uniform temporal value type. Consequently, all recurrence properties of a series must agree on DATE vs DATE-TIME, and if a whole-series edit transitions the master component's DTSTART between DATE (all-day) and DATE-TIME, any prior DATE or DATE-TIME EXDATEs and RECURRENCE-ID overrides that no longer match the updated value type and recurrence set cannot remain attached in an inconsistent value type.",
-  "store_implication": "1. Within any recurring series, the master component's DTSTART value type (DATE vs DATE-TIME) governs the required value type of DTEND/DUE, RRULE UNTIL, EXDATE, RDATE, and the RECURRENCE-ID of all single-instance or split components for that series.\n2. For an all-day series (`DTSTART;VALUE=DATE`), single-instance edits/deletions and THIS_AND_FUTURE splits MUST emit `RECURRENCE-ID;VALUE=DATE:YYYYMMDD`, `EXDATE;VALUE=DATE:YYYYMMDD`, and `UNTIL=YYYYMMDD` (date-only, never midnight `YYYYMMDDT000000Z`).\n3. When a whole-series edit (`recurrence_id=None`) transitions a recurring series between `DATE` (all-day) and `DATE-TIME` (timed), the updated component's DTSTART and DTEND/DUE must both use the new value type, and any prior EXDATE values or RECURRENCE-ID overrides of the old value type that do not match occurrences of the updated master component MUST be pruned.",
+  "store_implication": "1. Within any recurring series, the master component's DTSTART value type (DATE vs DATE-TIME) governs the required value type of DTEND/DUE, RRULE UNTIL, EXDATE, RDATE, and the RECURRENCE-ID of all single-instance or split components for that series.\n2. For an all-day series (`DTSTART;VALUE=DATE`), single-instance edits/deletions and THIS_AND_FUTURE splits MUST emit `RECURRENCE-ID;VALUE=DATE:YYYYMMDD`, `EXDATE;VALUE=DATE:YYYYMMDD`, and `UNTIL=YYYYMMDD` (date-only, never midnight `YYYYMMDDT000000Z`).\n3. When a whole-series edit (`recurrence_id=None`) transitions a recurring series between `DATE` (all-day) and `DATE-TIME` (timed), the updated component's DTSTART and DTEND/DUE must both use the new value type, and no EXDATE value or RECURRENCE-ID override of the old value type may remain attached to the series unchanged. Whether such exceptions are pruned or converted onto matching instances of the new value type is governed by `series_reschedule_exception_mode` (under `PRUNE_INVALID` they are pruned).",
   "edge_cases_and_counterexamples": [
     "All-day recurring event (`DTSTART;VALUE=DATE:20250501`, `RRULE:FREQ=DAILY;COUNT=3`): editing the 2025-05-02 instance with Range=NONE MUST set `RECURRENCE-ID;VALUE=DATE:20250502` (not `RECURRENCE-ID:20250502T000000`).",
     "All-day recurring event split or deleted with THIS_AND_FUTURE at `20250503`: the truncated master's RRULE MUST set `UNTIL=20250502` (a DATE value, one calendar day before `2025-05-03`), never `UNTIL=20250502T235959` (which violates RFC 5545 Section 3.3.10).",
-    "Transitioning a recurring series from all-day (`DATE: 2025-05-01`) to timed (`DATE-TIME: 2025-05-01T09:00:00`) via a whole-series edit (`recurrence_id=None`): prior `VALUE=DATE` EXDATEs (e.g. `2025-05-02`) and `VALUE=DATE` override components (`RECURRENCE-ID;VALUE=DATE:20250502`) no longer match the timed `DATE-TIME` recurrence set and must be pruned so the resulting calendar does not violate RFC 5545 Section 3.8.4.4's value-type equality requirement."
+    "Transitioning a recurring series from all-day (`DATE: 2025-05-01`) to timed (`DATE-TIME: 2025-05-01T09:00:00`) via a whole-series edit (`recurrence_id=None`): prior `VALUE=DATE` EXDATEs (e.g. `2025-05-02`) and `VALUE=DATE` override components (`RECURRENCE-ID;VALUE=DATE:20250502`) no longer match the timed `DATE-TIME` recurrence set and must not remain in `DATE` form, so the resulting calendar does not violate RFC 5545 Section 3.8.4.4's value-type equality requirement (pruned under `series_reschedule_exception_mode=PRUNE_INVALID`).",
+    "Per RFC 5545 Section 3.3.10, `BYSECOND`, `BYMINUTE`, and `BYHOUR` rule parts MUST NOT be specified when `DTSTART` has a `DATE` value type (and MUST be ignored if present in legacy non-compliant data)."
   ],
   "scenarios": [
     {
       "name": "all_day_single_instance_edit_and_delete_preserve_date_value_type",
       "description": "On an all-day (VALUE=DATE) daily series, deleting May 2 (Range=NONE) records a DATE EXDATE (2025-05-02) and editing May 3 (Range=NONE) creates a RECURRENCE-ID override with a DATE recurrence_id (20250503) and DATE dtstart/dtend.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "type": "VEVENT",
@@ -123,6 +127,9 @@
     {
       "name": "whole_series_transition_from_date_to_datetime_prunes_date_exdate_and_override",
       "description": "Converting an all-day recurring series (with a DATE EXDATE and a DATE RECURRENCE-ID override) to a timed DATE-TIME series via a whole-series edit updates DTSTART/DTEND to DATE-TIME and prunes the incompatible DATE EXDATE and DATE override.",
+      "modes": {
+        "series_reschedule_exception_mode": "PRUNE_INVALID"
+      },
       "initial_components": [
         {
           "type": "VEVENT",

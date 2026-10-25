@@ -1,0 +1,48 @@
+{
+  "id": "this_and_future_split_mode",
+  "title": "Identity of the Future Segment Created by a THIS_AND_FUTURE Split",
+  "question": "When a THIS_AND_FUTURE edit splits a recurring series at a non-first instance, does the new recurring component for the future instances keep the original UID (carrying a RECURRENCE-ID) or receive a new UID?",
+  "spec_gap": "RFC 5545 Section 3.8.4.4 only suggests (non-normatively) truncating the original component with UNTIL/COUNT and creating new recurring components for the future instances; it does not say whether those components keep the UID. RFC 5545 defines no semantics for a component that carries both RECURRENCE-ID (without RANGE) and RRULE. RFC 8984 Section 4.1.3 does specify the split for JSCalendar: a new object linked by 'next'/'first' relations keyed by the new object's UID. iCalendar has no equivalent normative text, so both representations are in use.",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6457,
+      "line_end": 6461,
+      "verbatim_quote": "In such cases, the calendar application could simply truncate the unbounded recurring calendar component (i.e., with the \"COUNT\" or \"UNTIL\" rule parts), and create two new unbounded recurring calendar components for the future instances."
+    }
+  ],
+  "options": [
+    {
+      "id": "SHARED_UID",
+      "summary": "The future segment keeps the original UID, carries RECURRENCE-ID set to the split instance (without RANGE), and carries the future RRULE. All segments of the series stay grouped under one UID.",
+      "consequences": [
+        "Non-standard: CalDAV (RFC 4791 Section 4.1) and the JSCalendar mapping treat a same-UID component with RECURRENCE-ID as an override of one instance, and the split instance lies past the truncated master's UNTIL, so other clients may render it as a single orphan instance or drop its RRULE.",
+        "Every rule that identifies overrides as 'same UID with RECURRENCE-ID' must additionally require RRULE and RDATE to be absent, or it will treat later segments as overrides (for example, pruning them on a whole-series edit).",
+        "Whole-series operations (recurrence_id=None) are ambiguous: it is unspecified whether they address only the first segment or every segment that shares the UID."
+      ]
+    },
+    {
+      "id": "NEW_UID",
+      "summary": "The future segment is a new recurring component with a new UID and no RECURRENCE-ID. Following RFC 8984 Section 4.1.3, the original component links to it with a 'next' relation and it links back to the first component with a 'first' relation (iCalendar RELTYPE=NEXT / RELTYPE=FIRST per RFC 9253).",
+      "consequences": [
+        "Interoperable: each segment is an ordinary recurring master under CalDAV and the JSCalendar mapping.",
+        "Requires the store to accept RELATED-TO with RELTYPE=NEXT and RELTYPE=FIRST, and cascading-delete policy must not treat these as PARENT relations.",
+        "Operations that span the whole original series (for example, deleting every segment) must follow the next/first links instead of matching on a single UID."
+      ],
+      "citations": [
+        {
+          "doc": "rfc8984.txt",
+          "section": "Section 4.1.3",
+          "line_start": 767,
+          "line_end": 773,
+          "verbatim_quote": "If an object is split to make a \"this and future\" change to a recurrence, the original object MUST be truncated to end at the previous occurrence before this split, and a new object is created to represent all the occurrences after the split. A \"next\" relation MUST be set on the original object's \"relatedTo\" property for the UID of the new object. A \"first\" relation for the UID of the first object in the series MUST be set on the new object."
+        }
+      ]
+    }
+  ],
+  "open_questions": [
+    "Under SHARED_UID, does a whole-series edit or delete (recurrence_id=None) target only the first segment or all segments?",
+    "Under NEW_UID, are existing single-instance overrides at or after the split re-keyed to the new UID (see split_future_override_mode)?"
+  ]
+}

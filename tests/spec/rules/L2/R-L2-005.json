@@ -44,6 +44,9 @@
     {
       "name": "single_instance_edit_replaces_occurrence_on_timeline",
       "description": "Editing one instance of a 3-occurrence series creates a RECURRENCE-ID override component that replaces the corresponding master occurrence on the timeline, yielding 3 total occurrences (2 from the main component, 1 from the override).",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "type": "VEVENT",

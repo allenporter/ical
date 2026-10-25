@@ -3,6 +3,14 @@
   "title": "Successive THIS_AND_FUTURE Splits on an Already-Split Series (Multi-Split Chains)",
   "layer": "L3_THIS_AND_FUTURE_SPLIT",
   "authority": "STORE_POLICY",
+  "applies_under": {
+    "this_and_future_split_mode": [
+      "SHARED_UID"
+    ],
+    "split_future_override_mode": [
+      "DISCARD"
+    ]
+  },
   "citations": [
     {
       "doc": "rfc5545.txt",
