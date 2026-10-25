@@ -1,0 +1,139 @@
+{
+  "id": "R-L4-003",
+  "title": "Whole-Series Metadata Edit (recurrence_id=None) Preserves Valid Overrides and Updates In-Place",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1510,
+      "line_end": 1513,
+      "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime.  However, individual properties of the occurrence can be modified by a patch or multiple patches."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 619,
+      "line_end": 621,
+      "verbatim_quote": "The recurrence override converts to the \"recurrenceOverrides\" property of the converted main component.  Its RECURRENCE-ID property value converts to the key in the \"recurrenceOverrides\" property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.7",
+      "line_start": 6676,
+      "line_end": 6680,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component.  The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    }
+  ],
+  "rationale": "In RFC 8984 Section 4.3.5 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2, a recurring series consists of a main component and zero or more recurrenceOverrides keyed by RECURRENCE-ID, where each occurrence inherits base properties from the main object unless overridden. When a whole-series edit (recurrence_id=None) updates series-wide descriptive or status metadata without invalidating existing recurrence instances, the store must update the master component in place and preserve all valid RECURRENCE-ID override components rather than performing a whole-series delete that destroys sibling components or cascades to delete RELATED-TO child components. Non-schedule metadata updates explicitly provided in the patch apply across the series while preserving each valid override component's instance-specific schedule (dtstart, dtend, due, duration, recurrence_id, and rrule=None) as well as any unpatched override properties.",
+  "store_implication": "When editing a series with recurrence_id=None: (1) the store MUST NOT execute a whole-series delete that removes sibling components sharing the UID or cascades to delete RELATED-TO child components; (2) the master component (recurrence_id is None) MUST be updated in place; (3) for each existing override component (uid == target_uid and recurrence_id is not None) whose recurrence_id remains a valid occurrence of the updated master series, the override component MUST be retained in the calendar, with only the non-schedule metadata fields explicitly present in the patch applied and its own instance-specific dtstart, dtend, due, duration, recurrence_id, rrule=None, and unpatched metadata properties preserved.",
+  "edge_cases_and_counterexamples": [
+    "Editing summary, description, or location of a series with recurrence_id=None when a single-instance override exists at 20250503T090000: both the master component and the override component remain in the calendar, and the override retains its rescheduled start and end times.",
+    "Selective metadata patching: If an override has a custom summary ('Special standup') and the whole-series edit patches only location ('Room 101') without specifying summary in the patch, both master and override receive location='Room 101' while the override preserves its custom summary ('Special standup').",
+    "Updating status of a recurring VTODO series (e.g. status=COMPLETED) with recurrence_id=None when a single-instance override exists: both master and valid override components are updated in place without deleting either component.",
+    "If the master series has a subordinate component linked via RELATED-TO;RELTYPE=PARENT, editing the master series with recurrence_id=None must NOT delete the subordinate child component."
+  ],
+  "scenarios": [
+    {
+      "name": "edit_entire_series_summary_after_override_preserves_override_component",
+      "description": "Editing the summary of a 5-day recurring series when [override, master] are present updates both components in place and preserves all 5 occurrences in the timeline.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Rescheduled standup",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503T090000"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Daily standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=5",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "series-uid-1",
+        "recurrence_id": null,
+        "recurrence_range": "NONE",
+        "patch": {
+          "summary": "Renamed standup"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Renamed standup",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503T090000"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Renamed standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=5",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "series-uid-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-1",
+          "recurrence_id": "20250504T090000",
+          "dtstart": "2025-05-04T09:00:00",
+          "dtend": "2025-05-04T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-1",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00",
+          "dtend": "2025-05-05T09:30:00",
+          "summary": "Renamed standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified +/- 40 lines around all three citations and updated RFC 5545 Section 3.8.4.7 line window to L6676-6680 (where Section 3.8.4.7 UID actually appears, rather than Section 3.8.4.4 at L6406-6410).",
+    "Confirmed authority STORE_POLICY is appropriate: while motivated by RFC 8984 Section 4.3.5 property inheritance, in-place whole-series editing that preserves valid RECURRENCE-ID overrides, selectively propagates patched non-schedule metadata, and avoids cascading RELATED-TO deletion is a store API policy choice.",
+    "Harmonized scenario and store_implication with R-L2-005 (exdate=[] on master alongside RECURRENCE-ID override) and unwrapped top-level JSON object."
+  ]
+}

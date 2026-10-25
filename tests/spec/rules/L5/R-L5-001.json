@@ -1,0 +1,80 @@
+{
+  "id": "R-L5-001",
+  "title": "Component Creation Metadata Initialization (SEQUENCE, CREATED, DTSTAMP) on Store Addition",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.1",
+      "line_start": 7727,
+      "line_end": 7733,
+      "verbatim_quote": "The property can be specified once in \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar components. The value MUST be specified as a date with UTC time. Description: This property specifies the date and time that the calendar information was created by the calendar user agent in the calendar store."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.2",
+      "line_start": 7776,
+      "line_end": 7779,
+      "verbatim_quote": "Conformance: This property MUST be included in the \"VEVENT\", \"VTODO\", \"VJOURNAL\", or \"VFREEBUSY\" calendar components. Description: The value MUST be specified in the UTC time format."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.4",
+      "line_start": 7876,
+      "line_end": 7879,
+      "verbatim_quote": "Description: When a calendar component is created, its sequence number is 0. It is monotonically incremented by the \"Organizer's\" CUA each time the \"Organizer\" makes a significant revision to the calendar component."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.7.2 requires every VEVENT and VTODO component to include a UTC DTSTAMP property. Section 3.8.7.1 defines CREATED as the UTC date and time the component information was created in the calendar store, and Section 3.8.7.4 specifies that when a component is created in the store, its SEQUENCE number starts at 0. Therefore, adding a newly constructed component to the calendar store must populate DTSTAMP (in UTC), default CREATED to the initial DTSTAMP if not already set, and initialize SEQUENCE to 0 if not explicitly provided.",
+  "store_implication": "When a new VEVENT or VTODO component is added to the calendar store: (1) its `dtstamp` defaults to the current UTC timestamp if not explicitly supplied; (2) if `created` is unset, `created` is initialized to the component's `dtstamp`; (3) if `sequence` is unset, `sequence` is initialized to 0 (preserving any explicit sequence number passed by the caller); (4) `last_modified` remains None on initial creation unless explicitly supplied. The resulting component in the calendar store and its expanded occurrences on the timeline carry `sequence=0`, `created=dtstamp`, and `dtstamp` in UTC.",
+  "edge_cases_and_counterexamples": [
+    "If a caller supplies an explicit `sequence` (e.g. `sequence=3` when importing an existing component) or an explicit `created` timestamp, adding the component to the store must preserve those values rather than overwriting them with 0 or `dtstamp`.",
+    "Both `DTSTAMP` and `CREATED` must always carry the UTC timezone.",
+    "For a newly added recurring component, every expanded occurrence on the timeline inherits the initialized `sequence=0` (or explicit initial `sequence`)."
+  ],
+  "scenarios": [
+    {
+      "name": "add_initializes_sequence_created_dtstamp",
+      "description": "Adding a new VEVENT with unset sequence and created populates sequence=0 and created=dtstamp.",
+      "initial_components": [],
+      "operation": {
+        "op": "add",
+        "item": {
+          "uid": "evt-1",
+          "summary": "Planning",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "dtstamp": "2025-05-01T08:00:00Z"
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "evt-1",
+          "summary": "Planning",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "sequence": 0,
+          "last_modified": null
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "evt-1",
+          "summary": "Planning",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal store classes for 100% clean-room independence.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.8.7.1 (L7727-L7733), Section 3.8.7.2 (L7776-L7779), and Section 3.8.7.4 (L7876-L7879).",
+    "Authority check: Confirmed RFC_5545 is accurate as DTSTAMP (UTC), CREATED (UTC store creation time), and initial SEQUENCE=0 are directly specified in RFC 5545 Section 3.8.7."
+  ]
+}

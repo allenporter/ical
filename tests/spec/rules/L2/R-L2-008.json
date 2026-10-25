@@ -1,0 +1,113 @@
+{
+  "id": "R-L2-008",
+  "title": "Rescheduling an Overridden Instance Across Another Occurrence or Split Boundary (RECURRENCE-ID vs DTSTART Ordering)",
+  "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6415,
+      "line_end": 6424,
+      "verbatim_quote": "The DATE-TIME value is set to the time when the original recurrence instance would occur; meaning that if the intent is to change a Friday meeting to Thursday, the DATE-TIME is still set to the original Friday meeting.\n\n      The \"RECURRENCE-ID\" property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a particular instance of a recurring event, to-do, or journal.  For a given pair of \"UID\" and \"SEQUENCE\" property values, the \"RECURRENCE-ID\" value for a recurrence instance is fixed."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6431,
+      "line_end": 6432,
+      "verbatim_quote": "Subsequent instances are determined by their \"RECURRENCE-ID\" value and not their current scheduled start time."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 3.7.1",
+      "line_start": 4406,
+      "line_end": 4411,
+      "verbatim_quote": "The \"Organizer\" can identify a specific recurrence instance using the \"RECURRENCE-ID\" property.  The property value is equal to the date/time of the instance.  If the \"Organizer\" wishes to change the \"DTSTART\", the original, unmodified \"DTSTART\" value of the instance is used as the value \"RECURRENCE-ID\" property, and the new \"DTSTART\" and \"DTEND\" values reflect the change."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.4 and RFC 5546 Section 3.7.1 decouple an overridden occurrence's logical identity in the recurrence set (`RECURRENCE-ID`, which is fixed to the original unmodified occurrence start time) from its actual scheduled start time (`DTSTART`). As RFC 5545 Section 3.8.4.4 explicitly illustrates, when a Friday instance is rescheduled to Thursday—potentially before an earlier occurrence in the same series—its `RECURRENCE-ID` remains the original Friday timestamp while its `DTSTART` becomes Thursday. Furthermore, RFC 5545 Section 3.8.4.4 mandates that for `RANGE=THISANDFUTURE` operations, 'Subsequent instances are determined by their RECURRENCE-ID value and not their current scheduled start time.' This creates a dual-ordering invariant: (1) chronological timeline queries order the overridden occurrence by its new `DTSTART` (even when moved earlier than `T1` or later than `T3`), whereas (2) recurrence-set identity operations (re-editing/deleting by `recurrence_id`, suppressing the original slot `T2` during master expansion, and determining whether `T2 >= split_rid` in a `THIS_AND_FUTURE` operation) are governed strictly by `RECURRENCE-ID = T2`.",
+  "store_implication": "1. When occurrence `T2` of a recurring series is edited with `Range=NONE` to a new `DTSTART = T_new` that precedes an earlier occurrence `T1` (`T_new < T1 < T2`) or follows a later occurrence `T3` (`T2 < T3 < T_new`), the override component MUST keep `RECURRENCE-ID = T2` and `DTSTART = T_new`.\n2. During timeline expansion, the override component replaces the master occurrence at `T2` (not `T1` or `T3`), and the emitted occurrences on the timeline MUST be ordered chronologically by their effective `DTSTART` (so `T_new` appears before `T1` if `T_new < T1`, with `recurrence_id = T2`).\n3. During a subsequent `THIS_AND_FUTURE` edit or delete at `split_rid`, whether the rescheduled override is included in the future range `[split_rid, ...)` MUST be determined by comparing its `RECURRENCE-ID` (`T2 >= split_rid`), NOT its rescheduled `DTSTART` (`T_new >= split_rid`).",
+  "edge_cases_and_counterexamples": [
+    "Rescheduling the 2nd occurrence (`T2 = May 2 09:00`) to `T0 = April 30 09:00` (before the master's initial `DTSTART = May 1 09:00`): timeline expansion MUST emit `[April 30 (recurrence_id=May 2), May 1 (recurrence_id=May 1), May 3 (recurrence_id=May 3)]`. A query window covering April 30 MUST include the rescheduled override even though the master's `DTSTART` is May 1.",
+    "Subsequent THIS_AND_FUTURE delete at `split_rid = May 2 09:00` when the May 2 override was moved earlier to `April 30 09:00`: because its `RECURRENCE-ID` (`May 2 09:00`) is `>= split_rid`, the May 2 override MUST be removed by the `THIS_AND_FUTURE` deletion even though its rescheduled `DTSTART` (`April 30`) is earlier than May 2.",
+    "Subsequent THIS_AND_FUTURE delete at `split_rid = May 3 09:00` when the May 2 override (`RECURRENCE-ID = May 2 09:00`) was moved later to `May 4 09:00`: because its `RECURRENCE-ID` (`May 2 09:00`) is `< split_rid`, the May 2 override is a prior instance (not a subsequent instance per RFC 5545 Section 3.8.4.4) and MUST be preserved.",
+    "Rescheduling an occurrence `T2` to the exact same `DTSTART` wall-clock time as another occurrence `T1` (`T_new == T1`): both occurrences remain distinct in the recurrence set because their `(UID, RECURRENCE-ID)` keys are `(UID, T1)` and `(UID, T2)`, and both are emitted on the timeline at `T1`."
+  ],
+  "scenarios": [
+    {
+      "name": "reschedule_second_occurrence_before_first_occurrence_orders_timeline_by_dtstart_and_anchors_recurrence_id",
+      "description": "Rescheduling the May 2 occurrence of a May 1..3 daily series to April 30 (before the series DTSTART on May 1) keeps RECURRENCE-ID=20250502T090000 while placing the occurrence first on the chronological timeline at 2025-04-30T09:00:00.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "cross-order-1",
+          "summary": "Daily Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "cross-order-1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved Early Standup",
+          "dtstart": "2025-04-30T09:00:00",
+          "dtend": "2025-04-30T09:30:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "cross-order-1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved Early Standup",
+          "dtstart": "2025-04-30T09:00:00",
+          "dtend": "2025-04-30T09:30:00",
+          "rrule": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "cross-order-1",
+          "summary": "Daily Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "cross-order-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-04-30T09:00:00",
+          "dtend": "2025-04-30T09:30:00",
+          "summary": "Moved Early Standup"
+        },
+        {
+          "uid": "cross-order-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Daily Standup"
+        },
+        {
+          "uid": "cross-order-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "summary": "Daily Standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified +/- 40 lines around citations in rfc5545.txt Section 3.8.4.4 (L6415-6424, L6431-6432) and rfc5546.txt Section 3.7.1 (L4406-4411).",
+    "Confirmed 100% clean-room independence with zero implementation references."
+  ]
+}

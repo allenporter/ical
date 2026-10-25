@@ -1,0 +1,87 @@
+{
+  "id": "R-L5-007",
+  "title": "RELATED-TO (RELTYPE=PARENT) Restriction and Cascading Delete on Full Parent Deletion",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6524,
+      "line_end": 6547,
+      "verbatim_quote": "By default, the property value points to another calendar component that has a PARENT relationship to the referencing object. The \"RELTYPE\" property parameter is used to either explicitly state the default PARENT relationship type to the referenced calendar component or to override the default PARENT relationship type and specify either a CHILD or SIBLING relationship. The PARENT relationship indicates that the calendar component is a subordinate of the referenced calendar component. The CHILD relationship indicates that the calendar component is a superior of the referenced calendar component. The SIBLING relationship indicates that the calendar component is a peer of the referenced calendar component. Changes to a calendar component referenced by this property can have an implicit impact on the related calendar component. For example, if a group event changes its start or end date or time, then the related, dependent events will need to have their start and end dates changed in a corresponding way. Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.15",
+      "line_start": 1395,
+      "line_end": 1403,
+      "verbatim_quote": "The parameter specifies the hierarchical relationship type of the calendar component referenced by the property. The parameter value can be PARENT, to indicate that the referenced calendar component is a superior of calendar component; CHILD to indicate that the referenced calendar component is a subordinate of the calendar component; or SIBLING to indicate that the referenced calendar component is a peer of the calendar component. If this parameter is not specified on an allowable property, the default relationship type is PARENT."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.5 states that when a PARENT calendar component is deleted, there is an implied impact to related subordinate (CHILD) components, leaving it to the target calendar system to maintain any property implications of this relationship. Under this calendar store's `STORE_POLICY`, managed `RELATED-TO` properties are restricted to `RELTYPE=PARENT` (rejecting `CHILD` and `SIBLING` relationship types with a store error on `add` and `edit`), and full deletion of a parent component (`uid`) cascades to remove any subordinate components in the same store whose `related_to` list references that parent `uid` with `RELTYPE=PARENT`.",
+  "store_implication": "On component `add` and `edit`: if any relation in the component's `related_to` list has `reltype != PARENT`, the store must reject the operation with a store error. When `delete` completely removes a parent component's `UID` from the store (i.e., when `recurrence_id` is None, or when `THIS_AND_FUTURE` targets the first instance of the series, or when the component is non-recurring), all components in the store whose `related_to` list contains a `PARENT` reference to the deleted component's `UID` must also be removed from the store and disappear from the expanded timeline.",
+  "edge_cases_and_counterexamples": [
+    "Adding or editing a VEVENT or VTODO with a `RELATED-TO` entry specifying `RELTYPE=CHILD` or `RELTYPE=SIBLING` must be rejected with a store error before mutating the store.",
+    "Deleting a parent component cascades to multiple subordinate children referencing the parent's `UID` via `RELTYPE=PARENT` while leaving unrelated components untouched.",
+    "Deleting a recurring parent series at its first instance with `THIS_AND_FUTURE` range normalizes to a full-series deletion (Rule R-L3-002), which removes the parent `UID` completely and therefore cascades to delete its `RELTYPE=PARENT` children."
+  ],
+  "scenarios": [
+    {
+      "name": "full_delete_of_parent_cascades_to_parent_related_children",
+      "description": "Deleting a parent component with recurrence_id=None removes both the parent and any child components referencing it via RELTYPE=PARENT.",
+      "initial_components": [
+        {
+          "uid": "parent-1",
+          "summary": "Parent task",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00"
+        },
+        {
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            }
+          ]
+        },
+        {
+          "uid": "unrelated-1",
+          "summary": "Other task",
+          "dtstart": "2025-05-01T11:00:00",
+          "dtend": "2025-05-01T11:30:00"
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "parent-1",
+        "recurrence_id": null
+      },
+      "expected_components": [
+        {
+          "uid": "unrelated-1",
+          "summary": "Other task",
+          "dtstart": "2025-05-01T11:00:00",
+          "dtend": "2025-05-01T11:30:00"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "unrelated-1",
+          "summary": "Other task",
+          "dtstart": "2025-05-01T11:00:00"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.8.4.5 (L6524-L6547) and Section 3.2.15 (L1395-L1403).",
+    "Authority check: Confirmed STORE_POLICY is accurate because RFC 5545 Section 3.8.4.5 explicitly states 'It is up to the target calendar system to maintain any property implications of this relationship.'"
+  ]
+}

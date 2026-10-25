@@ -1,0 +1,70 @@
+{
+  "id": "R-L5-004",
+  "title": "VTODO COMPLETED Timestamp Lifecycle on Status Transitions in Add and Edit Operations",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.1",
+      "line_start": 5345,
+      "line_end": 5349,
+      "verbatim_quote": "Conformance: The property can be specified in a \"VTODO\" calendar component. The value MUST be specified as a date with UTC time. Description: This property defines the date and time that a to-do was actually completed."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.2.1 defines COMPLETED as a UTC DATE-TIME recording when a VTODO was actually completed. As a calendar store lifecycle policy (STORE_POLICY), the store automatically synchronizes a VTODO's `completed` timestamp with its `status` transitions: adding or editing a VTODO to `COMPLETED` status (when `completed` is not explicitly provided) sets `completed` to the operation's UTC `dtstamp`; editing an already-completed VTODO without changing its status preserves its original `completed` timestamp; and transitioning `status` away from `COMPLETED` clears `completed` to None.",
+  "store_implication": "On VTODO `add`: if `completed` is not explicitly set and `status == COMPLETED`, set `completed = dtstamp` (in UTC). On VTODO `edit`: if `status` is specified in the edit patch and `completed` is not explicitly specified: (a) if the stored VTODO's prior `status` was not `COMPLETED` and the new `status` is `COMPLETED`, set `completed = dtstamp`; (b) if the stored VTODO had a `completed` timestamp and the new `status` is not `COMPLETED`, clear `completed` to None; (c) if both the prior and new `status` are `COMPLETED`, preserve the existing `completed` timestamp.",
+  "edge_cases_and_counterexamples": [
+    "If a caller explicitly provides both `status=COMPLETED` and an explicit `completed` UTC timestamp on add or edit, the explicit `completed` timestamp must be preserved rather than overwritten with `dtstamp`.",
+    "Re-editing an already-completed VTODO (e.g., updating its summary while `status` remains `COMPLETED`) must NOT overwrite the existing `completed` timestamp with the new edit's `dtstamp`.",
+    "When editing a single occurrence (`Range.NONE`) of a recurring VTODO to `status=COMPLETED`, the forked override VTODO receives `completed=dtstamp` while the recurring master VTODO remains `NEEDS-ACTION` with `completed=None`."
+  ],
+  "scenarios": [
+    {
+      "name": "todo_status_transition_manages_completed_timestamp",
+      "description": "Marking a VTODO COMPLETED sets completed=dtstamp, and reverting status to NEEDS-ACTION clears completed=None.",
+      "initial_components": [
+        {
+          "uid": "todo-1",
+          "summary": "File taxes",
+          "dtstart": "2025-05-01T09:00:00",
+          "due": "2025-05-02T09:00:00",
+          "status": "NEEDS-ACTION",
+          "completed": null
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "todo-1",
+        "patch": {
+          "status": "COMPLETED",
+          "dtstamp": "2025-05-01T15:00:00Z"
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "todo-1",
+          "summary": "File taxes",
+          "dtstart": "2025-05-01T09:00:00",
+          "due": "2025-05-02T09:00:00",
+          "status": "COMPLETED",
+          "completed": "2025-05-01T15:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "todo-1",
+          "summary": "File taxes",
+          "status": "COMPLETED",
+          "completed": "2025-05-01T15:00:00Z"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.8.2.1 (L5345-L5349).",
+    "Authority check: Confirmed STORE_POLICY is accurate because RFC 5545 Section 3.8.2.1 defines COMPLETED as a UTC DATE-TIME property on VTODO, while automatic synchronization of COMPLETED with STATUS transitions is a store lifecycle policy."
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "R-L4-001",
+  "title": "Whole-Series Deletion (recurrence_id=None) Removes Master and All RECURRENCE-ID Overrides",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "RFC_5546",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.7",
+      "line_start": 6676,
+      "line_end": 6680,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component.  The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 3.2.5",
+      "line_start": 1629,
+      "line_end": 1643,
+      "verbatim_quote": "For a recurring event, either the whole event or instances of an event may be cancelled.  To cancel the complete range of a recurring event, the \"UID\" property value for the event MUST be specified and a \"RECURRENCE-ID\" MUST NOT be specified in the \"CANCEL\" method.  In order to cancel an individual instance of the event, the \"RECURRENCE-ID\" property value for the event MUST be specified in the \"CANCEL\" method.\n\n   There are two options for canceling a sequence of instances of a\n   recurring \"VEVENT\" calendar component:\n\n   a.  The \"RECURRENCE-ID\" property for an instance in the sequence MUST\n       be specified with the \"RANGE\" property parameter value of\n       \"THISANDFUTURE\" to indicate cancellation of the specified\n       \"VEVENT\" calendar component and all instances after."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.4",
+      "line_start": 5735,
+      "line_end": 5738,
+      "verbatim_quote": "4.4.4.  Cancel a Recurring Event\n\n   In this example, the \"Organizer\" wishes to cancel the entire\n   recurring event and any exceptions."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal.  The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.7 establishes that referring to a UID without a RECURRENCE-ID addresses the full range of calendar components specified by the recurrence set. RFC 5546 Section 3.2.5 and Section 4.4.4 mandate that cancelling a recurring component by UID without RECURRENCE-ID cancels the entire recurring series and any exceptions, and Section 3.2.5(a) specifies that cancelling with RANGE=THISANDFUTURE cancels the specified instance and all subsequent instances. In the JSCalendar-iCalendar mapping (draft-ietf-calext-jscalendar-icalendar Section 2.1.2), all VEVENT or VTODO components sharing a UID with RECURRENCE-ID set represent recurrenceOverrides subordinate to the main component. Consequently, deleting a recurring series by UID without a RECURRENCE-ID (or deleting from the first instance with THISANDFUTURE range, which covers the entire recurrence set) must remove both the master component and every associated RECURRENCE-ID override component sharing that UID.",
+  "store_implication": "When deleting a series by UID with recurrence_id=None (or when deleting from the first instance with THISANDFUTURE range), the store MUST remove from the calendar component collection both the master component (uid == target_uid and recurrence_id is None) and all recurrence override components (uid == target_uid and recurrence_id is not None), regardless of component ordering. After deletion, timeline and task list expansions must yield zero occurrences for that UID.",
+  "edge_cases_and_counterexamples": [
+    "A recurring series has a master component and multiple RECURRENCE-ID override components (some rescheduled to earlier or later times, even before the master's DTSTART). Deleting the series with recurrence_id=None must remove all of them, leaving zero components with that UID.",
+    "Component ordering [override, master]: When the RECURRENCE-ID override component precedes the master component in the VCALENDAR component list, deleting the series with recurrence_id=None must still remove both the override and the master component.",
+    "Deleting from the first instance with THISANDFUTURE range collapses to deleting the entire series; it must also remove any standalone RECURRENCE-ID override components sharing that UID rather than leaving overrides orphaned in the calendar.",
+    "If no component in the calendar matches the target UID, deleting by UID must raise a store lookup error."
+  ],
+  "scenarios": [
+    {
+      "name": "delete_entire_series_with_override_removes_all_components",
+      "description": "Deleting a daily recurring series by UID (recurrence_id=None) after a single-instance override has been created removes both the master component and the override component.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Daily standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "recurrence_id": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-1",
+          "summary": "Rescheduled standup",
+          "dtstart": "2025-05-02T10:00:00",
+          "dtend": "2025-05-02T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250502T090000"
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "series-uid-1",
+        "recurrence_id": null,
+        "recurrence_range": "NONE"
+      },
+      "expected_components": [],
+      "expected_timeline": []
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified +/- 40 lines around all four citations; updated RFC 5545 Section 3.8.4.7 line window to L6676-6680 (where Section 3.8.4.7 UID actually appears, rather than the duplicate text in Section 3.8.4.4 at L6406-6410).",
+    "Expanded RFC 5546 Section 3.2.5 quote to L1629-1643 to explicitly ground both whole-series cancellation (RECURRENCE-ID omitted) and RANGE=THISANDFUTURE cancellation from the first instance.",
+    "Harmonized scenario initial_components with R-L2-005 (exdate=[] on master alongside sibling RECURRENCE-ID override) and unwrapped top-level JSON object."
+  ]
+}

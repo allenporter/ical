@@ -1,0 +1,96 @@
+{
+  "id": "R-L1-004",
+  "title": "EXDATE and RDATE Value Type and Timezone Alignment with DTSTART",
+  "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.1",
+      "line_start": 6718,
+      "line_end": 6723,
+      "verbatim_quote": "Value Type: The default value type for this property is DATE-TIME. The value type can be set to DATE. Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.2",
+      "line_start": 6823,
+      "line_end": 6828,
+      "verbatim_quote": "Value Type: The default value type for this property is DATE-TIME. The value type can be set to DATE or PERIOD. Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.3.20",
+      "line_start": 2711,
+      "line_end": 2716,
+      "verbatim_quote": "The property value converts to the key in the \"recurrenceOverrides\" property value. See Section 2.1.5 how to convert DATE and DATE-TIME values. The date-time MUST be relative to the timezone identified by the \"timeZone\" property of the Event or Task. The PatchObject value MUST set the \"excluded\" member to \"true\" and MUST NOT set any other property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.3.33",
+      "line_start": 3565,
+      "line_end": 3569,
+      "verbatim_quote": "The property value converts to the key in the \"recurrenceOverrides\" property value. See Section 2.1.5 how to convert DATE and DATE-TIME values. The date-time MUST be relative to the timezone identified by the \"timeZone\" property of the Event or Task object. The PatchObject value MUST be an empty JSON object."
+    }
+  ],
+  "rationale": "RFC 5545 Sections 3.8.5.1 and 3.8.5.2 define EXDATE (DATE-TIME or DATE) and RDATE (DATE-TIME, DATE, or PERIOD) as the date/time sets that are unioned with and subtracted from the DTSTART + RRULE expansion. As formalized in draft-ietf-calext-jscalendar-icalendar Sections 2.3.20 and 2.3.33, EXDATE and RDATE values must be comparable in the same temporal domain (DATE vs DATE-TIME and floating vs timezone-aware relative to DTSTART's timezone) so that set union and set difference against the recurrence rule are well-defined.",
+  "store_implication": "Component validation and calendar store operations MUST ensure that: (1) When DTSTART has value type DATE, all EXDATE and RDATE entries have value type DATE (and RDATE PERIOD values are rejected). (2) When DTSTART has value type DATE-TIME, all EXDATE and RDATE entries are DATE-TIME values (or PERIOD values for RDATE) with timezone awareness matching DTSTART (floating local time if DTSTART is floating; timezone-aware if DTSTART has a TZID or is UTC). (3) When a single instance is excluded via deletion, the appended EXDATE value MUST be aligned with the master component's DTSTART timezone when DTSTART is timezone-aware.",
+  "edge_cases_and_counterexamples": [
+    "Deleting a single occurrence of a TZID-aware series using a floating wall-clock recurrence identifier (e.g. '20250505T100000'): the appended EXDATE MUST inherit the master DTSTART's timezone so recurrence set evaluation can compare it against timezone-aware RRULE occurrences.",
+    "Constructing or validating a component with a TZID-aware DTSTART and an unaligned local DATE-TIME in EXDATE or RDATE: the EXDATE/RDATE entry MUST be aligned to DTSTART's timezone (or rejected if DATE vs DATE-TIME types mismatch) so recurrence set subtraction is well-defined.",
+    "Creating a single-instance override from a recurring component that already has EXDATE entries: the non-recurring override component MUST NOT retain the master series' EXDATE list."
+  ],
+  "scenarios": [
+    {
+      "name": "delete_single_instance_aligns_exdate_to_dtstart_tzinfo",
+      "description": "Deleting a single occurrence of an America/New_York series using a wall-clock recurrence_id string appends an EXDATE aligned with the America/New_York timezone.",
+      "initial_components": [
+        {
+          "uid": "tz-naive-rid-uid",
+          "summary": "Weekly meeting",
+          "dtstart": "2025-05-05T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T11:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=WEEKLY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "tz-naive-rid-uid",
+        "recurrence_id": "20250505T100000",
+        "range": "NONE"
+      },
+      "expected_components": [
+        {
+          "uid": "tz-naive-rid-uid",
+          "summary": "Weekly meeting",
+          "dtstart": "2025-05-05T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T11:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=WEEKLY;COUNT=3",
+          "exdate": [
+            "2025-05-05T10:00:00-04:00[America/New_York]"
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-naive-rid-uid",
+          "recurrence_id": "20250512T100000",
+          "dtstart": "2025-05-12T10:00:00-04:00[America/New_York]",
+          "summary": "Weekly meeting"
+        },
+        {
+          "uid": "tz-naive-rid-uid",
+          "recurrence_id": "20250519T100000",
+          "dtstart": "2025-05-19T10:00:00-04:00[America/New_York]",
+          "summary": "Weekly meeting"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified citations in rfc5545.txt and draft-ietf-calext-jscalendar-icalendar.txt with +/- 40 lines context.",
+    "Scrubbed all implementation-specific symbols from store_implication and edge_cases_and_counterexamples."
+  ]
+}

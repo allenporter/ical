@@ -1,0 +1,114 @@
+{
+  "id": "R-L1-005",
+  "title": "RECURRENCE-ID Original DTSTART Identity, Value Type, and Timezone Form Alignment",
+  "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6377,
+      "line_end": 6381,
+      "verbatim_quote": "Purpose: This property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a specific instance of a recurring \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar component. The property value is the original value of the \"DTSTART\" property of the recurrence instance."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6391,
+      "line_end": 6397,
+      "verbatim_quote": "Value Type: The default value type is DATE-TIME. The value type can be set to a DATE value type. This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6412,
+      "line_end": 6418,
+      "verbatim_quote": "If the value of the \"DTSTART\" property is a DATE type value, then the value MUST be the calendar date for the recurrence instance. The DATE-TIME value is set to the time when the original recurrence instance would occur; meaning that if the intent is to change a Friday meeting to Thursday, the DATE-TIME is still set to the original Friday meeting."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 3.2",
+      "line_start": 4316,
+      "line_end": 4320,
+      "verbatim_quote": "In the iCalendar component, the value data types of the DTSTART, DUE and RECURRENCE-ID properties all MUST be of the same form, either DATE, or DATE WITH LOCAL TIME, or DATE WITH UTC TIME (see Section 3.3.5 of [RFC5545])."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.4 establishes two core invariants for RECURRENCE-ID: (1) Identity: RECURRENCE-ID always holds the original DTSTART of the recurrence instance from the master recurrence set, even when the overridden instance is rescheduled to a different DTSTART date or time. (2) Type and Timezone Form Alignment: RECURRENCE-ID MUST have the same value type (DATE vs DATE-TIME) as the recurring component's DTSTART, and MUST be specified in floating local time (DATE WITH LOCAL TIME) if and only if the recurring component's DTSTART is specified in floating local time. When DTSTART is UTC or has a TZID parameter, RECURRENCE-ID MUST NOT be serialized as floating local time, and timeline deduplication between master occurrences and RECURRENCE-ID overrides must match by recurrence instance identity across UTC and TZID representations.",
+  "store_implication": "(1) When a single-instance override is created or updated, the override component's RECURRENCE-ID MUST remain fixed to the original occurrence start time even if the override's DTSTART is moved to another time or day. (2) When serialized to iCalendar format, RECURRENCE-ID MUST match DTSTART's form (VALUE=DATE for DATE, floating YYYYMMDDTHHMMSS if and only if DTSTART is floating, YYYYMMDDTHHMMSSZ for UTC, or RECURRENCE-ID;TZID=...:YYYYMMDDTHHMMSS for TZID-aware DTSTART) and MUST NOT serialize a TZID parameter inside the property value after the colon (e.g., RECURRENCE-ID:TZID=...). (3) During timeline expansion, an override component with an RFC-compliant UTC ('...Z') or TZID-qualified RECURRENCE-ID MUST suppress the corresponding master occurrence on the expanded timeline even if no EXDATE is present on the master component.",
+  "edge_cases_and_counterexamples": [
+    "An iCalendar object containing a UTC recurring master (DTSTART:20250505T140000Z, RRULE:FREQ=WEEKLY;COUNT=3) and an RFC-compliant override (RECURRENCE-ID:20250512T140000Z, DTSTART:20250512T160000Z) without an EXDATE on the master: timeline expansion MUST suppress the 2025-05-12T14:00:00Z master instance and emit only 3 total instances, not 4.",
+    "Passing a TZID-qualified recurrence identifier (e.g., TZID=America/New_York:20250512T100000) to a single-instance edit: the resulting override component MUST carry the America/New_York timezone parameter and serialize as RECURRENCE-ID;TZID=America/New_York:20250512T100000, never RECURRENCE-ID:TZID=America/New_York:20250512T100000."
+  ],
+  "scenarios": [
+    {
+      "name": "utc_series_override_replaces_master_instance_on_timeline",
+      "description": "Editing the second occurrence of a UTC recurring series sets RECURRENCE-ID to the original instance start time while rescheduling DTSTART, yielding 3 instances on the timeline.",
+      "initial_components": [
+        {
+          "uid": "utc-series-1",
+          "summary": "Master UTC",
+          "dtstart": "2025-05-05T14:00:00Z",
+          "dtend": "2025-05-05T15:00:00Z",
+          "rrule": "FREQ=WEEKLY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "utc-series-1",
+        "recurrence_id": "20250512T140000Z",
+        "range": "NONE",
+        "patch": {
+          "summary": "Override UTC",
+          "dtstart": "2025-05-12T16:00:00Z",
+          "dtend": "2025-05-12T17:00:00Z"
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "utc-series-1",
+          "recurrence_id": "20250512T140000Z",
+          "summary": "Override UTC",
+          "dtstart": "2025-05-12T16:00:00Z",
+          "dtend": "2025-05-12T17:00:00Z",
+          "rrule": null,
+          "exdate": []
+        },
+        {
+          "uid": "utc-series-1",
+          "recurrence_id": null,
+          "summary": "Master UTC",
+          "dtstart": "2025-05-05T14:00:00Z",
+          "dtend": "2025-05-05T15:00:00Z",
+          "rrule": "FREQ=WEEKLY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "utc-series-1",
+          "recurrence_id": "20250505T140000Z",
+          "dtstart": "2025-05-05T14:00:00Z",
+          "summary": "Master UTC"
+        },
+        {
+          "uid": "utc-series-1",
+          "recurrence_id": "20250512T140000Z",
+          "dtstart": "2025-05-12T16:00:00Z",
+          "summary": "Override UTC"
+        },
+        {
+          "uid": "utc-series-1",
+          "recurrence_id": "20250519T140000Z",
+          "dtstart": "2025-05-19T14:00:00Z",
+          "summary": "Master UTC"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified citations in rfc5545.txt and draft-ietf-calext-jscalendar-icalendar.txt with +/- 40 lines context.",
+    "Scrubbed all implementation-specific references from store_implication and edge_cases_and_counterexamples."
+  ]
+}

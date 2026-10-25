@@ -1,0 +1,204 @@
+{
+  "id": "R-L3-005",
+  "title": "Default DTSTART Timezone Alignment and DTEND / DUE Duration Preservation on THIS_AND_FUTURE Edit",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6392,
+      "line_end": 6397,
+      "verbatim_quote": "This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6434,
+      "line_end": 6439,
+      "verbatim_quote": "When the given recurrence instance is rescheduled, all subsequent instances are also rescheduled by the same time difference. For instance, if the given recurrence instance is rescheduled to start 2 hours later, then all subsequent instances are also rescheduled 2 hours later."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6447,
+      "line_end": 6450,
+      "verbatim_quote": "Similarly, if the duration of the given recurrence instance is modified, then all subsequence instances are also modified to have this same duration."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2299,
+      "line_end": 2305,
+      "verbatim_quote": "The value of the UNTIL rule part MUST have the same value type as the \"DTSTART\" property. Furthermore, if the \"DTSTART\" property is specified as a date with local time, then the UNTIL rule part MUST also be specified as a date with local time. If the \"DTSTART\" property is specified as a date with UTC time or a date with local time and time zone reference, then the UNTIL rule part MUST be specified as a date with UTC time."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.4 requires RECURRENCE-ID and the recurring component's DTSTART to share the same value type and timezone nature (floating local time if and only if DTSTART is floating local time), and specifies that rescheduling a THISANDFUTURE instance shifts all subsequent instances by the same time difference while preserving (or updating, if modified) the instance duration. Furthermore, Section 3.3.10 requires DTSTART and UNTIL to agree on floating vs UTC/timezone-aware status. Consequently, when preparing a THIS_AND_FUTURE update on a recurring series: (1) If a new `dtstart` is not explicitly provided in the edit patch, the default `dtstart` derived from `recurrence_id` MUST inherit the master component's `dtstart` timezone whenever the parsed `recurrence_id` is a naive datetime and the master `dtstart` is a timezone-aware datetime. Failing to attach the master's timezone turns `dtstart` into a floating local time while the RRULE's `UNTIL` is UTC, violating RFC 5545 Section 3.3.10. (2) For both VEVENT (with `dtend`) and VTODO (with `due`), when the caller does not explicitly supply a new `dtend`/`due` (or `duration`), the `dtend` or `due` property of the forked future series MUST be realigned to `new_dtstart + original_duration`. Conversely, if the caller explicitly supplies a new `dtend` or `due` (or `duration`) to modify the duration of this and future instances, that explicit value must be preserved.",
+  "store_implication": "When preparing an update for a THIS_AND_FUTURE edit on a recurring component: (1) Compute the default `dtstart` by parsing `recurrence_id`, and if it is a naive datetime while the existing master component's `dtstart` is timezone-aware, attach the master component's `dtstart` timezone; if the caller explicitly provided a `dtstart` in the patch, use the caller's `dtstart`. (2) For a VEVENT whose master component has `dtend`, if the edit patch does not specify `dtend` or `duration`, set the updated component's `dtend` to `dtstart + master_duration`. (3) For a VTODO whose master component has `due`, if the edit patch does not specify `due` or `duration`, set the updated component's `due` to `dtstart + master_duration`.",
+  "edge_cases_and_counterexamples": [
+    "Editing a recurring VTODO with THIS_AND_FUTURE range at `recurrence_id='20250503'` without passing an explicit `due` when the master VTODO has `dtstart=2025-05-01, due=2025-05-02`: if `due` is not shifted to `2025-05-04` (`new_dtstart + 1 day`), the inherited `due` (`2025-05-02`) precedes the new `dtstart` (`2025-05-03`), violating RFC 5545 (`DUE` must be later than `DTSTART`).",
+    "Editing a timezone-aware VEVENT with an `UNTIL`-bounded RRULE (e.g. `UNTIL=20250507T130000Z`) using THIS_AND_FUTURE range without passing an explicit `dtstart`: leaving the derived `dtstart` naive violates RFC 5545 Section 3.3.10 because `DTSTART` becomes floating local time while `UNTIL` is UTC.",
+    "Editing a timezone-aware VEVENT with a `COUNT`-bounded RRULE using THIS_AND_FUTURE range without passing an explicit `dtstart`: leaving the derived `dtstart` naive causes timezone mismatch against the timezone-aware occurrences of the master series.",
+    "Editing a VEVENT or VTODO with THIS_AND_FUTURE range while explicitly passing a new `dtend` or `due` to change the duration of future instances: unconditionally overwriting `dtend`/`due` with `dtstart + master_duration` would discard the caller's explicit duration change."
+  ],
+  "scenarios": [
+    {
+      "name": "edit_todo_this_and_future_without_explicit_due_shifts_due",
+      "description": "Editing a daily VTODO from the 3rd instance (2025-05-03) onward with THIS_AND_FUTURE range without specifying due shifts both dtstart (to 2025-05-03) and due (to 2025-05-04) by the master VTODO's 1-day duration.",
+      "initial_components": [
+        {
+          "type": "VTODO",
+          "uid": "todo-rec-uid",
+          "summary": "Daily chore",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=5",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "todo-rec-uid",
+        "recurrence_id": "20250503",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Updated daily chore"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VTODO",
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250503",
+          "summary": "Updated daily chore",
+          "dtstart": "2025-05-03",
+          "due": "2025-05-04",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        },
+        {
+          "type": "VTODO",
+          "uid": "todo-rec-uid",
+          "recurrence_id": null,
+          "summary": "Daily chore",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-02",
+          "rrule": "FREQ=DAILY;UNTIL=20250502",
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250501",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-02",
+          "summary": "Daily chore"
+        },
+        {
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250502",
+          "dtstart": "2025-05-02",
+          "due": "2025-05-03",
+          "summary": "Daily chore"
+        },
+        {
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250503",
+          "dtstart": "2025-05-03",
+          "due": "2025-05-04",
+          "summary": "Updated daily chore"
+        },
+        {
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250504",
+          "dtstart": "2025-05-04",
+          "due": "2025-05-05",
+          "summary": "Updated daily chore"
+        },
+        {
+          "uid": "todo-rec-uid",
+          "recurrence_id": "20250505",
+          "dtstart": "2025-05-05",
+          "due": "2025-05-06",
+          "summary": "Updated daily chore"
+        }
+      ]
+    },
+    {
+      "name": "edit_tz_aware_event_this_and_future_without_explicit_start",
+      "description": "Editing the 2nd instance of a timezone-aware VEVENT series (with UNTIL or COUNT) using THIS_AND_FUTURE range and only a summary patch preserves the series timezone on the forked component's dtstart and dtend.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-no-start-until",
+          "summary": "Morning sync (UNTIL)",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250507T130000Z",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "tz-no-start-until",
+        "recurrence_id": "20250506T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Renamed sync"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-no-start-until",
+          "recurrence_id": "20250506T090000",
+          "summary": "Renamed sync",
+          "dtstart": "2025-05-06T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-06T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250507T130000Z",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "tz-no-start-until",
+          "recurrence_id": null,
+          "summary": "Morning sync (UNTIL)",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250506T125959Z",
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-no-start-until",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "summary": "Morning sync (UNTIL)"
+        },
+        {
+          "uid": "tz-no-start-until",
+          "recurrence_id": "20250506T090000",
+          "dtstart": "2025-05-06T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-06T09:30:00-04:00[America/New_York]",
+          "summary": "Renamed sync"
+        },
+        {
+          "uid": "tz-no-start-until",
+          "recurrence_id": "20250507T090000",
+          "dtstart": "2025-05-07T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-07T09:30:00-04:00[America/New_York]",
+          "summary": "Renamed sync"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files and functions to achieve 100% clean-room independence.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.8.4.4 (L6392-L6397, L6434-L6439, L6447-L6450) and Section 3.3.10 (L2299-L2305).",
+    "Authority check: Confirmed RFC_5545 because timezone consistency between DTSTART, RECURRENCE-ID, DUE/DTEND, and UNTIL, as well as duration preservation across THISANDFUTURE shifts unless explicitly modified, are direct requirements of RFC 5545."
+  ]
+}

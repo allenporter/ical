@@ -1,0 +1,132 @@
+{
+  "id": "R-L3-002",
+  "title": "First-Instance THIS_AND_FUTURE Identity (RECURRENCE-ID == Master DTSTART)",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.13",
+      "line_start": 1323,
+      "line_end": 1330,
+      "verbatim_quote": "The parameter specifies the effective range of recurrence instances that is specified by the property. The effective range is from the recurrence identifier specified by the property. If this parameter is not specified on an allowed property, then the default range is the single instance specified by the recurrence identifier value of the property. The parameter value can only be \"THISANDFUTURE\" to indicate a range defined by the recurrence identifier and all subsequent instances."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6377,
+      "line_end": 6381,
+      "verbatim_quote": "This property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a specific instance of a recurring \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar component. The property value is the original value of the \"DTSTART\" property of the recurrence instance."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6406,
+      "line_end": 6410,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component. The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2312,
+      "line_end": 2314,
+      "verbatim_quote": "The COUNT rule part defines the number of occurrences at which to range-bound the recurrence. The \"DTSTART\" property value always counts as the first occurrence."
+    }
+  ],
+  "rationale": "By RFC 5545 Section 3.3.10, DTSTART is always the first occurrence of a recurrence set, and by Section 3.2.13 / 3.8.4.4, RANGE=THISANDFUTURE targets the instance identified by RECURRENCE-ID and all subsequent instances. When RECURRENCE-ID identifies the first instance (the master component's DTSTART), 'this and all subsequent instances' is the entire recurrence set. Attempting to split the series at the first instance by truncating the original master component with UNTIL < DTSTART produces a degenerate, dead component whose UNTIL bound precedes its DTSTART. Furthermore, when expanded timeline instances use local/floating RECURRENCE-ID strings (e.g. '20250505T090000') even when the master DTSTART is timezone-aware, checking whether the target RECURRENCE-ID equals the master DTSTART MUST first align a naive local datetime parsed from RECURRENCE-ID with the master DTSTART's timezone before comparison, and when equal, treat both delete and edit operations with THIS_AND_FUTURE range as full-series operations (equivalent to omitting RECURRENCE-ID).",
+  "store_implication": "In both delete and edit operations, when a recurrence_id is provided with THIS_AND_FUTURE range, the store must parse the recurrence_id into a date or datetime value, align its timezone with the master component's DTSTART timezone if the parsed value is a naive datetime and the master DTSTART is timezone-aware, and compare it against the master component's DTSTART. If equal, the target recurrence_id MUST be normalized to None (whole-series scope): (1) For delete, the entire component (and any subordinate related components) is removed from the calendar store, leaving 0 components and 0 timeline instances. (2) For edit, the master component is updated in place with recurrence_id=None and its full occurrence count preserved, leaving a single updated master component in the store and no dead truncated component with UNTIL < DTSTART.",
+  "edge_cases_and_counterexamples": [
+    "Timezone-aware DTSTART (e.g., 2025-05-05 09:00:00-04:00 in America/New_York) with a local recurrence_id='20250505T090000': a naive datetime parsed from '20250505T090000' is not equal to a timezone-aware DTSTART unless the master DTSTART's timezone is attached prior to comparison.",
+    "Timezone-aware DTSTART with an explicit TZID in recurrence_id='TZID=America/New_York:20250505T090000' or UTC recurrence_id='20250505T130000Z': both represent the same instant as the master DTSTART and must evaluate equal to the master DTSTART.",
+    "All-day component (DTSTART is DATE 2022-08-29) with recurrence_id='20220829': the parsed DATE value equals the master DTSTART directly and normalizes to a whole-series edit or delete.",
+    "If a recurring series was already split once so that a second recurring segment starts at 2025-05-10, a subsequent THIS_AND_FUTURE edit or delete targeting 20250510T090000 (the first instance of that second segment) must update or delete that entire second segment in place rather than leaving a dead segment with UNTIL < 2025-05-10."
+  ],
+  "scenarios": [
+    {
+      "name": "edit_first_instance_this_and_future_tz_aware",
+      "description": "Editing the first instance of a timezone-aware recurring event with THIS_AND_FUTURE range and a local recurrence_id replaces the master component in place (recurrence_id=None) without leaving a dead truncated VEVENT.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-first-uid",
+          "summary": "Original series",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "tz-first-uid",
+        "recurrence_id": "20250505T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Edited from first instance",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-first-uid",
+          "recurrence_id": null,
+          "summary": "Edited from first instance",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-first-uid",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "summary": "Edited from first instance"
+        },
+        {
+          "uid": "tz-first-uid",
+          "recurrence_id": "20250506T090000",
+          "dtstart": "2025-05-06T09:00:00-04:00[America/New_York]",
+          "summary": "Edited from first instance"
+        },
+        {
+          "uid": "tz-first-uid",
+          "recurrence_id": "20250507T090000",
+          "dtstart": "2025-05-07T09:00:00-04:00[America/New_York]",
+          "summary": "Edited from first instance"
+        }
+      ]
+    },
+    {
+      "name": "delete_first_instance_this_and_future_tz_aware",
+      "description": "Deleting the first instance of a timezone-aware recurring event with THIS_AND_FUTURE range removes the component completely from the store instead of leaving a truncated VEVENT with UNTIL < DTSTART.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-first-delete-uid",
+          "summary": "To be deleted from first instance",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "tz-first-delete-uid",
+        "recurrence_id": "20250505T090000",
+        "range": "THIS_AND_FUTURE"
+      },
+      "expected_components": [],
+      "expected_timeline": []
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal module and method names to make the rule 100% clean-room.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.13 (L1323-L1330), Section 3.8.4.4 (L6377-L6381, L6406-L6410), and Section 3.3.10 (L2312-L2314).",
+    "Authority check: Confirmed STORE_POLICY because normalizing a first-instance THIS_AND_FUTURE edit/delete to a whole-series operation (recurrence_id=None) rather than emitting a separate override component is a store-level invariant."
+  ]
+}

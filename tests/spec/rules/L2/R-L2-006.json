@@ -1,0 +1,125 @@
+{
+  "id": "R-L2-006",
+  "title": "Re-Editing an Already-Overridden Instance Updates Override In-Place Without Forking Duplicate",
+  "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
+  "authority": "RFC_5546",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 697,
+      "line_end": 706,
+      "verbatim_quote": "1. The primary key for referencing a particular iCalendar component is the \"UID\" property value. To reference an instance of a recurring component, the primary key is composed of the \"UID\" and the \"RECURRENCE-ID\" properties.\n\n   2. The secondary key for referencing a component is the \"SEQUENCE\" property value. For components where the \"UID\" and \"RECURRENCE-ID\" property values are the same, the component with the highest numeric value for the \"SEQUENCE\" property obsoletes all other revisions of the component with lower values."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6420,
+      "line_end": 6424,
+      "verbatim_quote": "The \"RECURRENCE-ID\" property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a particular instance of a recurring event, to-do, or journal. For a given pair of \"UID\" and \"SEQUENCE\" property values, the \"RECURRENCE-ID\" value for a recurrence instance is fixed."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1510,
+      "line_end": 1513,
+      "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime. However, individual properties of the occurrence can be modified by a patch or multiple patches."
+    }
+  ],
+  "rationale": "Per RFC 5546 Section 2.1.5, the primary key of a recurrence instance component is (UID, RECURRENCE-ID), and a newer revision (SEQUENCE) with the same (UID, RECURRENCE-ID) obsoletes the previous revision of that instance. Per RFC 5545 Section 3.8.4.4, RECURRENCE-ID remains fixed to the original occurrence start time even after the instance's DTSTART has been moved. Therefore, when a single-instance edit is applied to an occurrence that already has an override component, it MUST update the existing override component in place (preserving all previously edited fields on that override that are not overwritten by the new patch, incrementing SEQUENCE, and keeping RECURRENCE-ID fixed), and MUST NOT match the master component a second time to fork a duplicate override component.",
+  "store_implication": "When a single-instance edit is executed for a (UID, RECURRENCE-ID) pair that already has an override component in the calendar: (1) only the existing override component MUST be updated in place (retaining its prior properties merged with the new patch, preserving RECURRENCE-ID, and incrementing SEQUENCE); (2) the master component MUST NOT be matched to fork a second override component, even if the calendar was loaded from an external iCalendar stream where the master component's EXDATE list did not include that RECURRENCE-ID.",
+  "edge_cases_and_counterexamples": [
+    "First edit sets STATUS='COMPLETED' on recurrence_id='20240110', and second edit sets SUMMARY='Walk cat' on recurrence_id='20240110': the resulting override component MUST have both STATUS='COMPLETED' and SUMMARY='Walk cat', SEQUENCE=2, and the total number of components in the calendar MUST NOT increase on the second edit.",
+    "If an iCalendar stream is loaded from an external source where the master component has no EXDATE for 20250503T090000 and a sibling component has RECURRENCE-ID:20250503T090000, a single-instance edit for recurrence_id='20250503T090000' MUST NOT match both the master and the sibling to create two override components with the same RECURRENCE-ID.",
+    "If the first edit moved DTSTART of recurrence_id='20250503T090000' to 10:00, a second edit on recurrence_id='20250503T090000' that only modifies SUMMARY MUST preserve the override's rescheduled DTSTART=10:00 (not reset it to 09:00)."
+  ],
+  "scenarios": [
+    {
+      "name": "re_edit_existing_override_updates_in_place",
+      "description": "Re-editing an already-overridden instance updates the override in place, preserves previous edits, increments sequence, and does not fork a duplicate component.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "override-target-uid",
+          "recurrence_id": "20250503T090000",
+          "summary": "May 3 override",
+          "location": "Room B",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "override-target-uid",
+          "summary": "Daily series",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "override-target-uid",
+        "recurrence_id": "20250503T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "May 3 override (updated)",
+          "dtstart": "2025-05-03T10:30:00",
+          "dtend": "2025-05-03T11:00:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "override-target-uid",
+          "recurrence_id": "20250503T090000",
+          "summary": "May 3 override (updated)",
+          "location": "Room B",
+          "dtstart": "2025-05-03T10:30:00",
+          "dtend": "2025-05-03T11:00:00",
+          "sequence": 2
+        },
+        {
+          "type": "VEVENT",
+          "uid": "override-target-uid",
+          "summary": "Daily series",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "override-target-uid",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Daily series"
+        },
+        {
+          "uid": "override-target-uid",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Daily series"
+        },
+        {
+          "uid": "override-target-uid",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T10:30:00",
+          "dtend": "2025-05-03T11:00:00",
+          "summary": "May 3 override (updated)"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Corrected citation line numbers in rfc5546.txt (L685-694) and rfc5545.txt (L6308-6312) and verified +/- 40 lines context.",
+    "Scrubbed implementation-specific method and property syntax from rationale, store_implication, and edge_cases_and_counterexamples."
+  ]
+}
