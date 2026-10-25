@@ -1,0 +1,126 @@
+{
+  "id": "R-L3-003",
+  "title": "UNTIL Truncation Precision Across Timezones, DST Transitions, Sub-Daily Rules, and All-Day Events",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2295,
+      "line_end": 2305,
+      "verbatim_quote": "The UNTIL rule part defines a DATE or DATE-TIME value that bounds the recurrence rule in an inclusive manner. If the value specified by UNTIL is synchronized with the specified recurrence, this DATE or DATE-TIME becomes the last instance of the recurrence. The value of the UNTIL rule part MUST have the same value type as the \"DTSTART\" property. Furthermore, if the \"DTSTART\" property is specified as a date with local time, then the UNTIL rule part MUST also be specified as a date with local time. If the \"DTSTART\" property is specified as a date with UTC time or a date with local time and time zone reference, then the UNTIL rule part MUST be specified as a date with UTC time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.13",
+      "line_start": 1323,
+      "line_end": 1330,
+      "verbatim_quote": "The parameter specifies the effective range of recurrence instances that is specified by the property. The effective range is from the recurrence identifier specified by the property. If this parameter is not specified on an allowed property, then the default range is the single instance specified by the recurrence identifier value of the property. The parameter value can only be \"THISANDFUTURE\" to indicate a range defined by the recurrence identifier and all subsequent instances."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.2.13 states that THISANDFUTURE affects the instance specified by RECURRENCE-ID and all subsequent instances, leaving all strictly prior instances intact. RFC 5545 Section 3.3.10 mandates that UNTIL bounds the recurrence rule inclusively, MUST have the same value type (DATE vs DATE-TIME) as DTSTART, MUST be local (floating) if DTSTART is floating, and MUST be in UTC if DTSTART is UTC or has a TZID reference. Therefore, when truncating a series before a target occurrence identified by RECURRENCE-ID: (1) If DTSTART is a DATE, UNTIL must be a DATE set to 1 calendar day before the target occurrence date (`target_date - 1 day`). (2) If DTSTART is a DATE-TIME, the target occurrence timestamp must first be aligned to the master DTSTART's timezone if parsed as a naive local time while DTSTART is timezone-aware (never interpreted in the host operating system's local timezone), then converted to UTC if timezone-aware, and decremented by 1 second (`target_dt - 1 second`), which is the finest iCalendar DATE-TIME resolution. Subtracting 1 full day (`24 hours`) from a DATE-TIME violates RFC 5545 in two ways: across a spring-forward DST transition, the prior day's occurrence at the same local wall-clock time is only 23 hours earlier in UTC, so `target_utc - 24 hours` falls 1 hour before the prior day's occurrence and erroneously excludes it; and for sub-daily frequencies (FREQ=HOURLY, MINUTELY, SECONDLY) or multi-hour BYHOUR rules, subtracting 24 hours deletes all earlier occurrences within the preceding 24-hour window.",
+  "store_implication": "When truncating a recurring component's RRULE for a THIS_AND_FUTURE deletion or split at a target occurrence after the first instance: (1) Clear `rrule.count` to None. (2) If the master `dtstart` and target occurrence value are DATE-TIME values: if the target value is naive and the master `dtstart` is timezone-aware, attach the master `dtstart` timezone; if timezone-aware, convert the target value to UTC; then set `rrule.until` to `target_dt - 1 second`. (3) Otherwise (when the master `dtstart` and target value are DATE values for an all-day component), set `rrule.until` to `target_date - 1 day`. On the expanded timeline, every occurrence strictly before the target RECURRENCE-ID must remain present, and the target RECURRENCE-ID and all subsequent occurrences of that rule must be absent.",
+  "edge_cases_and_counterexamples": [
+    "Timezone-aware event with a floating/local recurrence_id string (e.g., America/New_York EDT UTC-4 at 2025-05-06T09:00:00, recurrence_id='20250506T090000'): converting a naive datetime directly to UTC in standard libraries interprets it in the system local timezone (often UTC), yielding 2025-05-06T09:00:00Z instead of 2025-05-06T13:00:00Z.",
+    "Spring-forward DST transition in America/New_York on 2025-03-09: 2025-03-08 09:00 EST is 14:00Z, while 2025-03-09 09:00 EDT is 13:00Z. Truncating at 2025-03-09 09:00 EDT by subtracting 24 hours yields UNTIL=2025-03-08T13:00:00Z (< 14:00Z), wiping out the March 8 occurrence. Subtracting 1 second yields UNTIL=2025-03-09T12:59:59Z, preserving March 8.",
+    "Sub-daily recurrence (e.g., FREQ=HOURLY starting 2025-05-01T09:00:00, deleting THIS_AND_FUTURE at 20250501T110000): subtracting 1 day sets UNTIL=2025-04-30T11:00:00 (< DTSTART), wiping out 09:00 and 10:00. Subtracting 1 second sets UNTIL=2025-05-01T10:59:59, preserving 09:00 and 10:00.",
+    "All-day event (DATE value type): DATE values have day resolution, so subtracting 1 day is required to set the inclusive UNTIL date to the preceding calendar day."
+  ],
+  "scenarios": [
+    {
+      "name": "delete_this_and_future_across_spring_forward_dst",
+      "description": "Deleting from the second instance (2025-03-09, EDT spring-forward day) of a daily 09:00 America/New_York series preserves the first instance on 2025-03-08 (EST) by setting UNTIL to 2025-03-09T12:59:59Z.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dst-daily-uid",
+          "summary": "Morning standup",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "dst-daily-uid",
+        "recurrence_id": "TZID=America/New_York:20250309T090000",
+        "range": "THIS_AND_FUTURE"
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dst-daily-uid",
+          "recurrence_id": null,
+          "summary": "Morning standup",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250309T125959Z",
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "dst-daily-uid",
+          "recurrence_id": "20250308T090000",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "summary": "Morning standup"
+        }
+      ]
+    },
+    {
+      "name": "delete_this_and_future_subdaily_hourly",
+      "description": "Deleting from 11:00 onward on a FREQ=HOURLY series starting at 09:00 sets UNTIL to 10:59:59 and preserves the 09:00 and 10:00 occurrences.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "hourly-uid",
+          "summary": "Hourly check-in",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:15:00",
+          "rrule": "FREQ=HOURLY;COUNT=4",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "hourly-uid",
+        "recurrence_id": "20250501T110000",
+        "range": "THIS_AND_FUTURE"
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "hourly-uid",
+          "recurrence_id": null,
+          "summary": "Hourly check-in",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:15:00",
+          "rrule": "FREQ=HOURLY;UNTIL=20250501T105959",
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "hourly-uid",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "summary": "Hourly check-in"
+        },
+        {
+          "uid": "hourly-uid",
+          "recurrence_id": "20250501T100000",
+          "dtstart": "2025-05-01T10:00:00",
+          "summary": "Hourly check-in"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal class and method names to ensure 100% clean-room specification.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.3.10 (L2295-L2305) and Section 3.2.13 (L1323-L1330).",
+    "Authority check: Confirmed RFC_5545 is appropriate because RFC 5545 Section 3.3.10 mandates that UNTIL is inclusive, matches DTSTART's value type (DATE vs DATE-TIME), and uses UTC when DTSTART is UTC or timezone-aware, while Section 3.2.13 requires THISANDFUTURE to affect only the specified instance and subsequent instances."
+  ]
+}

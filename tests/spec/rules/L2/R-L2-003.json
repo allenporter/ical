@@ -1,0 +1,123 @@
+{
+  "id": "R-L2-003",
+  "title": "Single-Instance Edit Temporal Inheritance: Default DTSTART, Duration Preservation, and Fixed RECURRENCE-ID",
+  "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6377,
+      "line_end": 6381,
+      "verbatim_quote": "This property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a specific instance of a recurring \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar component. The property value is the original value of the \"DTSTART\" property of the recurrence instance."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6415,
+      "line_end": 6418,
+      "verbatim_quote": "The DATE-TIME value is set to the time when the original recurrence instance would occur; meaning that if the intent is to change a Friday meeting to Thursday, the DATE-TIME is still set to the original Friday meeting."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.3",
+      "line_start": 6971,
+      "line_end": 6978,
+      "verbatim_quote": "If the duration of the recurring component is specified with the \"DTEND\" or \"DUE\" property, then the same exact duration will apply to all the members of the generated recurrence set. Else, if the duration of the recurring component is specified with the \"DURATION\" property, then the same nominal duration will apply to all the members of the generated recurrence set and the exact duration of each recurrence instance will depend on its specific start time."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 3.7.1",
+      "line_start": 4406,
+      "line_end": 4411,
+      "verbatim_quote": "The \"Organizer\" can identify a specific recurrence instance using the \"RECURRENCE-ID\" property. The property value is equal to the date/time of the instance. If the \"Organizer\" wishes to change the \"DTSTART\", the original, unmodified \"DTSTART\" value of the instance is used as the value \"RECURRENCE-ID\" property, and the new \"DTSTART\" and \"DTEND\" values reflect the change."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1510,
+      "line_end": 1515,
+      "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime. However, individual properties of the occurrence can be modified by a patch or multiple patches. It is valid to patch the \"start\" property value, and this patch takes precedence over the value generated from the recurrence id."
+    }
+  ],
+  "rationale": "Under RFC 5545 Section 3.8.4.4 and RFC 5546 Section 3.7.1, RECURRENCE-ID identifies the original unmodified start time of the target occurrence, while the override's DTSTART and DTEND/DUE represent the actual scheduled time of that instance. RFC 8984 Section 4.3.5 formalizes the inheritance rule for recurrence overrides: by default, an occurrence inherits all properties from the main component EXCEPT its start (or due) date-time, which is shifted from the main component's initial start to match the recurrence identifier timestamp (unless explicitly patched), and per RFC 5545 Section 3.8.5.3, each instance has the same duration as the master component unless DTEND, DUE, or DURATION is explicitly modified.",
+  "store_implication": "When a single-instance edit creates an override component from a recurring master component: (1) the override's UID MUST equal the master's UID and the override's RECURRENCE-ID MUST be fixed to the canonical original occurrence start time; (2) if the edit patch does not specify a new DTSTART, the override's DTSTART MUST default to the occurrence start time corresponding to RECURRENCE-ID (aligned with the master DTSTART's timezone if the identifier is unqualified local time and the master DTSTART is timezone-aware), NOT the master component's initial DTSTART; (3) if the edit patch does not specify DTEND (for VEVENT) or DUE (for VTODO) and the master defines DTEND or DUE, the override's DTEND or DUE MUST be shifted to equal the override's DTSTART plus the master component's duration.",
+  "edge_cases_and_counterexamples": [
+    "Editing only the summary of the 3rd instance (e.g. recurrence_id='20250503T090000' on a daily series starting 2025-05-01T09:00:00) without specifying start or end in the patch: the override MUST have DTSTART=2025-05-03T09:00:00 and DTEND=2025-05-03T10:00:00, NOT the master's initial May 1 DTSTART/DTEND.",
+    "Editing the start time of an instance (e.g. moving May 3 09:00 to 11:00) without specifying DTEND in the patch: the override's DTEND MUST shift to 11:00 plus the master's duration.",
+    "Editing a single VTODO instance (e.g. setting STATUS='COMPLETED' on recurrence_id='20240110') without specifying DTSTART or DUE: the override's DTSTART MUST be 2024-01-10 and its DUE MUST be 2024-01-10 plus the master's duration, not the master's initial DTSTART/DUE."
+  ],
+  "scenarios": [
+    {
+      "name": "single_instance_edit_summary_only_shifts_dtstart_and_dtend",
+      "description": "Editing only the summary of the May 3 instance of a daily event starting May 1 sets the override's dtstart to May 3 09:00 and dtend to May 3 10:00.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "rec-uid",
+          "summary": "Recurring",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "rec-uid",
+        "recurrence_id": "20250503T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "May 3 special"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "rec-uid",
+          "recurrence_id": "20250503T090000",
+          "summary": "May 3 special",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T10:00:00",
+          "rrule": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "rec-uid",
+          "summary": "Recurring",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "rec-uid",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "summary": "Recurring"
+        },
+        {
+          "uid": "rec-uid",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "summary": "Recurring"
+        },
+        {
+          "uid": "rec-uid",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T10:00:00",
+          "summary": "May 3 special"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Corrected citation line numbers in rfc5545.txt (L6266-6270, L6303-6306, L6849-6856) and rfc5546.txt (L4329-4334) and verified +/- 40 lines context.",
+    "Scrubbed implementation-specific method and attribute names from rationale, store_implication, and edge_cases_and_counterexamples."
+  ]
+}

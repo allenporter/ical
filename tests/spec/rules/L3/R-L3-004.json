@@ -1,0 +1,107 @@
+{
+  "id": "R-L3-004",
+  "title": "COUNT Recalculation on THIS_AND_FUTURE Edit Relative to Original RECURRENCE-ID Slot",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2312,
+      "line_end": 2314,
+      "verbatim_quote": "The COUNT rule part defines the number of occurrences at which to range-bound the recurrence. The \"DTSTART\" property value always counts as the first occurrence."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6426,
+      "line_end": 6436,
+      "verbatim_quote": "The \"RANGE\" parameter is used to specify the effective range of recurrence instances from the instance specified by the \"RECURRENCE-ID\" property value. The value for the range parameter can only be \"THISANDFUTURE\" to indicate a range defined by the given recurrence instance and all subsequent instances. Subsequent instances are determined by their \"RECURRENCE-ID\" value and not their current scheduled start time. Subsequent instances defined in separate components are not impacted by the given recurrence instance. When the given recurrence instance is rescheduled, all subsequent instances are also rescheduled by the same time difference."
+    }
+  ],
+  "rationale": "Under RFC 5545 Section 3.3.10, COUNT bounds the total number of occurrences of a recurrence rule with DTSTART counting as the first occurrence. Under Section 3.8.4.4, the split boundary for THISANDFUTURE is determined by the RECURRENCE-ID value (the original occurrence time of the split instance), NOT by the newly rescheduled start time. When a COUNT-bounded series of `N` occurrences is split at `recurrence_id` with THIS_AND_FUTURE range, `k` occurrences occurred strictly prior to the original `recurrence_id` timestamp (`occurrence_dt < split_orig_dtstart`). To preserve the total occurrence count `N` across the split series, the forked future series' `COUNT` must be decremented by `k` (yielding `N - k` occurrences in the future segment), regardless of whether the edit reschedules the split occurrence to a later or earlier time on that day. Under this STORE_POLICY, even when the edit patch supplies a modified RRULE retaining the original total `COUNT=N` alongside modified rule parts (e.g., `INTERVAL` or `BYDAY`), the store subtracts the `k` prior occurrences that preceded the original `recurrence_id` slot.",
+  "store_implication": "When adjusting the future component's `rrule.count` during a THIS_AND_FUTURE split edit (where `recurrence_id` is not None and the future component has a `COUNT`-bounded RRULE): (1) The cutoff timestamp MUST be the original occurrence date/time parsed from `recurrence_id` and aligned with the prior component's `dtstart` timezone (if parsed as a naive datetime while the prior component's `dtstart` is timezone-aware), and MUST NOT be the rescheduled `dtstart` of the edited component. (2) For each prior occurrence of the series strictly before that original `recurrence_id` timestamp (`dtvalue < split_orig_dtstart`), the future component's `rrule.count` is decremented by 1. On the expanded timeline, the sum of occurrences emitted by the truncated prior series (`k`) and the forked future series (`N - k`) must equal `N`.",
+  "edge_cases_and_counterexamples": [
+    "Rescheduling to a later time on the same day (e.g., 09:00 moved to 11:00 on 2025-05-06 for a daily series with COUNT=3 starting 2025-05-05 09:00): comparing prior occurrences against the new rescheduled start time (11:00) erroneously treats BOTH 2025-05-05 09:00 and 2025-05-06 09:00 as prior occurrences, decrementing COUNT from 3 to 1 instead of 2 and losing the 2025-05-07 occurrence.",
+    "Rescheduling to an earlier time or date before the original slot (e.g., moving the 2025-05-06 09:00 occurrence to 2025-05-06 07:00): comparing against the new start time would stop before the original slot if another occurrence existed between 07:00 and 09:00.",
+    "Editing without an explicit new `dtstart` on a timezone-aware series: if the parsed `recurrence_id` is not aligned with the master `dtstart` timezone before comparing against timezone-aware recurrence instances, datetime comparison fails due to mixing naive and timezone-aware datetimes."
+  ],
+  "scenarios": [
+    {
+      "name": "edit_this_and_future_reschedule_later_time_preserves_count",
+      "description": "Rescheduling the second occurrence (May 6 09:00) of a 3-day timezone-aware series to 11:00 with THIS_AND_FUTURE range decrements COUNT by 1 (to 2), preserving May 5 (09:00), May 6 (11:00), and May 7 (11:00).",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-count-uid",
+          "summary": "Morning sync",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "tz-count-uid",
+        "recurrence_id": "20250506T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Later sync",
+          "dtstart": "2025-05-06T11:00:00-04:00[America/New_York]"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tz-count-uid",
+          "recurrence_id": "20250506T090000",
+          "summary": "Later sync",
+          "dtstart": "2025-05-06T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-06T11:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "tz-count-uid",
+          "recurrence_id": null,
+          "summary": "Morning sync",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250506T125959Z",
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-count-uid",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
+          "summary": "Morning sync"
+        },
+        {
+          "uid": "tz-count-uid",
+          "recurrence_id": "20250506T110000",
+          "dtstart": "2025-05-06T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-06T11:30:00-04:00[America/New_York]",
+          "summary": "Later sync"
+        },
+        {
+          "uid": "tz-count-uid",
+          "recurrence_id": "20250507T110000",
+          "dtstart": "2025-05-07T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-07T11:30:00-04:00[America/New_York]",
+          "summary": "Later sync"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal test names, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.3.10 (L2312-L2314) and Section 3.8.4.4 (L6426-L6436).",
+    "Authority check: Confirmed STORE_POLICY is accurate because splitting a COUNT-bounded series into an UNTIL-bounded prior component and a COUNT-(N-k) future component (even when a new RRULE with COUNT=N is supplied in the patch) is a store policy built on RFC 5545's RECURRENCE-ID boundary semantics."
+  ]
+}

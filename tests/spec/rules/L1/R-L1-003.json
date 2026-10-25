@@ -1,0 +1,67 @@
+{
+  "id": "R-L1-003",
+  "title": "UNTIL Inclusive Bound, Value Type Alignment, and UTC/Floating Timezone Alignment with DTSTART",
+  "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2295,
+      "line_end": 2310,
+      "verbatim_quote": "The UNTIL rule part defines a DATE or DATE-TIME value that bounds the recurrence rule in an inclusive manner. If the value specified by UNTIL is synchronized with the specified recurrence, this DATE or DATE-TIME becomes the last instance of the recurrence. The value of the UNTIL rule part MUST have the same value type as the \"DTSTART\" property. Furthermore, if the \"DTSTART\" property is specified as a date with local time, then the UNTIL rule part MUST also be specified as a date with local time. If the \"DTSTART\" property is specified as a date with UTC time or a date with local time and time zone reference, then the UNTIL rule part MUST be specified as a date with UTC time."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.3.10 mandates three invariants for the UNTIL part of an RRULE: (1) UNTIL is an inclusive upper bound (if UNTIL equals a generated occurrence instant, that occurrence is included as the final instance). (2) UNTIL MUST have the same value type (DATE vs DATE-TIME) as DTSTART. (3) When DTSTART is a DATE-TIME, if DTSTART is floating local time (Form #1), UNTIL MUST also be floating local time; if DTSTART is UTC (Form #2) or local time with a TZID parameter (Form #3), UNTIL MUST be formatted in UTC (serialized with a 'Z' suffix).",
+  "store_implication": "Component validation and all calendar store operations that create, validate, or truncate RRULE.UNTIL (such as THISANDFUTURE deletion or series splitting) MUST preserve the value type and timezone form required by DTSTART: (1) For a DATE DTSTART, UNTIL MUST be a DATE value (e.g., target_date minus 1 day to exclude target_date). (2) For a floating DATE-TIME DTSTART, UNTIL MUST be a floating DATE-TIME strictly before the split instance (e.g., target_dt minus 1 second) and greater than or equal to DTSTART. (3) For a UTC or TZID-qualified DATE-TIME DTSTART, the split occurrence time MUST first be interpreted in DTSTART's timezone, converted to UTC, and decremented by 1 second (not 1 day) so UNTIL is a UTC DATE-TIME that excludes the split occurrence and all later occurrences while inclusively retaining all prior occurrences (including across DST transitions and for sub-daily frequencies).",
+  "edge_cases_and_counterexamples": [
+    "Timezone-aware DTSTART (e.g. TZID=America/New_York) paired with a floating UNTIL (e.g. UNTIL=20250505T090000 without 'Z'): violates RFC 5545 Section 3.3.10 and must be rejected or normalized to UTC.",
+    "Spring-forward DST transition on a TZID-aware daily series (e.g. America/New_York 2025-03-08 09:00 EST = 14:00Z, 2025-03-09 09:00 EDT = 13:00Z): subtracting 1 day in UTC from 2025-03-09T13:00:00Z yields 2025-03-08T13:00:00Z, which is 1 hour before the March 8 occurrence (14:00Z) and falsely excludes March 8; subtracting 1 second (2025-03-09T12:59:59Z) preserves March 8.",
+    "Sub-daily frequency (e.g. FREQ=HOURLY at 09:00, 10:00, 11:00): subtracting 1 day when truncating THISANDFUTURE at 11:00 sets UNTIL to the previous day and falsely excludes the 09:00 and 10:00 instances on the same day."
+  ],
+  "scenarios": [
+    {
+      "name": "this_and_future_delete_tzid_series_sets_utc_until",
+      "description": "Deleting THISANDFUTURE on a TZID-aware daily series aligns the target recurrence_id to DTSTART's timezone, converts to UTC, and sets an inclusive UTC UNTIL bound that retains prior occurrences across DST transitions.",
+      "initial_components": [
+        {
+          "uid": "tz-daily-1",
+          "summary": "Morning standup",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": []
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "tz-daily-1",
+        "recurrence_id": "20250309T090000",
+        "range": "THISANDFUTURE"
+      },
+      "expected_components": [
+        {
+          "uid": "tz-daily-1",
+          "summary": "Morning standup",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250309T125959Z",
+          "exdate": []
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-daily-1",
+          "recurrence_id": "20250308T090000",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "summary": "Morning standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified RFC 5545 Section 3.3.10 citation with +/- 40 lines context in rfc5545.txt.",
+    "Scrubbed all implementation-specific references from store_implication and edge_cases_and_counterexamples."
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "id": "R-L4-006",
+  "title": "Whole-Series RRULE Modification and Duration Preservation When Master DTSTART Moves",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.7",
+      "line_start": 5860,
+      "line_end": 5862,
+      "verbatim_quote": "The entire event can be rescheduled using a \"REQUEST\".  This is done by using the \"UID\" of the event to reschedule and including the modified \"RRULE\"."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.2",
+      "line_start": 5390,
+      "line_end": 5394,
+      "verbatim_quote": "Within the \"VEVENT\" calendar component, this property defines the date and time by which the event ends.  The value type of this property MUST be the same as the \"DTSTART\" property, and its value MUST be later in time than the value of the \"DTSTART\" property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.3",
+      "line_start": 5479,
+      "line_end": 5482,
+      "verbatim_quote": "MUST be later in time than the value of the \"DTSTART\" property.  Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property is also specified as a date with local time."
+    }
+  ],
+  "rationale": "RFC 5546 Section 4.4.7 states that an entire recurring series can be rescheduled by referencing its UID (without RECURRENCE-ID) and supplying a modified RRULE. Therefore, editing a recurring series with recurrence_id=None and a modified RRULE is a valid whole-series reschedule and must update the master component's RRULE rather than being rejected as a single-instance RRULE modification. Furthermore, RFC 5545 Section 3.8.2.2 (for VEVENT DTEND) and Section 3.8.2.3 (for VTODO DUE) mandate that DTEND and DUE must be later in time than DTSTART. By store policy for partial-patch edit operations, when a whole-series edit updates DTSTART without explicitly supplying a new DTEND/DUE or DURATION in the patch, the store preserves the master component's original duration by realigning DTEND (or DUE) to new_dtstart + original_duration so that moving a series forward in time never results in DTEND <= DTSTART or DUE <= DTSTART.",
+  "store_implication": "When editing a component with recurrence_id=None: (1) modifying rrule on the master component MUST be permitted regardless of the default recurrence_range parameter (the restriction against changing rrule on a single instance applies only when recurrence_id is not None and recurrence_range is NONE); (2) when the edit patch specifies a new dtstart but omits dtend (for VEVENT) or due (for VTODO) and omits duration, the store MUST realign dtend = new_dtstart + original_duration (if the component had dtend) or due = new_dtstart + original_duration (if the component had due).",
+  "edge_cases_and_counterexamples": [
+    "Editing a daily recurring series with recurrence_id=None and a new rrule (e.g. FREQ=WEEKLY;COUNT=4) must succeed and update the master component's rrule to weekly.",
+    "Moving a recurring VEVENT series from 2025-05-23T09:00:00..09:30:00 to dtstart=2025-06-01T09:00:00 without specifying dtend in the patch must realign dtend to 2025-06-01T09:30:00 (preserving the 30-minute duration) rather than leaving dtend at 2025-05-23T09:30:00.",
+    "Moving a recurring VTODO series from dtstart=2025-05-23, due=2025-05-24 to dtstart=2025-06-01 without specifying due in the patch must realign due to 2025-06-02.",
+    "Explicit dtend or duration in patch: If the caller explicitly supplies both dtstart and dtend (or duration) in the whole-series patch, the explicit dtend/duration from the patch takes precedence over the original duration."
+  ],
+  "scenarios": [
+    {
+      "name": "whole_series_edit_rrule_and_dtstart_realigns_dtend",
+      "description": "Editing a recurring series with recurrence_id=None to change both dtstart (without explicit dtend) and rrule updates the master series' rrule and realigns dtend to preserve the original 30-minute duration.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "resched-uid-1",
+          "summary": "Team sync",
+          "dtstart": "2025-05-23T09:00:00",
+          "dtend": "2025-05-23T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "resched-uid-1",
+        "recurrence_id": null,
+        "recurrence_range": "NONE",
+        "patch": {
+          "dtstart": "2025-06-02T09:00:00",
+          "rrule": "FREQ=WEEKLY;COUNT=2",
+          "summary": "Weekly team sync"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "resched-uid-1",
+          "summary": "Weekly team sync",
+          "dtstart": "2025-06-02T09:00:00",
+          "dtend": "2025-06-02T09:30:00",
+          "rrule": "FREQ=WEEKLY;COUNT=2",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "resched-uid-1",
+          "recurrence_id": "20250602T090000",
+          "dtstart": "2025-06-02T09:00:00",
+          "dtend": "2025-06-02T09:30:00",
+          "summary": "Weekly team sync"
+        },
+        {
+          "uid": "resched-uid-1",
+          "recurrence_id": "20250609T090000",
+          "dtstart": "2025-06-09T09:00:00",
+          "dtend": "2025-06-09T09:30:00",
+          "summary": "Weekly team sync"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified +/- 40 lines around all three citations and corrected RFC 5545 Section 3.8.2.3 (DUE) line numbers from L5393-5396 (which overlapped Section 3.8.2.2 DTEND) to L5479-5482 (Section 3.8.2.3 DUE).",
+    "Reclassified authority from RFC_5546 to STORE_POLICY: while RFC 5546 Section 4.4.7 permits whole-series RRULE rescheduling by UID and RFC 5545 Sections 3.8.2.2/3.8.2.3 mandate DTEND > DTSTART and DUE > DTSTART, automatically realigning DTEND/DUE to preserve original duration when a partial patch updates DTSTART without an explicit DTEND/DUE/DURATION is a store API policy.",
+    "Unwrapped top-level JSON object for single-rule file consistency."
+  ]
+}

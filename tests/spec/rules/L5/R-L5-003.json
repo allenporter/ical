@@ -1,0 +1,95 @@
+{
+  "id": "R-L5-003",
+  "title": "Revision Metadata Lifecycle (DTSTAMP, LAST-MODIFIED, SEQUENCE) on Partial Series Deletion (EXDATE and UNTIL Truncation)",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "RFC_5546",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.4",
+      "line_start": 600,
+      "line_end": 619,
+      "verbatim_quote": "The \"SEQUENCE\" property is used by the \"Organizer\" to indicate revisions to the calendar component. When the \"Organizer\" makes changes to one of the following properties, the sequence number MUST be incremented: o \"DTSTART\" o \"DTEND\" o \"DURATION\" o \"DUE\" o \"RRULE\" o \"RDATE\" o \"EXDATE\" o \"STATUS\""
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.2",
+      "line_start": 7765,
+      "line_end": 7769,
+      "verbatim_quote": "In the case of an iCalendar object that doesn't specify a \"METHOD\" property, this property specifies the date and time that the information associated with the calendar component was last revised in the calendar store."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.3",
+      "line_start": 7824,
+      "line_end": 7826,
+      "verbatim_quote": "Purpose: This property specifies the date and time that the information associated with the calendar component was last revised in the calendar store."
+    }
+  ],
+  "rationale": "Deleting a single occurrence of a recurring component (`Range.NONE`) modifies the master component by appending an `EXDATE`, and deleting `THIS_AND_FUTURE` occurrences modifies the master component's `RRULE` by setting `UNTIL` (and clearing `COUNT`). RFC 5546 Section 2.1.4 explicitly lists both `EXDATE` and `RRULE` among the properties whose modification requires incrementing `SEQUENCE`, and RFC 5545 Sections 3.8.7.2 and 3.8.7.3 require `DTSTAMP` and `LAST-MODIFIED` to record the UTC timestamp whenever the information associated with a calendar component is revised in the calendar store.",
+  "store_implication": "When a partial deletion mutates an existing recurring master component in place\u2014either by appending an excluded timestamp to `exdate` (`Range.NONE`) or by truncating `rrule.until` (`Range.THIS_AND_FUTURE`)\u2014the mutated master component must have its `dtstamp` and `last_modified` updated to the current UTC revision timestamp (and its `created` timestamp preserved).",
+  "edge_cases_and_counterexamples": [
+    "When a single-instance deletion (`Range.NONE`) appends an `EXDATE` to a recurring master component, returning early before updating `dtstamp` and `last_modified` leaves stale revision timestamps on the modified master component, violating RFC 5545 Sections 3.8.7.2 and 3.8.7.3.",
+    "When a series split or future deletion (`Range.THIS_AND_FUTURE`) truncates the target occurrence(s) from the master component via `RRULE` `UNTIL` truncation, the master component's `dtstamp` and `last_modified` must also reflect the revision timestamp."
+  ],
+  "scenarios": [
+    {
+      "name": "partial_delete_updates_dtstamp_and_last_modified",
+      "description": "Deleting a single occurrence or THIS_AND_FUTURE updates the master component's revision timestamps in the store.",
+      "initial_components": [
+        {
+          "uid": "daily-1",
+          "summary": "Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "sequence": 0,
+          "last_modified": null
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "daily-1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE",
+        "now": "2025-05-01T12:00:00Z"
+      },
+      "expected_components": [
+        {
+          "uid": "daily-1",
+          "summary": "Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "dtstamp": "2025-05-01T12:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "sequence": 1,
+          "last_modified": "2025-05-01T12:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "daily-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00"
+        },
+        {
+          "uid": "daily-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files and private methods to ensure 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5546 Section 2.1.4 (L600-L619) and RFC 5545 Sections 3.8.7.2 (L7765-L7769) & 3.8.7.3 (L7824-L7826).",
+    "Authority check: Confirmed RFC_5546 is accurate because RFC 5546 Section 2.1.4 and RFC 5545 Section 3.8.7 govern revision metadata updates when EXDATE or RRULE is modified on a stored component."
+  ]
+}

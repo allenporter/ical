@@ -1,0 +1,145 @@
+{
+  "id": "R-L4-002",
+  "title": "Component Order Independence Between Master Series and RECURRENCE-ID Overrides",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.1",
+      "line_start": 575,
+      "line_end": 577,
+      "verbatim_quote": "The order of elements in the \"entries\" property is implementation-\n   specific, e.g. entries need not be in the same order as their source\n   components in the iCalendar object."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal.  The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 697,
+      "line_end": 700,
+      "verbatim_quote": "1.  The primary key for referencing a particular iCalendar component is the \"UID\" property value.  To reference an instance of a recurring component, the primary key is composed of the \"UID\" and the \"RECURRENCE-ID\" properties."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.6",
+      "line_start": 2918,
+      "line_end": 2919,
+      "verbatim_quote": "component  = 1*(eventc / todoc / journalc / freebusyc /\n                     timezonec / iana-comp / x-comp)"
+    }
+  ],
+  "rationale": "In RFC 5545 Section 3.6, the component body of a VCALENDAR object is a sequence of components with no mandated ordering between a master recurring component and its RECURRENCE-ID override components. In RFC 5546 Section 2.1.5 and draft-ietf-calext-jscalendar-icalendar Sections 2.1.1 and 2.1.2, a component's identity and role as either the main component (UID with RRULE and no RECURRENCE-ID) or a recurrence override (same UID with RECURRENCE-ID set) are defined exclusively by its (UID, RECURRENCE-ID) primary key and recurrence properties, never by its positional index in the VCALENDAR component collection. Therefore, all store operations (editing or deleting the whole series, a single instance, or THISANDFUTURE) and timeline expansions MUST be completely invariant to the relative ordering of master and override components in the calendar.",
+  "store_implication": "All store edit and delete operations across all recurrence_id and recurrence_range modes MUST produce identical resulting component states (up to list order) and identical timeline expansions regardless of whether the calendar component list is ordered [master, override_1, ...] or [override_1, ..., master]. Store operations must distinguish the master component (recurrence_id is None) from override components (recurrence_id is not None) by their properties rather than relying on iteration order.",
+  "edge_cases_and_counterexamples": [
+    "Order A ([override, master]) vs Order B ([master, override]): Editing the whole series (recurrence_id=None) to rename the summary must neither lose the override component in Order A nor delete the master component in Order B.",
+    "Single-instance edit or delete when [override_1, master] is in reverse order: Targeting an unoverridden instance of the master series or targeting override_1 by its RECURRENCE-ID must resolve the exact component via (UID, RECURRENCE-ID) rather than assuming the first component matching UID is the master.",
+    "Multiple overrides interspersed with the master component ([override_1, master, override_2]): Whole-series edits, single-instance edits, and THISANDFUTURE splits must treat the master and overrides identically to [master, override_1, override_2]."
+  ],
+  "scenarios": [
+    {
+      "name": "whole_series_edit_order_independence_master_first_vs_override_first",
+      "description": "Renaming a 5-instance daily series that has a single-instance override on May 3 yields all 5 timeline occurrences whether the component collection is ordered [master, override] or [override, master].",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-2",
+          "summary": "Daily standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=5",
+          "exdate": [],
+          "recurrence_id": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-2",
+          "summary": "Rescheduled standup",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503T090000"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "series-uid-2",
+        "recurrence_id": null,
+        "recurrence_range": "NONE",
+        "patch": {
+          "summary": "Renamed standup"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-2",
+          "summary": "Renamed standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=5",
+          "exdate": [],
+          "recurrence_id": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "series-uid-2",
+          "summary": "Renamed standup",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503T090000"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "series-uid-2",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-2",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-2",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-2",
+          "recurrence_id": "20250504T090000",
+          "dtstart": "2025-05-04T09:00:00",
+          "dtend": "2025-05-04T09:30:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "series-uid-2",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00",
+          "dtend": "2025-05-05T09:30:00",
+          "summary": "Renamed standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added draft-ietf-calext-jscalendar-icalendar.txt Section 2.1.1 (L575-577) on component ordering independence alongside Section 2.1.2 (L609-614), RFC 5546 Section 2.1.5 (L697-700), and RFC 5545 Section 3.6 (L2918-2919).",
+    "Verified +/- 40 lines around each citation and confirmed authority RFC_8984_CALEXT is well-supported by the primary key and main/override definitions across RFC 5545, RFC 5546, and draft-ietf-calext-jscalendar-icalendar.",
+    "Harmonized scenario components with R-L2-005 (exdate=[] on master alongside RECURRENCE-ID override) and unwrapped top-level JSON object."
+  ]
+}

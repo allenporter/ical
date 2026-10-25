@@ -1,0 +1,102 @@
+{
+  "id": "R-L2-007",
+  "title": "Disallowing Recurrence Rule Modification on Single-Instance Edit (Range.NONE)",
+  "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.1",
+      "line_start": 1069,
+      "line_end": 1071,
+      "verbatim_quote": "If present, this JSCalendar object represents one occurrence of a recurring JSCalendar object. If present, the \"recurrenceRules\" and \"recurrenceOverrides\" properties MUST NOT be present."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1519,
+      "line_end": 1538,
+      "verbatim_quote": "A pointer in the PatchObject MUST be ignored if it starts with one of the following prefixes:\n\n   *  @type\n\n   *  excludedRecurrenceRules\n\n   *  method\n\n   *  privacy\n\n   *  prodId\n\n   *  recurrenceId\n\n   *  recurrenceIdTimeZone\n\n   *  recurrenceOverrides\n\n   *  recurrenceRules"
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    }
+  ],
+  "rationale": "Per RFC 8984 Sections 4.3.1 and 4.3.5 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2, a single recurrence instance override represents a single occurrence and MUST NOT define its own `recurrenceRules` (RRULE). Changing the recurrence rule of a series is only meaningful when editing the entire series (no recurrence_id) or splitting the series (THISANDFUTURE range), or when converting a non-recurring component into a recurring one. Consequently, attempting to modify the RRULE during a single-instance edit (where recurrence_id is specified and range is NONE) is invalid, while supplying an unchanged RRULE in a patch payload is treated as a no-op and omitted from the single-instance override component.",
+  "store_implication": "When a single-instance edit is invoked (with a recurrence identifier and single-instance range): (1) if the patch specifies an RRULE that differs from the master component's RRULE (or if re-editing an already-overridden single instance with a non-null RRULE), the calendar store MUST reject the operation with an error; (2) if the patch specifies an RRULE identical to the master component's RRULE, the store treats the RRULE in the patch as a no-op and still sets RRULE to null on the single-instance override component; (3) when editing a component as a whole (no recurrence identifier), setting or updating RRULE is permitted.",
+  "edge_cases_and_counterexamples": [
+    "Attempting to edit a single occurrence (e.g., recurrence_id='20220905T090000' with single-instance range) of a FREQ=WEEKLY;COUNT=3 series with a patch containing RRULE='FREQ=DAILY;COUNT=3' MUST be rejected with an error.",
+    "Re-editing an already-overridden single instance (where RECURRENCE-ID is present and RRULE is null) with a non-null RRULE and single-instance range MUST also be rejected with an error (it MUST NOT turn the single-instance override into a sub-series carrying both RECURRENCE-ID and RRULE).",
+    "Editing an entire series (recurrence_id=None) with a patch whose RRULE equals the existing master RRULE is allowed as a no-op on RRULE and MUST preserve the RRULE on the master series."
+  ],
+  "scenarios": [
+    {
+      "name": "reject_different_rrule_on_single_instance_edit",
+      "description": "Attempting to change RRULE when editing a single instance with Range.NONE is rejected with an error and leaves the calendar unchanged.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "weekly-1",
+          "summary": "Monday meeting",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "rrule": "FREQ=WEEKLY;COUNT=3"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "weekly-1",
+        "recurrence_id": "20220905T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Tuesday meeting",
+          "dtstart": "2022-09-06T09:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        },
+        "expect_error": "Can't update single instance with rrule"
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "weekly-1",
+          "summary": "Monday meeting",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "rrule": "FREQ=WEEKLY;COUNT=3"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "weekly-1",
+          "recurrence_id": "20220829T090000",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "summary": "Monday meeting"
+        },
+        {
+          "uid": "weekly-1",
+          "recurrence_id": "20220905T090000",
+          "dtstart": "2022-09-05T09:00:00",
+          "dtend": "2022-09-05T09:30:00",
+          "summary": "Monday meeting"
+        },
+        {
+          "uid": "weekly-1",
+          "recurrence_id": "20220912T090000",
+          "dtstart": "2022-09-12T09:00:00",
+          "dtend": "2022-09-12T09:30:00",
+          "summary": "Monday meeting"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified citations in rfc8984.txt and draft-ietf-calext-jscalendar-icalendar.txt with +/- 40 lines context.",
+    "Scrubbed all implementation-specific references from rationale, store_implication, and edge_cases_and_counterexamples."
+  ]
+}

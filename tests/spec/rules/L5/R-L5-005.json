@@ -1,0 +1,85 @@
+{
+  "id": "R-L5-005",
+  "title": "VTIMEZONE Registration and TZID Preservation for Non-UTC Timezone-Aware Datetimes (Including UTC+0 IANA Timezones)",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1531,
+      "line_end": 1536,
+      "verbatim_quote": "Description: This parameter MUST be specified on the \"DTSTART\", \"DTEND\", \"DUE\", \"EXDATE\", and \"RDATE\" properties when either a DATE-TIME or TIME value type is specified and when the value is neither a UTC or a \"floating\" time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1545,
+      "line_end": 1552,
+      "verbatim_quote": "that uniquely identifies the \"VTIMEZONE\" calendar component to be used when evaluating the time portion of the property. The value of the \"TZID\" property parameter will be equal to the value of the \"TZID\" property for the matching time zone definition. An individual \"VTIMEZONE\" calendar component MUST be specified for each unique \"TZID\" parameter value specified in the iCalendar object."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1577,
+      "line_end": 1584,
+      "verbatim_quote": "The \"TZID\" property parameter MUST NOT be applied to DATE properties and DATE-TIME or TIME properties whose time values are specified in UTC. The use of local time in a DATE-TIME or TIME value without the \"TZID\" property parameter is to be interpreted as floating time, regardless of the existence of \"VTIMEZONE\" calendar components in the iCalendar object."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.6.5",
+      "line_start": 3677,
+      "line_end": 3681,
+      "verbatim_quote": "An individual \"VTIMEZONE\" calendar component MUST be specified for each unique \"TZID\" parameter value specified in the iCalendar object. In addition, a \"VTIMEZONE\" calendar component, referred to by a recurring calendar component, MUST provide valid time zone information for all recurrence instances."
+    }
+  ],
+  "rationale": "RFC 5545 Sections 3.2.19 and 3.6.5 mandate that every DATE-TIME property that is neither UTC nor floating must carry a TZID parameter, and that a unique VTIMEZONE component must be present in the VCALENDAR for each unique TZID referenced. Crucially, an IANA timezone whose observance offset happens to be UTC+0 at a particular date (such as Europe/London in winter, where the UTC offset is 00:00) is still a named local timezone with DST rules\u2014not UTC. Distinguishing UTC strictly by checking whether the timezone identity is UTC (rather than checking whether the numeric UTC offset at that instant is zero) ensures that a named timezone like Europe/London registers a VTIMEZONE component in the calendar and serializes with `TZID=Europe/London`.",
+  "store_implication": "When adding or editing a component in the calendar store and when serializing DATE-TIME properties: (1) if a datetime value is a DATE (not DATE-TIME), floating (no timezone), or explicitly UTC, no VTIMEZONE component is added and no TZID parameter is emitted; (2) for any named timezone (including IANA zones whose offset is zero at the given timestamp, such as `Europe/London` in winter), if a VTIMEZONE with that `tz_id` is not already present in the calendar's `timezones` collection, a corresponding VTIMEZONE component is created and registered, and the property is serialized with `TZID=<tz_id>`; (3) if the timezone cannot be resolved to a valid VTIMEZONE definition (e.g., an unnamed fixed-offset timezone that is not UTC), the store rejects the operation with a store error before mutating the calendar.",
+  "edge_cases_and_counterexamples": [
+    "`Europe/London` on `2025-01-15T10:00:00` has a numeric UTC offset of `0`, but its timezone is `Europe/London` (which observes BST UTC+1 in summer), not UTC; it MUST register `VTIMEZONE(TZID=Europe/London)` and serialize as `DTSTART;TZID=Europe/London:20250115T100000`.",
+    "Adding multiple components referencing the same timezone (e.g. `America/Los_Angeles`) must deduplicate by `TZID` so only a single `VTIMEZONE` component for `America/Los_Angeles` is present in the calendar, as required by RFC 5545 Section 3.6.5.",
+    "A component with `DTSTART` in `America/Los_Angeles` and `DTEND` in `America/New_York` (such as a cross-country flight, explicitly noted in RFC 5545 Section 3.6.5) or edited to `America/Denver` must register `VTIMEZONE` components for both start and end timezones."
+  ],
+  "scenarios": [
+    {
+      "name": "add_event_utc_zero_offset_iana_timezone_registers_vtimezone",
+      "description": "Adding an event in Europe/London during winter (UTC+0) registers Europe/London in the calendar's timezones and preserves TZID.",
+      "initial_components": [],
+      "operation": {
+        "op": "add",
+        "item": {
+          "uid": "london-1",
+          "summary": "London Winter Meeting",
+          "dtstart": "2025-01-15T10:00:00+00:00[Europe/London]",
+          "dtend": "2025-01-15T11:00:00+00:00[Europe/London]"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "Europe/London"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "london-1",
+          "summary": "London Winter Meeting",
+          "dtstart": "DTSTART;TZID=Europe/London:20250115T100000",
+          "dtend": "DTEND;TZID=Europe/London:20250115T110000"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "london-1",
+          "summary": "London Winter Meeting",
+          "dtstart": "2025-01-15T10:00:00+00:00[Europe/London]"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.19 (L1531-L1536, L1545-L1552, L1577-L1584) and Section 3.6.5 (L3677-L3681).",
+    "Authority check: Confirmed RFC_5545 is accurate as RFC 5545 Sections 3.2.19 and 3.6.5 mandate TZID and unique VTIMEZONE components for all non-UTC, non-floating DATE-TIME properties."
+  ]
+}

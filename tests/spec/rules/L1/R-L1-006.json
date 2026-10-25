@@ -1,0 +1,96 @@
+{
+  "id": "R-L1-006",
+  "title": "Store Instance Resolution Across DATE, Local DATE-TIME, UTC, and TZID RECURRENCE-ID Forms",
+  "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6391,
+      "line_end": 6401,
+      "verbatim_quote": "Value Type: The default value type is DATE-TIME. The value type can be set to a DATE value type. This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time. Property Parameters: IANA, non-standard, value data type, time zone identifier, and recurrence identifier range parameters can be specified on this property."
+    }
+  ],
+  "rationale": "Callers of a calendar store may supply a recurrence identifier in any of the equivalent syntactic representations of an occurrence's original start time: a plain DATE string ('20250512'), a wall-clock DATE-TIME string ('20250512T100000'), a UTC DATE-TIME string ('20250512T140000Z'), or a TZID-qualified string ('TZID=America/New_York:20250512T100000'). For store operations (editing or deleting an occurrence) to behave deterministically regardless of which equivalent recurrence identifier syntax the caller passes, instance resolution MUST compare normalized temporal values (while rejecting DATE vs DATE-TIME value-type mismatches per RFC 5545 Section 3.8.4.4) against both master recurrence expansions and existing override components.",
+  "store_implication": "During calendar store instance resolution for edit and delete operations: (1) A DATE recurrence identifier MUST only match a component with a DATE DTSTART, and a DATE-TIME recurrence identifier MUST only match a component with a DATE-TIME DTSTART. (2) When the component's DTSTART is a timezone-aware DATE-TIME and the caller's recurrence identifier has no explicit timezone, the recurrence identifier defaults to the component's DTSTART timezone; when the recurrence identifier carries an explicit TZID or UTC 'Z', its timezone-aware instant is compared directly. (3) Matching against an existing override component MUST compare normalized temporal instants (aligned to the component's DTSTART timezone when unqualified) rather than relying on raw string equality.",
+  "edge_cases_and_counterexamples": [
+    "Passing a DATE recurrence_id='20220829' for a DATE-TIME component (dtstart=2022-08-29T09:00:00) MUST NOT match and MUST fail with an error.",
+    "An override component was parsed from iCalendar with RECURRENCE-ID;TZID=America/New_York:20250526T100000, and a caller subsequently invokes edit or delete with recurrence_id='TZID=America/New_York:20250526T100000' or plain wall-clock '20250526T100000': instance resolution MUST match the existing override component in both cases.",
+    "When an override component already exists for an occurrence and the master component does not have an EXDATE for that occurrence (e.g., loaded from an external iCalendar stream), a single-instance edit for that recurrence identifier MUST update the existing override in place rather than matching both the override and the master and forking a duplicate override."
+  ],
+  "scenarios": [
+    {
+      "name": "re_edit_existing_tzid_override_with_naive_or_tzid_recurrence_id",
+      "description": "Editing an already-overridden instance of a TZID-aware series using either a TZID-prefixed recurrence_id or a wall-clock recurrence_id updates the existing override in place without duplicating it.",
+      "initial_components": [
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": "20250512T100000",
+          "summary": "Weekly meeting (rescheduled)",
+          "dtstart": "2025-05-12T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-12T12:00:00-04:00[America/New_York]",
+          "rrule": null,
+          "exdate": []
+        },
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": null,
+          "summary": "Weekly meeting",
+          "dtstart": "2025-05-05T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T11:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=WEEKLY;COUNT=2",
+          "exdate": []
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "tz-meeting-uid",
+        "recurrence_id": "TZID=America/New_York:20250512T100000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Weekly meeting (updated again)"
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": "20250512T100000",
+          "summary": "Weekly meeting (updated again)",
+          "dtstart": "2025-05-12T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-12T12:00:00-04:00[America/New_York]",
+          "rrule": null,
+          "exdate": []
+        },
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": null,
+          "summary": "Weekly meeting",
+          "dtstart": "2025-05-05T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-05T11:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=WEEKLY;COUNT=2",
+          "exdate": []
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": "20250505T100000",
+          "dtstart": "2025-05-05T10:00:00-04:00[America/New_York]",
+          "summary": "Weekly meeting"
+        },
+        {
+          "uid": "tz-meeting-uid",
+          "recurrence_id": "20250512T100000",
+          "dtstart": "2025-05-12T11:00:00-04:00[America/New_York]",
+          "summary": "Weekly meeting (updated again)"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified RFC 5545 Section 3.8.4.4 citation with +/- 40 lines context. Authority is honestly tagged as STORE_POLICY because caller recurrence_id input normalization across wall-clock/TZID/UTC forms is an API store contract.",
+    "Scrubbed all implementation-specific references from title, rationale, store_implication, and edge_cases_and_counterexamples."
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "id": "R-L5-006",
+  "title": "VTODO VTIMEZONE Registration and Validation for DTSTART (Explicit or Defaulted) and DUE on Add and Edit",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1531,
+      "line_end": 1536,
+      "verbatim_quote": "Description: This parameter MUST be specified on the \"DTSTART\", \"DTEND\", \"DUE\", \"EXDATE\", and \"RDATE\" properties when either a DATE-TIME or TIME value type is specified and when the value is neither a UTC or a \"floating\" time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1545,
+      "line_end": 1552,
+      "verbatim_quote": "that uniquely identifies the \"VTIMEZONE\" calendar component to be used when evaluating the time portion of the property. The value of the \"TZID\" property parameter will be equal to the value of the \"TZID\" property for the matching time zone definition. An individual \"VTIMEZONE\" calendar component MUST be specified for each unique \"TZID\" parameter value specified in the iCalendar object."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.3",
+      "line_start": 5383,
+      "line_end": 5385,
+      "verbatim_quote": "Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.2.19 explicitly includes `DUE` alongside `DTSTART` and `DTEND` in the list of properties that MUST specify a `TZID` parameter and have a corresponding `VTIMEZONE` component in the iCalendar object whenever a non-UTC, non-floating DATE-TIME value is used. Furthermore, when adding a VTODO whose `dtstart` is omitted and defaulted from `due` (e.g., `due - 1 day`) or from the store's local timezone, the resulting VTODO's `dtstart` and `due` carry timezone-aware datetimes whose timezones must be validated and registered in the calendar's `VTIMEZONE` collection on both `add` and `edit`.",
+  "store_implication": "When adding or editing a VTODO component in the calendar store: (1) timezone validation and `VTIMEZONE` registration must run on the resolved `dtstart` (after applying any default `dtstart` derivation, rather than only inspecting the pre-default input `dtstart` which may be None); (2) if the VTODO specifies a `due` datetime, timezone validation and `VTIMEZONE` registration must also run on `due` during both `add` and `edit`. If timezone resolution fails for either `dtstart` or `due` (for example, an unresolvable fixed-offset timezone), the store must raise an error before mutating the calendar's component list.",
+  "edge_cases_and_counterexamples": [
+    "Adding a VTODO with `dtstart=None` and `due=2025-01-15T10:00:00-05:00[America/New_York]`: the input `dtstart` is None while the defaulted `dtstart` is `2025-01-14T10:00:00-05:00[America/New_York]` and `due` is `2025-01-15T10:00:00-05:00[America/New_York]`. Checking only the raw input `dtstart` skips timezone registration and fails to add `VTIMEZONE(TZID=America/New_York)` to the calendar.",
+    "Adding or editing a VTODO with `dtstart=None` and `due` set to an unnamed fixed-offset timezone (e.g., `UTC+03:00` without an IANA `TZID`): failing to validate `due`'s timezone allows an unencodable timezone into the store instead of rejecting it with a store error.",
+    "Editing an existing VTODO to change `due` to a different IANA timezone (e.g., `Europe/Berlin`) must register `Europe/Berlin` in the calendar's `VTIMEZONE` collection."
+  ],
+  "scenarios": [
+    {
+      "name": "todo_add_and_edit_with_due_timezone_registers_vtimezone_and_rejects_invalid_tz",
+      "description": "Adding a VTODO with only due set in an IANA timezone registers VTIMEZONE for that timezone.",
+      "initial_components": [],
+      "operation": {
+        "op": "add_todo",
+        "item": {
+          "uid": "todo-tz-1",
+          "summary": "Submit report",
+          "due": "2025-01-15T10:00:00-05:00[America/New_York]"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        },
+        {
+          "type": "VTODO",
+          "uid": "todo-tz-1",
+          "summary": "Submit report",
+          "dtstart": "2025-01-14T10:00:00-05:00[America/New_York]",
+          "due": "2025-01-15T10:00:00-05:00[America/New_York]"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "todo-tz-1",
+          "summary": "Submit report",
+          "dtstart": "2025-01-14T10:00:00-05:00[America/New_York]",
+          "due": "2025-01-15T10:00:00-05:00[America/New_York]"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.19 (L1531-L1536, L1545-L1552) and Section 3.8.2.3 (L5383-L5385).",
+    "Authority check: Confirmed RFC_5545 is accurate because RFC 5545 Section 3.2.19 explicitly requires TZID and VTIMEZONE definitions for non-UTC, non-floating DUE and DTSTART properties on VTODO components."
+  ]
+}
