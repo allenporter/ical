@@ -2,7 +2,7 @@
   "id": "R-L1-004",
   "title": "EXDATE and RDATE Value Type and Timezone Alignment with DTSTART",
   "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
-  "authority": "RFC_5545",
+  "authority": "RFC_8984_CALEXT",
   "citations": [
     {
       "doc": "rfc5545.txt",

@@ -38,6 +38,9 @@
     {
       "name": "reschedule_second_occurrence_before_first_occurrence_orders_timeline_by_dtstart_and_anchors_recurrence_id",
       "description": "Rescheduling the May 2 occurrence of a May 1..3 daily series to April 30 (before the series DTSTART on May 1) keeps RECURRENCE-ID=20250502T090000 while placing the occurrence first on the chronological timeline at 2025-04-30T09:00:00.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "type": "VEVENT",

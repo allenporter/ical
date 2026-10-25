@@ -42,9 +42,36 @@ class SingleEditExdateMode(StrEnum):
     LEGACY_DUAL_EXDATE = "LEGACY_DUAL_EXDATE"
 
 
+class SeriesRescheduleExceptionMode(StrEnum):
+    """Policy governing EXDATEs/overrides when a whole-series edit moves the series (R-L4-004, R-L4-005)."""
+
+    PRUNE_INVALID = "PRUNE_INVALID"
+    SHIFT_WITH_SERIES = "SHIFT_WITH_SERIES"
+
+
+class SplitFutureOverrideMode(StrEnum):
+    """Policy governing overrides at/after the split point on a THIS_AND_FUTURE edit (R-L3-006)."""
+
+    DISCARD = "DISCARD"
+    MIGRATE_TO_FUTURE_SERIES = "MIGRATE_TO_FUTURE_SERIES"
+
+
+class ParentDeleteCascadeMode(StrEnum):
+    """Policy governing RELATED-TO children when a parent UID is fully deleted (R-L5-007)."""
+
+    CASCADE_DELETE = "CASCADE_DELETE"
+    DETACH_CHILDREN = "DETACH_CHILDREN"
+    LEAVE_DANGLING = "LEAVE_DANGLING"
+
+
 @dataclass(frozen=True)
 class PolicyConfig:
-    """Explicit 3-axis policy configuration for the Reference Store Oracle."""
+    """Explicit policy configuration for the Reference Store Oracle.
+
+    Each field corresponds to a `tests/spec/modes/<field>.json` PolicyMode with the same
+    option ids (enforced by tests). The defaults are the options the existing rules were
+    written against; they are not a decision about which option the store should adopt.
+    """
 
     series_edit_override_mode: SeriesEditOverrideMode = (
         SeriesEditOverrideMode.PROPAGATE_PATCH
@@ -54,6 +81,15 @@ class PolicyConfig:
     )
     single_edit_exdate_mode: SingleEditExdateMode = (
         SingleEditExdateMode.RFC_OVERRIDE_ONLY
+    )
+    series_reschedule_exception_mode: SeriesRescheduleExceptionMode = (
+        SeriesRescheduleExceptionMode.PRUNE_INVALID
+    )
+    split_future_override_mode: SplitFutureOverrideMode = (
+        SplitFutureOverrideMode.DISCARD
+    )
+    parent_delete_cascade_mode: ParentDeleteCascadeMode = (
+        ParentDeleteCascadeMode.CASCADE_DELETE
     )
 
 

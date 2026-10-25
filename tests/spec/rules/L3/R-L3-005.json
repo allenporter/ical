@@ -45,6 +45,9 @@
     {
       "name": "edit_todo_this_and_future_without_explicit_due_shifts_due",
       "description": "Editing a daily VTODO from the 3rd instance (2025-05-03) onward with THIS_AND_FUTURE range without specifying due shifts both dtstart (to 2025-05-03) and due (to 2025-05-04) by the master VTODO's 1-day duration.",
+      "modes": {
+        "this_and_future_split_mode": "SHARED_UID"
+      },
       "initial_components": [
         {
           "type": "VTODO",
@@ -128,6 +131,9 @@
     {
       "name": "edit_tz_aware_event_this_and_future_without_explicit_start",
       "description": "Editing the 2nd instance of a timezone-aware VEVENT series (with UNTIL or COUNT) using THIS_AND_FUTURE range and only a summary patch preserves the series timezone on the forked component's dtstart and dtend.",
+      "modes": {
+        "this_and_future_split_mode": "SHARED_UID"
+      },
       "initial_components": [
         {
           "type": "VEVENT",

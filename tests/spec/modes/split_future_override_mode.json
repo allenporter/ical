@@ -1,0 +1,33 @@
+{
+  "id": "split_future_override_mode",
+  "title": "Fate of Existing Overrides at or After the Split Point on a THIS_AND_FUTURE Edit",
+  "question": "When a THIS_AND_FUTURE edit splits a series at split_rid, what happens to existing single-instance overrides whose RECURRENCE-ID is at or after split_rid?",
+  "spec_gap": "RFC 5545 states that a RANGE=THISANDFUTURE change does not impact subsequent instances defined in separate components, but a store that splits the series into separate components has no equivalent rule. A THIS_AND_FUTURE delete clearly removes them; for an edit, the overrides may still name valid instances of the new future segment.",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6431,
+      "line_end": 6434,
+      "verbatim_quote": "Subsequent instances are determined by their \"RECURRENCE-ID\" value and not their current scheduled start time. Subsequent instances defined in separate components are not impacted by the given recurrence instance."
+    }
+  ],
+  "options": [
+    {
+      "id": "DISCARD",
+      "summary": "Standalone overrides with RECURRENCE-ID >= split_rid are removed; the new future segment starts with no exceptions.",
+      "consequences": [
+        "Simple, and identical to the THIS_AND_FUTURE delete behavior.",
+        "Per-instance edits after the split point are silently lost."
+      ]
+    },
+    {
+      "id": "MIGRATE_TO_FUTURE_SERIES",
+      "summary": "Standalone overrides with RECURRENCE-ID >= split_rid that are still candidate instances of the new future segment are kept and attached to it (re-keyed to the new UID under NEW_UID, and shifted if the edit shifted the series); the rest are removed.",
+      "consequences": [
+        "Preserves per-instance edits after the split point.",
+        "Interacts with this_and_future_split_mode and series_reschedule_exception_mode: re-keying and shifting rules must be defined for each combination."
+      ]
+    }
+  ]
+}

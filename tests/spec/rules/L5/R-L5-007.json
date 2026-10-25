@@ -1,8 +1,13 @@
 {
   "id": "R-L5-007",
-  "title": "RELATED-TO (RELTYPE=PARENT) Restriction and Cascading Delete on Full Parent Deletion",
+  "title": "Cascading Delete of RELATED-TO PARENT Children on Full Parent Deletion",
   "layer": "L5_METADATA_TIMEZONE_RELATIONS",
   "authority": "STORE_POLICY",
+  "applies_under": {
+    "parent_delete_cascade_mode": [
+      "CASCADE_DELETE"
+    ]
+  },
   "citations": [
     {
       "doc": "rfc5545.txt",
@@ -19,12 +24,12 @@
       "verbatim_quote": "The parameter specifies the hierarchical relationship type of the calendar component referenced by the property. The parameter value can be PARENT, to indicate that the referenced calendar component is a superior of calendar component; CHILD to indicate that the referenced calendar component is a subordinate of the calendar component; or SIBLING to indicate that the referenced calendar component is a peer of the calendar component. If this parameter is not specified on an allowable property, the default relationship type is PARENT."
     }
   ],
-  "rationale": "RFC 5545 Section 3.8.4.5 states that when a PARENT calendar component is deleted, there is an implied impact to related subordinate (CHILD) components, leaving it to the target calendar system to maintain any property implications of this relationship. Under this calendar store's `STORE_POLICY`, managed `RELATED-TO` properties are restricted to `RELTYPE=PARENT` (rejecting `CHILD` and `SIBLING` relationship types with a store error on `add` and `edit`), and full deletion of a parent component (`uid`) cascades to remove any subordinate components in the same store whose `related_to` list references that parent `uid` with `RELTYPE=PARENT`.",
-  "store_implication": "On component `add` and `edit`: if any relation in the component's `related_to` list has `reltype != PARENT`, the store must reject the operation with a store error. When `delete` completely removes a parent component's `UID` from the store (i.e., when `recurrence_id` is None, or when `THIS_AND_FUTURE` targets the first instance of the series, or when the component is non-recurring), all components in the store whose `related_to` list contains a `PARENT` reference to the deleted component's `UID` must also be removed from the store and disappear from the expanded timeline.",
+  "rationale": "RFC 5545 Section 3.8.4.5 states that when a PARENT calendar component is deleted, there is an implied impact to related subordinate (CHILD) components, leaving it to the target calendar system to maintain any property implications of this relationship. RFC 5545 does not mandate any particular behavior, so what happens to children is recorded as `parent_delete_cascade_mode`. Under the `CASCADE_DELETE` option, full deletion of a parent component (`uid`) removes any subordinate components in the same store whose `related_to` list references that parent `uid` as a PARENT relationship. Per RFC 5545 Section 3.2.15, a PARENT relationship is an explicit `RELTYPE=PARENT`, an omitted `RELTYPE` (default PARENT), or an unrecognized iana-token/x-name `RELTYPE` (which applications MUST treat as PARENT). Which RELTYPE values the store accepts is mode-independent and specified separately by R-L5-009.",
+  "store_implication": "When `delete` completely removes a parent component's `UID` from the store (i.e., when `recurrence_id` is None, or when `THIS_AND_FUTURE` targets the first instance of the series, or when the component is non-recurring), all components in the store whose `related_to` list contains a PARENT relationship (explicit `PARENT`, omitted `RELTYPE`, or an unrecognized `RELTYPE` value) to the deleted component's `UID` must also be removed from the store and disappear from the expanded timeline.",
   "edge_cases_and_counterexamples": [
-    "Adding or editing a VEVENT or VTODO with a `RELATED-TO` entry specifying `RELTYPE=CHILD` or `RELTYPE=SIBLING` must be rejected with a store error before mutating the store.",
     "Deleting a parent component cascades to multiple subordinate children referencing the parent's `UID` via `RELTYPE=PARENT` while leaving unrelated components untouched.",
-    "Deleting a recurring parent series at its first instance with `THIS_AND_FUTURE` range normalizes to a full-series deletion (Rule R-L3-002), which removes the parent `UID` completely and therefore cascades to delete its `RELTYPE=PARENT` children."
+    "Deleting a recurring parent series at its first instance with `THIS_AND_FUTURE` range normalizes to a full-series deletion (Rule R-L3-002), which removes the parent `UID` completely and therefore cascades to delete its `RELTYPE=PARENT` children.",
+    "Open question: a component A carrying `RELATED-TO;RELTYPE=CHILD:B` declares B as A's subordinate from the superior's side. This rule only follows PARENT references held by the subordinate, so deleting A does not cascade to B here; whether CHILD-declared links should also cascade is not yet specified."
   ],
   "scenarios": [
     {

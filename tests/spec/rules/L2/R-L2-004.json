@@ -26,7 +26,7 @@
       "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
     }
   ],
-  "rationale": "Per RFC 8984 Section 4.3.1, an object with `recurrenceId` represents a single occurrence of a recurring object and MUST NOT have `recurrenceRules` (RRULE) or `recurrenceOverrides` (RDATE, EXDATE). Likewise, RFC 8984 Section 4.3.5 forbids `recurrenceOverrides` patches from containing `recurrenceRules`, `excludedRecurrenceRules`, or `recurrenceOverrides`. If a single-instance override component in iCalendar inherits RRULE, RDATE, or EXDATE from the master component, the override component itself is erroneously treated as a recurring series (when RRULE or RDATE is present) or illegally carries series-level RDATE/EXDATE properties.",
+  "rationale": "Per RFC 8984 Section 4.3.1, an object with `recurrenceId` represents a single occurrence of a recurring object and MUST NOT have `recurrenceRules` (RRULE) or `recurrenceOverrides` (RDATE, EXDATE). Likewise, RFC 8984 Section 4.3.5 specifies that pointers in `recurrenceOverrides` patches to `recurrenceRules`, `excludedRecurrenceRules`, or `recurrenceOverrides` MUST be ignored. If a single-instance override component in iCalendar inherits RRULE, RDATE, or EXDATE from the master component, the override component itself is erroneously treated as a recurring series (when RRULE or RDATE is present) or illegally carries series-level RDATE/EXDATE properties.",
   "store_implication": "When a single-instance edit forks an override component from a recurring master component, the calendar store MUST clear RRULE, RDATE, and EXDATE on the override component. The override component MUST represent a single non-recurring instance and MUST NOT carry over any EXDATE or RDATE entries from the master series.",
   "edge_cases_and_counterexamples": [
     "Master component has RDATE=['2025-05-10T09:00:00']: editing the May 3 instance as a single instance MUST clear RDATE on the override component; otherwise the override component would itself be treated as a recurring series and expand multiple times on the timeline.",
@@ -36,6 +36,9 @@
     {
       "name": "single_instance_override_clears_rrule_rdate_and_exdate",
       "description": "Creating a single-instance override on a master series that has both EXDATE and RDATE clears rrule, rdate, and exdate on the override component.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "type": "VEVENT",
@@ -117,7 +120,7 @@
   ],
   "audit_status": "ADVERSARIALLY_VETTED",
   "audit_notes": [
-    "Corrected citation line numbers in draft-ietf-calext-jscalendar-icalendar.txt (L599-604) and verified +/- 40 lines context in rfc8984.txt and draft-ietf-calext-jscalendar-icalendar.txt.",
+    "Corrected citation line numbers in draft-ietf-calext-jscalendar-icalendar.txt (L609-614) and verified +/- 40 lines context in rfc8984.txt and draft-ietf-calext-jscalendar-icalendar.txt.",
     "Scrubbed implementation-specific Python expressions from rationale, store_implication, and edge_cases_and_counterexamples."
   ]
 }

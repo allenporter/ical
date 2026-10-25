@@ -43,6 +43,9 @@
     {
       "name": "utc_series_override_replaces_master_instance_on_timeline",
       "description": "Editing the second occurrence of a UTC recurring series sets RECURRENCE-ID to the original instance start time while rescheduling DTSTART, yielding 3 instances on the timeline.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "uid": "utc-series-1",

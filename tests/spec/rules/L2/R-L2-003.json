@@ -51,6 +51,9 @@
     {
       "name": "single_instance_edit_summary_only_shifts_dtstart_and_dtend",
       "description": "Editing only the summary of the May 3 instance of a daily event starting May 1 sets the override's dtstart to May 3 09:00 and dtend to May 3 10:00.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
       "initial_components": [
         {
           "type": "VEVENT",
@@ -117,7 +120,7 @@
   ],
   "audit_status": "ADVERSARIALLY_VETTED",
   "audit_notes": [
-    "Corrected citation line numbers in rfc5545.txt (L6266-6270, L6303-6306, L6849-6856) and rfc5546.txt (L4329-4334) and verified +/- 40 lines context.",
+    "Corrected citation line numbers in rfc5545.txt (L6377-6381, L6415-6418, L6971-6978) and rfc5546.txt (L4406-4411) and verified +/- 40 lines context.",
     "Scrubbed implementation-specific method and attribute names from rationale, store_implication, and edge_cases_and_counterexamples."
   ]
 }

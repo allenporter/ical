@@ -44,6 +44,9 @@
     {
       "name": "whole_series_edit_order_independence_master_first_vs_override_first",
       "description": "Renaming a 5-instance daily series that has a single-instance override on May 3 yields all 5 timeline occurrences whether the component collection is ordered [master, override] or [override, master].",
+      "modes": {
+        "series_edit_override_mode": "PROPAGATE_PATCH"
+      },
       "initial_components": [
         {
           "type": "VEVENT",

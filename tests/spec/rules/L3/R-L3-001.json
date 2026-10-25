@@ -3,6 +3,11 @@
   "title": "Series Splitting Representation vs RFC 5545 RANGE=THISANDFUTURE",
   "layer": "L3_THIS_AND_FUTURE_SPLIT",
   "authority": "STORE_POLICY",
+  "applies_under": {
+    "this_and_future_split_mode": [
+      "SHARED_UID"
+    ]
+  },
   "citations": [
     {
       "doc": "rfc5545.txt",

@@ -38,6 +38,18 @@ def parse_temporal(
         return None, [f"{field_name}: {exc}"]
 
 
+def _temporal_class(pt: ParsedTemporal) -> str:
+    """Classify a temporal value as DATE, FLOATING, or AWARE (UTC, TZID, or fixed offset).
+
+    RFC 5545 lets EXDATE carry its own TZID (or UTC) independently of DTSTART, so only
+    DATE vs DATE-TIME and floating vs timezone-aware mismatches make set subtraction
+    ill-defined.
+    """
+    if pt.kind in ("DATE", "FLOATING"):
+        return pt.kind
+    return "AWARE"
+
+
 def expand_master_occurrences(
     comp: dict[str, Any],
 ) -> tuple[list[tuple[str, ParsedTemporal, datetime.timedelta | None]], list[str]]:
@@ -46,7 +58,7 @@ def expand_master_occurrences(
         for ex_raw in comp.get("exdate") or ():
             pt_start = _raw_parse_temporal(comp["dtstart"], "dtstart")
             pt_ex = _raw_parse_temporal(ex_raw, "exdate")
-            if pt_start.kind != pt_ex.kind:
+            if _temporal_class(pt_start) != _temporal_class(pt_ex):
                 return [], [
                     f"EXDATE timezone/type mismatch in {comp.get('uid')}: DTSTART is {pt_start.kind} "
                     f"but EXDATE is {pt_ex.kind} ({ex_raw})"
@@ -104,9 +116,9 @@ def _verify_single_component(
     if (due_raw := comp.get("due")) is not None:
         pt_due, d_errs = parse_temporal(due_raw, "due")
         errors.extend(f"{prefix} {e}" for e in d_errs)
-        if pt_start and pt_due and pt_due.dt_utc_or_naive < pt_start.dt_utc_or_naive:
+        if pt_start and pt_due and pt_due.dt_utc_or_naive <= pt_start.dt_utc_or_naive:
             errors.append(
-                f"{prefix} DUE ({due_raw}) must be >= DTSTART ({dtstart_raw}) on {uid}"
+                f"{prefix} DUE ({due_raw}) must be > DTSTART ({dtstart_raw}) on {uid}"
             )
 
     for meta_field in ("dtstamp", "created", "last_modified", "completed"):
@@ -333,9 +345,9 @@ ALL_SCENARIOS = load_all_scenarios()
 
 
 def test_rule_directory_completeness() -> None:
-    """Verify that all 38 rules exist with unique IDs and zero citation/clean-room errors."""
+    """Verify that all 39 rules exist with unique IDs and zero citation/clean-room errors."""
     count, errors = verify_path(RULES_DIR)
-    assert count == 38
+    assert count == 39
     assert not errors
 
 
