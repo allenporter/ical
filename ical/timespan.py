@@ -26,6 +26,8 @@ class Timespan:
     and instead is always aligned to some kind of timezone or utc.
     """
 
+    __slots__ = ("_start", "_end", "_tzinfo")
+
     def __init__(self, start: datetime.datetime, end: datetime.datetime) -> None:
         """..."""
         self._start = start
@@ -64,53 +66,62 @@ class Timespan:
     @property
     def duration(self) -> datetime.timedelta:
         """Return the timespan duration."""
-        return self.end - self.start
+        return self._end - self._start
 
     def starts_within(self, other: "Timespan") -> bool:
         """Return True if this timespan starts while the other timespan is active."""
-        return other.start <= self.start < other.end
+        return other._start <= self._start < other._end
 
     def ends_within(self, other: "Timespan") -> bool:
         """Return True if this timespan ends while the other event is active."""
-        return other.start < self.end <= other.end
+        return other._start < self._end <= other._end
 
     def intersects(self, other: "Timespan") -> bool:
         """Return True if this timespan overlaps with the other event."""
         return (
-            other.start <= self.start < other.end
-            or other.start < self.end <= other.end
-            or self.start <= other.start < self.end
-            or self.start < other.end <= self.end
+            other._start <= self._start < other._end
+            or other._start < self._end <= other._end
+            or self._start <= other._start < self._end
+            or self._start < other._end <= self._end
         )
 
     def includes(self, other: "Timespan") -> bool:
         """Return True if the other timespan starts and ends within this event."""
-        if self.start == self.end:
-            return self.start == other.start == other.end
+        if self._start == self._end:
+            return self._start == other._start == other._end
         return (
-            self.start <= other.start < self.end and self.start <= other.end <= self.end
+            self._start <= other._start < self._end
+            and self._start <= other._end <= self._end
         )
 
     def is_included_in(self, other: "Timespan") -> bool:
         """Return True if this timespan starts and ends within the other event."""
-        return other.start <= self.start and self.end <= other.end
+        return other._start <= self._start and self._end <= other._end
 
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return (self._start, self._end) < (other.start, other.end)
+        if self._start != other._start:
+            return self._start < other._start
+        return self._end < other._end
 
     def __gt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return (self._start, self._end) > (other.start, other.end)
+        if self._start != other._start:
+            return self._start > other._start
+        return self._end > other._end
 
     def __le__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return (self._start, self._end) <= (other.start, other.end)
+        if self._start != other._start:
+            return self._start < other._start
+        return self._end <= other._end
 
     def __ge__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):
             return NotImplemented
-        return (self._start, self._end) >= (other.start, other.end)
+        if self._start != other._start:
+            return self._start > other._start
+        return self._end >= other._end
