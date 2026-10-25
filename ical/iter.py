@@ -37,6 +37,7 @@ from .exceptions import CalendarParseError, RecurrenceError
 __all__ = [
     "RecurrenceError",
     "RulesetIterable",
+    "SeekableIterable",
     "SortableItemTimeline",
     "SortableItem",
     "SortableItemValue",
@@ -95,6 +96,20 @@ class SortableItem(Generic[K, T]):
 
 SpanOrderedItem = SortableItem[Timespan, T]
 """A sortable item with a timespan as the key."""
+
+
+class SeekableIterable(Iterable[T]):
+    """An iterable that supports fast-forwarding past a lower bound.
+
+    ``iter_after`` is a conservative optimization hint: implementations may
+    skip historical items known to end on or before ``cutoff``, while still
+    yielding some earlier items when exact bounds cannot be determined ahead
+    of time. Callers must still apply their own range predicates.
+    """
+
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
+        """Return an iterator guaranteed to include all items ending after ``cutoff``."""
+        raise NotImplementedError
 
 
 class SortableItemValue(SortableItem[K, T]):
@@ -211,7 +226,10 @@ class LazyCachedIterable(Iterable[T]):
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator over the cached values, advancing as needed."""
-        idx = 0
+        return self._iter_from_index(0)
+
+    def _iter_from_index(self, idx: int) -> Iterator[T]:
+        """Yield cached and newly generated items starting at ``idx``."""
         while True:
             if idx < len(self._cache):
                 yield self._cache[idx]
@@ -236,6 +254,12 @@ class LazyCachedIterable(Iterable[T]):
                     self._cache.append(val)
             yield val
             idx += 1
+
+    def iter_from(self, cutoff: T) -> Iterator[T]:
+        """Return an iterator over values starting from the first item >= cutoff."""
+        self.extend_through(lambda item: bool(item < cutoff))  # ty: ignore[unsupported-operator]
+        idx = bisect.bisect_left(self._cache, cutoff)  # ty: ignore[invalid-argument-type]
+        return self._iter_from_index(idx)
 
     def __deepcopy__(self, memo: dict[int, Any]) -> LazyCachedIterable[T]:
         """Return an independent copy with an empty cache."""
@@ -314,7 +338,7 @@ def _get_cached_ruleset(
         return cached
 
 
-class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
+class RulesetIterable(SeekableIterable[Union[datetime.datetime, datetime.date]]):
     """A wrapper around the dateutil ruleset library to workaround limitations.
 
     The `dateutil.rrule` library does not allow iteration in terms of dates and requires
@@ -376,6 +400,33 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
 
     def __iter__(self) -> Iterator[datetime.datetime | datetime.date]:
         """Return an iterator as a traversal over events in chronological order."""
+        return self._iter_cached(None)
+
+    def iter_after(
+        self, cutoff: datetime.datetime
+    ) -> Iterator[datetime.datetime | datetime.date]:
+        """Return an iterator fast-forwarded toward ``cutoff``."""
+        return self._iter_cached(self._coerce_cutoff(cutoff))
+
+    def _coerce_cutoff(
+        self, cutoff: datetime.datetime
+    ) -> datetime.datetime | datetime.date | None:
+        """Convert cutoff to match the type and timezone of ``self._dtstart``."""
+        if any(isinstance(r, Period) for r in self._rdate):
+            return None
+        safe_cutoff = cutoff - datetime.timedelta(days=2)
+        if type(self._dtstart) is datetime.date:
+            return safe_cutoff.date()
+        if isinstance(self._dtstart, datetime.datetime):
+            if self._dtstart.tzinfo is None:
+                return safe_cutoff.replace(tzinfo=None)
+            if safe_cutoff.tzinfo is not None:
+                return safe_cutoff.astimezone(self._dtstart.tzinfo)
+        return None
+
+    def _iter_cached(
+        self, cutoff: datetime.datetime | datetime.date | None
+    ) -> Iterator[datetime.datetime | datetime.date]:
         cached = _get_cached_ruleset(
             self._dtstart,
             self._rrule,
@@ -384,7 +435,10 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
             self._ruleset,
         )
         try:
-            yield from cached
+            if cutoff is not None and type(cutoff) is type(self._dtstart):
+                yield from cached.iter_from(cutoff)
+            else:
+                yield from cached
         except TypeError as err:
             key = _rule_cache_key(self._dtstart, self._rrule, self._rdate, self._exdate)
             with _RECURRENCE_CACHE_LOCK:
@@ -409,7 +463,7 @@ class RulesetIterable(Iterable[Union[datetime.datetime, datetime.date]]):
         )
 
 
-class RecurIterable(Iterable[T]):
+class RecurIterable(SeekableIterable[T]):
     """A series of events from a recurring event.
 
     The inputs are a callback that creates objects at a specific date/time, and an iterable
@@ -420,14 +474,28 @@ class RecurIterable(Iterable[T]):
         self,
         item_cb: ItemAdapter[T],
         recur: Iterable[datetime.datetime | datetime.date],
+        duration: datetime.timedelta | None = None,
     ) -> None:
         """Initialize timeline."""
         self._item_cb = item_cb
         self._recur = recur
+        self._duration = duration
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator as a traversal over events in chronological order."""
         for dtvalue in self._recur:
+            yield self._item_cb(dtvalue)
+
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
+        """Return an iterator fast-forwarded toward occurrences ending after ``cutoff``."""
+        if isinstance(self._recur, SeekableIterable):
+            dt_cutoff = cutoff - self._duration if self._duration else cutoff
+            dt_iter: Iterable[datetime.datetime | datetime.date] = (
+                self._recur.iter_after(dt_cutoff)
+            )
+        else:
+            dt_iter = self._recur
+        for dtvalue in dt_iter:
             yield self._item_cb(dtvalue)
 
 
@@ -473,7 +541,7 @@ class MergedIterator(Iterator[T]):
         return item
 
 
-class MergedIterable(Iterable[T]):
+class MergedIterable(SeekableIterable[T]):
     """An iterator that merges results from underlying sorted iterables."""
 
     def __init__(self, iters: Sequence[Iterable[T]]) -> None:
@@ -483,8 +551,17 @@ class MergedIterable(Iterable[T]):
     def __iter__(self) -> Iterator[T]:
         return MergedIterator([iter(it) for it in self._iters])
 
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
+        """Return a merged iterator fast-forwarded toward ``cutoff``."""
+        return MergedIterator(
+            [
+                it.iter_after(cutoff) if isinstance(it, SeekableIterable) else iter(it)
+                for it in self._iters
+            ]
+        )
 
-class SortedItemIterable(Iterable[SortableItem[K, T]]):
+
+class SortedItemIterable(SeekableIterable[SpanOrderedItem[T]]):
     """Iterable that returns sortable items in sorted order.
 
     This is useful when iterating over a subset of non-recurring events.
@@ -492,20 +569,31 @@ class SortedItemIterable(Iterable[SortableItem[K, T]]):
 
     def __init__(
         self,
-        iterable: Callable[[], Iterable[SortableItem[K, T]]],
+        iterable: Callable[[], Iterable[SpanOrderedItem[T]]],
         tzinfo: datetime.tzinfo,
     ) -> None:
         """Initialize timeline."""
         self._iterable = iterable
         self._tzinfo = tzinfo
 
-    def __iter__(self) -> Iterator[SortableItem[K, T]]:
+    def __iter__(self) -> Iterator[SpanOrderedItem[T]]:
         """Return an iterator as a traversal over events in chronological order."""
         return iter(sorted(self._iterable()))
 
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[SpanOrderedItem[T]]:
+        """Return an iterator of items ending after ``cutoff`` in sorted order."""
+        return iter(sorted(item for item in self._iterable() if item.key.end > cutoff))
+
 
 class SortableItemTimeline(Iterable[T]):
-    """A set of components on a calendar."""
+    """A set of components on a calendar.
+
+    Accepts any ``Iterable[SpanOrderedItem[T]]``. When passed a
+    :class:`SeekableIterable`, range queries (such as :meth:`included`,
+    :meth:`overlapping`, :meth:`start_after`, :meth:`active_after`, and
+    :meth:`at_instant`) automatically use :meth:`SeekableIterable.iter_after`
+    to fast-forward past historical events.
+    """
 
     def __init__(
         self,
@@ -514,6 +602,16 @@ class SortableItemTimeline(Iterable[T]):
     ) -> None:
         self._iterable = iterable
         self._tzinfo = tzinfo
+
+    def _iter_after(self, min_end: datetime.datetime) -> Iterable[SpanOrderedItem[T]]:
+        """Return an iterable fast-forwarded toward ``min_end`` when supported.
+
+        Does not strictly filter out items ending on or before ``min_end``;
+        callers must still check their own range predicates.
+        """
+        if isinstance(self._iterable, SeekableIterable):
+            return self._iterable.iter_after(min_end)
+        return self._iterable
 
     def __iter__(self) -> Iterator[T]:
         """Return an iterator as a traversal over events in chronological order."""
@@ -530,7 +628,7 @@ class SortableItemTimeline(Iterable[T]):
         The end date is exclusive.
         """
         timespan = Timespan.of(start, end, self._tzinfo)
-        for item in self._iterable:
+        for item in self._iter_after(timespan.start):
             if item.key.is_included_in(timespan):
                 yield item.item
             elif item.key.start > timespan.end:
@@ -546,7 +644,7 @@ class SortableItemTimeline(Iterable[T]):
         The end date is exclusive.
         """
         timespan = Timespan.of(start, end, self._tzinfo)
-        for item in self._iterable:
+        for item in self._iter_after(timespan.start):
             if item.key.intersects(timespan):
                 yield item.item
             elif item.key > timespan:
@@ -558,7 +656,7 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events starting after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
-        for item in self._iterable:
+        for item in self._iter_after(instant_value):
             if item.key.start > instant_value:
                 yield item.item
 
@@ -568,7 +666,7 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
-        for item in self._iterable:
+        for item in self._iter_after(instant_value):
             if item.key.start > instant_value or item.key.end > instant_value:
                 yield item.item
 
@@ -578,7 +676,7 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active at the specified instant."""
         timespan = Timespan.of(instant, instant, self._tzinfo)
-        for item in self._iterable:
+        for item in self._iter_after(timespan.start - datetime.timedelta(seconds=1)):
             if item.key.includes(timespan):
                 yield item.item
             elif item.key > timespan:

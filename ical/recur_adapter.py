@@ -12,6 +12,7 @@ from typing import Generic, TypeVar, cast
 from .iter import (
     MergedIterable,
     RecurIterable,
+    SeekableIterable,
     SortableItemValue,
     SortedItemIterable,
     SpanOrderedItem,
@@ -44,7 +45,7 @@ def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
     return RecurrenceId.__parse_property_value__(dt)
 
 
-class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
+class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
     """An iterable that filters out dates from a recurrence expansion.
 
     This wraps a recurrence iterable and excludes dates that have been
@@ -72,11 +73,23 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
+        return self._filter(self._recur)
+
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[_DateOrDatetime]:
+        """Iterate over recurrence dates fast-forwarded toward ``cutoff``, excluding overridden ones."""
+        source = (
+            self._recur.iter_after(cutoff)
+            if isinstance(self._recur, SeekableIterable)
+            else self._recur
+        )
+        return self._filter(source)
+
+    def _filter(self, source: Iterable[_DateOrDatetime]) -> Iterator[_DateOrDatetime]:
         exclude_dts = self._exclude_dts
         if not exclude_dts:
-            yield from self._recur
+            yield from source
             return
-        for dt in self._recur:
+        for dt in source:
             dt_cmp = (
                 dt.replace(tzinfo=None)
                 if isinstance(dt, datetime.datetime) and dt.tzinfo is not None
@@ -204,7 +217,11 @@ def merge_and_expand_items(
                     else recur
                 )
                 iters.append(
-                    RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, dates)
+                    RecurIterable(
+                        RecurAdapter(item, tzinfo=tzinfo).get,
+                        dates,
+                        item.computed_duration,
+                    )
                 )
 
     if non_recurring:
