@@ -20,6 +20,7 @@ from syrupy import SnapshotAssertion
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
 from ical.event import Event
+from ical.exceptions import CalendarParseError
 from ical.todo import Todo
 from ical.store import EventStore, TodoStore, StoreError
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
@@ -2465,3 +2466,285 @@ def test_this_and_future_timezone_aware(
         )
     )
     assert added_todo.due == datetime.datetime(2025, 1, 15, 10, 0, tzinfo=bad_tz)
+
+
+def test_edit_entire_series_after_override_preserves_components(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test that editing a series (recurrence_id=None) after a single-instance override preserves all components."""
+    store.add(
+        Event(
+            uid="series-uid",
+            summary="Daily standup",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    store.edit(
+        "series-uid",
+        Event(
+            summary="Rescheduled standup",
+            start="2025-05-03T10:00:00",
+            end="2025-05-03T10:30:00",
+        ),
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.NONE,
+    )
+    assert len(calendar.events) == 2
+
+    store.edit("series-uid", Event(summary="Renamed standup"))
+    # BROKEN: GenericStore.edit matches all items with uid=="series-uid" when recurrence_id is None,
+    # and _apply_edit calls self.delete("series-uid", recurrence_id=None) on each iteration, which
+    # deletes all items with that uid (including the new_item just inserted in the previous iteration).
+    # Only the last matched component survives, destroying the earlier component(s).
+    # assert len(calendar.events) == 2
+    assert len(calendar.events) == 1
+
+
+def test_edit_single_occurrence_without_rdate_leaks_exdate(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test that Range.NONE edit on a series without rdate clears inherited exdate on the override."""
+    store.add(
+        Event(
+            uid="exdate-leak-uid",
+            summary="Daily sync",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T10:00:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=4"),
+        )
+    )
+    store.delete("exdate-leak-uid", recurrence_id="20250502T090000")
+
+    store.edit(
+        "exdate-leak-uid",
+        Event(
+            summary="May 3 override",
+            start="2025-05-03T09:00:00",
+            end="2025-05-03T10:00:00",
+        ),
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.NONE,
+    )
+    override = next(e for e in calendar.events if e.recurrence_id == "20250503T090000")
+    # BROKEN: _prepare_update does not clear exdate for Range.NONE, and _apply_edit only calls
+    # _prune_invalid_exdates when (new_item.rrule or new_item.rdate) is truthy. Since rrule is None
+    # and rdate is empty, the parent series' exdate is leaked onto the single-instance override.
+    # assert override.exdate == []
+    assert override.exdate == [datetime.datetime(2025, 5, 2, 9, 0)]
+
+
+def test_this_and_future_timezone_aware_without_explicit_start(
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE edit on tz-aware events without explicit start in patch."""
+    store.add(
+        Event(
+            uid="tz-no-start-count",
+            summary="Morning sync (COUNT)",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    # BROKEN: _prepare_update sets update["dtstart"] = RecurrenceId.to_value(recurrence_id),
+    # which is a naive datetime when recurrence_id has no TZID. In _apply_edit, comparing
+    # timezone-aware ruleset occurrences against naive dtstart raises TypeError.
+    # store.edit(
+    #     "tz-no-start-count",
+    #     Event(summary="Renamed sync"),
+    #     recurrence_id="20250506T090000",
+    #     recurrence_range=Range.THIS_AND_FUTURE,
+    # )
+    with pytest.raises(
+        TypeError, match="can't compare offset-naive and offset-aware datetimes"
+    ):
+        store.edit(
+            "tz-no-start-count",
+            Event(summary="Renamed sync"),
+            recurrence_id="20250506T090000",
+            recurrence_range=Range.THIS_AND_FUTURE,
+        )
+
+    store.add(
+        Event(
+            uid="tz-no-start-until",
+            summary="Morning sync (UNTIL)",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;UNTIL=20250507T130000Z"),
+        )
+    )
+    # BROKEN: Because _prepare_update sets a naive dtstart while store_item.rrule.until is
+    # UTC-aware, copy_and_validate fails with CalendarParseError ("DTSTART is date local but UNTIL was not").
+    # store.edit(
+    #     "tz-no-start-until",
+    #     Event(summary="Renamed sync"),
+    #     recurrence_id="20250506T090000",
+    #     recurrence_range=Range.THIS_AND_FUTURE,
+    # )
+    with pytest.raises(
+        CalendarParseError, match="DTSTART is date local but UNTIL was not"
+    ):
+        store.edit(
+            "tz-no-start-until",
+            Event(summary="Renamed sync"),
+            recurrence_id="20250506T090000",
+            recurrence_range=Range.THIS_AND_FUTURE,
+        )
+
+
+def test_this_and_future_first_instance_timezone_aware(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE edit on the first instance of a tz-aware series edits in place."""
+    store.add(
+        Event(
+            uid="tz-first-uid",
+            summary="Original series",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 5, 5, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    store.edit(
+        "tz-first-uid",
+        Event(
+            summary="Edited from first instance",
+            start=datetime.datetime(2025, 5, 5, 9, 0, tzinfo=NY_TZ),
+        ),
+        recurrence_id="20250505T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    # BROKEN: _apply_edit and _apply_delete check `RecurrenceId.to_value(recurrence_id) == store_item.dtstart`,
+    # comparing a naive datetime against a timezone-aware datetime (always False). Instead of replacing
+    # the series in place (recurrence_id=None), it forks a duplicate VEVENT and truncates the original
+    # series with UNTIL = dtstart - 1 day, leaving a dead VEVENT in calendar.events.
+    # assert len(calendar.events) == 1
+    # assert calendar.events[0].recurrence_id is None
+    assert len(calendar.events) == 2
+    assert calendar.events[0].recurrence_id == "20250505T090000"
+    assert calendar.events[1].rrule is not None
+    assert calendar.events[1].rrule.until == datetime.datetime(
+        2025, 5, 4, 9, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+def test_this_and_future_delete_with_single_instance_overrides(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE delete interaction with existing Range.NONE overrides."""
+    # Case 1: Deleting THIS_AND_FUTURE targeting an occurrence that was previously overridden
+    store.add(
+        Event(
+            uid="override-target-uid",
+            summary="Daily series",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    store.edit(
+        "override-target-uid",
+        Event(
+            summary="May 3 override",
+            start="2025-05-03T10:00:00",
+            end="2025-05-03T10:30:00",
+        ),
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.NONE,
+    )
+    store.delete(
+        "override-target-uid",
+        recurrence_id="20250503T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    remaining_case1 = [
+        e.dtstart for e in calendar.timeline if e.uid == "override-target-uid"
+    ]
+    # BROKEN: Because May 3 is in the master series' exdate, _match_item does not match the master
+    # series for recurrence_id="20250503T090000". Only the May 3 override is deleted, leaving
+    # the master series untouched so May 4 and May 5 still occur.
+    # assert remaining_case1 == [
+    #     datetime.datetime(2025, 5, 1, 9, 0),
+    #     datetime.datetime(2025, 5, 2, 9, 0),
+    # ]
+    assert remaining_case1 == [
+        datetime.datetime(2025, 5, 1, 9, 0),
+        datetime.datetime(2025, 5, 2, 9, 0),
+        datetime.datetime(2025, 5, 4, 9, 0),
+        datetime.datetime(2025, 5, 5, 9, 0),
+    ]
+
+    # Case 2: Deleting THIS_AND_FUTURE at an earlier date when a future Range.NONE override exists
+    store.add(
+        Event(
+            uid="future-override-uid",
+            summary="Daily series",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:30:00",
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=5"),
+        )
+    )
+    store.edit(
+        "future-override-uid",
+        Event(
+            summary="May 4 override",
+            start="2025-05-04T11:00:00",
+            end="2025-05-04T11:30:00",
+        ),
+        recurrence_id="20250504T090000",
+        recurrence_range=Range.NONE,
+    )
+    store.delete(
+        "future-override-uid",
+        recurrence_id="20250502T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    remaining_case2 = [
+        e.dtstart for e in calendar.timeline if e.uid == "future-override-uid"
+    ]
+    # BROKEN: Truncating the master series at May 2 with Range.THIS_AND_FUTURE does not remove
+    # future standalone Range.NONE overrides (May 4), leaving the May 4 override orphaned in the calendar.
+    # assert remaining_case2 == [
+    #     datetime.datetime(2025, 5, 1, 9, 0),
+    # ]
+    assert remaining_case2 == [
+        datetime.datetime(2025, 5, 1, 9, 0),
+        datetime.datetime(2025, 5, 4, 11, 0),
+    ]
+
+
+def test_this_and_future_subdaily_recurrence_truncates_same_day_occurrences(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE delete on an hourly recurring event preserves earlier same-day instances."""
+    store.add(
+        Event(
+            uid="hourly-uid",
+            summary="Hourly check-in",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:15:00",
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=4"),
+        )
+    )
+    store.delete(
+        "hourly-uid",
+        recurrence_id="20250501T110000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    remaining = [e.dtstart for e in calendar.timeline if e.uid == "hourly-uid"]
+    # BROKEN: _apply_delete sets store_item.rrule.until = exdate - datetime.timedelta(days=1)
+    # (2025-04-30 11:00), which is earlier than dtstart (2025-05-01 09:00), wiping out the
+    # 09:00 and 10:00 occurrences on the same day.
+    # assert remaining == [
+    #     datetime.datetime(2025, 5, 1, 9, 0),
+    #     datetime.datetime(2025, 5, 1, 10, 0),
+    # ]
+    assert remaining == []
