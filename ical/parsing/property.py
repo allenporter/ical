@@ -58,21 +58,23 @@ _QUOTE = '"'
 _DECODE_RE = re.compile(r"\^(.)")
 
 
+def _decode_replace(match: re.Match) -> str:
+    match match.group(1):
+        case "n":
+            return "\n"
+        case "^":
+            return "^"
+        case "'":
+            return '"'
+        case _:
+            return match.group(0)
+
+
 def _decode_parameter_value(value: str) -> str:
     """Decode caret-escaped parameter values according to RFC 6868."""
-
-    def replace(match: re.Match) -> str:
-        match match.group(1):
-            case "n":
-                return "\n"
-            case "^":
-                return "^"
-            case "'":
-                return '"'
-            case _:
-                return match.group(0)
-
-    return _DECODE_RE.sub(replace, value)
+    if "^" not in value:
+        return value
+    return _DECODE_RE.sub(_decode_replace, value)
 
 
 def _encode_parameter_value(value: str) -> str:
