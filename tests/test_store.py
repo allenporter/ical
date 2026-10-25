@@ -2814,3 +2814,63 @@ def test_this_and_future_delete_with_single_instance_overrides(
         datetime.datetime(2025, 5, 1, 9, 0),
         datetime.datetime(2025, 5, 4, 11, 0),
     ]
+
+
+def test_this_and_future_until_truncation_dst_and_subdaily(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test Range.THIS_AND_FUTURE delete across spring-forward DST and sub-daily rules (#744)."""
+    # 1. FREQ=DAILY across spring-forward DST transition (America/New_York on 2025-03-09)
+    # Using an explicit TZID in recurrence_id isolates the UNTIL - timedelta(days=1) bug
+    # from the naive recurrence_id parsing bug.
+    store.add(
+        Event(
+            uid="dst-daily-uid",
+            summary="Morning standup",
+            start=datetime.datetime(2025, 3, 8, 9, 0, tzinfo=NY_TZ),
+            end=datetime.datetime(2025, 3, 8, 9, 30, tzinfo=NY_TZ),
+            rrule=Recur.from_rrule("FREQ=DAILY;COUNT=3"),
+        )
+    )
+    store.delete(
+        "dst-daily-uid",
+        recurrence_id="TZID=America/New_York:20250309T090000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    remaining_dst = [e.dtstart for e in calendar.timeline if e.uid == "dst-daily-uid"]
+    # BROKEN: On 2025-03-09 (EDT, UTC-4), 09:00 is 13:00Z, whereas on 2025-03-08 (EST, UTC-5),
+    # 09:00 is 14:00Z. _apply_delete computes `exdate.astimezone(utc) - timedelta(days=1)` =
+    # 2025-03-08T13:00:00Z (08:00 EST), which is 1 hour before the March 8 occurrence (09:00 EST),
+    # unintentionally deleting the March 8 occurrence as well (#744).
+    # assert remaining_dst == [
+    #     datetime.datetime(2025, 3, 8, 9, 0, tzinfo=NY_TZ),
+    # ]
+    assert remaining_dst == []
+
+    # 2. Sub-daily (FREQ=HOURLY) recurrence on the same day
+    store.add(
+        Event(
+            uid="hourly-uid",
+            summary="Hourly check-in",
+            start="2025-05-01T09:00:00",
+            end="2025-05-01T09:15:00",
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=4"),
+        )
+    )
+    store.delete(
+        "hourly-uid",
+        recurrence_id="20250501T110000",
+        recurrence_range=Range.THIS_AND_FUTURE,
+    )
+    remaining_hourly = [e.dtstart for e in calendar.timeline if e.uid == "hourly-uid"]
+    # BROKEN: _apply_delete subtracts timedelta(days=1) instead of timedelta(seconds=1) for
+    # datetime.datetime values, setting UNTIL to 2025-04-30 11:00 (< dtstart 2025-05-01 09:00)
+    # and wiping out the 09:00 and 10:00 occurrences on the same day (#744).
+    # Note: datetime.date (all-day) events must continue to subtract timedelta(days=1) because
+    # subtracting timedelta(seconds=1) from a datetime.date is a no-op in Python (#145).
+    # assert remaining_hourly == [
+    #     datetime.datetime(2025, 5, 1, 9, 0),
+    #     datetime.datetime(2025, 5, 1, 10, 0),
+    # ]
+    assert remaining_hourly == []
