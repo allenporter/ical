@@ -266,15 +266,15 @@ class LazyCachedIterable(Iterable[T]):
         return LazyCachedIterable(self._source)
 
 
-# Recurrence cache sizing constants:
-# Each materialized date/datetime consumes ~56-64 bytes (including object + list pointer).
-# In real-world calendar usage (where events have ~100 past instances), 1,024 rules
-# consume ~4.5 MB, staying safely within a ~10 MB budget.
+# Recurrence cache sizing constants (measured via tracemalloc):
+# Each cached rule holds ~11-13 KB of suspended dateutil.rrule generator state
+# (year/weekday masks and local daysets), plus ~56-64 bytes per materialized
+# date/datetime (including object + list pointer).
 #
-# Real world headroom assumptions at 1,024 rules:
-# - Yearly events (e.g. birthdays/anniversaries): 1,024 distinct yearly rules over a century (~100 instances each).
-# - Monthly events: 1,024 distinct monthly rules over a decade (~120 instances each).
-# - Daily events: 1,024 distinct daily rules over a year (~365 instances each).
+# Full-capacity (1,024 distinct rules) memory usage by workload:
+# - Yearly events (100 years, ~100 instances/rule): ~20.5 MB
+# - Monthly events (10 years, ~120 instances/rule): ~18.7 MB
+# - Daily events (1 year, ~365 instances/rule): ~33.7 MB
 _MAX_RECURRENCE_CACHE_RULES = 1024
 
 _RECURRENCE_CACHE: OrderedDict[
