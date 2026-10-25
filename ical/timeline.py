@@ -83,7 +83,7 @@ def materialize_timeline(
         raise ValueError("Either stop or max_number_of_events must be specified")
 
     items: list[SortableItemValue[Timespan, ItemType]] = []
-    for item in timeline._iterable:
+    for item in timeline._iter_after(start_dt):
         if max_number_of_events is not None and len(items) >= max_number_of_events:
             break
         if timespan:
