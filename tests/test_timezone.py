@@ -333,3 +333,24 @@ END:VCALENDAR"""
     assert isinstance(copied_events[0].dtstart, datetime.datetime)
     assert copied_events[0].dtstart.tzname() == events[0].dtstart.tzname()
     assert copied_events[0].dtstart.utcoffset() == events[0].dtstart.utcoffset()
+
+
+def test_from_tzif_dublin_and_azores() -> None:
+    """Verify Timezone.from_tzif handles 0 DST offsets for Europe/Dublin and Atlantic/Azores."""
+    dublin_tz = Timezone.from_tzif("Europe/Dublin")
+    dublin_info = IcsTimezoneInfo.from_timezone(dublin_tz)
+    assert dublin_info.utcoffset(
+        datetime.datetime(2024, 1, 15, 12, 0)
+    ) == datetime.timedelta(hours=0)
+    assert dublin_info.utcoffset(
+        datetime.datetime(2024, 7, 15, 12, 0)
+    ) == datetime.timedelta(hours=1)
+
+    azores_tz = Timezone.from_tzif("Atlantic/Azores")
+    azores_info = IcsTimezoneInfo.from_timezone(azores_tz)
+    assert azores_info.utcoffset(
+        datetime.datetime(2024, 1, 15, 12, 0)
+    ) == datetime.timedelta(hours=-1)
+    assert azores_info.utcoffset(
+        datetime.datetime(2024, 7, 15, 12, 0)
+    ) == datetime.timedelta(hours=0)
