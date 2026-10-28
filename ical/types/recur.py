@@ -232,6 +232,17 @@ class RecurrenceId(str):
         except ValueError as err:
             errors.append(err)
 
+        try:
+            iso_val = parse_date_and_datetime(recurrence_id)
+            if isinstance(iso_val, datetime.datetime):
+                if iso_val.tzinfo is None and tzinfo is not None:
+                    iso_val = iso_val.replace(tzinfo=tzinfo)
+                return iso_val
+            if isinstance(iso_val, datetime.date):
+                return iso_val
+        except ValueError as err:
+            errors.append(err)
+
         raise ValueError(f"Unable to parse date/time value: {errors}")
 
     @classmethod
@@ -261,6 +272,9 @@ class RecurrenceId(str):
         elif isinstance(value, datetime.date):
             raw_str = DateEncoder.__encode_property_json__(value)
         elif isinstance(value, ParsedProperty):
+            raw_str = value.value
+        elif isinstance(value, str) and "=" in value.split(":")[0]:
+            value = ParsedProperty.from_ics(f"RECURRENCE-ID;{value}")
             raw_str = value.value
         else:
             raw_str = str(value)
