@@ -84,6 +84,56 @@
           "dtstart": "2025-05-03T09:00:00"
         }
       ]
+    },
+    {
+      "name": "this_and_future_delete_updates_dtstamp_last_modified_and_sequence",
+      "description": "Deleting THIS_AND_FUTURE occurrences truncates RRULE UNTIL on the master component, increments sequence from 0 to 1, and updates dtstamp and last_modified while preserving created.",
+      "initial_components": [
+        {
+          "uid": "daily-2",
+          "summary": "Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "sequence": 0,
+          "last_modified": null
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "daily-2",
+        "recurrence_id": "20250503T090000",
+        "range": "THIS_AND_FUTURE",
+        "now": "2025-05-01T14:00:00Z"
+      },
+      "expected_components": [
+        {
+          "uid": "daily-2",
+          "recurrence_id": null,
+          "summary": "Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "dtstamp": "2025-05-01T14:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "sequence": 1,
+          "last_modified": "2025-05-01T14:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "daily-2",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00"
+        },
+        {
+          "uid": "daily-2",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00"
+        }
+      ]
     }
   ],
   "audit_status": "ADVERSARIALLY_VETTED",

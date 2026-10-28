@@ -72,7 +72,7 @@
           "dtend": "2025-05-01T09:30:00",
           "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
           "exdate": [],
-          "sequence": 0
+          "sequence": 1
         }
       ],
       "expected_timeline": [
@@ -132,7 +132,7 @@
           "dtend": "2025-05-01T09:30:00",
           "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
           "exdate": [],
-          "sequence": 0
+          "sequence": 1
         }
       ],
       "expected_timeline": [
@@ -188,7 +188,7 @@
           "dtend": "2025-05-01T09:30:00",
           "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
           "exdate": [],
-          "sequence": 0
+          "sequence": 1
         }
       ],
       "expected_timeline": [
