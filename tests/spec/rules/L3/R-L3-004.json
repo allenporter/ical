@@ -99,6 +99,100 @@
           "summary": "Later sync"
         }
       ]
+    },
+    {
+      "name": "edit_this_and_future_with_prior_exdate_and_rdate_counts_rrule_candidates_only",
+      "description": "Splitting a COUNT=4 daily series at May 3 (3rd RRULE occurrence) when May 2 is excluded via EXDATE and an extra RDATE exists on May 1 15:00 decrements COUNT by k=2 (the 2 prior RRULE candidates on May 1 and May 2, ignoring the RDATE-only occurrence and counting the EXDATE-excluded RRULE slot) to COUNT=2.",
+      "modes": {
+        "this_and_future_split_mode": "SHARED_UID"
+      },
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "count-exdate-rdate-1",
+          "summary": "Daily check-in",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "rdate": [
+            "2025-05-01T15:00:00"
+          ],
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "count-exdate-rdate-1",
+        "recurrence_id": "20250503T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Shifted check-in",
+          "dtstart": "2025-05-03T10:00:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": "20250503T090000",
+          "summary": "Shifted check-in",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "rdate": [],
+          "exdate": [],
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": null,
+          "summary": "Daily check-in",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "rdate": [
+            "2025-05-01T15:00:00"
+          ],
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Daily check-in"
+        },
+        {
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": "20250501T150000",
+          "dtstart": "2025-05-01T15:00:00",
+          "dtend": "2025-05-01T15:30:00",
+          "summary": "Daily check-in"
+        },
+        {
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": "20250503T100000",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "summary": "Shifted check-in"
+        },
+        {
+          "uid": "count-exdate-rdate-1",
+          "recurrence_id": "20250504T100000",
+          "dtstart": "2025-05-04T10:00:00",
+          "dtend": "2025-05-04T10:30:00",
+          "summary": "Shifted check-in"
+        }
+      ]
     }
   ],
   "audit_status": "ADVERSARIALLY_VETTED",
