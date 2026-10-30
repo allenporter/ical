@@ -770,21 +770,20 @@ def test_until_time_valid(
 
 
 def test_until_time_mismatch() -> None:
-    """Test failure case where until has a different timezone than start."""
+    """Test cases where until has a different type or timezone than start."""
 
-    with pytest.raises(
-        CalendarParseError,
-        match="DTSTART was DATE-TIME but UNTIL was DATE",
-    ):
-        Event(
-            summary="Bi-annual meeting",
-            start=datetime.datetime(2022, 1, 2, 6, 0, 0),
-            end=datetime.datetime(2022, 1, 2, 7, 0, 0),
-            rrule=Recur(
-                freq=Frequency.DAILY,
-                until=datetime.date(2022, 8, 4),
-            ),
-        )
+    # A DATE UNTIL under a floating DATE-TIME start is the end of that day
+    event = Event(
+        summary="Bi-annual meeting",
+        start=datetime.datetime(2022, 1, 2, 6, 0, 0),
+        end=datetime.datetime(2022, 1, 2, 7, 0, 0),
+        rrule=Recur(
+            freq=Frequency.DAILY,
+            until=datetime.date(2022, 8, 4),
+        ),
+    )
+    assert event.rrule is not None
+    assert event.rrule.until == datetime.datetime(2022, 8, 4, 23, 59, 59)
 
     with pytest.raises(
         CalendarParseError, match="DTSTART is date local but UNTIL was not"
