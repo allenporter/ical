@@ -30,6 +30,17 @@ Some providers represent all-day events with a `DTEND` that falls on the same da
 Microsoft Exchange and Outlook often output Windows-specific timezone names (e.g., "Eastern Standard Time") or entirely omit `VTIMEZONE` blocks for these timezones.
 * **Fixup (`timezone_compat`)**: Uses heuristics to map these proprietary `TZID` strings to standard IANA timezones and gracefully handles missing definitions.
 
+### Exchange Midnight Recurrence Identifiers
+
+Some Exchange published calendars identify edited timed occurrences with a midnight
+`RECURRENCE-ID`, rather than the original occurrence start time. This can leave both
+the generated occurrence and its exception on the timeline.
+* **Fixup (`recurrence_id_compat`)**: In Exchange compatibility mode only, infer the
+  original time from a single daily-or-less-frequent series master, checking that
+  the inferred occurrence exists in its rule. Preserve the exception start/end,
+  including moved instances and cancellations. All-day, subdaily, extra-RDATE,
+  different-timezone, and ambiguous multiple-master cases are left unchanged.
+
 ### Invalid Date Formats
 Some feeds contain date strings with an illegal time suffix (e.g., `20240115T000000` for a `DATE` type).
 * **Fixup (`date_compat`)**: Strips the invalid time suffix to parse the date correctly.
