@@ -16,6 +16,7 @@ from . import (
     duration_compat,
     duration_dtend_compat,
     same_day_dtend_compat,
+    recurrence_id_compat,
     timezone_compat,
 )
 
@@ -59,6 +60,7 @@ def enable_compat_mode(ics: str) -> Generator[str]:
             with (
                 timezone_compat.enable_allow_invalid_timezones(),
                 timezone_compat.enable_extended_timezones(),
+                recurrence_id_compat.enable_recurrence_id_compat(),
             ):
                 yield ics
         elif prodid and _GOOGLE_PRODID in prodid:
