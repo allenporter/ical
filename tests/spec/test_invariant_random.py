@@ -24,7 +24,6 @@ from .oracle_policy import (
     SingleEditExdateMode,
     SplitFutureOverrideMode,
     StoreError,
-    ThisAndFutureSplitMode,
 )
 from .oracle_temporal import format_temporal_like, parse_temporal, shift_wall_clock
 
@@ -36,7 +35,6 @@ POLICIES = [
     PolicyConfig(*combo)
     for combo in itertools.product(
         SeriesEditOverrideMode,
-        [ThisAndFutureSplitMode.NEW_UID],
         SingleEditExdateMode,
         SeriesRescheduleExceptionMode,
         SplitFutureOverrideMode,
@@ -164,11 +162,6 @@ def _run_sequence(policy: PolicyConfig, seed: int) -> int:
     return applied
 
 
-@pytest.mark.xfail(
-    reason="pre-NEW_UID oracle: I-T-004 (re-split gains slots), I-T-006 (SHIFT_WITH_SERIES "
-    "re-keys overrides without a revision bump), I-T-007 (re-split drops the NEXT chain)",
-    strict=True,
-)
 @pytest.mark.parametrize("seed_offset", range(SEEDS_PER_POLICY))
 def test_random_operation_sequences_preserve_invariants(seed_offset: int) -> None:
     """Every invariant holds after every step of random sequences under every policy."""

@@ -24,20 +24,6 @@ from .schema import FORBIDDEN_IMPLEMENTATION_TERMS, SPEC_DIR, load_all_scenarios
 
 ALL_SCENARIOS = load_all_scenarios()
 
-# Scenarios that violate an invariant before the NEW_UID split model is adopted
-# (all are SHARED_UID splits failing I-C-006). Removed by the NEW_UID change.
-KNOWN_VIOLATIONS: frozenset[str] = frozenset(
-    {
-        "R-L3-001[0]",
-        "R-L3-004[0]",
-        "R-L3-004[1]",
-        "R-L3-004[2]",
-        "R-L3-005[0]",
-        "R-L3-005[1]",
-        "R-L3-008[0]",
-    }
-)
-
 INVARIANT_MODULES = [
     "invariant_common.py",
     "invariant_timeline.py",
@@ -51,16 +37,10 @@ INVARIANT_MODULES = [
 
 
 def _scenario_params() -> list[Any]:
-    params = []
-    for rule_id, idx, name, scen in ALL_SCENARIOS:
-        key = f"{rule_id}[{idx}]"
-        marks = (
-            [pytest.mark.xfail(reason="SHARED_UID split violates I-C-006", strict=True)]
-            if key in KNOWN_VIOLATIONS
-            else []
-        )
-        params.append(pytest.param(scen, id=f"{key}-{name}", marks=marks))
-    return params
+    return [
+        pytest.param(scen, id=f"{rule_id}[{idx}]-{name}")
+        for rule_id, idx, name, scen in ALL_SCENARIOS
+    ]
 
 
 def _examples(positive: bool) -> list[Any]:

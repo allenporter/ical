@@ -1,6 +1,7 @@
 """Clean-room Reference Store Edit Operations Mixin (L2, L3, L4, L5).
 
-Implements whole-series edits (R-L4-002, R-L4-003, R-L4-004, R-L4-005, R-L4-006, R-L4-007)
+Implements whole-series edits of exactly one UID (R-L4-001, R-L4-002, R-L4-003, R-L4-004,
+R-L4-005, R-L4-006, R-L4-007)
 and single-instance overrides (`Range=NONE`, R-L2-003..R-L2-008), inheriting `THIS_AND_FUTURE`
 split operations from `OracleSplitMixin` (R-L3-001..R-L3-008).
 """
@@ -74,57 +75,36 @@ class OracleEditMixin(OracleSplitMixin):
 
     def _propagate_whole_series_patch(
         self,
-        uid: str,
         master_comp: dict[str, Any],
-        recurring_segments: list[dict[str, Any]],
         standalone_overrides: list[dict[str, Any]],
         patch: dict[str, Any],
         eff_now: str,
     ) -> None:
-        """Prune orphaned segments/overrides and propagate metadata patches (R-L4-003, R-L4-005)."""
+        """Prune orphaned overrides and propagate metadata patches (R-L4-003, R-L4-005).
+
+        Only this UID's overrides are touched: other segments of a split chain are
+        separate series addressed by their own UIDs (R-L4-001).
+        """
         non_schedule_keys = set(patch) - _SCHEDULE_KEYS
-        schedule_redefined = bool({"dtstart", "rrule", "rdate"} & set(patch.keys()))
         propagate = (
             self.policy.series_edit_override_mode
             == SeriesEditOverrideMode.PROPAGATE_PATCH
         )
-
-        for seg in list(recurring_segments):
-            if seg is master_comp:
-                continue
-            if schedule_redefined or not seg.get("recurrence_id"):
-                self.components.remove(seg)
-            elif propagate:
-                self._propagate_non_schedule_to_comp(
-                    seg, patch, non_schedule_keys, eff_now
-                )
-
-        surviving_segments = [
-            (
-                c,
-                parse_temporal(c["dtstart"], "dtstart"),
-                {
-                    rid
-                    for rid, _, _ in expand_component_candidates(
-                        c, include_exdates=True
-                    )
-                },
+        pt_master = parse_temporal(master_comp["dtstart"], "dtstart")
+        master_rids = {
+            rid
+            for rid, _, _ in expand_component_candidates(
+                master_comp, include_exdates=True
             )
-            for c in self.components
-            if c.get("type") != "VTIMEZONE"
-            and c.get("uid") == uid
-            and (c.get("rrule") or c.get("rdate"))
-            and c.get("dtstart")
-        ]
+        }
         for ov in list(standalone_overrides):
             pt_ov_rid = parse_temporal(ov["recurrence_id"], "recurrence_id")
-            is_valid = any(
-                pt_ov_rid.is_date == pt_seg_s.is_date
+            is_valid = (
+                pt_ov_rid.is_date == pt_master.is_date
                 and format_canonical_rid(
-                    align_rid_to_master(ov["recurrence_id"], pt_seg_s)
+                    align_rid_to_master(ov["recurrence_id"], pt_master)
                 )
-                in seg_rids
-                for _, pt_seg_s, seg_rids in surviving_segments
+                in master_rids
             )
             if not is_valid:
                 self.components.remove(ov)
@@ -132,6 +112,30 @@ class OracleEditMixin(OracleSplitMixin):
                 self._propagate_non_schedule_to_comp(
                     ov, patch, non_schedule_keys, eff_now
                 )
+
+    def _shift_overrides_with_series(
+        self,
+        standalone_overrides: list[dict[str, Any]],
+        wall_delta: datetime.timedelta,
+        pt_old_start: ParsedTemporal,
+        pt_new_start: ParsedTemporal,
+        eff_now: str,
+    ) -> None:
+        """SHIFT_WITH_SERIES: re-key overrides by the series shift as new revisions.
+
+        A shifted override is a revision at its new (UID, RECURRENCE-ID) key, so its
+        SEQUENCE exceeds any SEQUENCE previously held at that key (I-T-005) and its
+        DTSTAMP/LAST-MODIFIED are updated (I-T-006).
+        """
+        prior_seq = {
+            ov["recurrence_id"]: ov.get("sequence") or 0 for ov in standalone_overrides
+        }
+        for ov in standalone_overrides:
+            own_seq = ov.get("sequence") or 0
+            self._shift_override_in_place(ov, wall_delta, pt_old_start, pt_new_start)
+            ov["sequence"] = max(own_seq, prior_seq.get(ov["recurrence_id"], 0)) + 1
+            ov["dtstamp"] = eff_now
+            ov["last_modified"] = eff_now
 
     def _apply_master_dtstart_change(
         self,
@@ -141,6 +145,7 @@ class OracleEditMixin(OracleSplitMixin):
         pt_old_start: ParsedTemporal | None,
         orig_dur: datetime.timedelta | None,
         normalized_from_first_instance: bool,
+        eff_now: str,
     ) -> None:
         """Update master exdate, rdate, rrule.until, dtend/due, and shifted overrides when dtstart changes."""
         pt_new_start = parse_temporal(master_comp["dtstart"], "dtstart")
@@ -164,10 +169,9 @@ class OracleEditMixin(OracleSplitMixin):
                         )
                         for val in master_comp[list_k]
                     ]
-            for ov in standalone_overrides:
-                self._shift_override_in_place(
-                    ov, wall_delta, pt_old_start, pt_new_start
-                )
+            self._shift_overrides_with_series(
+                standalone_overrides, wall_delta, pt_old_start, pt_new_start, eff_now
+            )
         if (
             "rrule" not in patch
             and master_comp.get("rrule")
@@ -178,41 +182,16 @@ class OracleEditMixin(OracleSplitMixin):
             )
         self._shift_comp_end_or_due(master_comp, patch, orig_dur)
 
-    def _prepare_first_instance_split_reset(
-        self,
-        uid_comps: list[dict[str, Any]],
-        master_comp: dict[str, Any],
-        pt_old_start: ParsedTemporal,
-        patch: dict[str, Any],
-    ) -> tuple[list[dict[str, Any]], list[tuple[dict[str, Any], ParsedTemporal]]]:
-        """Collect downstream segments/overrides and recover tail RRULE for first-instance split."""
-        superseded_segs, extra_overrides = self._collect_superseded_downstream(
-            uid_comps, master_comp, pt_old_start, pt_old_start.dt_utc_or_naive
-        )
-        if "rrule" not in patch and superseded_segs:
-            master_comp["rrule"] = self._recover_tail_rrule(
-                master_comp, superseded_segs
-            )
-        if "related_to" not in patch and master_comp.get("related_to"):
-            master_comp["related_to"] = [
-                r
-                for r in master_comp["related_to"]
-                if str(r.get("reltype") or "").upper() != "NEXT"
-            ]
-        return superseded_segs, extra_overrides
-
     def _edit_whole_series(
         self,
         uid: str,
-        uid_comps: list[dict[str, Any]],
         master_comp: dict[str, Any] | None,
-        recurring_segments: list[dict[str, Any]],
         standalone_overrides: list[dict[str, Any]],
         patch: dict[str, Any],
         normalized_from_first_instance: bool,
         eff_now: str,
     ) -> None:
-        """Apply a whole-series edit (or first-instance THIS_AND_FUTURE edit) (R-L3-002, R-L4-002..R-L4-007)."""
+        """Apply a whole-series edit of exactly one UID (R-L3-002, R-L4-001..R-L4-007)."""
         if master_comp is None:
             raise StoreError(
                 f"No master component found for whole-series edit of uid={uid!r}"
@@ -224,14 +203,6 @@ class OracleEditMixin(OracleSplitMixin):
             if master_comp.get("dtstart")
             else None
         )
-        superseded_segs, extra_overrides = (
-            self._prepare_first_instance_split_reset(
-                uid_comps, master_comp, pt_old_start, patch
-            )
-            if (normalized_from_first_instance and pt_old_start is not None)
-            else ([], [])
-        )
-
         apply_patch_fields_in_place(master_comp, patch)
         if "dtstart" in patch and master_comp.get("dtstart"):
             self._apply_master_dtstart_change(
@@ -241,39 +212,27 @@ class OracleEditMixin(OracleSplitMixin):
                 pt_old_start,
                 orig_dur,
                 normalized_from_first_instance,
+                eff_now,
             )
         self._apply_in_place_edit_metadata(master_comp, eff_now)
         self._update_todo_completed(master_comp, patch, old_s, old_c, eff_now)
 
         if not master_comp.get("rrule") and not master_comp.get("rdate"):
             master_comp["exdate"] = []
-            for other in [
-                *uid_comps,
-                *superseded_segs,
-                *(ov for ov, _ in extra_overrides),
-            ]:
-                if other is not master_comp and other in self.components:
-                    self.components.remove(other)
-            self._validate_component_state(master_comp)
-            self._register_comp_timezones(master_comp)
-            return
-
-        if normalized_from_first_instance and pt_old_start is not None:
-            for seg in superseded_segs:
-                if seg in self.components:
-                    self.components.remove(seg)
+            for ov in standalone_overrides:
+                if ov in self.components:
+                    self.components.remove(ov)
+        elif normalized_from_first_instance and pt_old_start is not None:
             self._apply_split_override_policy(
-                master_comp, extra_overrides, patch, pt_old_start
+                master_comp,
+                [(ov, pt_old_start) for ov in standalone_overrides],
+                patch,
+                pt_old_start,
             )
         else:
             master_comp["exdate"] = self._filter_valid_exdates(master_comp)
             self._propagate_whole_series_patch(
-                uid,
-                master_comp,
-                recurring_segments,
-                standalone_overrides,
-                patch,
-                eff_now,
+                master_comp, standalone_overrides, patch, eff_now
             )
         self._validate_component_state(master_comp)
         self._register_comp_timezones(master_comp)

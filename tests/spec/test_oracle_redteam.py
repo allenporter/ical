@@ -1,6 +1,6 @@
 """Adversarial multi-step red-team test suite for the clean-room Reference Store Oracle.
 
-Tests complex cross-layer interactions across all 8 PolicyConfig combinations:
+Tests complex cross-layer interactions across PolicyConfig combinations:
 - Cross-boundary rescheduled overrides with THIS_AND_FUTURE delete/edit (R-L2-008 + R-L3-006)
 - Out-of-order `[override_2, override_1, master]` metadata edit and schedule shift (R-L4-002..005)
 - DST spring-forward multi-split chains (R-L3-003 + R-L3-008)
@@ -20,7 +20,6 @@ from .reference_oracle import (
     PolicyConfig,
     ReferenceStore,
     SeriesEditOverrideMode,
-    ThisAndFutureSplitMode,
 )
 from .invariant_harness import CheckedStore
 from .test_reference_oracle import (
@@ -272,13 +271,12 @@ def test_redteam_c_dst_spring_forward_multi_split(policy: PolicyConfig) -> None:
         if c.get("type") == "VEVENT" and c.get("dtstart", "").startswith("2025-03-11")
     )
     assert seg3["rrule"] == "FREQ=DAILY;COUNT=2"
-    if policy.this_and_future_split_mode == ThisAndFutureSplitMode.NEW_UID:
-        assert seg1["related_to"] == [{"uid": seg2["uid"], "reltype": "NEXT"}]
-        assert seg2["related_to"] == [
-            {"uid": "dst-multi-1", "reltype": "FIRST"},
-            {"uid": seg3["uid"], "reltype": "NEXT"},
-        ]
-        assert seg3["related_to"] == [{"uid": "dst-multi-1", "reltype": "FIRST"}]
+    assert seg1["related_to"] == [{"uid": seg2["uid"], "reltype": "NEXT"}]
+    assert seg2["related_to"] == [
+        {"uid": "dst-multi-1", "reltype": "FIRST"},
+        {"uid": seg3["uid"], "reltype": "NEXT"},
+    ]
+    assert seg3["related_to"] == [{"uid": "dst-multi-1", "reltype": "FIRST"}]
     assert [(item["dtstart"], item["summary"]) for item in tl2] == [
         ("2025-03-08T09:00:00-05:00[America/New_York]", "Pre-DST Series"),
         ("2025-03-09T10:00:00-04:00[America/New_York]", "Split 1 (DST Day)"),

@@ -22,7 +22,6 @@ from .oracle_policy import PolicyConfig, StoreError
 from .reference_oracle import ReferenceStore
 
 ALL_INVARIANTS: list[SpecInvariant] = load_invariants()
-READ_ONLY_OPS = frozenset({"expand"})
 _SIMPLE_OPS = {"add": "add", "add_todo": "add", "edit": "edit", "delete": "delete"}
 
 
@@ -143,27 +142,29 @@ def check_scenario_vectors(scenario: dict[str, Any]) -> list[str]:
     """Apply state invariants to a scenario's vectors and transitions to initial->expected."""
     op = scenario.get("operation") or {}
     legacy = bool(scenario.get("legacy_input"))
-    read_only = op.get("op") in READ_ONLY_OPS
     initial = scenario.get("initial_components") or []
-    expected = scenario.get("expected_components") or []
+    expected = scenario.get("expected_components")
     errors = [
-        *(
-            f"initial: {e}"
-            for e in check_state(
-                ALL_INVARIANTS, initial, CheckContext(legacy_input=legacy), vector=True
-            )
-        ),
-        *(
+        f"initial: {e}"
+        for e in check_state(
+            ALL_INVARIANTS, initial, CheckContext(legacy_input=legacy), vector=True
+        )
+    ]
+    if expected is not None:
+        errors.extend(
             f"expected: {e}"
             for e in check_state(
                 ALL_INVARIANTS,
                 expected,
-                CheckContext(legacy_input=legacy and read_only),
+                CheckContext(legacy_input=False),
                 vector=True,
             )
-        ),
-    ]
-    if op.get("op") in _SIMPLE_OPS and not op.get("expect_error"):
+        )
+    if (
+        expected is not None
+        and op.get("op") in _SIMPLE_OPS
+        and not op.get("expect_error")
+    ):
         transition = Transition(
             before=initial,
             operation={**op, "op": _SIMPLE_OPS[op["op"]]},

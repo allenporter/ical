@@ -70,38 +70,11 @@ def expand_master_occurrences(
         return [], [f"Failed to expand component {comp.get('uid')}: {exc}"]
 
 
-def _verify_single_component(
-    comp: dict[str, Any],
-    idx: int,
-    prefix: str,
-    seen_keys: set[tuple[str, str | None]],
+def _verify_component_bounds_and_meta(
+    comp: dict[str, Any], uid: str, prefix: str
 ) -> list[str]:
-    """Verify structural and temporal invariants on a single component dictionary."""
+    """Verify DTSTART/DTEND/DUE bounds and UTC metadata fields on a component."""
     errors: list[str] = []
-    ctype = comp.get("type", "VEVENT")
-    if ctype == "VTIMEZONE":
-        if not comp.get("tz_id"):
-            errors.append(f"{prefix} VTIMEZONE component missing tz_id")
-        return errors
-
-    uid = comp.get("uid")
-    if not uid:
-        return [f"{prefix} Component #{idx} missing uid"]
-
-    raw_rid = comp.get("recurrence_id")
-    norm_rid: str | None = None
-    if raw_rid is not None:
-        pt_rid, r_errs = parse_temporal(raw_rid, "recurrence_id")
-        errors.extend(f"{prefix} {e}" for e in r_errs)
-        norm_rid = format_canonical_rid(pt_rid) if pt_rid else raw_rid
-
-    key = (uid, norm_rid)
-    if key in seen_keys:
-        errors.append(
-            f"{prefix} Duplicate component (uid={uid!r}, recurrence_id={raw_rid!r})"
-        )
-    seen_keys.add(key)
-
     pt_start: ParsedTemporal | None = None
     if (dtstart_raw := comp.get("dtstart")) is not None:
         pt_start, s_errs = parse_temporal(dtstart_raw, "dtstart")
@@ -129,28 +102,71 @@ def _verify_single_component(
             errors.extend(f"{prefix} {e}" for e in m_errs)
             if pt_m and pt_m.kind != "UTC":
                 errors.append(f"{prefix} {meta_field} ({val}) must be UTC (Z)")
+    return errors
 
-    if raw_rid is not None and not comp.get("rrule"):
-        if comp.get("rdate"):
-            errors.append(
-                f"{prefix} Standalone override (uid={uid}, rid={raw_rid}) has non-empty rdate"
-            )
-        if comp.get("exdate"):
-            errors.append(
-                f"{prefix} Standalone override (uid={uid}, rid={raw_rid}) has non-empty exdate"
-            )
+
+def _verify_single_component(
+    comp: dict[str, Any],
+    idx: int,
+    prefix: str,
+    seen_keys: set[tuple[str, str | None]],
+    *,
+    allow_legacy: bool = False,
+) -> list[str]:
+    """Verify structural and temporal invariants on a single component dictionary."""
+    errors: list[str] = []
+    if comp.get("type", "VEVENT") == "VTIMEZONE":
+        if not comp.get("tz_id"):
+            errors.append(f"{prefix} VTIMEZONE component missing tz_id")
+        return errors
+
+    uid = comp.get("uid")
+    if not uid:
+        return [f"{prefix} Component #{idx} missing uid"]
+
+    raw_rid = comp.get("recurrence_id")
+    norm_rid: str | None = None
+    if raw_rid is not None:
+        pt_rid, r_errs = parse_temporal(raw_rid, "recurrence_id")
+        errors.extend(f"{prefix} {e}" for e in r_errs)
+        norm_rid = format_canonical_rid(pt_rid) if pt_rid else raw_rid
+
+    key = (uid, norm_rid)
+    if key in seen_keys:
+        errors.append(
+            f"{prefix} Duplicate component (uid={uid!r}, recurrence_id={raw_rid!r})"
+        )
+    seen_keys.add(key)
+
+    errors.extend(_verify_component_bounds_and_meta(comp, uid, prefix))
+
+    if raw_rid is not None and not (allow_legacy and comp.get("rrule")):
+        for forbidden in ("rrule", "rdate", "exdate"):
+            if comp.get(forbidden):
+                errors.append(
+                    f"{prefix} Override component (uid={uid}, rid={raw_rid}) has non-empty {forbidden}"
+                )
     return errors
 
 
 def verify_component_list(
-    components: list[dict[str, Any]], label: str, rule_id: str, scenario_name: str
+    components: list[dict[str, Any]],
+    label: str,
+    rule_id: str,
+    scenario_name: str,
+    *,
+    allow_legacy: bool = False,
 ) -> list[str]:
     """Check invariants on a list of component dicts."""
     errors: list[str] = []
     prefix = f"[{rule_id} :: {scenario_name} :: {label}]"
     seen_keys: set[tuple[str, str | None]] = set()
     for idx, comp in enumerate(components):
-        errors.extend(_verify_single_component(comp, idx, prefix, seen_keys))
+        errors.extend(
+            _verify_single_component(
+                comp, idx, prefix, seen_keys, allow_legacy=allow_legacy
+            )
+        )
     return errors
 
 
@@ -332,18 +348,28 @@ def verify_scenario(rule_id: str, scenario: dict[str, Any]) -> list[str]:
     """Verify all structural and mathematical invariants on a single MiniScenarioVector."""
     sname = scenario.get("name", "<unnamed>")
     prefix = f"[{rule_id} :: {sname}]"
+    legacy = bool(scenario.get("legacy_input"))
     init_comps = scenario.get("initial_components", [])
-    exp_comps = scenario.get("expected_components", [])
+    exp_comps = scenario.get("expected_components")
     exp_tl = scenario.get("expected_timeline", [])
 
     errors = [
-        *verify_component_list(init_comps, "initial_components", rule_id, sname),
-        *verify_component_list(exp_comps, "expected_components", rule_id, sname),
+        *verify_component_list(
+            init_comps, "initial_components", rule_id, sname, allow_legacy=legacy
+        ),
+        *(
+            verify_component_list(
+                exp_comps, "expected_components", rule_id, sname, allow_legacy=False
+            )
+            if exp_comps is not None
+            else []
+        ),
         *_verify_timeline_chronology(exp_tl, prefix),
     ]
 
+    tl_source_comps = exp_comps if exp_comps is not None else init_comps
     comps_by_uid: dict[str, list[dict[str, Any]]] = {}
-    for comp in exp_comps:
+    for comp in tl_source_comps:
         if comp.get("type") != "VTIMEZONE" and (uid := comp.get("uid")):
             comps_by_uid.setdefault(uid, []).append(comp)
 
@@ -354,7 +380,7 @@ def verify_scenario(rule_id: str, scenario: dict[str, Any]) -> list[str]:
 
     if set(comps_by_uid.keys()) != set(tl_by_uid.keys()):
         errors.append(
-            f"{prefix} UIDs in expected_components ({set(comps_by_uid.keys())}) != "
+            f"{prefix} UIDs in components ({set(comps_by_uid.keys())}) != "
             f"UIDs in expected_timeline ({set(tl_by_uid.keys())})"
         )
     for uid, u_comps in comps_by_uid.items():
@@ -371,9 +397,9 @@ ALL_SCENARIOS = load_all_scenarios()
 
 
 def test_rule_directory_completeness() -> None:
-    """Verify that all 39 rules exist with unique IDs and zero citation/clean-room errors."""
+    """Verify that all 40 rules exist with unique IDs and zero citation/clean-room errors."""
     count, errors = verify_path(RULES_DIR)
-    assert count == 39
+    assert count == 40
     assert not errors
 
 

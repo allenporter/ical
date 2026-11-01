@@ -12,6 +12,7 @@ import pytest
 from .invariant_harness import ALL_INVARIANTS, CheckedStore
 from .invariant_registry import check_state
 from .reference_oracle import (
+    ParentDeleteCascadeMode,
     PolicyConfig,
     ReferenceStore,
     SeriesEditOverrideMode,
@@ -19,7 +20,6 @@ from .reference_oracle import (
     SingleEditExdateMode,
     SplitFutureOverrideMode,
     StoreError,
-    ThisAndFutureSplitMode,
     is_policy_compatible,
 )
 from .scenario_runner import execute_scenario
@@ -41,28 +41,38 @@ RULES_BY_ID = {r.id: r for r in ALL_RULES}
 ALL_POLICY_CONFIGS = [
     PolicyConfig(
         series_edit_override_mode=s_mode,
-        this_and_future_split_mode=t_mode,
         single_edit_exdate_mode=e_mode,
     )
-    for s_mode, t_mode, e_mode in itertools.product(
+    for s_mode, e_mode in itertools.product(
         SeriesEditOverrideMode,
-        ThisAndFutureSplitMode,
         SingleEditExdateMode,
+    )
+]
+
+ALL_48_POLICIES = [
+    PolicyConfig(
+        series_edit_override_mode=s_edit,
+        single_edit_exdate_mode=s_ex,
+        series_reschedule_exception_mode=s_resched,
+        split_future_override_mode=sp_ov,
+        parent_delete_cascade_mode=p_del,
+    )
+    for s_edit, s_ex, s_resched, sp_ov, p_del in itertools.product(
+        SeriesEditOverrideMode,
+        SingleEditExdateMode,
+        SeriesRescheduleExceptionMode,
+        SplitFutureOverrideMode,
+        ParentDeleteCascadeMode,
     )
 ]
 
 
 def policy_params(policies: list[PolicyConfig]) -> list[Any]:
-    """Parametrize policies; SHARED_UID splits are known to violate I-C-006."""
+    """Parametrize policies with readable ids."""
     return [
         pytest.param(
             p,
-            id=f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}",
-            marks=(
-                [pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=False)]
-                if p.this_and_future_split_mode == ThisAndFutureSplitMode.SHARED_UID
-                else []
-            ),
+            id=f"{p.series_edit_override_mode.value}-{p.single_edit_exdate_mode.value}",
         )
         for p in policies
     ]
@@ -90,10 +100,10 @@ def assert_rfc_invariants(store: ReferenceStore, label: str) -> list[dict[str, A
 
 
 def test_scenario_count_and_rule_count() -> None:
-    """Ensure all 39 rules and 51 scenarios are discovered."""
+    """Ensure all 40 rules and their scenarios are discovered."""
     rule_files = list(RULES_DIR.rglob("*.json"))
-    assert len(rule_files) == 39
-    assert len(ALL_SCENARIOS) == 51
+    assert len(rule_files) == 40
+    assert len(ALL_SCENARIOS) == 55
 
 
 @pytest.mark.parametrize(
@@ -101,30 +111,32 @@ def test_scenario_count_and_rule_count() -> None:
     ALL_SCENARIOS,
     ids=[f"{r}[{i}]-{n}" for r, i, n, _ in ALL_SCENARIOS],
 )
-def test_all_51_rule_scenarios(
+def test_all_rule_scenarios(
     rule_id: str, scen_idx: int, scen_name: str, scenario: dict[str, Any]
 ) -> None:
-    """Execute each of the 51 MiniScenarioVectors under its effective mode policy and compatible variants."""
+    """Execute each MiniScenarioVector under its effective mode policy and compatible variants."""
     actual_components, actual_timeline = execute_scenario(scenario)
-    assert actual_components == scenario["expected_components"], (
-        f"[{rule_id} #{scen_idx} {scen_name}] actual_components != expected_components"
-    )
+    if scenario.get("expected_components") is not None:
+        assert actual_components == scenario["expected_components"], (
+            f"[{rule_id} #{scen_idx} {scen_name}] actual_components != expected_components"
+        )
     assert actual_timeline == scenario["expected_timeline"], (
         f"[{rule_id} #{scen_idx} {scen_name}] actual_timeline != expected_timeline"
     )
 
     rule = RULES_BY_ID[rule_id]
     eff_modes = effective_scenario_modes(rule, rule.scenarios[scen_idx])
-    compatible = [p for p in ALL_POLICY_CONFIGS if is_policy_compatible(p, eff_modes)]
+    compatible = [p for p in ALL_48_POLICIES if is_policy_compatible(p, eff_modes)]
     assert compatible, f"No compatible PolicyConfig for {rule_id}[{scen_idx}]"
     for alt_policy in compatible:
         alt_comps, alt_tl = execute_scenario(scenario, policy=alt_policy)
         assert alt_tl == scenario["expected_timeline"], (
             f"[{rule_id} #{scen_idx}] timeline diverged under compatible policy {alt_policy}"
         )
-        assert alt_comps == scenario["expected_components"], (
-            f"[{rule_id} #{scen_idx}] components diverged under compatible policy {alt_policy}"
-        )
+        if scenario.get("expected_components") is not None:
+            assert alt_comps == scenario["expected_components"], (
+                f"[{rule_id} #{scen_idx}] components diverged under compatible policy {alt_policy}"
+            )
 
 
 def test_invalid_operations_raise_store_error_without_mutation() -> None:
@@ -179,10 +191,10 @@ def test_invalid_operations_raise_store_error_without_mutation() -> None:
 
 
 @pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
-def test_multi_step_chain_timed_tzid_across_all_8_policy_configs(
+def test_multi_step_chain_timed_tzid_across_policy_configs(
     policy: PolicyConfig,
 ) -> None:
-    """Execute a 6-step operation chain on a timezone-aware series across all 8 PolicyConfig combinations."""
+    """Execute a 6-step operation chain on a timezone-aware series across PolicyConfig combinations."""
     store = CheckedStore(policy=policy)
     store.add(
         {
@@ -264,14 +276,11 @@ def test_multi_step_chain_timed_tzid_across_all_8_policy_configs(
     )
     assert len(assert_rfc_invariants(store, "step6_this_and_future_split")) == 5
     uids = {c.get("uid") for c in store.components if c.get("type") != "VTIMEZONE"}
-    if policy.this_and_future_split_mode == ThisAndFutureSplitMode.SHARED_UID:
-        assert uids == {"tz-chain-1"}
-    else:
-        assert len(uids) == 2
+    assert uids == {"tz-chain-1", "tz-chain-1-split-20250505T090000"}
 
 
 @pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
-def test_multi_step_chain_allday_overrides_and_relations_across_all_8_policy_configs(
+def test_multi_step_chain_allday_overrides_and_relations_across_policy_configs(
     policy: PolicyConfig,
 ) -> None:
     """Test all-day series, override purging on split/delete (R-L3-006), and RELATED-TO cascade (R-L5-007/008)."""
@@ -378,66 +387,68 @@ def test_series_reschedule_shift_with_series_mode() -> None:
     ]
 
 
-@pytest.mark.parametrize(
-    "split_mode",
-    [
-        pytest.param(
-            ThisAndFutureSplitMode.SHARED_UID,
-            marks=pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=True),
-        ),
-        ThisAndFutureSplitMode.NEW_UID,
-    ],
-)
-def test_split_future_override_migrate_mode(split_mode: ThisAndFutureSplitMode) -> None:
-    """Test SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES under SHARED_UID and NEW_UID."""
+def test_split_future_override_migrate_mode() -> None:
+    """MIGRATE_TO_FUTURE_SERIES re-keys a candidate override to the new UID, RID unchanged (R-L3-006)."""
     policy = PolicyConfig(
-        this_and_future_split_mode=split_mode,
         split_future_override_mode=SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES,
     )
-    store = CheckedStore(
-        [
-            {
-                "type": "VEVENT",
-                "uid": "mig-1",
-                "recurrence_id": None,
-                "summary": "Sync",
-                "dtstart": "2025-05-01T09:00:00",
-                "dtend": "2025-05-01T10:00:00",
-                "rrule": "FREQ=DAILY;COUNT=4",
-            },
-            {
-                "type": "VEVENT",
-                "uid": "mig-1",
-                "recurrence_id": "20250504T090000",
-                "summary": "Day 4 Custom",
-                "dtstart": "2025-05-04T14:00:00",
-                "dtend": "2025-05-04T15:00:00",
-                "rrule": None,
-            },
-        ],
-        policy=policy,
-    )
+    initial = [
+        {
+            "type": "VEVENT",
+            "uid": "mig-1",
+            "recurrence_id": None,
+            "summary": "Sync",
+            "dtstart": "2025-05-01T09:00:00",
+            "dtend": "2025-05-01T10:00:00",
+            "rrule": "FREQ=DAILY;COUNT=4",
+        },
+        {
+            "type": "VEVENT",
+            "uid": "mig-1",
+            "recurrence_id": "20250504T090000",
+            "summary": "Day 4 Custom",
+            "dtstart": "2025-05-04T14:00:00",
+            "dtend": "2025-05-04T15:00:00",
+            "rrule": None,
+        },
+    ]
+    store = CheckedStore(initial, policy=policy)
     store.edit(
         uid="mig-1",
         recurrence_id="20250502T090000",
         recurrence_range="THIS_AND_FUTURE",
-        patch={"dtstart": "2025-05-02T10:00:00"},
+        patch={"summary": "Future"},
+        new_uid="mig-2",
     )
-    tl = assert_rfc_invariants(store, f"migrate_override_{split_mode.value}")
-    ov = next(
-        c
-        for c in store.components
-        if c.get("recurrence_id") is not None and not c.get("rrule")
-    )
-    assert (ov["recurrence_id"], ov["dtstart"], len(tl)) == (
-        "20250504T100000",
-        "2025-05-04T15:00:00",
+    tl = assert_rfc_invariants(store, "migrate_override_kept")
+    ov = next(c for c in store.components if c.get("recurrence_id") is not None)
+    assert (ov["uid"], ov["recurrence_id"], ov["dtstart"], len(tl)) == (
+        "mig-2",
+        "20250504T090000",
+        "2025-05-04T14:00:00",
         4,
     )
 
+    shifted = CheckedStore(initial, policy=policy)
+    shifted.edit(
+        uid="mig-1",
+        recurrence_id="20250502T090000",
+        recurrence_range="THIS_AND_FUTURE",
+        patch={"dtstart": "2025-05-02T10:00:00"},
+        new_uid="mig-2",
+    )
+    tl_shift = assert_rfc_invariants(shifted, "migrate_override_discarded")
+    assert not any(c.get("recurrence_id") for c in shifted.components)
+    assert [item["dtstart"] for item in tl_shift] == [
+        "2025-05-01T09:00:00",
+        "2025-05-02T10:00:00",
+        "2025-05-03T10:00:00",
+        "2025-05-04T10:00:00",
+    ]
+
 
 def test_clean_room_and_full_rule_citation_coverage() -> None:
-    """Verify clean-room oracle modules have 0 forbidden terms and cite all 39 rules."""
+    """Verify clean-room oracle modules have 0 forbidden terms and cite all 40 rules."""
     cleanroom_files = [
         "oracle_policy.py",
         "oracle_temporal.py",
@@ -470,5 +481,5 @@ def test_clean_room_and_full_rule_citation_coverage() -> None:
         )
 
     num_rules, citation_errors = verify_path(RULES_DIR)
-    assert num_rules == 39
+    assert num_rules == 40
     assert not citation_errors

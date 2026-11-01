@@ -1,9 +1,9 @@
-"""Adversarial regression suite for ReferenceStore covering all 96 PolicyConfigs and edge cases.
+"""Adversarial regression suite for ReferenceStore covering all 48 PolicyConfigs and edge cases.
 
 Covers DST fold/gap arithmetic, strict recurrence_id membership, canonical complete
 schema, arbitrary property preservation, NEW_UID NEXT/FIRST chain lifecycle,
 MIGRATE_TO_FUTURE_SERIES + LEGACY_DUAL_EXDATE, explicit COUNT on split, and earlier
-re-split tail bound recovery.
+re-split chain insertion.
 """
 
 # pylint: disable=duplicate-code,line-too-long
@@ -25,23 +25,20 @@ from .reference_oracle import (
     SingleEditExdateMode,
     SplitFutureOverrideMode,
     StoreError,
-    ThisAndFutureSplitMode,
     parse_temporal,
 )
 from .test_reference_oracle import assert_rfc_invariants
 
-ALL_96_POLICIES = [
+ALL_48_POLICIES = [
     PolicyConfig(
         series_edit_override_mode=s_edit,
-        this_and_future_split_mode=t_split,
         single_edit_exdate_mode=s_ex,
         series_reschedule_exception_mode=s_resched,
         split_future_override_mode=sp_ov,
         parent_delete_cascade_mode=p_del,
     )
-    for s_edit, t_split, s_ex, s_resched, sp_ov, p_del in itertools.product(
+    for s_edit, s_ex, s_resched, sp_ov, p_del in itertools.product(
         SeriesEditOverrideMode,
-        ThisAndFutureSplitMode,
         SingleEditExdateMode,
         SeriesRescheduleExceptionMode,
         SplitFutureOverrideMode,
@@ -52,23 +49,16 @@ ALL_96_POLICIES = [
 
 @pytest.mark.parametrize(
     "policy",
-    [
-        pytest.param(
-            p,
-            id=f"{p.series_edit_override_mode.value[:4]}-{p.this_and_future_split_mode.value[:3]}-"
-            f"{p.single_edit_exdate_mode.value[:3]}-{p.series_reschedule_exception_mode.value[:5]}-"
-            f"{p.split_future_override_mode.value[:3]}-{p.parent_delete_cascade_mode.value[:4]}",
-            marks=(
-                [pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=False)]
-                if p.this_and_future_split_mode == ThisAndFutureSplitMode.SHARED_UID
-                else []
-            ),
-        )
-        for p in ALL_96_POLICIES
+    ALL_48_POLICIES,
+    ids=[
+        f"{p.series_edit_override_mode.value[:4]}-{p.single_edit_exdate_mode.value[:3]}-"
+        f"{p.series_reschedule_exception_mode.value[:5]}-"
+        f"{p.split_future_override_mode.value[:3]}-{p.parent_delete_cascade_mode.value[:4]}"
+        for p in ALL_48_POLICIES
     ],
 )
-def test_full_96_policy_matrix_lifecycle(policy: PolicyConfig) -> None:
-    """Exercise all 6 PolicyConfig axes simultaneously across all 96 combinations."""
+def test_full_48_policy_matrix_lifecycle(policy: PolicyConfig) -> None:
+    """Exercise all 5 PolicyConfig axes simultaneously across all 48 combinations."""
     store = CheckedStore(policy=policy)
     store.add(
         {
@@ -147,14 +137,16 @@ def test_full_96_policy_matrix_lifecycle(policy: PolicyConfig) -> None:
 
     store.delete("m96-parent", now="2025-05-01T05:00:00Z")
     tl_del = assert_rfc_invariants(store, "m96_after_delete")
-    remaining_uids = [
+    remaining_uids = {
         c["uid"] for c in store.components if c.get("type") != "VTIMEZONE"
-    ]
+    }
+    # Whole-series delete addresses one UID; the split segment survives (R-L4-001).
+    segment_uid = "m96-parent-split-20250504T100000"
+    assert {item["uid"] for item in tl_del} == remaining_uids
     if policy.parent_delete_cascade_mode == ParentDeleteCascadeMode.CASCADE_DELETE:
-        assert remaining_uids == []
-        assert tl_del == []
+        assert remaining_uids == {segment_uid}
     else:
-        assert remaining_uids == ["m96-child"]
+        assert remaining_uids == {"m96-child", segment_uid}
 
 
 def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
@@ -371,9 +363,8 @@ def test_canonical_completeness_extra_props_and_propagate_metadata() -> None:
     assert tl[1]["x_note"] == "Bring deck"
 
 
-@pytest.mark.xfail(reason="default SHARED_UID split violates I-C-006", strict=True)
-def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
-    """Verify explicit COUNT in patch is respected (H3), prior segment bumps sequence (L4), and earlier re-split recovers tail (H2)."""
+def test_explicit_split_count_and_earlier_resplit_inserts_segment() -> None:
+    """Explicit COUNT in patch is respected, the truncated original bumps SEQUENCE, and an earlier re-split inserts a segment without data loss (R-L3-004, R-L3-008)."""
     store = CheckedStore()
     store.add(
         {
@@ -393,8 +384,10 @@ def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
         now="2025-05-01T01:00:00Z",
     )
     tl_explicit = assert_rfc_invariants(store, "explicit_count_split")
-    prior = next(c for c in store.components if c["recurrence_id"] is None)
-    future = next(c for c in store.components if c["recurrence_id"] is not None)
+    prior = next(c for c in store.components if c["uid"] == "cnt-1")
+    future = next(c for c in store.components if c["uid"] != "cnt-1")
+    assert future["recurrence_id"] is None
+    assert (future["sequence"], future["created"]) == (0, "2025-05-01T01:00:00Z")
     assert prior["sequence"] == 1
     assert prior["last_modified"] == "2025-05-01T01:00:00Z"
     assert future["rrule"] == "FREQ=DAILY;COUNT=10"
@@ -422,13 +415,26 @@ def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
         recurrence_id="20250502T090000",
         recurrence_range="THIS_AND_FUTURE",
     )
-    tl_rs = assert_rfc_invariants(resplit, "earlier_resplit_tail_recovery")
-    assert len(tl_rs) == 6
-    assert [occ["summary"] for occ in tl_rs] == ["V1", *(["V3 from Day 2"] * 5)]
+    tl_rs = assert_rfc_invariants(resplit, "earlier_resplit_inserts_segment")
+    assert [occ["summary"] for occ in tl_rs] == [
+        "V1",
+        "V3 from Day 2",
+        "V3 from Day 2",
+        *(["V2 from Day 4"] * 3),
+    ]
+    links = {c["uid"]: c["related_to"] for c in resplit.components}
+    assert links == {
+        "rs-1": [{"uid": "rs-1-split-20250502T090000", "reltype": "NEXT"}],
+        "rs-1-split-20250502T090000": [
+            {"uid": "rs-1-split-20250504T090000", "reltype": "NEXT"},
+            {"uid": "rs-1", "reltype": "FIRST"},
+        ],
+        "rs-1-split-20250504T090000": [{"uid": "rs-1", "reltype": "FIRST"}],
+    }
 
 
 def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None:
-    """Verify UTC EXDATE on TZID series survives filtering (M4) and MIGRATE + LEGACY_DUAL_EXDATE preserves exdate (C5)."""
+    """Verify UTC EXDATE on TZID series survives filtering (M4) and MIGRATE + LEGACY_DUAL_EXDATE re-keys the override with its EXDATE (C5)."""
     store_utc_ex = CheckedStore(
         [
             {
@@ -448,7 +454,6 @@ def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None
     assert len(tl_u) == 2
 
     pol = PolicyConfig(
-        this_and_future_split_mode=ThisAndFutureSplitMode.NEW_UID,
         single_edit_exdate_mode=SingleEditExdateMode.LEGACY_DUAL_EXDATE,
         split_future_override_mode=SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES,
     )
@@ -470,7 +475,7 @@ def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None
     )
     st_mig.edit(
         "mig-dual-1",
-        {"dtstart": "2025-05-02T10:00:00"},
+        {"summary": "Daily v2"},
         recurrence_id="20250502T090000",
         recurrence_range="THIS_AND_FUTURE",
     )
@@ -481,7 +486,8 @@ def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None
     )
     migrated_ov = next(c for c in st_mig.components if c["recurrence_id"] is not None)
     assert migrated_ov["uid"] == future_master["uid"]
-    assert future_master["exdate"] == ["2025-05-04T10:00:00"]
+    assert future_master["exdate"] == ["2025-05-04T09:00:00"]
+    assert migrated_ov["recurrence_id"] == "20250504T090000"
 
     st_mig.delete("mig-dual-1")
-    assert st_mig.components == []
+    assert {c["uid"] for c in st_mig.components} == {future_master["uid"]}

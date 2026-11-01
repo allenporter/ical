@@ -22,13 +22,28 @@
       "line_start": 1395,
       "line_end": 1403,
       "verbatim_quote": "The parameter specifies the hierarchical relationship type of the calendar component referenced by the property. The parameter value can be PARENT, to indicate that the referenced calendar component is a superior of calendar component; CHILD to indicate that the referenced calendar component is a subordinate of the calendar component; or SIBLING to indicate that the referenced calendar component is a peer of the calendar component. If this parameter is not specified on an allowable property, the default relationship type is PARENT."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 372,
+      "line_end": 374,
+      "verbatim_quote": "Note that the relationship types of PARENT, CHILD, and SIBLING establish a hierarchical relationship.  The new types of FIRST and NEXT are an ordering relationship."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 9.1",
+      "line_start": 720,
+      "line_end": 721,
+      "verbatim_quote": "Deletion of the target component, for example, the target of a FIRST, NEXT, or temporal relationship, can result in broken links."
     }
   ],
-  "rationale": "RFC 5545 Section 3.8.4.5 states that when a PARENT calendar component is deleted, there is an implied impact to related subordinate (CHILD) components, leaving it to the target calendar system to maintain any property implications of this relationship. RFC 5545 does not mandate any particular behavior, so what happens to children is recorded as `parent_delete_cascade_mode`. Under the `CASCADE_DELETE` option, full deletion of a parent component (`uid`) removes any subordinate components in the same store whose `related_to` list references that parent `uid` as a PARENT relationship. Per RFC 5545 Section 3.2.15, a PARENT relationship is an explicit `RELTYPE=PARENT`, an omitted `RELTYPE` (default PARENT), or an unrecognized iana-token/x-name `RELTYPE` (which applications MUST treat as PARENT). Which RELTYPE values the store accepts is mode-independent and specified separately by R-L5-009.",
-  "store_implication": "When `delete` completely removes a parent component's `UID` from the store (i.e., when `recurrence_id` is None, or when `THIS_AND_FUTURE` targets the first instance of the series, or when the component is non-recurring), all components in the store whose `related_to` list contains a PARENT relationship (explicit `PARENT`, omitted `RELTYPE`, or an unrecognized `RELTYPE` value) to the deleted component's `UID` must also be removed from the store and disappear from the expanded timeline.",
+  "rationale": "RFC 5545 Section 3.8.4.5 states that when a PARENT calendar component is deleted, there is an implied impact to related subordinate (CHILD) components, leaving it to the target calendar system to maintain any property implications of this relationship. RFC 5545 does not mandate any particular behavior, so what happens to children is recorded as `parent_delete_cascade_mode`. Under the `CASCADE_DELETE` option, full deletion of a parent component (`uid`) removes any subordinate components in the same store whose `related_to` list references that parent `uid` as a PARENT relationship. Per RFC 5545 Section 3.2.15 and RFC 9253 Section 5 (see R-L5-009), a PARENT relationship is an explicit `RELTYPE=PARENT`, an omitted `RELTYPE` (default PARENT), or an unrecognized iana-token/x-name `RELTYPE`, whereas `CHILD`, `SIBLING`, `FIRST`, and `NEXT` are recognized non-`PARENT` relationship types (`FIRST` and `NEXT` being ordering relations between split series segments per R-L3-001) and NEVER trigger `CASCADE_DELETE`.",
+  "store_implication": "When `delete` completely removes a component's `UID` from the store (i.e., when `recurrence_id` is None, or when `THIS_AND_FUTURE` targets the first instance of the series, or when the component is non-recurring), all components in the store whose `related_to` list contains a PARENT relationship (explicit `PARENT`, omitted `RELTYPE`, or an unrecognized `RELTYPE` value) to the deleted component's `UID` must also be removed from the store and disappear from the expanded timeline. Recognized non-`PARENT` relations (`CHILD`, `SIBLING`, `FIRST`, `NEXT`) MUST NOT trigger cascading deletion.",
   "edge_cases_and_counterexamples": [
     "Deleting a parent component cascades to multiple subordinate children referencing the parent's `UID` via `RELTYPE=PARENT` while leaving unrelated components untouched.",
-    "Deleting a recurring parent series at its first instance with `THIS_AND_FUTURE` range normalizes to a full-series deletion (Rule R-L3-002), which removes the parent `UID` completely and therefore cascades to delete its `RELTYPE=PARENT` children.",
+    "Deleting either segment of a `THIS_AND_FUTURE` split series (linked via `RELTYPE=NEXT` on the prior segment and `RELTYPE=FIRST` on the future segment) under `CASCADE_DELETE` removes only the targeted segment's `UID` (and any `RELTYPE=PARENT` children of that `UID`), NEVER cascading across `NEXT` or `FIRST` links to delete other split segments.",
+    "Deleting a recurring parent series at its first instance with `THIS_AND_FUTURE` range normalizes to a full-series deletion of that `UID` (Rule R-L3-002), which removes the parent `UID` completely and therefore cascades to delete its `RELTYPE=PARENT` children.",
     "Open question: a component A carrying `RELATED-TO;RELTYPE=CHILD:B` declares B as A's subordinate from the superior's side. This rule only follows PARENT references held by the subordinate, so deleting A does not cascade to B here; whether CHILD-declared links should also cascade is not yet specified."
   ],
   "scenarios": [
@@ -79,6 +94,88 @@
           "uid": "unrelated-1",
           "summary": "Other task",
           "dtstart": "2025-05-01T11:00:00"
+        }
+      ]
+    },
+    {
+      "name": "delete_split_segment_does_not_cascade_across_next_or_first_links",
+      "description": "Under CASCADE_DELETE, deleting the first or second segment of a split series removes its RELTYPE=PARENT child but never cascades across RELTYPE=NEXT or RELTYPE=FIRST links to delete the other split segment.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "split-seg-1",
+          "summary": "Standup (Part 1)",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "related_to": [
+            {
+              "uid": "split-seg-2",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "split-seg-2",
+          "summary": "Standup (Part 2)",
+          "dtstart": "2025-05-02T10:00:00",
+          "dtend": "2025-05-02T10:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "related_to": [
+            {
+              "uid": "split-seg-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "child-of-seg-1",
+          "summary": "Prep for Part 1",
+          "dtstart": "2025-05-01T08:30:00",
+          "dtend": "2025-05-01T09:00:00",
+          "related_to": [
+            {
+              "uid": "split-seg-1",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "split-seg-1",
+        "recurrence_id": null
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "split-seg-2",
+          "summary": "Standup (Part 2)",
+          "dtstart": "2025-05-02T10:00:00",
+          "dtend": "2025-05-02T10:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "related_to": [
+            {
+              "uid": "split-seg-1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "split-seg-2",
+          "recurrence_id": "20250502T100000",
+          "dtstart": "2025-05-02T10:00:00",
+          "summary": "Standup (Part 2)"
+        },
+        {
+          "uid": "split-seg-2",
+          "recurrence_id": "20250503T100000",
+          "dtstart": "2025-05-03T10:00:00",
+          "summary": "Standup (Part 2)"
         }
       ]
     }
