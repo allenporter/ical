@@ -72,6 +72,22 @@ def _ensure_timezone(
         ) from err
 
 
+def _parse_recurrence_id(
+    recurrence_id: str,
+    dtstart: datetime.date | datetime.datetime | None,
+) -> datetime.date | datetime.datetime:
+    """Parse recurrence_id and align its timezone with dtstart if needed."""
+    dt_val = RecurrenceId.to_value(recurrence_id)
+    if (
+        isinstance(dt_val, datetime.datetime)
+        and isinstance(dtstart, datetime.datetime)
+        and dt_val.tzinfo is None
+        and dtstart.tzinfo is not None
+    ):
+        dt_val = dt_val.replace(tzinfo=dtstart.tzinfo)
+    return dt_val
+
+
 def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
     """Return True if the item is an instance of a recurring event."""
     if item.uid != uid:
@@ -88,18 +104,7 @@ def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
     _LOGGER.debug(
         "Expanding item %s %s to look for match of %s", uid, item.dtstart, recurrence_id
     )
-    dtstart = RecurrenceId.to_value(recurrence_id)
-    if isinstance(dtstart, datetime.datetime) and isinstance(
-        item.dtstart, datetime.datetime
-    ):
-        if dtstart.tzinfo is not None:
-            # The recurrence_id carries an explicit TZID: the datetime is already
-            # tz-aware, so no further adjustment is needed for comparison.
-            pass
-        elif item.dtstart.tzinfo is not None:
-            # No explicit TZID was supplied; fall back to the item's own timezone
-            # so the wall-clock time comparison is correct.
-            dtstart = dtstart.replace(tzinfo=item.dtstart.tzinfo)
+    dtstart = _parse_recurrence_id(recurrence_id, item.dtstart)
     for dt in cast(Any, item).as_rrule() or ():
         if isinstance(dt, datetime.datetime):
             if dt.date() > _MAX_SCAN_DATE:
@@ -166,25 +171,41 @@ def _prepare_update(
                 "recurrence_id": recurrence_id,
             }
         )
+        # Adjust start and end/due time of the event
+        dtstart: datetime.datetime | datetime.date = _parse_recurrence_id(
+            recurrence_id, store_item.dtstart
+        )
+        if item.dtstart:
+            dtstart = item.dtstart
+        update["dtstart"] = dtstart
+        if (
+            isinstance(store_item, Event)
+            and store_item.dtend
+            and "dtend" not in partial_update
+            and "duration" not in partial_update
+        ):
+            update["dtend"] = dtstart + store_item.computed_duration
+        elif (
+            isinstance(store_item, Todo)
+            and store_item.due
+            and "due" not in partial_update
+            and "duration" not in partial_update
+        ):
+            update["due"] = dtstart + store_item.computed_duration
+
         if recurrence_range == Range.NONE:
             # The new event copied from the original is a single instance,
             # which is not recurring.
             update["rrule"] = None
+            if "exdate" not in partial_update:
+                update["exdate"] = []
+            if "rdate" not in partial_update:
+                update["rdate"] = []
         else:
             # Overwriting with a new recurring event
             update["created"] = item.dtstamp
-
-            # Adjust start and end time of the event
-            dtstart: datetime.datetime | datetime.date = RecurrenceId.to_value(
-                recurrence_id
-            )
-            if item.dtstart:
-                dtstart = item.dtstart
-            update["dtstart"] = dtstart
-            # Event either has a duration (which should already be set) or has
-            # an explicit end which needs to be realigned to new start time.
-            if isinstance(store_item, Event) and store_item.dtend:
-                update["dtend"] = dtstart + store_item.computed_duration
+            if "exdate" not in partial_update:
+                update["exdate"] = []
     return update
 
 
@@ -307,7 +328,8 @@ class GenericStore(Generic[_T]):
         if (
             recurrence_id
             and recurrence_range == Range.THIS_AND_FUTURE
-            and RecurrenceId.to_value(recurrence_id) == store_item.dtstart
+            and _parse_recurrence_id(recurrence_id, store_item.dtstart)
+            == store_item.dtstart
         ):
             # Editing the first instance and all forward is the same as editing the
             # entire series so don't bother forking a new event
@@ -329,20 +351,12 @@ class GenericStore(Generic[_T]):
             self._items.remove(store_item)
             return
 
-        exdate = RecurrenceId.to_value(recurrence_id)
+        exdate = _parse_recurrence_id(recurrence_id, store_item.dtstart)
         if recurrence_range == Range.NONE:
             # A single recurrence instance is removed. Add an exclusion to
             # to the event.
-            if (
-                isinstance(exdate, datetime.datetime)
-                and isinstance(store_item.dtstart, datetime.datetime)
-                and exdate.tzinfo is None
-                and store_item.dtstart.tzinfo is not None
-            ):
-                # No explicit TZID was carried by the recurrence_id, so align
-                # the exdate to the item's timezone for a correct comparison.
-                exdate = exdate.replace(tzinfo=store_item.dtstart.tzinfo)
-            store_item.exdate.append(exdate)
+            if exdate not in store_item.exdate:
+                store_item.exdate.append(exdate)
             return
 
         # Assumes any recurrence deletion is valid, and that overwriting
@@ -412,7 +426,8 @@ class GenericStore(Generic[_T]):
         if (
             recurrence_id
             and recurrence_range == Range.THIS_AND_FUTURE
-            and RecurrenceId.to_value(recurrence_id) == store_item.dtstart
+            and _parse_recurrence_id(recurrence_id, store_item.dtstart)
+            == store_item.dtstart
         ):
             # Editing the first instance and all forward is the same as editing the
             # entire series so don't bother forking a new item
@@ -440,15 +455,16 @@ class GenericStore(Generic[_T]):
             # The recurring item count needs to skip any items that
             # come before the start of the new item. Use a RulesetIterable
             # to handle workarounds for dateutil.rrule limitations.
-            dtstart: datetime.date | datetime.datetime = update["dtstart"]
+            orig_dtstart = _parse_recurrence_id(recurrence_id, store_item.dtstart)
+            base_rrule = store_item.rrule or new_item.rrule
             ruleset = RulesetIterable(
                 store_item.dtstart,
-                [new_item.rrule.as_rrule(store_item.dtstart)],
+                [base_rrule.as_rrule(store_item.dtstart)],
                 [],
                 [],
             )
             for dtvalue in ruleset:
-                if dtvalue >= dtstart:
+                if dtvalue >= orig_dtstart:
                     break
                 new_item.rrule.count = new_item.rrule.count - 1
 
