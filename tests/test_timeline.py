@@ -765,3 +765,262 @@ def test_timeline_dst_fallback_ordering_and_queries() -> None:
         "All Day",
         "Second (01:15 PST)",
     ]
+
+
+def test_timeline_issue_761_reproduction() -> None:
+    """Direct reproduction from GitHub issue #761."""
+    tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="First (01:45 PDT)",
+            start=datetime.datetime(2023, 11, 5, 1, 45, tzinfo=tz, fold=0),
+            end=datetime.datetime(2023, 11, 5, 1, 55, tzinfo=tz, fold=0),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Second (01:15 PST)",
+            start=datetime.datetime(2023, 11, 5, 1, 15, tzinfo=tz, fold=1),
+            end=datetime.datetime(2023, 11, 5, 1, 30, tzinfo=tz, fold=1),
+        )
+    )
+
+    timeline = cal.timeline_tz(tz)
+
+    assert [e.summary for e in timeline.on_date(datetime.date(2023, 11, 5))] == [
+        "First (01:45 PDT)",
+        "Second (01:15 PST)",
+    ]
+    assert [
+        e.summary
+        for e in timeline.active_after(
+            datetime.datetime(2023, 11, 5, 1, 50, tzinfo=tz, fold=0)
+        )
+    ] == [
+        "First (01:45 PDT)",
+        "Second (01:15 PST)",
+    ]
+    assert [
+        e.summary
+        for e in timeline.overlapping(
+            datetime.datetime(2023, 11, 5, 1, 55, tzinfo=tz, fold=0),
+            datetime.datetime(2023, 11, 5, 1, 20, tzinfo=tz, fold=1),
+        )
+    ] == ["Second (01:15 PST)"]
+
+
+def test_timeline_dst_fallback_scheduler_sweep() -> None:
+    """Simulate a scheduler polling active_after, at_instant, and 15m windows across fall-back."""
+    tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    cal = Calendar()
+    cal.events.extend(
+        [
+            Event(
+                summary="Before Fold (00:30 PDT)",
+                start=datetime.datetime(2023, 11, 5, 0, 30, tzinfo=tz, fold=0),
+                end=datetime.datetime(2023, 11, 5, 0, 50, tzinfo=tz, fold=0),
+            ),
+            Event(
+                summary="Pass 1 (01:10 PDT)",
+                start=datetime.datetime(2023, 11, 5, 1, 10, tzinfo=tz, fold=0),
+                end=datetime.datetime(2023, 11, 5, 1, 25, tzinfo=tz, fold=0),
+            ),
+            Event(
+                summary="Straddling Fold (01:45 PDT -> 01:15 PST)",
+                start=datetime.datetime(2023, 11, 5, 1, 45, tzinfo=tz, fold=0),
+                end=datetime.datetime(2023, 11, 5, 1, 15, tzinfo=tz, fold=1),
+            ),
+            Event(
+                summary="Pass 2 (01:10 PST)",
+                start=datetime.datetime(2023, 11, 5, 1, 10, tzinfo=tz, fold=1),
+                end=datetime.datetime(2023, 11, 5, 1, 25, tzinfo=tz, fold=1),
+            ),
+            Event(
+                summary="After Fold (02:05 PST)",
+                start=datetime.datetime(2023, 11, 5, 2, 5, tzinfo=tz, fold=0),
+                end=datetime.datetime(2023, 11, 5, 2, 20, tzinfo=tz, fold=0),
+            ),
+        ]
+    )
+    timeline = cal.timeline_tz(tz)
+
+    expected_order = [
+        "Before Fold (00:30 PDT)",
+        "Pass 1 (01:10 PDT)",
+        "Straddling Fold (01:45 PDT -> 01:15 PST)",
+        "Pass 2 (01:10 PST)",
+        "After Fold (02:05 PST)",
+    ]
+    assert [e.summary for e in timeline] == expected_order
+
+    # Step through physical time in UTC and convert each probe to local tz (preserving fold)
+    probes = [
+        (
+            datetime.datetime(2023, 11, 5, 7, 45, tzinfo=datetime.UTC).astimezone(tz),
+            "Before Fold (00:30 PDT)",
+            ["Before Fold (00:30 PDT)"],
+        ),
+        (
+            datetime.datetime(2023, 11, 5, 8, 15, tzinfo=datetime.UTC).astimezone(tz),
+            "Pass 1 (01:10 PDT)",
+            ["Pass 1 (01:10 PDT)"],
+        ),
+        (
+            datetime.datetime(2023, 11, 5, 8, 50, tzinfo=datetime.UTC).astimezone(tz),
+            "Straddling Fold (01:45 PDT -> 01:15 PST)",
+            ["Straddling Fold (01:45 PDT -> 01:15 PST)"],
+        ),
+        (
+            # 09:12Z == 01:12 PST (fold=1): both the straddling event and Pass 2 are active
+            datetime.datetime(2023, 11, 5, 9, 12, tzinfo=datetime.UTC).astimezone(tz),
+            "Straddling Fold (01:45 PDT -> 01:15 PST)",
+            ["Straddling Fold (01:45 PDT -> 01:15 PST)", "Pass 2 (01:10 PST)"],
+        ),
+        (
+            # 09:20Z == 01:20 PST (fold=1): Pass 1 (01:10-01:25 PDT) must NOT re-trigger
+            datetime.datetime(2023, 11, 5, 9, 20, tzinfo=datetime.UTC).astimezone(tz),
+            "Pass 2 (01:10 PST)",
+            ["Pass 2 (01:10 PST)"],
+        ),
+        (
+            # 09:45Z == 01:45 PST (fold=1): Straddling Fold (01:45 PDT) must NOT re-trigger
+            datetime.datetime(2023, 11, 5, 9, 45, tzinfo=datetime.UTC).astimezone(tz),
+            "After Fold (02:05 PST)",
+            [],
+        ),
+    ]
+    for local_now, expected_next, expected_active_now in probes:
+        nxt = next(timeline.active_after(local_now), None)
+        assert nxt is not None and nxt.summary == expected_next
+        assert [e.summary for e in timeline.at_instant(local_now)] == (
+            expected_active_now
+        )
+
+
+def test_timeline_dst_fallback_mixed_ics_utc_and_local_zones() -> None:
+    """Test ICS calendar mixing UTC ('Z'), TZID, floating, and zero-duration events across fall-back."""
+    ics = "\r\n".join(
+        [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Test//Test//EN",
+            # Floating local time: 01:20 in viewer tz -> 01:20 PDT (fold=0, 08:20Z)
+            "BEGIN:VEVENT",
+            "UID:floating@example.com",
+            "SUMMARY:Floating 01:20",
+            "DTSTART:20231105T012000",
+            "DTEND:20231105T012500",
+            "DTSTAMP:20231101T000000Z",
+            "END:VEVENT",
+            # TZID=America/Los_Angeles: RFC 5545 §3.3.5 first occurrence -> 01:30 PDT (fold=0, 08:30Z)
+            "BEGIN:VEVENT",
+            "UID:la-tzid-zero@example.com",
+            "SUMMARY:LA Zero-Duration 01:30 PDT",
+            "DTSTART;TZID=America/Los_Angeles:20231105T013000",
+            "DTSTAMP:20231101T000000Z",
+            "END:VEVENT",
+            # Unambiguous UTC event during LA's repeated hour: 09:15Z == 01:15 PST (fold=1)
+            "BEGIN:VEVENT",
+            "UID:utc-fold1@example.com",
+            "SUMMARY:UTC Event at 01:15 PST (09:15Z)",
+            "DTSTART:20231105T091500Z",
+            "DTEND:20231105T093000Z",
+            "DTSTAMP:20231101T000000Z",
+            "END:VEVENT",
+            # America/New_York event at 04:45 EST (already past NY's own fallback) == 09:45Z (01:45 PST fold=1)
+            "BEGIN:VEVENT",
+            "UID:ny-post-fold@example.com",
+            "SUMMARY:NY 04:45 EST (01:45 PST)",
+            "DTSTART;TZID=America/New_York:20231105T044500",
+            "DTEND;TZID=America/New_York:20231105T050000",
+            "DTSTAMP:20231101T000000Z",
+            "END:VEVENT",
+            "END:VCALENDAR",
+            "",
+        ]
+    )
+    cal = IcsCalendarStream.calendar_from_ics(ics)
+    la_tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    timeline = cal.timeline_tz(la_tz)
+
+    assert [e.summary for e in timeline.on_date(datetime.date(2023, 11, 5))] == [
+        "Floating 01:20",
+        "LA Zero-Duration 01:30 PDT",
+        "UTC Event at 01:15 PST (09:15Z)",
+        "NY 04:45 EST (01:45 PST)",
+    ]
+
+    # Cross-zone zero-duration lookup at 08:30Z matches 01:30 PDT (fold=0), not 01:30 PST (fold=1)
+    assert [
+        e.summary
+        for e in timeline.at_instant(
+            datetime.datetime(2023, 11, 5, 8, 30, tzinfo=datetime.UTC)
+        )
+    ] == ["LA Zero-Duration 01:30 PDT"]
+    assert [
+        e.summary
+        for e in timeline.at_instant(
+            datetime.datetime(2023, 11, 5, 1, 30, tzinfo=la_tz, fold=1)
+        )
+    ] == []
+
+
+def test_timeline_included_across_dst_fallback_does_not_break_early() -> None:
+    """Test that included() does not break early when an overflowing event starts in fold=0."""
+    tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    # Overflowing event starts at 01:40 PDT (fold=0, 08:40Z) and ends at 01:50 PST (fold=1, 09:50Z).
+    # Query ends at 01:35 PST (fold=1, 09:35Z). In wall time, 01:40 > 01:35 would falsely break
+    # before reaching the included event at 01:10-01:30 PST (fold=1, 09:10Z-09:30Z).
+    ev_overflow = Event(
+        summary="Overflow Across Fold",
+        start=datetime.datetime(2023, 11, 5, 1, 40, tzinfo=tz, fold=0),
+        end=datetime.datetime(2023, 11, 5, 1, 50, tzinfo=tz, fold=1),
+    )
+    ev_inside_fold1 = Event(
+        summary="Inside Fold 1",
+        start=datetime.datetime(2023, 11, 5, 1, 10, tzinfo=tz, fold=1),
+        end=datetime.datetime(2023, 11, 5, 1, 30, tzinfo=tz, fold=1),
+    )
+    tl = calendar_timeline([ev_overflow, ev_inside_fold1], tz)
+    result = list(
+        tl.included(
+            datetime.datetime(2023, 11, 5, 0, 30, tzinfo=tz, fold=0),
+            datetime.datetime(2023, 11, 5, 1, 35, tzinfo=tz, fold=1),
+        )
+    )
+    assert [e.summary for e in result] == ["Inside Fold 1"]
+
+
+def test_timeline_dst_fallback_southern_hemisphere() -> None:
+    """Test DST fall-back ordering and queries in Southern Hemisphere (Australia/Sydney)."""
+    # 2024-04-07 in Australia/Sydney: 03:00 AEDT (+11:00) falls back to 02:00 AEST (+10:00)
+    sydney = zoneinfo.ZoneInfo("Australia/Sydney")
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="AEDT (02:45+11)",
+            start=datetime.datetime(2024, 4, 7, 2, 45, tzinfo=sydney, fold=0),
+            end=datetime.datetime(2024, 4, 7, 2, 55, tzinfo=sydney, fold=0),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="AEST (02:15+10)",
+            start=datetime.datetime(2024, 4, 7, 2, 15, tzinfo=sydney, fold=1),
+            end=datetime.datetime(2024, 4, 7, 2, 30, tzinfo=sydney, fold=1),
+        )
+    )
+    tl = cal.timeline_tz(sydney)
+
+    assert [e.summary for e in tl.on_date(datetime.date(2024, 4, 7))] == [
+        "AEDT (02:45+11)",
+        "AEST (02:15+10)",
+    ]
+    assert [
+        e.summary
+        for e in tl.overlapping(
+            datetime.datetime(2024, 4, 7, 2, 55, tzinfo=sydney, fold=0),
+            datetime.datetime(2024, 4, 7, 2, 20, tzinfo=sydney, fold=1),
+        )
+    ] == ["AEST (02:15+10)"]

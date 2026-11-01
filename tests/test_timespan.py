@@ -12,15 +12,10 @@ LOS_ANGELES = zoneinfo.ZoneInfo("America/Los_Angeles")
 
 
 def test_timespan_requires_tzinfo() -> None:
-    """Test that Timespan requires timezone-aware start and end datetimes."""
+    """Test that Timespan requires a timezone-aware start datetime."""
     with pytest.raises(ValueError, match="Start time did not have a timezone"):
         Timespan(
             datetime.datetime(2025, 5, 1, 9, 0),
-            datetime.datetime(2025, 5, 1, 10, 0, tzinfo=UTC),
-        )
-    with pytest.raises(ValueError, match="End time did not have a timezone"):
-        Timespan(
-            datetime.datetime(2025, 5, 1, 9, 0, tzinfo=UTC),
             datetime.datetime(2025, 5, 1, 10, 0),
         )
 
@@ -226,3 +221,12 @@ def test_dst_cross_timezone_fold_equality_and_tie_break() -> None:
     )
     assert local_zero.includes(utc_instant)
     assert not local_zero.includes(local_zero_fold1)
+
+
+def test_timespan_requires_end_tzinfo() -> None:
+    """Test that Timespan requires a timezone-aware end datetime."""
+    with pytest.raises(ValueError, match="End time did not have a timezone"):
+        Timespan(
+            datetime.datetime(2025, 5, 1, 9, 0, tzinfo=UTC),
+            datetime.datetime(2025, 5, 1, 10, 0),
+        )
