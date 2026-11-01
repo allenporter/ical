@@ -1,0 +1,194 @@
+{
+  "id": "I-T-004",
+  "title": "Metadata-Only THIS_AND_FUTURE Edit Preserves Occurrence Slots",
+  "scope": "TRANSITION",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.1.3",
+      "line_start": 767,
+      "line_end": 775,
+      "verbatim_quote": "If an object is split to make a \"this and future\" change to a recurrence, the original object MUST be truncated to end at the previous occurrence before this split, and a new object is created to represent all the occurrences after the split. A \"next\" relation MUST be set on the original object's \"relatedTo\" property for the UID of the new object. A \"first\" relation for the UID of the first object in the series MUST be set on the new object. Clients can then follow these UIDs to get the complete set of objects if the user wishes to modify them all at once."
+    }
+  ],
+  "statement": "After a successful THIS_AND_FUTURE edit whose patch touches none of DTSTART, DTEND, DUE, DURATION, RRULE, RDATE, EXDATE, the set of occurrence slots (RECURRENCE-ID instants) of the original UID plus any newly created UIDs equals the original UID's slot set before the edit.",
+  "rationale": "RFC 8984 Section 4.1.3 describes a split as truncating the original and creating a new object 'to represent all the occurrences after the split': a split that only changes metadata must neither lose nor invent occurrences (this catches UNTIL/COUNT arithmetic errors). Slots rather than actual starts are compared because under split_future_override_mode=DISCARD a rescheduled override at or after the split intentionally reverts to its slot.",
+  "check": "taf_metadata_edit_preserves_slots",
+  "positive_examples": [
+    {
+      "name": "split_preserves_three_slots",
+      "description": "May 1 | May 2, May 3.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1-b",
+          "summary": "New",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "s1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "split_loses_last_slot",
+      "description": "New segment COUNT=1 drops May 3.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1-b",
+          "summary": "New",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=1",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "s1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "split_duplicates_boundary",
+      "description": "Original still generates May 2 and new COUNT=3 adds May 4.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T090000",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1-b",
+          "summary": "New",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "s1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

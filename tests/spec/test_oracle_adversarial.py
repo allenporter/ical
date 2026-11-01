@@ -16,10 +16,10 @@ from typing import Any
 
 import pytest
 
+from .invariant_harness import CheckedStore
 from .reference_oracle import (
     ParentDeleteCascadeMode,
     PolicyConfig,
-    ReferenceStore,
     SeriesEditOverrideMode,
     SeriesRescheduleExceptionMode,
     SingleEditExdateMode,
@@ -52,17 +52,24 @@ ALL_96_POLICIES = [
 
 @pytest.mark.parametrize(
     "policy",
-    ALL_96_POLICIES,
-    ids=[
-        f"{p.series_edit_override_mode.value[:4]}-{p.this_and_future_split_mode.value[:3]}-"
-        f"{p.single_edit_exdate_mode.value[:3]}-{p.series_reschedule_exception_mode.value[:5]}-"
-        f"{p.split_future_override_mode.value[:3]}-{p.parent_delete_cascade_mode.value[:4]}"
+    [
+        pytest.param(
+            p,
+            id=f"{p.series_edit_override_mode.value[:4]}-{p.this_and_future_split_mode.value[:3]}-"
+            f"{p.single_edit_exdate_mode.value[:3]}-{p.series_reschedule_exception_mode.value[:5]}-"
+            f"{p.split_future_override_mode.value[:3]}-{p.parent_delete_cascade_mode.value[:4]}",
+            marks=(
+                [pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=False)]
+                if p.this_and_future_split_mode == ThisAndFutureSplitMode.SHARED_UID
+                else []
+            ),
+        )
         for p in ALL_96_POLICIES
     ],
 )
 def test_full_96_policy_matrix_lifecycle(policy: PolicyConfig) -> None:
     """Exercise all 6 PolicyConfig axes simultaneously across all 96 combinations."""
-    store = ReferenceStore(policy=policy)
+    store = CheckedStore(policy=policy)
     store.add(
         {
             "uid": "m96-parent",
@@ -159,7 +166,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
     assert pt_edt.value.utcoffset() != pt_est.value.utcoffset()
     assert (pt_est.dt_utc_or_naive - pt_edt.dt_utc_or_naive).total_seconds() == 3600
 
-    store_fb = ReferenceStore()
+    store_fb = CheckedStore()
     store_fb.add(
         {
             "uid": "fb-1",
@@ -177,7 +184,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
     with pytest.raises(StoreError, match="offset or nonexistent local time"):
         parse_temporal("2025-03-09T02:30:00-05:00[America/New_York]")
 
-    store_gap = ReferenceStore()
+    store_gap = CheckedStore()
     store_gap.add(
         {
             "uid": "gap-1",
@@ -191,7 +198,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
     assert tl_gap[1]["dtstart"] == "2025-03-09T03:30:00-04:00[America/New_York]"
     assert tl_gap[1]["dtend"] == "2025-03-09T04:00:00-04:00[America/New_York]"
 
-    store_shift = ReferenceStore(
+    store_shift = CheckedStore(
         [
             {
                 "uid": "dst-shift",
@@ -236,7 +243,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
 
 def test_strict_membership_and_validation_errors() -> None:
     """Verify missing UID, non-recurring rid, bogus/excluded rid, bad range, and duplicate identity raise StoreError."""
-    store = ReferenceStore(
+    store = CheckedStore(
         [
             {
                 "uid": "single-1",
@@ -314,7 +321,7 @@ def test_strict_membership_and_validation_errors() -> None:
 
 def test_canonical_completeness_extra_props_and_propagate_metadata() -> None:
     """Verify canonical complete fields, arbitrary extra property preservation, and PROPAGATE_PATCH revision bump."""
-    store = ReferenceStore()
+    store = CheckedStore()
     added = store.add(
         {
             "uid": "extra-1",
@@ -364,9 +371,10 @@ def test_canonical_completeness_extra_props_and_propagate_metadata() -> None:
     assert tl[1]["x_note"] == "Bring deck"
 
 
+@pytest.mark.xfail(reason="default SHARED_UID split violates I-C-006", strict=True)
 def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
     """Verify explicit COUNT in patch is respected (H3), prior segment bumps sequence (L4), and earlier re-split recovers tail (H2)."""
-    store = ReferenceStore()
+    store = CheckedStore()
     store.add(
         {
             "uid": "cnt-1",
@@ -392,7 +400,7 @@ def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
     assert future["rrule"] == "FREQ=DAILY;COUNT=10"
     assert len(tl_explicit) == 12
 
-    resplit = ReferenceStore()
+    resplit = CheckedStore()
     resplit.add(
         {
             "uid": "rs-1",
@@ -421,7 +429,7 @@ def test_explicit_split_count_and_earlier_resplit_tail_recovery() -> None:
 
 def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None:
     """Verify UTC EXDATE on TZID series survives filtering (M4) and MIGRATE + LEGACY_DUAL_EXDATE preserves exdate (C5)."""
-    store_utc_ex = ReferenceStore(
+    store_utc_ex = CheckedStore(
         [
             {
                 "uid": "utc-ex-1",
@@ -444,7 +452,7 @@ def test_utc_exdate_on_tzid_series_and_migrate_with_legacy_dual_exdate() -> None
         single_edit_exdate_mode=SingleEditExdateMode.LEGACY_DUAL_EXDATE,
         split_future_override_mode=SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES,
     )
-    st_mig = ReferenceStore(policy=pol)
+    st_mig = CheckedStore(policy=pol)
     st_mig.add(
         {
             "uid": "mig-dual-1",

@@ -1,0 +1,68 @@
+{
+  "id": "I-C-008",
+  "title": "DATE DTSTART Has No BYHOUR/BYMINUTE/BYSECOND",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2321,
+      "line_end": 2322,
+      "verbatim_quote": "The BYSECOND, BYMINUTE and BYHOUR rule parts MUST NOT be specified when the associated \"DTSTART\" property has a DATE value type."
+    }
+  ],
+  "statement": "When DTSTART is a DATE, RRULE contains none of the BYHOUR, BYMINUTE or BYSECOND rule parts.",
+  "rationale": "RFC 5545 Section 3.3.10 forbids time-of-day rule parts on all-day recurrences. A whole-series edit that converts DTSTART from DATE-TIME to DATE must therefore also drop or reject such parts.",
+  "check": "date_start_has_no_time_byparts",
+  "positive_examples": [
+    {
+      "name": "date_weekly",
+      "description": "All-day weekly rule.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=WEEKLY;BYDAY=TH;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "datetime_byhour",
+      "description": "BYHOUR on a DATE-TIME series is fine.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;BYHOUR=9,15;COUNT=4",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "date_byhour",
+      "description": "All-day series with BYHOUR.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;BYHOUR=9;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

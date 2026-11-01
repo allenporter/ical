@@ -1,0 +1,159 @@
+{
+  "id": "I-C-006",
+  "title": "A Component With RECURRENCE-ID Carries No RRULE, RDATE or EXDATE",
+  "scope": "COMPONENT",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.1",
+      "line_start": 1069,
+      "line_end": 1071,
+      "verbatim_quote": "If present, this JSCalendar object represents one occurrence of a recurring JSCalendar object. If present, the \"recurrenceRules\" and \"recurrenceOverrides\" properties MUST NOT be present."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    }
+  ],
+  "statement": "A VEVENT/VTODO that has RECURRENCE-ID has no RRULE, no RDATE and no EXDATE. The only exception is scenario initial_components explicitly flagged as legacy shared-UID input (R-L3-009); such components are never valid output.",
+  "rationale": "Under draft-ietf-calext-jscalendar-icalendar Section 2.1.2 every same-UID component with RECURRENCE-ID is a recurrence override of the main component, i.e. it represents one occurrence; RFC 8984 Section 4.3.1 forbids an occurrence object (recurrenceId) from carrying recurrenceRules. A RECURRENCE-ID component carrying RRULE/RDATE/EXDATE is therefore not representable in the CalExt model and is ambiguous in RFC 5545 (it has the primary key of one instance, RFC 5546 Section 2.1.5, but generates many).",
+  "check": "recurrence_id_excludes_recurrence_rules",
+  "positive_examples": [
+    {
+      "name": "plain_override",
+      "description": "An override with only schedule and metadata.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "flagged_legacy_segment",
+      "description": "A legacy shared-UID segment in flagged legacy input.",
+      "legacy_input": true,
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 1,
+          "recurrence_id": "20250502T090000"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "shared_uid_segment",
+      "description": "RECURRENCE-ID plus RRULE (shared-UID split shape).",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 1,
+          "recurrence_id": "20250502T090000"
+        }
+      ]
+    },
+    {
+      "name": "override_with_exdate",
+      "description": "Override carrying EXDATE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1,
+          "exdate": [
+            "2025-05-03T09:00:00"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "override_with_rdate",
+      "description": "Override carrying RDATE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1,
+          "rdate": [
+            "2025-05-09T09:00:00"
+          ]
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

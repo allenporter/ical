@@ -1,0 +1,82 @@
+{
+  "id": "I-C-010",
+  "title": "SEQUENCE Is a Non-Negative Integer",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.4",
+      "line_start": 7876,
+      "line_end": 7879,
+      "verbatim_quote": "When a calendar component is created, its sequence number is 0. It is monotonically incremented by the \"Organizer's\" CUA each time the \"Organizer\" makes a significant revision to the calendar component."
+    }
+  ],
+  "statement": "When present, SEQUENCE is an integer greater than or equal to 0.",
+  "rationale": "RFC 5545 Section 3.8.7.4: a component is created with sequence 0 and the number is only ever incremented, so no reachable value is negative.",
+  "check": "sequence_non_negative",
+  "positive_examples": [
+    {
+      "name": "sequence_zero",
+      "description": "Freshly created.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "sequence_absent",
+      "description": "Not yet assigned.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "negative_sequence",
+      "description": "Negative.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": -1
+        }
+      ]
+    },
+    {
+      "name": "string_sequence",
+      "description": "Not an integer.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": "1"
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

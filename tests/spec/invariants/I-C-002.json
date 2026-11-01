@@ -1,0 +1,110 @@
+{
+  "id": "I-C-002",
+  "title": "DTSTAMP, CREATED, LAST-MODIFIED and COMPLETED Are UTC",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.2",
+      "line_start": 7779,
+      "line_end": 7779,
+      "verbatim_quote": "Description: The value MUST be specified in the UTC time format."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.1",
+      "line_start": 7727,
+      "line_end": 7729,
+      "verbatim_quote": "The property can be specified once in \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar components. The value MUST be specified as a date with UTC time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.3",
+      "line_start": 7839,
+      "line_end": 7840,
+      "verbatim_quote": "Description: The property value MUST be specified in the UTC time format."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.1",
+      "line_start": 5345,
+      "line_end": 5346,
+      "verbatim_quote": "The property can be specified in a \"VTODO\" calendar component. The value MUST be specified as a date with UTC time."
+    }
+  ],
+  "statement": "When present, DTSTAMP, CREATED, LAST-MODIFIED and COMPLETED are DATE-TIME values in UTC (Z designator); never floating, TZID-qualified, fixed-offset or DATE.",
+  "rationale": "RFC 5545 Sections 3.8.7.1, 3.8.7.2, 3.8.7.3 and 3.8.2.1 each require the value to be specified in UTC time.",
+  "check": "utc_timestamps",
+  "positive_examples": [
+    {
+      "name": "utc_metadata",
+      "description": "All revision timestamps in UTC.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "last_modified": "2025-05-01T08:30:00Z"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "floating_dtstamp",
+      "description": "DTSTAMP without Z.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00"
+        }
+      ]
+    },
+    {
+      "name": "tzid_last_modified",
+      "description": "LAST-MODIFIED with a TZID.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "last_modified": "2025-05-01T08:00:00-04:00[America/New_York]"
+        }
+      ]
+    },
+    {
+      "name": "date_created",
+      "description": "CREATED as a DATE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "created": "2025-05-01"
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

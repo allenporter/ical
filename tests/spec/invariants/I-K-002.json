@@ -1,0 +1,80 @@
+{
+  "id": "I-K-002",
+  "title": "At Most One Main Component per UID",
+  "scope": "CALENDAR",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6406,
+      "line_end": 6410,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component. The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    }
+  ],
+  "statement": "For each UID there is at most one component without RECURRENCE-ID (the main component).",
+  "rationale": "RFC 5545 Section 3.8.4.4 addresses the full recurrence set by the UID alone, which presupposes a single main component per UID; draft-ietf-calext-jscalendar-icalendar Section 2.1.2 likewise names 'the' main component of a UID.",
+  "check": "single_main_per_uid",
+  "positive_examples": [
+    {
+      "name": "one_main_per_uid",
+      "description": "Two UIDs, one main each.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s2",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "two_mains",
+      "description": "Two mains share a UID.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-06-01T09:00:00",
+          "dtend": "2025-06-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "This check overlaps I-K-001 (two mains share the key (UID, none)); it is kept separate because the legacy shared-UID allowance (R-L3-009) relaxes neither."
+  ]
+}

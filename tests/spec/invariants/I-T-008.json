@@ -1,0 +1,95 @@
+{
+  "id": "I-T-008",
+  "title": "A Failed Operation Leaves the State Identical",
+  "scope": "TRANSITION",
+  "authority": "STORE_POLICY",
+  "citations": [],
+  "statement": "If an operation is rejected (raises a store error), the calendar state afterwards is exactly the state before, component for component and property for property.",
+  "rationale": "The RFCs do not define store transactions; atomic failure is the store contract that lets callers retry or report errors without having to repair partially applied edits (for example a split that truncated the original but failed to insert the new segment).",
+  "check": "failed_operation_is_atomic",
+  "positive_examples": [
+    {
+      "name": "rejected_unchanged",
+      "description": "Rejected edit, state unchanged.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20990101T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "failed": true
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "rejected_but_truncated",
+      "description": "Rejected split left the original truncated.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "failed": true
+    }
+  ],
+  "audit_notes": []
+}

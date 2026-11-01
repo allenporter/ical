@@ -1,0 +1,68 @@
+{
+  "id": "I-C-009",
+  "title": "RRULE Never Combines COUNT and UNTIL",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2161,
+      "line_end": 2162,
+      "verbatim_quote": "; The UNTIL or COUNT rule parts are OPTIONAL, ; but they MUST NOT occur in the same 'recur'."
+    }
+  ],
+  "statement": "An RRULE contains at most one of COUNT and UNTIL.",
+  "rationale": "The RFC 5545 recur grammar forbids COUNT and UNTIL in the same rule. Truncation (THIS_AND_FUTURE) must replace COUNT with UNTIL rather than adding UNTIL alongside it.",
+  "check": "count_until_exclusive",
+  "positive_examples": [
+    {
+      "name": "count_only",
+      "description": "COUNT-bounded rule.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "until_only",
+      "description": "UNTIL-bounded rule.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T090000",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "count_and_until",
+      "description": "Both bounds.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3;UNTIL=20250502T085959",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

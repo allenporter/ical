@@ -66,6 +66,8 @@ class OracleBase:
                 validate_component_state(canon)
                 self._ensure_unique_identity(canon["uid"], canon["recurrence_id"])
                 self.components.append(canon)
+                # Loaded state must satisfy I-K-006 (RFC 5545 Section 3.2.19) too.
+                self._register_comp_timezones(canon)
 
     _normalize_range = staticmethod(normalize_range)
     _is_parent_relation = staticmethod(is_parent_relation)

@@ -1,0 +1,113 @@
+{
+  "id": "I-C-007",
+  "title": "RRULE UNTIL Form Matches DTSTART",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2299,
+      "line_end": 2305,
+      "verbatim_quote": "The value of the UNTIL rule part MUST have the same value type as the \"DTSTART\" property. Furthermore, if the \"DTSTART\" property is specified as a date with local time, then the UNTIL rule part MUST also be specified as a date with local time. If the \"DTSTART\" property is specified as a date with UTC time or a date with local time and time zone reference, then the UNTIL rule part MUST be specified as a date with UTC time."
+    }
+  ],
+  "statement": "If RRULE has UNTIL: UNTIL is a DATE iff DTSTART is a DATE; for a DATE-TIME DTSTART, UNTIL is floating when DTSTART is floating and UTC when DTSTART is UTC or TZID-qualified.",
+  "rationale": "RFC 5545 Section 3.3.10 states the three requirements verbatim for VEVENT/VTODO (the STANDARD/DAYLIGHT sub-component sentence that follows is out of scope). Truncations performed by THIS_AND_FUTURE operations must produce UNTIL in this form.",
+  "check": "until_matches_dtstart",
+  "positive_examples": [
+    {
+      "name": "floating_until",
+      "description": "Floating DTSTART, floating UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "tzid_utc_until",
+      "description": "TZID DTSTART, UTC UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T125959Z",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "date_until",
+      "description": "DATE DTSTART, DATE UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;UNTIL=20250503",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "tzid_floating_until",
+      "description": "TZID DTSTART with floating UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "floating_utc_until",
+      "description": "Floating DTSTART with UTC UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959Z",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "date_datetime_until",
+      "description": "DATE DTSTART with DATE-TIME UNTIL.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T000000",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

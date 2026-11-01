@@ -22,7 +22,12 @@ from .reference_oracle import (
     SeriesEditOverrideMode,
     ThisAndFutureSplitMode,
 )
-from .test_reference_oracle import ALL_POLICY_CONFIGS, assert_rfc_invariants
+from .invariant_harness import CheckedStore
+from .test_reference_oracle import (
+    ALL_POLICY_CONFIGS,
+    assert_rfc_invariants,
+    policy_params,
+)
 
 
 def _setup_cross_boundary_store(policy: PolicyConfig) -> ReferenceStore:
@@ -38,7 +43,7 @@ def _setup_cross_boundary_store(policy: PolicyConfig) -> ReferenceStore:
             "exdate": [],
         }
     ]
-    st = ReferenceStore(base_init, policy=policy)
+    st = CheckedStore(base_init, policy=policy)
     st.edit(
         uid="cross-boundary-1",
         recurrence_id="20250508T090000",
@@ -77,14 +82,7 @@ def _setup_cross_boundary_store(policy: PolicyConfig) -> ReferenceStore:
     return st
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_redteam_a_cross_boundary_rescheduled_overrides_this_and_future_delete_and_edit(
     policy: PolicyConfig,
 ) -> None:
@@ -125,14 +123,7 @@ def test_redteam_a_cross_boundary_rescheduled_overrides_this_and_future_delete_a
     ]
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_redteam_b_out_of_order_overrides_metadata_edit_and_schedule_shift(
     policy: PolicyConfig,
 ) -> None:
@@ -167,7 +158,7 @@ def test_redteam_b_out_of_order_overrides_metadata_edit_and_schedule_shift(
             "exdate": ["2025-05-01T09:00:00", "2025-05-04T09:00:00"],
         },
     ]
-    store = ReferenceStore(init_out_of_order, policy=policy)
+    store = CheckedStore(init_out_of_order, policy=policy)
     tl0 = assert_rfc_invariants(store, "redteam_b_init_out_of_order")
     assert [item["recurrence_id"] for item in tl0] == [
         "20250502T090000",
@@ -220,17 +211,10 @@ def test_redteam_b_out_of_order_overrides_metadata_edit_and_schedule_shift(
     ]
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_redteam_c_dst_spring_forward_multi_split(policy: PolicyConfig) -> None:
     """Red-Team (c): DST Spring-Forward (America/New_York 2025-03-08..2025-03-12) Multi-Split (R-L3-003 + R-L3-008)."""
-    store = ReferenceStore(policy=policy)
+    store = CheckedStore(policy=policy)
     store.add(
         {
             "type": "VEVENT",
@@ -304,14 +288,7 @@ def test_redteam_c_dst_spring_forward_multi_split(policy: PolicyConfig) -> None:
     ]
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_redteam_d_rdate_rrule_exdate_combined_series_split(
     policy: PolicyConfig,
 ) -> None:
@@ -328,7 +305,7 @@ def test_redteam_d_rdate_rrule_exdate_combined_series_split(
             "exdate": ["2025-05-08T09:00:00"],
         }
     ]
-    store_edit = ReferenceStore(init_combined, policy=policy)
+    store_edit = CheckedStore(init_combined, policy=policy)
     tl0 = assert_rfc_invariants(store_edit, "redteam_d_initial")
     assert [item["dtstart"] for item in tl0] == [
         "2025-05-01T09:00:00",
@@ -365,7 +342,7 @@ def test_redteam_d_rdate_rrule_exdate_combined_series_split(
         ("2025-05-22T09:00:00", "Hybrid Future"),
     ]
 
-    store_del = ReferenceStore(init_combined, policy=policy)
+    store_del = CheckedStore(init_combined, policy=policy)
     store_del.delete(
         uid="rdate-rrule-exdate-1",
         recurrence_id="20250515T090000",
@@ -417,7 +394,7 @@ def test_parent_delete_cascade_modes_and_reltypes() -> None:
             "related_to": [{"uid": "p-1", "reltype": "SIBLING"}],
         },
     ]
-    st_cascade = ReferenceStore(
+    st_cascade = CheckedStore(
         base_comps,
         policy=PolicyConfig(
             parent_delete_cascade_mode=ParentDeleteCascadeMode.CASCADE_DELETE
@@ -426,7 +403,7 @@ def test_parent_delete_cascade_modes_and_reltypes() -> None:
     st_cascade.delete("p-1")
     assert [c["uid"] for c in st_cascade.components] == ["s-peer"]
 
-    st_detach = ReferenceStore(
+    st_detach = CheckedStore(
         base_comps,
         policy=PolicyConfig(
             parent_delete_cascade_mode=ParentDeleteCascadeMode.DETACH_CHILDREN
@@ -450,7 +427,7 @@ def test_parent_delete_cascade_modes_and_reltypes() -> None:
         {"uid": "p-1", "reltype": "SIBLING"}
     ]
 
-    st_dangling = ReferenceStore(
+    st_dangling = CheckedStore(
         base_comps,
         policy=PolicyConfig(
             parent_delete_cascade_mode=ParentDeleteCascadeMode.LEAVE_DANGLING

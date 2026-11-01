@@ -9,6 +9,8 @@ from typing import Any
 
 import pytest
 
+from .invariant_harness import ALL_INVARIANTS, CheckedStore
+from .invariant_registry import check_state
 from .reference_oracle import (
     PolicyConfig,
     ReferenceStore,
@@ -50,8 +52,30 @@ ALL_POLICY_CONFIGS = [
 ]
 
 
+def policy_params(policies: list[PolicyConfig]) -> list[Any]:
+    """Parametrize policies; SHARED_UID splits are known to violate I-C-006."""
+    return [
+        pytest.param(
+            p,
+            id=f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}",
+            marks=(
+                [pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=False)]
+                if p.this_and_future_split_mode == ThisAndFutureSplitMode.SHARED_UID
+                else []
+            ),
+        )
+        for p in policies
+    ]
+
+
 def assert_rfc_invariants(store: ReferenceStore, label: str) -> list[dict[str, Any]]:
-    """Expand timeline on store and assert zero RFC structural/mathematical errors via verify_scenario."""
+    """Assert all state invariants (`I-C-*`, `I-K-*`) plus timeline consistency on store.
+
+    Stores built as `CheckedStore` additionally check every TRANSITION invariant on
+    each operation that led here.
+    """
+    state_errors = check_state(ALL_INVARIANTS, store.components)
+    assert not state_errors, f"Invariant violations at {label}: {state_errors}"
     timeline = store.expand_timeline()
     synthetic_scenario = {
         "name": label,
@@ -105,7 +129,7 @@ def test_all_51_rule_scenarios(
 
 def test_invalid_operations_raise_store_error_without_mutation() -> None:
     """Verify invalid operations (R-L2-007, R-L5-005, R-L5-006, R-L1-006) raise StoreError cleanly."""
-    store = ReferenceStore(
+    store = CheckedStore(
         [
             {
                 "type": "VEVENT",
@@ -128,7 +152,7 @@ def test_invalid_operations_raise_store_error_without_mutation() -> None:
         )
     assert len(store.components) == 1
 
-    empty_store = ReferenceStore()
+    empty_store = CheckedStore()
     with pytest.raises(StoreError, match="Fixed-offset datetime"):
         empty_store.add(
             {
@@ -154,19 +178,12 @@ def test_invalid_operations_raise_store_error_without_mutation() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_multi_step_chain_timed_tzid_across_all_8_policy_configs(
     policy: PolicyConfig,
 ) -> None:
     """Execute a 6-step operation chain on a timezone-aware series across all 8 PolicyConfig combinations."""
-    store = ReferenceStore(policy=policy)
+    store = CheckedStore(policy=policy)
     store.add(
         {
             "type": "VEVENT",
@@ -253,19 +270,12 @@ def test_multi_step_chain_timed_tzid_across_all_8_policy_configs(
         assert len(uids) == 2
 
 
-@pytest.mark.parametrize(
-    "policy",
-    ALL_POLICY_CONFIGS,
-    ids=[
-        f"{p.series_edit_override_mode.value}-{p.this_and_future_split_mode.value}-{p.single_edit_exdate_mode.value}"
-        for p in ALL_POLICY_CONFIGS
-    ],
-)
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
 def test_multi_step_chain_allday_overrides_and_relations_across_all_8_policy_configs(
     policy: PolicyConfig,
 ) -> None:
     """Test all-day series, override purging on split/delete (R-L3-006), and RELATED-TO cascade (R-L5-007/008)."""
-    store = ReferenceStore(policy=policy)
+    store = CheckedStore(policy=policy)
     store.add(
         {
             "type": "VEVENT",
@@ -323,7 +333,7 @@ def test_series_reschedule_shift_with_series_mode() -> None:
     policy = PolicyConfig(
         series_reschedule_exception_mode=SeriesRescheduleExceptionMode.SHIFT_WITH_SERIES
     )
-    store = ReferenceStore(
+    store = CheckedStore(
         [
             {
                 "type": "VEVENT",
@@ -368,14 +378,23 @@ def test_series_reschedule_shift_with_series_mode() -> None:
     ]
 
 
-@pytest.mark.parametrize("split_mode", list(ThisAndFutureSplitMode))
+@pytest.mark.parametrize(
+    "split_mode",
+    [
+        pytest.param(
+            ThisAndFutureSplitMode.SHARED_UID,
+            marks=pytest.mark.xfail(reason="SHARED_UID violates I-C-006", strict=True),
+        ),
+        ThisAndFutureSplitMode.NEW_UID,
+    ],
+)
 def test_split_future_override_migrate_mode(split_mode: ThisAndFutureSplitMode) -> None:
     """Test SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES under SHARED_UID and NEW_UID."""
     policy = PolicyConfig(
         this_and_future_split_mode=split_mode,
         split_future_override_mode=SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES,
     )
-    store = ReferenceStore(
+    store = CheckedStore(
         [
             {
                 "type": "VEVENT",

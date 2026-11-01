@@ -1,0 +1,159 @@
+{
+  "id": "I-T-001",
+  "title": "Range=NONE Edit Changes Only the Targeted Occurrence",
+  "scope": "TRANSITION",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.13",
+      "line_start": 1323,
+      "line_end": 1330,
+      "verbatim_quote": "If this parameter is not specified on an allowed property, then the default range is the single instance specified by the recurrence identifier value of the property. The parameter value can only be \"THISANDFUTURE\" to indicate a range defined by the recurrence identifier and all subsequent instances."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6406,
+      "line_end": 6410,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component. The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    }
+  ],
+  "statement": "After a successful single-instance edit (recurrence_id set, Range=NONE), the expanded timeline differs from the one before only at the targeted occurrence slot, which still exists; every other occurrence of every UID keeps its start, end and content (revision metadata excluded).",
+  "rationale": "Without RANGE the recurrence identifier addresses the single instance (RFC 5545 Section 3.2.13), and RECURRENCE-ID references an individual instance within the recurrence set (Section 3.8.4.4). An edit addressed that way must not alter any other instance, nor delete the instance it edits.",
+  "check": "none_edit_targets_only_occurrence",
+  "positive_examples": [
+    {
+      "name": "override_created",
+      "description": "Override forked for May 2.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "master_also_changed",
+      "description": "Edit leaks into the master's other instances.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Moved",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "target_deleted",
+      "description": "The edited instance vanished.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ]
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

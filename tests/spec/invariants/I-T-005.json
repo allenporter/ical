@@ -1,0 +1,133 @@
+{
+  "id": "I-T-005",
+  "title": "SEQUENCE Never Decreases and CREATED Never Changes for a Persisting Component",
+  "scope": "TRANSITION",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.4",
+      "line_start": 7876,
+      "line_end": 7879,
+      "verbatim_quote": "When a calendar component is created, its sequence number is 0. It is monotonically incremented by the \"Organizer's\" CUA each time the \"Organizer\" makes a significant revision to the calendar component."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.1",
+      "line_start": 7715,
+      "line_end": 7717,
+      "verbatim_quote": "This property specifies the date and time that the calendar information was created by the calendar user agent in the calendar store."
+    }
+  ],
+  "statement": "For every component whose (UID, RECURRENCE-ID) exists both before and after an operation, SEQUENCE after >= SEQUENCE before (absent counts as 0), and a CREATED value present before is unchanged after.",
+  "rationale": "SEQUENCE is monotonically incremented (RFC 5545 Section 3.8.7.4) and CREATED records when the component was created in the store (Section 3.8.7.1), which no later revision changes. A split's new segment is a new component (new UID), so it starts at SEQUENCE 0 with its own CREATED and is not 'persisting'.",
+  "check": "persisting_sequence_and_created",
+  "positive_examples": [
+    {
+      "name": "edit_bumps_sequence",
+      "description": "Whole-series edit 0 -> 1.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "sequence_decreases",
+      "description": "2 -> 1.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 2
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "created_rewritten",
+      "description": "CREATED replaced by the edit time.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "created": "2025-05-01T09:00:00Z"
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

@@ -1,0 +1,101 @@
+{
+  "id": "I-C-005",
+  "title": "DTEND and DUE Are Strictly Later Than DTSTART",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.2",
+      "line_start": 5390,
+      "line_end": 5394,
+      "verbatim_quote": "The value type of this property MUST be the same as the \"DTSTART\" property, and its value MUST be later in time than the value of the \"DTSTART\" property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.3",
+      "line_start": 5479,
+      "line_end": 5479,
+      "verbatim_quote": "MUST be later in time than the value of the \"DTSTART\" property."
+    }
+  ],
+  "statement": "When DTSTART and DTEND (or DUE) have the same value type and floating-ness, DTEND (or DUE) is strictly later in time than DTSTART.",
+  "rationale": "RFC 5545 Section 3.8.2.2 requires DTEND to be later in time than DTSTART, and Section 3.8.2.3 requires the same of DUE when DTSTART is present. A zero or negative duration therefore never appears in a valid state, including after edits that move DTSTART without moving DTEND.",
+  "check": "end_after_start",
+  "positive_examples": [
+    {
+      "name": "one_hour_event",
+      "description": "DTEND one hour after DTSTART.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "todo_due_next_day",
+      "description": "DUE one day after DTSTART.",
+      "components": [
+        {
+          "type": "VTODO",
+          "uid": "t1",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-02"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "dtend_equals_dtstart",
+      "description": "Zero-length event.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "dtend_before_dtstart",
+      "description": "Negative-length event.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T08:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "due_equals_dtstart",
+      "description": "To-do due at its start.",
+      "components": [
+        {
+          "type": "VTODO",
+          "uid": "t1",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-01"
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "The brief proposed DUE >= DTSTART; RFC 5545 Section 3.8.2.3 says 'later in time', so the invariant is strict for DUE as well."
+  ]
+}
