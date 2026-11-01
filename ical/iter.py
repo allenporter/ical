@@ -387,6 +387,10 @@ class RulesetIterable(SeekableIterable[Union[datetime.datetime, datetime.date]])
     def _ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Create a dateutil.rruleset."""
         ruleset = rrule.rruleset()
+        if not self._rrule and self._rdate:
+            # Without an RRULE nothing carries DTSTART into the set, so
+            # an RDATE-only component would lose its first occurrence.
+            ruleset.rdate(self._defloat(self._dtstart))
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for rdate in self._rdate:
