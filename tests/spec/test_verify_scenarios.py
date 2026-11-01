@@ -14,6 +14,8 @@ import pytest
 from .oracle_temporal import (
     ParsedTemporal,
     StoreError,
+    add_temporal_duration,
+    align_rid_to_master,
     expand_component_candidates,
     format_canonical_rid,
     parse_temporal as _raw_parse_temporal,
@@ -116,9 +118,9 @@ def _verify_single_component(
     if (due_raw := comp.get("due")) is not None:
         pt_due, d_errs = parse_temporal(due_raw, "due")
         errors.extend(f"{prefix} {e}" for e in d_errs)
-        if pt_start and pt_due and pt_due.dt_utc_or_naive <= pt_start.dt_utc_or_naive:
+        if pt_start and pt_due and pt_due.dt_utc_or_naive < pt_start.dt_utc_or_naive:
             errors.append(
-                f"{prefix} DUE ({due_raw}) must be > DTSTART ({dtstart_raw}) on {uid}"
+                f"{prefix} DUE ({due_raw}) must be >= DTSTART ({dtstart_raw}) on {uid}"
             )
 
     for meta_field in ("dtstamp", "created", "last_modified", "completed"):
@@ -207,7 +209,9 @@ def _verify_single_occurrence_match(
         if end_key in tl_item and tl_item[end_key] is not None:
             pt_tl_e, _ = parse_temporal(tl_item[end_key], f"tl.{end_key}")
             if dur is not None and pt_tl_e is not None:
-                expected_end = pt_occ.value + dur
+                expected_end = add_temporal_duration(
+                    pt_occ.value, dur, min_days=(0 if end_key == "due" else 1)
+                )
                 exp_cmp = (
                     (
                         expected_end.astimezone(datetime.timezone.utc).replace(
@@ -266,9 +270,17 @@ def _verify_uid_reconstructed_timeline(
     expanded_map: dict[
         str, tuple[ParsedTemporal, datetime.timedelta | None, dict[str, Any]]
     ] = {}
+    candidate_rids_by_seg: list[tuple[ParsedTemporal, set[str]]] = []
     for rc in recurring_comps:
         if not rc.get("dtstart"):
             continue
+        if rc.get("rrule") or rc.get("rdate"):
+            pt_rc = _raw_parse_temporal(rc["dtstart"], "dtstart")
+            cand_set = {
+                rid
+                for rid, _, _ in expand_component_candidates(rc, include_exdates=True)
+            }
+            candidate_rids_by_seg.append((pt_rc, cand_set))
         occs, exp_errs = expand_master_occurrences(rc)
         errors.extend(f"{prefix} {e}" for e in exp_errs)
         for rid_str, pt_occ, dur in occs:
@@ -277,6 +289,20 @@ def _verify_uid_reconstructed_timeline(
     for ov in standalone_overrides:
         pt_rid, _ = parse_temporal(ov["recurrence_id"], "override.recurrence_id")
         norm_rid = format_canonical_rid(pt_rid) if pt_rid else ov["recurrence_id"]
+        if pt_rid is not None:
+            matched_cand = any(
+                pt_rid.is_date == pt_rc.is_date
+                and format_canonical_rid(
+                    align_rid_to_master(ov["recurrence_id"], pt_rc)
+                )
+                in cand_set
+                for pt_rc, cand_set in candidate_rids_by_seg
+            )
+            if not matched_cand:
+                errors.append(
+                    f"{prefix} UID {uid!r}: standalone override recurrence_id {ov['recurrence_id']!r} "
+                    "does not belong to any recurring segment candidate set"
+                )
         pt_ov_start, _ = parse_temporal(ov["dtstart"], "override.dtstart")
         if pt_ov_start:
             expanded_map[norm_rid] = (pt_ov_start, None, ov)

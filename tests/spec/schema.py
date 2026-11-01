@@ -64,6 +64,7 @@ FORBIDDEN_IMPLEMENTATION_TERMS = [
     "EventStore",
     "TodoStore",
     "copy_and_validate",
+    "SIBBLING",
 ]
 
 
