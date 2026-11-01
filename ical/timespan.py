@@ -23,13 +23,28 @@ class Timespan:
     """An unambiguous definition of a start and end time.
 
     A timespan is not ambiguous in that it can never be a "floating" time range
-    and instead is always aligned to some kind of timezone or utc.
+    and instead is always aligned to some kind of timezone or UTC. When created
+    via :meth:`of`, ``date`` (all-day) and naive ``datetime`` inputs are first
+    anchored to the viewer's ``tzinfo`` (such as local midnight), and
+    :attr:`start`, :attr:`end`, and :attr:`tzinfo` preserve those original
+    timezone-aware values.
+
+    Internally, ``Timespan`` converts both endpoints to ``datetime.UTC``
+    (:attr:`start_utc` and :attr:`end_utc`) and performs all ordering
+    comparisons, interval predicates (such as :meth:`intersects` and
+    :meth:`includes`), and :attr:`duration` arithmetic in UTC. Under Python's
+    PEP 495 rules, comparing or subtracting two ``datetime`` objects that share
+    the same ``tzinfo`` ignores ``fold`` and operates on wall-clock time, while
+    ``==`` / ``!=`` across different ``tzinfo`` instances returns ``False`` /
+    ``True`` for ambiguous fold or gap times. Evaluating in UTC provides a
+    consistent chronological total order and true elapsed duration across DST
+    transitions.
     """
 
     __slots__ = ("_start", "_end", "_tzinfo", "_start_utc", "_end_utc")
 
     def __init__(self, start: datetime.datetime, end: datetime.datetime) -> None:
-        """..."""
+        """Initialize a Timespan from timezone-aware start and end datetimes."""
         self._start = start
         self._end = end
         if not self._start.tzinfo:
