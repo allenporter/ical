@@ -2,7 +2,7 @@
   "id": "R-L5-009",
   "title": "RELATED-TO Accepts All RELTYPE Values; Unrecognized Values Are Treated as PARENT",
   "layer": "L5_METADATA_TIMEZONE_RELATIONS",
-  "authority": "RFC_5545",
+  "authority": "STORE_POLICY",
   "citations": [
     {
       "doc": "rfc5545.txt",
@@ -33,7 +33,7 @@
       "verbatim_quote": "Note that the relationship types of PARENT, CHILD, and SIBLING establish a hierarchical relationship.  The new types of FIRST and NEXT are an ordering relationship."
     }
   ],
-  "rationale": "RFC 5545 Section 3.2.15 defines PARENT, CHILD, and SIBLING as standard hierarchical RELTYPE values and additionally allows IANA-registered (iana-token) and experimental (x-name) values, with PARENT as the default when the parameter is omitted. RFC 9253 Section 5 registers FIRST and NEXT as standard IANA ordering relationship types used to link split recurring series segments (R-L3-001, R-L3-008), explicitly distinguishing FIRST and NEXT ordering relationships from PARENT/CHILD/SIBLING hierarchical relationships. Meanwhile, RFC 5545 Section 3.2.15 requires applications to treat unrecognized iana-token and x-name values the same way as PARENT. Therefore, PARENT, CHILD, SIBLING, FIRST, and NEXT are recognized RELTYPE values (with CHILD, SIBLING, FIRST, and NEXT never treated as PARENT), while omitted or unrecognized RELTYPE values behave as PARENT.",
+  "rationale": "RFC 5545 Section 3.2.15 defines PARENT, CHILD, and SIBLING as standard hierarchical RELTYPE values and additionally allows IANA-registered (iana-token) and experimental (x-name) values, with PARENT as the default when the parameter is omitted and unrecognized values treated the same way as PARENT. RFC 9253 Section 5 registers FIRST and NEXT as standard IANA ordering relationship types used to link split recurring series segments (R-L3-001, R-L3-008), explicitly distinguishing FIRST and NEXT ordering relationships from PARENT/CHILD/SIBLING hierarchical relationships. Combining those RFC semantics with the store's persistence policy—requiring `store.add` and `store.edit` to preserve `related_to` entries verbatim as supplied without rejecting dangling target UIDs or rewriting omitted `RELTYPE` parameters—is recorded under STORE_POLICY.",
   "store_implication": "On component `add` and `edit`: (1) the store MUST accept `related_to` entries with `RELTYPE` of `PARENT`, `CHILD`, `SIBLING`, `FIRST`, `NEXT`, an omitted `RELTYPE`, or any other iana-token/x-name value, and MUST preserve each entry's referenced UID and `RELTYPE` as supplied; (2) wherever the store applies parent/child semantics (for example, cascading behavior under `parent_delete_cascade_mode` in R-L5-007), `CHILD`, `SIBLING`, `FIRST`, and `NEXT` are recognized non-`PARENT` relationship types and MUST NOT be treated as `PARENT`, whereas an omitted `RELTYPE` and any unrecognized iana-token/x-name `RELTYPE` MUST be handled as `PARENT`.",
   "edge_cases_and_counterexamples": [
     "Adding a VTODO with `RELATED-TO;RELTYPE=SIBLING:other-uid` or `RELATED-TO;RELTYPE=NEXT:next-uid` must succeed and keep the SIBLING or NEXT relation on the stored component.",

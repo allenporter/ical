@@ -2,7 +2,7 @@
   "id": "R-L2-006",
   "title": "Re-Editing an Already-Overridden Instance Updates Override In-Place Without Forking Duplicate",
   "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
-  "authority": "RFC_5546",
+  "authority": "STORE_POLICY",
   "citations": [
     {
       "doc": "rfc5546.txt",
@@ -10,6 +10,13 @@
       "line_start": 697,
       "line_end": 706,
       "verbatim_quote": "1. The primary key for referencing a particular iCalendar component is the \"UID\" property value. To reference an instance of a recurring component, the primary key is composed of the \"UID\" and the \"RECURRENCE-ID\" properties.\n\n   2. The secondary key for referencing a component is the \"SEQUENCE\" property value. For components where the \"UID\" and \"RECURRENCE-ID\" property values are the same, the component with the highest numeric value for the \"SEQUENCE\" property obsoletes all other revisions of the component with lower values."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.4",
+      "line_start": 621,
+      "line_end": 622,
+      "verbatim_quote": "In addition, changes made by the \"Organizer\" to other properties MAY also require the sequence number to be incremented."
     },
     {
       "doc": "rfc5545.txt",
@@ -26,7 +33,7 @@
       "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime. However, individual properties of the occurrence can be modified by a patch or multiple patches."
     }
   ],
-  "rationale": "Per RFC 5546 Section 2.1.5, the primary key of a recurrence instance component is (UID, RECURRENCE-ID), and a newer revision (SEQUENCE) with the same (UID, RECURRENCE-ID) obsoletes the previous revision of that instance. Per RFC 5545 Section 3.8.4.4, RECURRENCE-ID remains fixed to the original occurrence start time even after the instance's DTSTART has been moved. Therefore, when a single-instance edit is applied to an occurrence that already has an override component, it MUST update the existing override component in place (preserving all previously edited fields on that override that are not overwritten by the new patch, incrementing SEQUENCE, and keeping RECURRENCE-ID fixed), and MUST NOT match the master component a second time to fork a duplicate override component.",
+  "rationale": "Per RFC 5546 Section 2.1.5 (enforced as invariant I-K-001), the primary key of a recurrence instance component is (UID, RECURRENCE-ID), and per RFC 5545 Section 3.8.4.4, RECURRENCE-ID remains fixed to the original occurrence start time even after the instance's DTSTART has been moved. Therefore, when a single-instance edit is applied to an occurrence that already has an override component, it MUST update the existing override component in place (preserving previously edited fields not overwritten by the new patch and keeping RECURRENCE-ID fixed) rather than matching the master component a second time to fork a duplicate override. In addition, while RFC 5546 Section 2.1.4 mandates incrementing SEQUENCE on schedule/status changes and leaves SEQUENCE increments optional (MAY) for descriptive properties like SUMMARY, by STORE_POLICY (R-L5-002) the store increments SEQUENCE on every override re-edit.",
   "store_implication": "When a single-instance edit is executed for a (UID, RECURRENCE-ID) pair that already has an override component (same UID, has RECURRENCE-ID, no RRULE/RDATE) in the calendar: (1) only the existing override component MUST be updated in place (retaining its prior properties merged with the new patch, preserving RECURRENCE-ID, and incrementing SEQUENCE); (2) the master component MUST NOT be matched to fork a second override component, even if the calendar was loaded from an external iCalendar stream where the master component's EXDATE list did not include that RECURRENCE-ID.",
   "edge_cases_and_counterexamples": [
     "First edit sets STATUS='COMPLETED' on recurrence_id='20240110', and second edit sets SUMMARY='Walk cat' on recurrence_id='20240110': the resulting override component MUST have both STATUS='COMPLETED' and SUMMARY='Walk cat', SEQUENCE=2, and the total number of components in the calendar MUST NOT increase on the second edit.",
