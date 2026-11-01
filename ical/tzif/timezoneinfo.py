@@ -204,7 +204,6 @@ class TzInfo(datetime.tzinfo):
             or not self._rule.dst
             or not isinstance(self._rule.dst_start, RuleDate)
             or not isinstance(self._rule.dst_end, RuleDate)
-            or not self._rule.dst.offset
         ):
             return None
 
