@@ -21,6 +21,7 @@ from .invariant_schema import InvariantExample, SpecInvariant, verify_invariants
 from .oracle_policy import StoreError, policy_from_modes
 from .scenario_runner import dispatch_scenario_operation
 from .schema import FORBIDDEN_IMPLEMENTATION_TERMS, SPEC_DIR, load_all_scenarios
+from .test_reference_oracle import ALL_48_POLICIES
 
 ALL_SCENARIOS = load_all_scenarios()
 
@@ -109,3 +110,35 @@ def test_invariant_modules_are_clean_room(fname: str) -> None:
     assert "from ical" not in text
     for term in FORBIDDEN_IMPLEMENTATION_TERMS:
         assert term not in text, f"{fname}: forbidden term {term!r}"
+
+
+def test_floating_and_zoned_series_transitions_satisfy_invariants() -> None:
+    """Whole-series floating <-> TZID transitions satisfy I-K-004 and I-T-005 under all 48 policies."""
+    for policy in ALL_48_POLICIES:
+        store = CheckedStore(policy=policy)
+        store.add(
+            {
+                "uid": "fl-tz-1",
+                "summary": "Standup",
+                "dtstart": "2025-05-01T09:00:00",
+                "dtend": "2025-05-01T09:30:00",
+                "rrule": "FREQ=DAILY;UNTIL=20250503T090000",
+                "rdate": ["2025-05-05T09:00:00"],
+            }
+        )
+        store.delete("fl-tz-1", "20250502T090000", "NONE")
+        store.edit("fl-tz-1", {"summary": "Ov"}, recurrence_id="20250503T090000")
+        store.edit(
+            "fl-tz-1",
+            {
+                "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+                "dtend": "2025-05-01T09:30:00-04:00[America/New_York]",
+            },
+        )
+        assert len(store.expand_timeline()) == 3
+        store.edit("fl-tz-1", {"summary": "Zoned Ov"}, recurrence_id="20250502T090000")
+        store.edit(
+            "fl-tz-1",
+            {"dtstart": "2025-05-01T10:00:00", "dtend": "2025-05-01T10:30:00"},
+        )
+        assert len(store.expand_timeline()) == 2

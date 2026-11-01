@@ -26,7 +26,7 @@
       "initial_components": [
         {
           "uid": "tz-meeting-uid",
-          "recurrence_id": "20250512T100000",
+          "recurrence_id": "TZID=America/New_York:20250512T100000",
           "summary": "Weekly meeting (rescheduled)",
           "dtstart": "2025-05-12T11:00:00-04:00[America/New_York]",
           "dtend": "2025-05-12T12:00:00-04:00[America/New_York]",
@@ -55,7 +55,7 @@
       "expected_components": [
         {
           "uid": "tz-meeting-uid",
-          "recurrence_id": "20250512T100000",
+          "recurrence_id": "TZID=America/New_York:20250512T100000",
           "summary": "Weekly meeting (updated again)",
           "dtstart": "2025-05-12T11:00:00-04:00[America/New_York]",
           "dtend": "2025-05-12T12:00:00-04:00[America/New_York]",

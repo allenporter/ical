@@ -1,7 +1,7 @@
 """Clean-room Reference Store Oracle for iCalendar / CalDAV recurrence and editing semantics.
 
 Implements a 100% standalone, RFC-grounded reference state machine and timeline expander
-covering all 40 specification rules (R-L1-001 through R-L5-009) and all 5 explicit
+covering all 46 specification rules (R-L1-001 through R-L5-011) and all 5 explicit
 configurable store policy modes (`PolicyConfig`) using ONLY the Python standard library
 and `dateutil.rrule`.
 """
@@ -81,6 +81,7 @@ class ReferenceStore(OracleEditMixin):
                 item, is_add=True, default_type=default_type, now=now
             )
             self._validate_component_state(out_comp)
+            self._validate_uid_override_alignment(out_comp)
             self._ensure_unique_identity(out_comp["uid"], out_comp["recurrence_id"])
             self._register_comp_timezones(out_comp)
             self.components.append(out_comp)

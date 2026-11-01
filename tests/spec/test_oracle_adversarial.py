@@ -202,7 +202,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
             },
             {
                 "uid": "dst-shift",
-                "recurrence_id": "20250309T090000",
+                "recurrence_id": "TZID=America/New_York:20250309T090000",
                 "summary": "Custom",
                 "dtstart": "2025-03-09T11:00:00-04:00[America/New_York]",
                 "dtend": "2025-03-09T12:00:00-04:00[America/New_York]",
@@ -228,7 +228,7 @@ def test_dst_fold_and_gap_arithmetic_and_shift_with_series() -> None:
         if c.get("type") != "VTIMEZONE" and c["recurrence_id"] is not None
     )
     assert master_s["exdate"] == ["2025-03-09T09:00:00-04:00[America/New_York]"]
-    assert ov_s["recurrence_id"] == "20250310T090000"
+    assert ov_s["recurrence_id"] == "TZID=America/New_York:20250310T090000"
     assert ov_s["dtstart"] == "2025-03-10T11:00:00-04:00[America/New_York]"
     assert len(tl_s) == 2
 

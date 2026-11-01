@@ -6,8 +6,9 @@ component with a NEW UID and no RECURRENCE-ID represents the occurrences from th
 onward, linked by RELTYPE=NEXT (original -> new) and RELTYPE=FIRST (new -> first
 component of the chain). Also implements `COUNT` recalculation (R-L3-004), end/due
 realignment (R-L3-005), override discard/migration (R-L3-006), `RDATE`/`EXDATE`
-partitioning (R-L3-007), chain insertion on re-split (R-L3-008) and the new segment's
-creation metadata (R-L5-001, R-L5-002).
+partitioning (R-L3-007), chain insertion on re-split (R-L3-008), inherited `UNTIL` /
+`EXDATE` / `RDATE` wall-clock realignment on start-time shift (R-L3-010), and the new
+segment's creation metadata (R-L5-001, R-L5-002).
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ from .oracle_canonical import (
     CORE_COMPONENT_KEYS,
     canonical_temporal_str,
     partition_future_dates,
+    shift_rrule_until_wall_clock,
+    shift_temporal_list_wall_clock,
 )
 from .oracle_policy import (
     SingleEditExdateMode,
@@ -31,11 +34,14 @@ from .oracle_temporal import (
     ParsedTemporal,
     add_temporal_duration,
     align_rid_to_master,
+    compute_wall_clock_delta,
     expand_component_candidates,
     format_canonical_rid,
+    format_stored_rid,
     format_temporal_like,
     parse_temporal,
     replace_rrule_count,
+    temporal_class,
 )
 
 
@@ -71,10 +77,11 @@ class OracleSplitMixin(OracleBase):
         target_seg: dict[str, Any],
         patch: dict[str, Any],
         split_cmp: datetime.datetime,
+        pt_split: ParsedTemporal,
         pt_seg_start: ParsedTemporal,
         pt_future_start: ParsedTemporal,
     ) -> str | None:
-        """RRULE of the new segment: explicit patch rule, else inherited with COUNT = N - k (R-L3-004)."""
+        """RRULE of the new segment: explicit patch rule, else inherited COUNT / shifted UNTIL (R-L3-004, R-L3-010)."""
         if "rrule" in patch:
             return patch["rrule"]
         future_rrule = target_seg.get("rrule")
@@ -91,6 +98,14 @@ class OracleSplitMixin(OracleBase):
                 future_rrule, max(1, int(parts["COUNT"]) - prior_count)
             )
         if future_rrule and "UNTIL=" in future_rrule:
+            if "dtstart" in patch and temporal_class(pt_split) == temporal_class(
+                pt_future_start
+            ):
+                wall_delta = compute_wall_clock_delta(pt_split, pt_future_start)
+                if wall_delta:
+                    return shift_rrule_until_wall_clock(
+                        future_rrule, pt_seg_start, pt_future_start, wall_delta
+                    )
             tmp_c = {"rrule": future_rrule}
             self._align_rrule_until_on_dtstart_change(
                 tmp_c, pt_seg_start, pt_future_start
@@ -198,10 +213,14 @@ class OracleSplitMixin(OracleBase):
                 target_seg, patch, pt_future_start
             ),
             "rrule": self._resolve_future_rrule(
-                target_seg, patch, split_cmp, pt_seg_start, pt_future_start
+                target_seg, patch, split_cmp, pt_split, pt_seg_start, pt_future_start
             ),
-            "rdate": partition_future_dates([target_seg], patch, "rdate", split_cmp),
-            "exdate": partition_future_dates([target_seg], patch, "exdate", split_cmp),
+            "rdate": partition_future_dates(
+                [target_seg], patch, "rdate", split_cmp, pt_future_start
+            ),
+            "exdate": partition_future_dates(
+                [target_seg], patch, "exdate", split_cmp, pt_future_start
+            ),
             "dtstamp": eff_now,
             "created": eff_now,
             "sequence": 0,
@@ -237,16 +256,21 @@ class OracleSplitMixin(OracleBase):
     ) -> bool:
         """Re-key an override to the new segment, keeping its RECURRENCE-ID instant (R-L3-006)."""
         pt_future_start = parse_temporal(future_comp["dtstart"], "dtstart")
+        if temporal_class(pt_owner) != temporal_class(pt_future_start):
+            return False
+        if ov.get("dtstart") and temporal_class(
+            parse_temporal(ov["dtstart"], "dtstart")
+        ) != temporal_class(pt_future_start):
+            return False
         try:
             pt_inst = align_rid_to_master(ov["recurrence_id"], pt_owner)
-            canon = format_canonical_rid(
-                align_rid_to_master(pt_inst.raw, pt_future_start)
-            )
+            pt_aligned = align_rid_to_master(pt_inst.raw, pt_future_start)
+            canon = format_canonical_rid(pt_aligned)
         except StoreError:
             return False
         if canon not in future_rids:
             return False
-        ov["recurrence_id"] = canon
+        ov["recurrence_id"] = format_stored_rid(pt_aligned)
         ov["uid"] = future_comp["uid"]
         return True
 
@@ -289,8 +313,8 @@ class OracleSplitMixin(OracleBase):
                 format_canonical_rid(align_rid_to_master(x, pt_future_start))
                 for x in (future_comp.get("exdate") or [])
             }
-            if legacy_dual and ov["recurrence_id"] not in cur_ex:
-                pt_ov_rid = align_rid_to_master(ov["recurrence_id"], pt_future_start)
+            pt_ov_rid = align_rid_to_master(ov["recurrence_id"], pt_future_start)
+            if legacy_dual and format_canonical_rid(pt_ov_rid) not in cur_ex:
                 future_comp["exdate"].append(
                     format_temporal_like(pt_ov_rid.value, pt_future_start)
                 )
@@ -302,25 +326,39 @@ class OracleSplitMixin(OracleBase):
         target_overrides: list[tuple[dict[str, Any], ParsedTemporal]],
         patch: dict[str, Any],
         pt_split: ParsedTemporal,
+        pt_seg_start: ParsedTemporal,
     ) -> None:
-        """Discard or migrate overrides >= the split and reconcile the new segment's EXDATEs."""
+        """Discard or migrate overrides >= the split and realign EXDATE/RDATE (R-L3-006, R-L3-010)."""
         old_ov_rids = {
             format_canonical_rid(align_rid_to_master(ov["recurrence_id"], pt_owner))
             for ov, pt_owner in target_overrides
         }
         if "exdate" not in patch and old_ov_rids and future_comp.get("dtstart"):
-            pt_fs = parse_temporal(future_comp["dtstart"], "dtstart")
-            pt_ref = pt_split if pt_split.is_date == pt_fs.is_date else pt_fs
             future_comp["exdate"] = [
                 ex
                 for ex in (future_comp.get("exdate") or [])
                 if format_canonical_rid(
-                    align_rid_to_master(ex, pt_ref)
-                    if parse_temporal(ex, "exdate").is_date == pt_ref.is_date
+                    align_rid_to_master(ex, pt_seg_start)
+                    if temporal_class(parse_temporal(ex, "exdate"))
+                    == temporal_class(pt_seg_start)
                     else parse_temporal(ex, "exdate")
                 )
                 not in old_ov_rids
             ]
+        if "dtstart" in patch and "rrule" not in patch and future_comp.get("dtstart"):
+            pt_fs = parse_temporal(future_comp["dtstart"], "dtstart")
+            if temporal_class(pt_split) == temporal_class(pt_fs):
+                wall_delta = compute_wall_clock_delta(pt_split, pt_fs)
+                if wall_delta:
+                    for list_k in ("exdate", "rdate"):
+                        if list_k not in patch and future_comp.get(list_k):
+                            future_comp[list_k] = shift_temporal_list_wall_clock(
+                                future_comp[list_k],
+                                pt_seg_start,
+                                pt_fs,
+                                wall_delta,
+                                list_k,
+                            )
         if self.policy.split_future_override_mode != SplitFutureOverrideMode.DISCARD:
             self._migrate_split_overrides(future_comp, target_overrides, patch)
             return
@@ -338,7 +376,7 @@ class OracleSplitMixin(OracleBase):
         eff_now: str,
         new_uid: str | None = None,
     ) -> None:
-        """Split at a non-first instance: truncate the original, add a new-UID segment (R-L3-001..R-L3-008)."""
+        """Split at a non-first instance: truncate the original, add a new-UID segment (R-L3-001..R-L3-010)."""
         target_seg = self._find_segment_for_rid(
             recurring_segments, recurrence_id, include_exdates=True
         )
@@ -359,7 +397,7 @@ class OracleSplitMixin(OracleBase):
             target_seg, patch, pt_split, pt_seg_start, future_uid, eff_now
         )
         self._apply_split_override_policy(
-            future_comp, target_overrides, patch, pt_split
+            future_comp, target_overrides, patch, pt_split, pt_seg_start
         )
         self._truncate_segment_before(
             target_seg, pt_split, pt_seg_start, split_cmp, eff_now

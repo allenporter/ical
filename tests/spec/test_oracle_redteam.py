@@ -23,6 +23,7 @@ from .reference_oracle import (
 )
 from .invariant_harness import CheckedStore
 from .test_reference_oracle import (
+    ALL_48_POLICIES,
     ALL_POLICY_CONFIGS,
     assert_rfc_invariants,
     policy_params,
@@ -436,3 +437,46 @@ def test_parent_delete_cascade_modes_and_reltypes() -> None:
     assert st_dangling.components[0]["related_to"] == [
         {"uid": "p-1", "reltype": "PARENT"}
     ]
+
+
+def test_redteam_e_taf_dst_shift_until_exdate_rdate_across_48_policies() -> None:
+    """Red-Team (e): DST THIS_AND_FUTURE shift realigns UNTIL, EXDATE, RDATE and strips dual-override EXDATE across all 48 policies (R-L3-010)."""
+    for policy in ALL_48_POLICIES:
+        store = CheckedStore(policy=policy)
+        store.add(
+            {
+                "uid": "dst-taf-1",
+                "summary": "Sync",
+                "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+                "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+                "rrule": "FREQ=DAILY;UNTIL=20250312T130000Z",
+                "rdate": ["2025-03-15T09:00:00-04:00[America/New_York]"],
+            }
+        )
+        store.delete("dst-taf-1", "20250311T090000", "NONE")
+        store.edit(
+            "dst-taf-1",
+            {
+                "summary": "Custom Mon",
+                "dtstart": "2025-03-10T14:00:00-04:00[America/New_York]",
+            },
+            recurrence_id="20250310T090000",
+        )
+        store.edit(
+            "dst-taf-1",
+            {
+                "summary": "Late Sync",
+                "dtstart": "2025-03-09T11:00:00-04:00[America/New_York]",
+            },
+            recurrence_id="20250309T090000",
+            recurrence_range="THIS_AND_FUTURE",
+            new_uid="dst-taf-2",
+        )
+        tl = assert_rfc_invariants(store, "redteam_e_dst_taf_shift")
+        assert [o["dtstart"] for o in tl] == [
+            "2025-03-08T09:00:00-05:00[America/New_York]",
+            "2025-03-09T11:00:00-04:00[America/New_York]",
+            "2025-03-10T11:00:00-04:00[America/New_York]",
+            "2025-03-12T11:00:00-04:00[America/New_York]",
+            "2025-03-15T11:00:00-04:00[America/New_York]",
+        ]
