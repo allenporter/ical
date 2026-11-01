@@ -654,3 +654,26 @@ def test_benchmark_recurring_with_recurrence_id_overrides(benchmark: Any) -> Non
         return next(cal.timeline.active_after(now), None)
 
     benchmark(lookup_next)
+
+
+def test_rdate_only_event_keeps_dtstart_occurrence() -> None:
+    """An RDATE-only event includes its DTSTART occurrence (RFC 5545 3.8.5.2)."""
+    ics = (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//repro//EN\r\n"
+        "BEGIN:VEVENT\r\n"
+        "UID:dish-1\r\n"
+        "DTSTAMP:20260901T000000Z\r\n"
+        "DTSTART;VALUE=DATE:20260922\r\n"
+        "RDATE;VALUE=DATE:20261027,20261201\r\n"
+        "SUMMARY:Meatloaf\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    )
+    cal = IcsCalendarStream.calendar_from_ics(ics)
+    assert [str(event.start) for event in cal.timeline] == [
+        "2026-09-22",
+        "2026-10-27",
+        "2026-12-01",
+    ]
