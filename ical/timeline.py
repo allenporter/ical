@@ -75,6 +75,11 @@ def materialize_timeline(
     """
     tzinfo = timeline._tzinfo
     start_dt = normalize_datetime(start, tzinfo)
+    start_utc = (
+        start_dt
+        if start_dt.tzinfo is datetime.UTC
+        else start_dt.astimezone(datetime.UTC)
+    )
     if stop:
         timespan = Timespan.of(start, stop, tzinfo)
     elif max_number_of_events is not None:
@@ -93,7 +98,7 @@ def materialize_timeline(
                 break
         else:
             # No stop specified, so include all events active after start.
-            if item.key.end > start_dt:
+            if item.key.start_utc > start_utc or item.key.end_utc > start_utc:
                 items.append(SortableItemValue(item.key, item.item))
 
     return SortableItemTimeline[ItemType](items, tzinfo)

@@ -489,7 +489,21 @@ class RecurIterable(SeekableIterable[T]):
     def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
         """Return an iterator fast-forwarded toward occurrences ending after ``cutoff``."""
         if isinstance(self._recur, SeekableIterable):
-            dt_cutoff = cutoff - self._duration if self._duration else cutoff
+            if self._duration and self._duration > datetime.timedelta(0):
+                cutoff_utc = (
+                    cutoff
+                    if cutoff.tzinfo is datetime.UTC
+                    else cutoff.astimezone(datetime.UTC)
+                    if cutoff.tzinfo is not None
+                    else cutoff
+                )
+                dt_cutoff = (
+                    (cutoff_utc - self._duration).astimezone(cutoff.tzinfo)
+                    if cutoff.tzinfo is not None and cutoff.tzinfo is not datetime.UTC
+                    else cutoff_utc - self._duration
+                )
+            else:
+                dt_cutoff = cutoff
             dt_iter: Iterable[datetime.datetime | datetime.date] = (
                 self._recur.iter_after(dt_cutoff)
             )
@@ -582,7 +596,18 @@ class SortedItemIterable(SeekableIterable[SpanOrderedItem[T]]):
 
     def iter_after(self, cutoff: datetime.datetime) -> Iterator[SpanOrderedItem[T]]:
         """Return an iterator of items ending after ``cutoff`` in sorted order."""
-        return iter(sorted(item for item in self._iterable() if item.key.end > cutoff))
+        cutoff_utc = (
+            cutoff
+            if cutoff.tzinfo is datetime.UTC
+            else normalize_datetime(cutoff, self._tzinfo).astimezone(datetime.UTC)
+        )
+        return iter(
+            sorted(
+                item
+                for item in self._iterable()
+                if item.key.end_utc > cutoff_utc or item.key.start_utc >= cutoff_utc
+            )
+        )
 
 
 class SortableItemTimeline(Iterable[T]):
@@ -631,7 +656,7 @@ class SortableItemTimeline(Iterable[T]):
         for item in self._iter_after(timespan.start):
             if item.key.is_included_in(timespan):
                 yield item.item
-            elif item.key.start > timespan.end:
+            elif item.key.start_utc > timespan.end_utc:
                 break
 
     def overlapping(
@@ -656,8 +681,13 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events starting after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
+        instant_utc = (
+            instant_value
+            if instant_value.tzinfo is datetime.UTC
+            else instant_value.astimezone(datetime.UTC)
+        )
         for item in self._iter_after(instant_value):
-            if item.key.start > instant_value:
+            if item.key.start_utc > instant_utc:
                 yield item.item
 
     def active_after(
@@ -666,8 +696,13 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
+        instant_utc = (
+            instant_value
+            if instant_value.tzinfo is datetime.UTC
+            else instant_value.astimezone(datetime.UTC)
+        )
         for item in self._iter_after(instant_value):
-            if item.key.start > instant_value or item.key.end > instant_value:
+            if item.key.start_utc > instant_utc or item.key.end_utc > instant_utc:
                 yield item.item
 
     def at_instant(
@@ -676,7 +711,9 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active at the specified instant."""
         timespan = Timespan.of(instant, instant, self._tzinfo)
-        for item in self._iter_after(timespan.start - datetime.timedelta(seconds=1)):
+        for item in self._iter_after(
+            timespan.start_utc - datetime.timedelta(seconds=1)
+        ):
             if item.key.includes(timespan):
                 yield item.item
             elif item.key > timespan:

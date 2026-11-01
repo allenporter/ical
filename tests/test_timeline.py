@@ -654,3 +654,114 @@ def test_benchmark_recurring_with_recurrence_id_overrides(benchmark: Any) -> Non
         return next(cal.timeline.active_after(now), None)
 
     benchmark(lookup_next)
+
+
+def test_timeline_dst_fallback_ordering_and_queries() -> None:
+    """Test timeline ordering and range/instant queries across DST fall-back (issue #761)."""
+    tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    cal = Calendar()
+    cal.events.append(
+        Event(
+            summary="All Day",
+            start=datetime.date(2023, 11, 5),
+            end=datetime.date(2023, 11, 6),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="First (01:45 PDT)",
+            start=datetime.datetime(2023, 11, 5, 1, 45, tzinfo=tz, fold=0),
+            end=datetime.datetime(2023, 11, 5, 1, 55, tzinfo=tz, fold=0),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Second (01:15 PST)",
+            start=datetime.datetime(2023, 11, 5, 1, 15, tzinfo=tz, fold=1),
+            end=datetime.datetime(2023, 11, 5, 1, 30, tzinfo=tz, fold=1),
+        )
+    )
+    cal.events.append(
+        Event(
+            summary="Hourly (PDT/PST)",
+            start=datetime.datetime(2023, 11, 5, 0, 35, tzinfo=tz),
+            end=datetime.datetime(2023, 11, 5, 0, 45, tzinfo=tz),
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=3"),
+        )
+    )
+
+    timeline = cal.timeline_tz(tz)
+
+    # 1. Chronological order on DST fall-back day
+    assert [
+        (e.summary, getattr(e.start, "fold", None))
+        for e in timeline.on_date(datetime.date(2023, 11, 5))
+    ] == [
+        ("All Day", None),
+        ("Hourly (PDT/PST)", 0),
+        ("Hourly (PDT/PST)", 0),
+        ("First (01:45 PDT)", 0),
+        ("Second (01:15 PST)", 1),
+        ("Hourly (PDT/PST)", 0),
+    ]
+
+    # 2. active_after / start_after at 01:50 PDT (fold=0) includes Second (01:15 PST, fold=1)
+    t_0150_pdt = datetime.datetime(2023, 11, 5, 1, 50, tzinfo=tz, fold=0)
+    assert [e.summary for e in timeline.active_after(t_0150_pdt)] == [
+        "All Day",
+        "First (01:45 PDT)",
+        "Second (01:15 PST)",
+        "Hourly (PDT/PST)",
+    ]
+    assert [e.summary for e in timeline.start_after(t_0150_pdt)] == [
+        "Second (01:15 PST)",
+        "Hourly (PDT/PST)",
+    ]
+
+    # Querying after 01:20 PST (fold=1) must NOT re-include 01:45 PDT (fold=0)
+    t_0120_pst = datetime.datetime(2023, 11, 5, 1, 20, tzinfo=tz, fold=1)
+    assert [e.summary for e in timeline.active_after(t_0120_pst)] == [
+        "All Day",
+        "Second (01:15 PST)",
+        "Hourly (PDT/PST)",
+    ]
+    assert [e.summary for e in timeline.start_after(t_0120_pst)] == [
+        "Hourly (PDT/PST)",
+    ]
+
+    # 3. overlapping and included across window straddling 02:00 PDT -> 01:00 PST
+    t_0155_pdt = datetime.datetime(2023, 11, 5, 1, 55, tzinfo=tz, fold=0)
+    assert [e.summary for e in timeline.overlapping(t_0155_pdt, t_0120_pst)] == [
+        "All Day",
+        "Second (01:15 PST)",
+    ]
+    t_0135_pst = datetime.datetime(2023, 11, 5, 1, 35, tzinfo=tz, fold=1)
+    assert [e.summary for e in timeline.included(t_0155_pdt, t_0135_pst)] == [
+        "Second (01:15 PST)",
+    ]
+
+    # 4. at_instant distinguishes fold=0 vs fold=1
+    assert [
+        e.summary
+        for e in timeline.at_instant(
+            datetime.datetime(2023, 11, 5, 1, 20, tzinfo=tz, fold=0)
+        )
+    ] == ["All Day"]
+    assert [e.summary for e in timeline.at_instant(t_0120_pst)] == [
+        "All Day",
+        "Second (01:15 PST)",
+    ]
+
+    # 5. materialize_timeline preserves fold-aware filtering with max_number_of_events and stop
+    mat_max = materialize_timeline(timeline, t_0150_pdt, max_number_of_events=10)
+    assert [e.summary for e in mat_max] == [
+        "All Day",
+        "First (01:45 PDT)",
+        "Second (01:15 PST)",
+        "Hourly (PDT/PST)",
+    ]
+    mat_stop = materialize_timeline(timeline, t_0155_pdt, stop=t_0120_pst)
+    assert [e.summary for e in mat_stop] == [
+        "All Day",
+        "Second (01:15 PST)",
+    ]
