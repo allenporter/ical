@@ -41,6 +41,14 @@ def test_policy_config_matches_mode_registry() -> None:
         assert {m.value for m in enum_cls} == {opt.id for opt in mode.options}
 
 
+def test_policy_combination_count() -> None:
+    """The five recorded modes span 2 * 2 * 2 * 2 * 3 = 48 policy combinations."""
+    combos = 1
+    for mode in MODES.values():
+        combos *= len(mode.options)
+    assert (len(MODES), combos) == (5, 48)
+
+
 def test_every_mode_is_referenced_by_a_rule() -> None:
     """Each recorded mode is relevant to at least one rule or scenario."""
     coverage = mode_coverage(RULES, MODES)
@@ -64,22 +72,26 @@ def test_scoping_rejects_unknown_mode_and_option() -> None:
     """Typos in mode or option ids are reported."""
     rule = _rule(applies_under={"no_such_mode": ["X"]})
     assert any("unknown mode" in e for e in verify_mode_scoping(rule, MODES))
-    rule = _rule(applies_under={"this_and_future_split_mode": ["NOPE"]})
+    rule = _rule(applies_under={"split_future_override_mode": ["NOPE"]})
     assert any("unknown options" in e for e in verify_mode_scoping(rule, MODES))
 
 
 def test_scoping_rejects_redundant_all_options() -> None:
     """Listing every option is equivalent to mode-independence and must be omitted."""
     rule = _rule(
-        applies_under={"this_and_future_split_mode": ["SHARED_UID", "NEW_UID"]}
+        applies_under={
+            "split_future_override_mode": ["DISCARD", "MIGRATE_TO_FUTURE_SERIES"]
+        }
     )
     assert any("lists every option" in e for e in verify_mode_scoping(rule, MODES))
 
 
 def test_scoping_rejects_scenario_pin_outside_rule_scope() -> None:
     """A scenario cannot pin an option its rule does not apply under."""
-    rule = _rule(applies_under={"this_and_future_split_mode": ["SHARED_UID"]})
-    rule.scenarios = [_scenario({"this_and_future_split_mode": "NEW_UID"})]
+    rule = _rule(applies_under={"split_future_override_mode": ["DISCARD"]})
+    rule.scenarios = [
+        _scenario({"split_future_override_mode": "MIGRATE_TO_FUTURE_SERIES"})
+    ]
     assert any(
         "outside the rule's applies_under" in e
         for e in verify_mode_scoping(rule, MODES)
@@ -99,10 +111,10 @@ def test_effective_scenario_modes_combines_rule_and_scenario() -> None:
     scen = _scenario(
         {
             "parent_delete_cascade_mode": "CASCADE_DELETE",
-            "this_and_future_split_mode": "SHARED_UID",
+            "split_future_override_mode": "DISCARD",
         }
     )
     assert effective_scenario_modes(rule, scen) == {
         "parent_delete_cascade_mode": ["CASCADE_DELETE"],
-        "this_and_future_split_mode": ["SHARED_UID"],
+        "split_future_override_mode": ["DISCARD"],
     }

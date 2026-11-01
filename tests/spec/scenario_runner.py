@@ -48,7 +48,10 @@ def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) 
             or op_dict.get("recurrence_range")
             or "NONE",
             now=op_dict.get("now"),
+            new_uid=op_dict.get("new_uid"),
         )
+    elif op_type == "expand":
+        return  # read-only: only the expanded timeline is asserted (R-L3-009)
     elif op_type == "delete_then_edit":
         del_op, edit_op = op_dict["delete"], op_dict["edit"]
         store.delete(

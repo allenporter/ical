@@ -1,0 +1,182 @@
+{
+  "id": "I-T-002",
+  "title": "Range=NONE Delete Removes Exactly the Targeted Occurrence",
+  "scope": "TRANSITION",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.13",
+      "line_start": 1323,
+      "line_end": 1330,
+      "verbatim_quote": "If this parameter is not specified on an allowed property, then the default range is the single instance specified by the recurrence identifier value of the property. The parameter value can only be \"THISANDFUTURE\" to indicate a range defined by the recurrence identifier and all subsequent instances."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6406,
+      "line_end": 6410,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component. The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    }
+  ],
+  "statement": "After a successful single-instance delete (recurrence_id set, Range=NONE) the targeted occurrence slot is absent from the expanded timeline and every other occurrence is unchanged (revision metadata excluded).",
+  "rationale": "A deletion addressed to a single instance (RFC 5545 Sections 3.2.13 and 3.8.4.4) must remove that instance and only that instance, whether it was a generated instance or an override.",
+  "check": "none_delete_removes_only_occurrence",
+  "positive_examples": [
+    {
+      "name": "exdate_added",
+      "description": "May 2 excluded.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "override_removed_and_excluded",
+      "description": "Override at May 2 removed and slot excluded.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ]
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "wrong_instance_removed",
+      "description": "COUNT reduced: May 3 removed instead.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "override_reverted_not_deleted",
+      "description": "Override removed but slot regenerated.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

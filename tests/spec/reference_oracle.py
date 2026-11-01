@@ -1,7 +1,7 @@
 """Clean-room Reference Store Oracle for iCalendar / CalDAV recurrence and editing semantics.
 
 Implements a 100% standalone, RFC-grounded reference state machine and timeline expander
-covering all 39 specification rules (R-L1-001 through R-L5-009) and all 6 explicit
+covering all 40 specification rules (R-L1-001 through R-L5-009) and all 5 explicit
 configurable store policy modes (`PolicyConfig`) using ONLY the Python standard library
 and `dateutil.rrule`.
 """
@@ -26,7 +26,6 @@ from .oracle_policy import (
     SingleEditExdateMode,
     SplitFutureOverrideMode,
     StoreError,
-    ThisAndFutureSplitMode,
     is_policy_compatible,
     policy_from_modes,
 )
@@ -53,7 +52,6 @@ __all__ = [
     "SingleEditExdateMode",
     "SplitFutureOverrideMode",
     "StoreError",
-    "ThisAndFutureSplitMode",
     "align_rid_to_master",
     "compute_until_string",
     "expand_component_candidates",
@@ -92,60 +90,44 @@ class ReferenceStore(OracleEditMixin):
             raise
 
     def _delete_whole_uid_and_children(self, uid: str, eff_now: str) -> None:
-        """Delete a whole UID, NEXT-linked split segments, and parent-linked children (R-L4-001, R-L5-007, R-L5-008)."""
-        delete_uids: set[str] = {uid}
-        for comp in self.components:
-            if comp.get("type") != "VTIMEZONE" and comp.get("uid") == uid:
-                delete_uids.update(self._collect_next_linked_uids(comp))
+        """Delete one UID plus PARENT-linked children per mode (R-L4-001, R-L5-007, R-L5-008, R-L5-009).
 
+        NEXT/FIRST links are ordering relations, never PARENT: other segments of a split
+        chain are neither deleted nor modified (links to the deleted UID may dangle).
+        """
+        delete_uids: set[str] = {uid}
         cascade_mode = self.policy.parent_delete_cascade_mode
-        if cascade_mode == ParentDeleteCascadeMode.CASCADE_DELETE:
-            changed = True
-            while changed:
-                changed = False
-                for comp in self.components:
-                    c_uid = comp.get("uid")
-                    if (
-                        comp.get("type") == "VTIMEZONE"
-                        or not c_uid
-                        or c_uid in delete_uids
-                    ):
-                        continue
-                    if any(
-                        rel.get("uid") in delete_uids and self._is_parent_relation(rel)
-                        for rel in (comp.get("related_to") or ())
-                    ):
-                        delete_uids.add(c_uid)
-                        delete_uids.update(self._collect_next_linked_uids(comp))
-                        changed = True
+        changed = cascade_mode == ParentDeleteCascadeMode.CASCADE_DELETE
+        while changed:
+            changed = False
+            for comp in self.components:
+                c_uid = comp.get("uid")
+                if comp.get("type") == "VTIMEZONE" or not c_uid or c_uid in delete_uids:
+                    continue
+                if any(
+                    rel.get("uid") in delete_uids and self._is_parent_relation(rel)
+                    for rel in (comp.get("related_to") or ())
+                ):
+                    delete_uids.add(c_uid)
+                    changed = True
 
         self.components = [
             c
             for c in self.components
             if c.get("type") == "VTIMEZONE" or c.get("uid") not in delete_uids
         ]
-
+        if cascade_mode != ParentDeleteCascadeMode.DETACH_CHILDREN:
+            return
         for comp in self.components:
-            if comp.get("type") == "VTIMEZONE" or not comp.get("related_to"):
-                continue
-            cleaned_next = [
+            rels = comp.get("related_to") or []
+            kept_rels = [
                 r
-                for r in comp["related_to"]
-                if not (
-                    str(r.get("reltype") or "").upper() == "NEXT"
-                    and r.get("uid") in delete_uids
-                )
+                for r in rels
+                if not (r.get("uid") in delete_uids and self._is_parent_relation(r))
             ]
-            comp["related_to"] = cleaned_next
-            if cascade_mode == ParentDeleteCascadeMode.DETACH_CHILDREN:
-                kept_rels = [
-                    r
-                    for r in comp["related_to"]
-                    if not (r.get("uid") in delete_uids and self._is_parent_relation(r))
-                ]
-                if len(kept_rels) != len(comp["related_to"]):
-                    comp["related_to"] = kept_rels
-                    self._bump_revision_metadata(comp, eff_now)
+            if len(kept_rels) != len(rels):
+                comp["related_to"] = kept_rels
+                self._bump_revision_metadata(comp, eff_now)
 
     def _delete_single_instance(
         self,
@@ -193,12 +175,12 @@ class ReferenceStore(OracleEditMixin):
 
     def _delete_this_and_future(
         self,
-        uid_comps: list[dict[str, Any]],
         recurring_segments: list[dict[str, Any]],
+        standalone_overrides: list[dict[str, Any]],
         recurrence_id: str,
         eff_now: str,
     ) -> None:
-        """Delete THIS_AND_FUTURE range after the master's first occurrence (R-L3-003, R-L3-006..R-L3-008)."""
+        """Delete THIS_AND_FUTURE after the first occurrence: truncate this UID only (R-L3-003, R-L3-006..R-L3-008)."""
         target_seg = self._find_segment_for_rid(
             recurring_segments, recurrence_id, include_exdates=True
         )
@@ -209,39 +191,10 @@ class ReferenceStore(OracleEditMixin):
         pt_seg_start = parse_temporal(target_seg["dtstart"], "dtstart")
         pt_split = align_rid_to_master(recurrence_id, pt_seg_start)
         split_cmp = pt_split.dt_utc_or_naive
-        is_seg_start = self._targets_seg_start(target_seg, recurrence_id)
-        cutoff_cmp = self._segment_cutoff_cmp(
-            target_seg, pt_seg_start, split_cmp, is_seg_start
-        )
-        superseded_segs, target_overrides = self._collect_superseded_downstream(
-            uid_comps, target_seg, pt_seg_start, cutoff_cmp
-        )
-        for item_to_rm in [*superseded_segs, *(ov for ov, _ in target_overrides)]:
-            if item_to_rm in self.components:
-                self.components.remove(item_to_rm)
-        if target_seg.get("related_to"):
-            target_seg["related_to"] = [
-                r
-                for r in target_seg["related_to"]
-                if str(r.get("reltype") or "").upper() != "NEXT"
-            ]
-
-        if is_seg_start:
-            seg_uid = target_seg["uid"]
-            if target_seg in self.components:
-                self.components.remove(target_seg)
-            for comp in self.components:
-                if comp.get("related_to"):
-                    comp["related_to"] = [
-                        r
-                        for r in comp["related_to"]
-                        if not (
-                            str(r.get("reltype") or "").upper() == "NEXT"
-                            and r.get("uid") == seg_uid
-                        )
-                    ]
-            return
-
+        for ov, _ in self._collect_future_overrides(
+            standalone_overrides, pt_seg_start, split_cmp
+        ):
+            self.components.remove(ov)
         self._truncate_segment_before(
             target_seg, pt_split, pt_seg_start, split_cmp, eff_now
         )
@@ -265,6 +218,7 @@ class ReferenceStore(OracleEditMixin):
             )
             if not uid_comps:
                 raise StoreError(f"No component found with uid={uid!r}")
+            self._reject_legacy_segments(uid_comps)
             if self._is_first_instance_split(recurrence_id, norm_range, master_comp):
                 recurrence_id = None
 
@@ -276,7 +230,7 @@ class ReferenceStore(OracleEditMixin):
                 )
             else:
                 self._delete_this_and_future(
-                    uid_comps, recurring_segments, recurrence_id, eff_now
+                    recurring_segments, standalone_overrides, recurrence_id, eff_now
                 )
         except Exception:
             self.components = saved
@@ -289,8 +243,13 @@ class ReferenceStore(OracleEditMixin):
         recurrence_id: str | None = None,
         recurrence_range: str = "NONE",
         now: str | None = None,
+        new_uid: str | None = None,
     ) -> None:
-        """Edit a whole series, single occurrence, or THIS_AND_FUTURE range."""
+        """Edit a whole series, single occurrence, or THIS_AND_FUTURE range.
+
+        `new_uid` names the new segment created by a THIS_AND_FUTURE split at a
+        non-first instance (R-L3-001); when omitted a deterministic UID is derived.
+        """
         saved = copy.deepcopy(self.components)
         try:
             norm_range = self._normalize_range(recurrence_range)
@@ -308,6 +267,7 @@ class ReferenceStore(OracleEditMixin):
             )
             if not uid_comps:
                 raise StoreError(f"No component found with uid={uid!r}")
+            self._reject_legacy_segments(uid_comps)
 
             normalized_from_first_instance = False
             if self._is_first_instance_split(recurrence_id, norm_range, master_comp):
@@ -317,9 +277,7 @@ class ReferenceStore(OracleEditMixin):
             if recurrence_id is None:
                 self._edit_whole_series(
                     uid,
-                    uid_comps,
                     master_comp,
-                    recurring_segments,
                     standalone_overrides,
                     patch,
                     normalized_from_first_instance,
@@ -335,7 +293,12 @@ class ReferenceStore(OracleEditMixin):
                 )
             else:
                 self._edit_this_and_future(
-                    uid_comps, recurring_segments, patch, recurrence_id, eff_now
+                    recurring_segments,
+                    standalone_overrides,
+                    patch,
+                    recurrence_id,
+                    eff_now,
+                    new_uid,
                 )
         except Exception:
             self.components = saved

@@ -1,8 +1,9 @@
 """Clean-room Base Store Class and Segment/Override Helpers for ReferenceStore.
 
 Implements shared metadata lifecycle (R-L5-001..R-L5-003), VTIMEZONE registration
-(R-L5-005, R-L5-006), candidate-based segment lookup (R-L3-006), and DST-safe
-duration/truncation/shift helpers (R-L3-003, R-L4-004, R-L4-005).
+(R-L5-005, R-L5-006), candidate-based series lookup (R-L3-006), the legacy shared-UID
+write guard (R-L3-009), and DST-safe duration/truncation/shift helpers (R-L3-003,
+R-L4-004, R-L4-005).
 """
 
 from __future__ import annotations
@@ -66,6 +67,8 @@ class OracleBase:
                 validate_component_state(canon)
                 self._ensure_unique_identity(canon["uid"], canon["recurrence_id"])
                 self.components.append(canon)
+                # Loaded state must satisfy I-K-006 (RFC 5545 Section 3.2.19) too.
+                self._register_comp_timezones(canon)
 
     _normalize_range = staticmethod(normalize_range)
     _is_parent_relation = staticmethod(is_parent_relation)
@@ -157,6 +160,18 @@ class OracleBase:
             and not c.get("rdate")
         ]
         return uid_comps, master_comp, recurring_segments, standalone_overrides
+
+    @staticmethod
+    def _reject_legacy_segments(uid_comps: list[dict[str, Any]]) -> None:
+        """Refuse writes on a UID holding legacy shared-UID segments (R-L3-009 open question)."""
+        if any(
+            c.get("recurrence_id") is not None and (c.get("rrule") or c.get("rdate"))
+            for c in uid_comps
+        ):
+            raise StoreError(
+                "Write on a UID with legacy shared-UID segments (RECURRENCE-ID plus "
+                "RRULE/RDATE) is unspecified (R-L3-009)"
+            )
 
     @staticmethod
     def _is_first_instance_split(
@@ -295,41 +310,6 @@ class OracleBase:
                 comp["completed"] = old_completed
 
     @staticmethod
-    def _segment_cutoff_cmp(
-        target_seg: dict[str, Any],
-        pt_seg_start: ParsedTemporal,
-        split_cmp: datetime.datetime,
-        is_seg_start: bool,
-    ) -> datetime.datetime:
-        """Compute UTC/naive cutoff comparison timestamp for overrides/downstream segments."""
-        cutoff_cmp = split_cmp
-        if is_seg_start:
-            cutoff_cmp = min(cutoff_cmp, pt_seg_start.dt_utc_or_naive)
-            if target_seg.get("recurrence_id") is not None:
-                cutoff_cmp = min(
-                    cutoff_cmp,
-                    align_rid_to_master(
-                        target_seg["recurrence_id"], pt_seg_start
-                    ).dt_utc_or_naive,
-                )
-        return cutoff_cmp
-
-    @staticmethod
-    def _targets_seg_start(seg: dict[str, Any], recurrence_id: str) -> bool:
-        """Return True if recurrence_id targets the starting occurrence of seg."""
-        pt_seg_start = parse_temporal(seg["dtstart"], "dtstart")
-        canon_split = format_canonical_rid(
-            align_rid_to_master(recurrence_id, pt_seg_start)
-        )
-        if canon_split == format_canonical_rid(pt_seg_start):
-            return True
-        if seg.get("recurrence_id") is not None:
-            return canon_split == format_canonical_rid(
-                align_rid_to_master(seg["recurrence_id"], pt_seg_start)
-            )
-        return False
-
-    @staticmethod
     def _find_segment_for_rid(
         recurring_segments: list[dict[str, Any]],
         recurrence_id: str,
@@ -342,16 +322,6 @@ class OracleBase:
         ]
         if not true_recurring:
             return None
-        if include_exdates:
-            for seg in true_recurring:
-                if seg.get("recurrence_id") is not None:
-                    pt_s = parse_temporal(seg["dtstart"], "dtstart")
-                    if format_canonical_rid(
-                        align_rid_to_master(recurrence_id, pt_s)
-                    ) == format_canonical_rid(
-                        align_rid_to_master(seg["recurrence_id"], pt_s)
-                    ):
-                        return seg
         ordered = sorted(
             true_recurring,
             key=lambda s: parse_temporal(s["dtstart"], "dtstart").dt_utc_or_naive,
@@ -428,31 +398,6 @@ class OracleBase:
                         ),
                         pt_ov_ns,
                     )
-
-    def _collect_next_linked_uids(self, start_comp: dict[str, Any]) -> list[str]:
-        """Follow outgoing RELTYPE=NEXT links transitively from start_comp."""
-        chain: list[str] = []
-        visited: set[str] = {start_comp["uid"]}
-        frontier = [
-            str(r["uid"])
-            for r in (start_comp.get("related_to") or [])
-            if str(r.get("reltype") or "").upper() == "NEXT" and r.get("uid")
-        ]
-        while frontier:
-            nxt_uid = frontier.pop(0)
-            if nxt_uid in visited:
-                continue
-            visited.add(nxt_uid)
-            chain.append(nxt_uid)
-            for comp in self.components:
-                if comp.get("type") != "VTIMEZONE" and comp.get("uid") == nxt_uid:
-                    frontier.extend(
-                        str(r["uid"])
-                        for r in (comp.get("related_to") or [])
-                        if str(r.get("reltype") or "").upper() == "NEXT"
-                        and r.get("uid")
-                    )
-        return chain
 
     def _should_shift_series_exceptions(
         self,

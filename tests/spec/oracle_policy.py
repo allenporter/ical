@@ -22,13 +22,6 @@ class SeriesEditOverrideMode(StrEnum):
     MASTER_ONLY = "MASTER_ONLY"
 
 
-class ThisAndFutureSplitMode(StrEnum):
-    """Policy governing UID assignment when splitting a series with THIS_AND_FUTURE (R-L3-001)."""
-
-    SHARED_UID = "SHARED_UID"
-    NEW_UID = "NEW_UID"
-
-
 class SingleEditExdateMode(StrEnum):
     """Policy governing whether single-instance edit also adds EXDATE to master (R-L2-005)."""
 
@@ -60,7 +53,6 @@ class ParentDeleteCascadeMode(StrEnum):
 
 _MODE_ENUM_BY_FIELD: dict[str, type[StrEnum]] = {
     "series_edit_override_mode": SeriesEditOverrideMode,
-    "this_and_future_split_mode": ThisAndFutureSplitMode,
     "single_edit_exdate_mode": SingleEditExdateMode,
     "series_reschedule_exception_mode": SeriesRescheduleExceptionMode,
     "split_future_override_mode": SplitFutureOverrideMode,
@@ -74,9 +66,6 @@ class PolicyConfig:
 
     series_edit_override_mode: SeriesEditOverrideMode = (
         SeriesEditOverrideMode.PROPAGATE_PATCH
-    )
-    this_and_future_split_mode: ThisAndFutureSplitMode = (
-        ThisAndFutureSplitMode.SHARED_UID
     )
     single_edit_exdate_mode: SingleEditExdateMode = (
         SingleEditExdateMode.RFC_OVERRIDE_ONLY

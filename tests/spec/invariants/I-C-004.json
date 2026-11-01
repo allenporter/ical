@@ -1,0 +1,124 @@
+{
+  "id": "I-C-004",
+  "title": "DTEND/DUE Value Type and Floating-ness Match DTSTART",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.2",
+      "line_start": 5390,
+      "line_end": 5396,
+      "verbatim_quote": "The value type of this property MUST be the same as the \"DTSTART\" property, and its value MUST be later in time than the value of the \"DTSTART\" property. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property is also specified as a date with local time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.3",
+      "line_start": 5465,
+      "line_end": 5469,
+      "verbatim_quote": "For cases where this property is specified in a \"VTODO\" calendar component that also specifies a \"DTSTART\" property, the value type of this property MUST be the same as the \"DTSTART\" property"
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.3",
+      "line_start": 5479,
+      "line_end": 5482,
+      "verbatim_quote": "Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property is also specified as a date with local time."
+    }
+  ],
+  "statement": "DTEND (VEVENT) and DUE (VTODO) have the same value type (DATE vs DATE-TIME) as DTSTART, and are floating (date with local time) if and only if DTSTART is floating.",
+  "rationale": "RFC 5545 Sections 3.8.2.2 and 3.8.2.3 state both requirements verbatim. Mixing DATE and DATE-TIME, or floating and zoned values, makes the component's duration undefined.",
+  "check": "end_value_type_matches_start",
+  "positive_examples": [
+    {
+      "name": "datetime_pair",
+      "description": "Floating DTSTART and DTEND.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "date_pair",
+      "description": "All-day DTSTART and DTEND.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "utc_and_tzid",
+      "description": "UTC DTSTART with TZID DTEND (both zoned).",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T13:00:00Z",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "date_start_datetime_end",
+      "description": "DATE DTSTART with DATE-TIME DTEND.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "floating_start_utc_end",
+      "description": "Floating DTSTART with UTC DTEND.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00Z",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "todo_due_type_mismatch",
+      "description": "DATE-TIME DTSTART with DATE DUE.",
+      "components": [
+        {
+          "type": "VTODO",
+          "uid": "t1",
+          "dtstart": "2025-05-01T09:00:00",
+          "due": "2025-05-02"
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

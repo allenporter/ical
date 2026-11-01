@@ -1,0 +1,89 @@
+{
+  "id": "I-C-003",
+  "title": "DTEND/DUE and DURATION Are Mutually Exclusive",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.6.1",
+      "line_start": 2995,
+      "line_end": 2997,
+      "verbatim_quote": "; Either 'dtend' or 'duration' MAY appear in ; a 'eventprop', but 'dtend' and 'duration' ; MUST NOT occur in the same 'eventprop'."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.6.2",
+      "line_start": 3169,
+      "line_end": 3171,
+      "verbatim_quote": "; Either 'due' or 'duration' MAY appear in ; a 'todoprop', but 'due' and 'duration' ; MUST NOT occur in the same 'todoprop'."
+    }
+  ],
+  "statement": "A VEVENT never carries both DTEND and DURATION, and a VTODO never carries both DUE and DURATION.",
+  "rationale": "The RFC 5545 VEVENT and VTODO grammars forbid DTEND (resp. DUE) and DURATION in the same component. A store that derives one from the other on edit must drop the other.",
+  "check": "end_xor_duration",
+  "positive_examples": [
+    {
+      "name": "dtend_only",
+      "description": "Event with DTEND only.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "duration_only",
+      "description": "Event with DURATION only.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "duration": "PT1H"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "dtend_and_duration",
+      "description": "Event with both.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "duration": "PT1H"
+        }
+      ]
+    },
+    {
+      "name": "due_and_duration",
+      "description": "To-do with both.",
+      "components": [
+        {
+          "type": "VTODO",
+          "uid": "t1",
+          "dtstart": "2025-05-01",
+          "due": "2025-05-02",
+          "duration": "P1D"
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

@@ -41,6 +41,7 @@ AVAILABLE_DOCS = {
     "rfc5545.txt": RFC_DIR / "rfc5545.txt.gz",
     "rfc5546.txt": RFC_DIR / "rfc5546.txt.gz",
     "rfc8984.txt": RFC_DIR / "rfc8984.txt.gz",
+    "rfc9253.txt": RFC_DIR / "rfc9253.txt.gz",
     "draft-ietf-calext-jscalendar-icalendar.txt": RFC_DIR
     / "draft-ietf-calext-jscalendar-icalendar.txt.gz",
 }
@@ -122,9 +123,13 @@ class MiniScenarioVector(BaseModel):
     # Policy mode choices this scenario's expected output depends on ({mode_id: option_id}).
     # Empty means the expected output is identical under every option of every mode.
     modes: dict[str, str] = Field(default_factory=dict)
+    # True only when `initial_components` deliberately contain legacy shared-UID
+    # segments (RECURRENCE-ID plus RRULE/RDATE, see R-L3-009). Such components are
+    # never valid output of a write operation.
+    legacy_input: bool = False
     initial_components: list[dict[str, Any]]
     operation: dict[str, Any]
-    expected_components: list[dict[str, Any]]
+    expected_components: list[dict[str, Any]] | None = None
     expected_timeline: list[dict[str, Any]]
 
 
@@ -283,6 +288,11 @@ def verify_rule(
         errors.append(f"Rule {rule.id}: store_implication is too brief (<40 chars).")
     if not rule.scenarios:
         errors.append(f"Rule {rule.id}: must include at least 1 MiniScenarioVector.")
+    for scen in rule.scenarios:
+        if scen.expected_components is None and scen.operation.get("op") != "expand":
+            errors.append(
+                f"Rule {rule.id} ({scen.name}): expected_components may only be null for op='expand'."
+            )
     errors.extend(verify_clean_room(rule))
     errors.extend(verify_mode_scoping(rule, load_modes() if modes is None else modes))
     return errors
@@ -423,6 +433,8 @@ def save_rule_json(rule: SpecRule, path: pathlib.Path) -> None:
     for scen in data["scenarios"]:
         if not scen["modes"]:
             del scen["modes"]
+        if not scen["legacy_input"]:
+            del scen["legacy_input"]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
