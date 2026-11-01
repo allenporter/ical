@@ -80,7 +80,7 @@ class OracleEditMixin(OracleSplitMixin):
         patch: dict[str, Any],
         eff_now: str,
     ) -> None:
-        """Prune orphaned overrides and propagate metadata patches (R-L4-003, R-L4-005).
+        """Prune orphaned overrides and propagate metadata patches (R-L4-003, R-L4-005, R-L4-008).
 
         Only this UID's overrides are touched: other segments of a split chain are
         separate series addressed by their own UIDs (R-L4-001).
@@ -121,7 +121,7 @@ class OracleEditMixin(OracleSplitMixin):
         pt_new_start: ParsedTemporal,
         eff_now: str,
     ) -> None:
-        """SHIFT_WITH_SERIES: re-key overrides by the series shift as new revisions.
+        """SHIFT_WITH_SERIES: re-key overrides by the series shift as new revisions (R-L4-009).
 
         A shifted override is a revision at its new (UID, RECURRENCE-ID) key, so its
         SEQUENCE exceeds any SEQUENCE previously held at that key (I-T-005) and its
@@ -341,7 +341,7 @@ class OracleEditMixin(OracleSplitMixin):
         recurrence_id: str,
         eff_now: str,
     ) -> None:
-        """Apply a single-instance edit (Range=NONE) (R-L1-005..R-L1-007, R-L2-003..R-L2-008)."""
+        """Apply a single-instance edit (Range=NONE) (R-L1-005..R-L1-007, R-L2-003..R-L2-009)."""
         ref_seg = next((s for s in recurring_segments if s.get("dtstart")), None)
         ref_pt = (
             parse_temporal(ref_seg["dtstart"], "dtstart")

@@ -469,7 +469,11 @@ def load_all_scenarios(
     scenarios: list[tuple[str, int, str, dict[str, Any]]] = []
     for rule in load_rules_from_path(rules_dir):
         for idx, scen in enumerate(rule.scenarios):
-            scenarios.append((rule.id, idx, scen.name, scen.model_dump()))
+            scen_dict = scen.model_dump()
+            scen_dict["modes"] = {
+                m: opts[0] for m, opts in effective_scenario_modes(rule, scen).items()
+            }
+            scenarios.append((rule.id, idx, scen.name, scen_dict))
     return scenarios
 
 

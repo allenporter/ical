@@ -49,13 +49,16 @@ def test_policy_combination_count() -> None:
     assert (len(MODES), combos) == (5, 48)
 
 
-def test_every_mode_is_referenced_by_a_rule() -> None:
-    """Each recorded mode is relevant to at least one rule or scenario."""
+def test_every_mode_option_is_exercised_by_a_scenario() -> None:
+    """Every option of every recorded PolicyMode is exercised by at least one rule/scenario."""
     coverage = mode_coverage(RULES, MODES)
-    unreferenced = [
-        mode_id for mode_id, options in coverage.items() if not any(options.values())
+    uncovered = [
+        f"{mode_id}.{opt_id}"
+        for mode_id, options in coverage.items()
+        for opt_id, refs in options.items()
+        if not refs
     ]
-    assert not unreferenced
+    assert not uncovered, f"Uncovered policy mode options: {uncovered}"
 
 
 def _rule(**kwargs: object) -> SpecRule:

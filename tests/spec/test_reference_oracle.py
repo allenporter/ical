@@ -100,10 +100,10 @@ def assert_rfc_invariants(store: ReferenceStore, label: str) -> list[dict[str, A
 
 
 def test_scenario_count_and_rule_count() -> None:
-    """Ensure all 40 rules and their scenarios are discovered."""
+    """Ensure all 45 rules and their scenarios are discovered."""
     rule_files = list(RULES_DIR.rglob("*.json"))
-    assert len(rule_files) == 40
-    assert len(ALL_SCENARIOS) == 55
+    assert len(rule_files) == 45
+    assert len(ALL_SCENARIOS) == 62
 
 
 @pytest.mark.parametrize(
@@ -481,5 +481,5 @@ def test_clean_room_and_full_rule_citation_coverage() -> None:
         )
 
     num_rules, citation_errors = verify_path(RULES_DIR)
-    assert num_rules == 40
+    assert num_rules == 45
     assert not citation_errors

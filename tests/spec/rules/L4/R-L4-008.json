@@ -1,0 +1,143 @@
+{
+  "id": "R-L4-008",
+  "title": "Whole-Series Metadata Edit Under MASTER_ONLY Leaves Existing Overrides Unchanged",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "STORE_POLICY",
+  "applies_under": {
+    "series_edit_override_mode": [
+      "MASTER_ONLY"
+    ]
+  },
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1510,
+      "line_end": 1513,
+      "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime.  However, individual properties of the occurrence can be modified by a patch or multiple patches."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.7",
+      "line_start": 5862,
+      "line_end": 5864,
+      "verbatim_quote": "Note that since this is an entire rescheduling of the event, any instance-specific information will be lost, unless explicitly included with the update \"REQUEST\"."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.7",
+      "line_start": 6676,
+      "line_end": 6680,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component.  The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    }
+  ],
+  "rationale": "Unlike JSCalendar (`recurrenceOverrides` patches in RFC 8984 Section 4.3.5), an iCalendar override component is a complete VEVENT or VTODO copy that does not record which individual properties were customized versus inherited from the main component when the override was created. Under `series_edit_override_mode = MASTER_ONLY` (the counterpart to `PROPAGATE_PATCH` in R-L4-003), a whole-series edit (`recurrence_id=None`) updates only the main component and leaves valid standalone `RECURRENCE-ID` override components untouched so per-instance customizations (such as a custom `SUMMARY` or `LOCATION` on one occurrence) are never silently overwritten.",
+  "store_implication": "Under `series_edit_override_mode = MASTER_ONLY`, when editing a series with `recurrence_id=None`: (1) the main component (`uid == target_uid` and `recurrence_id is None`) is updated in place with the patch and bumped revision metadata (`sequence`, `dtstamp`, `last_modified`); (2) every standalone override component (`uid == target_uid`, `recurrence_id is not None`, no `rrule`/`rdate`) that remains valid after exception handling is preserved without applying the non-schedule metadata patch or incrementing the override's `sequence`/`dtstamp`/`last_modified` (unless the override itself was re-keyed by `SHIFT_WITH_SERIES` in R-L4-009).",
+  "edge_cases_and_counterexamples": [
+    "Whole-series edit changing `summary` and `location` under `MASTER_ONLY` when an override at May 3 has custom `summary='Guest speaker'`: the main component receives the new `summary` and `location` and increments `sequence`, while the May 3 override retains `summary='Guest speaker'`, its original `location`, and its existing `sequence`.",
+    "Component ordering `[override, master]` vs `[master, override]` produces identical results under `MASTER_ONLY` (invariant I-T-009)."
+  ],
+  "scenarios": [
+    {
+      "name": "whole_series_metadata_edit_master_only_leaves_override_unchanged",
+      "description": "Under series_edit_override_mode=MASTER_ONLY, editing summary and location on the series updates only the main component and leaves the standalone override component's properties and sequence untouched.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "master-only-1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Custom Day 2",
+          "location": "Room B",
+          "dtstart": "2025-05-02T10:00:00",
+          "dtend": "2025-05-02T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "master-only-1",
+          "recurrence_id": null,
+          "summary": "Daily standup",
+          "location": "Room A",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "master-only-1",
+        "recurrence_id": null,
+        "range": "NONE",
+        "now": "2025-05-01T12:00:00Z",
+        "patch": {
+          "summary": "Renamed standup",
+          "location": "Room C"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "master-only-1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Custom Day 2",
+          "location": "Room B",
+          "dtstart": "2025-05-02T10:00:00",
+          "dtend": "2025-05-02T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "master-only-1",
+          "recurrence_id": null,
+          "summary": "Renamed standup",
+          "location": "Room C",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 1,
+          "dtstamp": "2025-05-01T12:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "last_modified": "2025-05-01T12:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "master-only-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "summary": "Renamed standup"
+        },
+        {
+          "uid": "master-only-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T10:00:00",
+          "summary": "Custom Day 2"
+        },
+        {
+          "uid": "master-only-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "summary": "Renamed standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added explicit rule and scenario covering series_edit_override_mode=MASTER_ONLY.",
+    "Verified citations in rfc8984.txt Section 4.3.5 (L1510-L1513), rfc5546.txt Section 4.4.7 (L5862-L5864), and rfc5545.txt Section 3.8.4.7 (L6676-L6680)."
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "id": "R-L4-009",
+  "title": "Shifting EXDATEs and Overrides by Wall-Clock Delta Across DST Under SHIFT_WITH_SERIES",
+  "layer": "L4_MASTER_EDIT_AND_EXCEPTIONS",
+  "authority": "STORE_POLICY",
+  "applies_under": {
+    "series_reschedule_exception_mode": [
+      "SHIFT_WITH_SERIES"
+    ]
+  },
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.7",
+      "line_start": 5862,
+      "line_end": 5864,
+      "verbatim_quote": "Note that since this is an entire rescheduling of the event, any instance-specific information will be lost, unless explicitly included with the update \"REQUEST\"."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6422,
+      "line_end": 6424,
+      "verbatim_quote": "For a given pair of \"UID\" and \"SEQUENCE\" property values, the \"RECURRENCE-ID\" value for a recurrence instance is fixed."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6432,
+      "line_end": 6434,
+      "verbatim_quote": "Subsequent instances defined in separate components are not impacted by the given recurrence instance."
+    }
+  ],
+  "rationale": "When a user shifts the start date or time of an entire recurring series (`recurrence_id=None`, changing `dtstart` without replacing `rrule` or changing `DATE` vs `DATE-TIME` value type), pruning exceptions (`PRUNE_INVALID` in R-L4-004 and R-L4-005) discards every single-instance deletion and override whenever the time of day changes. Under `series_reschedule_exception_mode = SHIFT_WITH_SERIES`, the store computes the wall-clock delta between the old and new master `DTSTART` (`naive(new_dtstart) - naive(old_dtstart)`) and shifts `EXDATE`, `RDATE`, and each standalone override's `RECURRENCE-ID` and `DTSTART` by that wall-clock delta (re-attaching the target timezone and preserving each override's duration). Using wall-clock delta rather than elapsed UTC duration is essential across DST transitions: moving `2025-03-08 09:00 EST` (`14:00Z`) to `2025-03-09 10:00 EDT` (`14:00Z`) is 24 hours in UTC (`+1d +0h`) yet `+1 day +1 hour` in local wall-clock time (`09:00 -> 10:00`). Because RFC 5545 Section 3.8.4.4 fixes `RECURRENCE-ID` per `(UID, SEQUENCE)`, re-keying a shifted override increments its `SEQUENCE` above both its own prior `SEQUENCE` and any `SEQUENCE` previously held at its new `(UID, RECURRENCE-ID)` key (satisfying invariant I-T-005).",
+  "store_implication": "Under `series_reschedule_exception_mode = SHIFT_WITH_SERIES`, when a whole-series edit (`recurrence_id=None`, not normalized from a first-instance `THIS_AND_FUTURE` edit) changes `dtstart` without supplying a new `rrule` and without changing `DATE` vs `DATE-TIME` value type: (1) compute `wall_delta = naive(new_dtstart) - naive(old_dtstart)`; (2) if `wall_delta != 0`, shift unpatched `exdate` and `rdate` entries on the main component by `wall_delta` in local wall-clock time; (3) shift each standalone override's `recurrence_id` and `dtstart` by `wall_delta` in local wall-clock time (recomputing `dtend`/`due` to preserve the override's duration) and bump the override's `sequence`, `dtstamp`, and `last_modified`; and (4) prune any shifted `exdate` or override that still does not match a candidate occurrence of the updated main component.",
+  "edge_cases_and_counterexamples": [
+    "DST spring-forward (`America/New_York` 2025-03-08 EST `-05:00` to 2025-03-09 EDT `-04:00`): shifting master `DTSTART` from `2025-03-08T09:00-05:00` to `2025-03-09T10:00-04:00` has a wall-clock delta of `+1 day, +1 hour` (even though the UTC delta is `+24 hours`). An `EXDATE` at `2025-03-09T09:00-04:00` shifts to `2025-03-10T10:00-04:00` (excluding the new 2nd occurrence), and an override at `RECURRENCE-ID 20250310T090000` (`DTSTART 11:00-04:00`) shifts to `RECURRENCE-ID 20250311T100000` (`DTSTART 12:00-04:00`).",
+    "When the whole-series edit also replaces `rrule` or converts `DATE <-> DATE-TIME`, `SHIFT_WITH_SERIES` does not guess a mapping and falls back to pruning non-candidate exceptions."
+  ],
+  "scenarios": [
+    {
+      "name": "whole_series_dtstart_shift_across_dst_shifts_exdate_and_override_wall_clock",
+      "description": "Under series_reschedule_exception_mode=SHIFT_WITH_SERIES (and MASTER_ONLY), shifting an America/New_York daily series across the 2025-03-09 spring-forward DST boundary from 2025-03-08 09:00 EST to 2025-03-09 10:00 EDT shifts both EXDATE and the standalone override by the +1d +1h wall-clock delta and increments sequence on both components.",
+      "modes": {
+        "series_reschedule_exception_mode": "SHIFT_WITH_SERIES",
+        "series_edit_override_mode": "MASTER_ONLY"
+      },
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dst-shift-1",
+          "recurrence_id": null,
+          "summary": "Morning sync",
+          "dtstart": "2025-03-08T09:00:00-05:00[America/New_York]",
+          "dtend": "2025-03-08T09:30:00-05:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "exdate": [
+            "2025-03-09T09:00:00-04:00[America/New_York]"
+          ],
+          "sequence": 0,
+          "dtstamp": "2025-03-01T08:00:00Z",
+          "created": "2025-03-01T08:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "dst-shift-1",
+          "recurrence_id": "TZID=America/New_York:20250310T090000",
+          "summary": "Custom Monday sync",
+          "dtstart": "2025-03-10T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-10T11:30:00-04:00[America/New_York]",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1,
+          "dtstamp": "2025-03-01T09:00:00Z",
+          "created": "2025-03-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "dst-shift-1",
+        "recurrence_id": null,
+        "range": "NONE",
+        "now": "2025-03-02T12:00:00Z",
+        "patch": {
+          "dtstart": "2025-03-09T10:00:00-04:00[America/New_York]",
+          "summary": "Shifted sync"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dst-shift-1",
+          "recurrence_id": null,
+          "summary": "Shifted sync",
+          "dtstart": "2025-03-09T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-09T10:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "exdate": [
+            "2025-03-10T10:00:00-04:00[America/New_York]"
+          ],
+          "sequence": 1,
+          "dtstamp": "2025-03-02T12:00:00Z",
+          "created": "2025-03-01T08:00:00Z",
+          "last_modified": "2025-03-02T12:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "dst-shift-1",
+          "recurrence_id": "20250311T100000",
+          "summary": "Custom Monday sync",
+          "dtstart": "2025-03-11T12:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-11T12:30:00-04:00[America/New_York]",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 2,
+          "dtstamp": "2025-03-02T12:00:00Z",
+          "created": "2025-03-01T08:00:00Z",
+          "last_modified": "2025-03-02T12:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "dst-shift-1",
+          "recurrence_id": "20250309T100000",
+          "dtstart": "2025-03-09T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-09T10:30:00-04:00[America/New_York]",
+          "summary": "Shifted sync",
+          "sequence": 1
+        },
+        {
+          "uid": "dst-shift-1",
+          "recurrence_id": "20250311T100000",
+          "dtstart": "2025-03-11T12:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-11T12:30:00-04:00[America/New_York]",
+          "summary": "Custom Monday sync",
+          "sequence": 2
+        },
+        {
+          "uid": "dst-shift-1",
+          "recurrence_id": "20250312T100000",
+          "dtstart": "2025-03-12T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-03-12T10:30:00-04:00[America/New_York]",
+          "summary": "Shifted sync",
+          "sequence": 1
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added explicit rule and spring-forward DST scenario covering series_reschedule_exception_mode=SHIFT_WITH_SERIES.",
+    "Verified citations in rfc5546.txt Section 4.4.7 (L5862-L5864) and rfc5545.txt Section 3.8.4.4 (L6422-L6424, L6432-L6434)."
+  ]
+}

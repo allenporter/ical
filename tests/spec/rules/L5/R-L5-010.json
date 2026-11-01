@@ -1,0 +1,142 @@
+{
+  "id": "R-L5-010",
+  "title": "Detaching RELATED-TO PARENT Links and Bumping Revision Metadata Under DETACH_CHILDREN",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "applies_under": {
+    "parent_delete_cascade_mode": [
+      "DETACH_CHILDREN"
+    ]
+  },
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6541,
+      "line_end": 6547,
+      "verbatim_quote": "Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.15",
+      "line_start": 1395,
+      "line_end": 1405,
+      "verbatim_quote": "The parameter specifies the hierarchical relationship type of the calendar component referenced by the property. The parameter value can be PARENT, to indicate that the referenced calendar component is a superior of calendar component; CHILD to indicate that the referenced calendar component is a subordinate of the calendar component; or SIBLING to indicate that the referenced calendar component is a peer of the calendar component. If this parameter is not specified on an allowable property, the default relationship type is PARENT. Applications MUST treat x-name and iana-token values they don't recognize the same way as they would the PARENT value."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.2",
+      "line_start": 7794,
+      "line_end": 7796,
+      "verbatim_quote": "In the case of an iCalendar object that doesn't specify a \"METHOD\" property, this property is equivalent to the \"LAST-MODIFIED\" property."
+    }
+  ],
+  "rationale": "Under `parent_delete_cascade_mode = DETACH_CHILDREN` (an alternative to `CASCADE_DELETE` in R-L5-007), deleting a parent component (`uid`) preserves all subordinate child components rather than deleting user tasks/events, and removes the `RELATED-TO` entries pointing to the deleted `uid` via a `PARENT` relationship (explicit `PARENT`, omitted `RELTYPE`, or unrecognized `RELTYPE` per R-L5-009) so no broken `PARENT` link remains. Because detaching a `RELATED-TO` property mutates the stored child component, the modified child component's revision metadata (`sequence`, `dtstamp`, `last_modified`) is incremented/updated to the deletion's revision timestamp while preserving its `created` timestamp. Non-`PARENT` links (`SIBLING`, `CHILD`, `FIRST`, `NEXT`) are not `PARENT` relationships and are left untouched.",
+  "store_implication": "Under `parent_delete_cascade_mode = DETACH_CHILDREN`, when `delete` completely removes a `UID` from the store: (1) all surviving components whose `related_to` list contains a `PARENT` relation (explicit `PARENT`, omitted `RELTYPE`, or unrecognized `RELTYPE`) to the deleted `UID` remain in the store with those matching `PARENT` entries removed from `related_to` and all other `related_to` entries preserved; and (2) every component whose `related_to` list actually changed has its `sequence` incremented and its `dtstamp` and `last_modified` updated to the operation's UTC revision timestamp (preserving `created`). Components whose `related_to` only referenced the deleted `UID` via `SIBLING`, `CHILD`, `FIRST`, or `NEXT` are not modified.",
+  "edge_cases_and_counterexamples": [
+    "A child component referencing both deleted `parent-1` (`RELTYPE=PARENT`) and `peer-1` (`RELTYPE=SIBLING`): deleting `parent-1` removes only the `parent-1` entry, retains the `peer-1` `SIBLING` entry, and increments the child's `sequence`.",
+    "A peer component referencing deleted `parent-1` via `RELTYPE=SIBLING` (or a split segment referencing deleted `seg-2` via `RELTYPE=NEXT`): because neither is a `PARENT` relation, its `related_to` list and `sequence` remain untouched."
+  ],
+  "scenarios": [
+    {
+      "name": "full_delete_of_parent_detaches_parent_links_and_bumps_child_revision_metadata",
+      "description": "Under parent_delete_cascade_mode=DETACH_CHILDREN, deleting parent-1 keeps child-1, removes its PARENT link to parent-1 while keeping its SIBLING link to peer-1, and updates child-1's sequence, dtstamp, and last_modified.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "parent-1",
+          "summary": "Parent project",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            },
+            {
+              "uid": "peer-1",
+              "reltype": "SIBLING"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "peer-1",
+          "summary": "Peer task",
+          "dtstart": "2025-05-01T11:00:00",
+          "dtend": "2025-05-01T11:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "parent-1",
+        "recurrence_id": null,
+        "now": "2025-05-01T12:00:00Z"
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "sequence": 1,
+          "dtstamp": "2025-05-01T12:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "last_modified": "2025-05-01T12:00:00Z",
+          "related_to": [
+            {
+              "uid": "peer-1",
+              "reltype": "SIBLING"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "peer-1",
+          "summary": "Peer task",
+          "dtstart": "2025-05-01T11:00:00",
+          "dtend": "2025-05-01T11:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "child-1",
+          "dtstart": "2025-05-01T10:00:00",
+          "summary": "Subtask",
+          "sequence": 1
+        },
+        {
+          "uid": "peer-1",
+          "dtstart": "2025-05-01T11:00:00",
+          "summary": "Peer task",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added explicit rule and scenario covering parent_delete_cascade_mode=DETACH_CHILDREN.",
+    "Verified citations in rfc5545.txt Sections 3.8.4.5 (L6541-L6547), 3.2.15 (L1395-L1405), and 3.8.7.2 (L7794-L7796)."
+  ]
+}

@@ -399,9 +399,9 @@ ALL_SCENARIOS = load_all_scenarios()
 
 
 def test_rule_directory_completeness() -> None:
-    """Verify that all 40 rules exist with unique IDs and zero citation/clean-room errors."""
+    """Verify that all 45 rules exist with unique IDs and zero citation/clean-room errors."""
     count, errors = verify_path(RULES_DIR)
-    assert count == 40
+    assert count == 45
     assert not errors
 
 
