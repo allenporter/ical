@@ -105,9 +105,20 @@ class Observance(ComponentModel):
 
     def as_ruleset(self) -> Iterable[datetime.datetime | datetime.date]:
         """Represent the occurrence as a rule of repeated dates or datetimes."""
+        rrule = self.rrule
+        if (
+            rrule is not None
+            and isinstance(rrule.until, datetime.datetime)
+            and rrule.until.tzinfo is not None
+        ):
+            local_until = (
+                rrule.until.astimezone(datetime.timezone.utc)
+                + self.tz_offset_from.offset
+            ).replace(tzinfo=None)
+            rrule = rrule.model_copy(update={"until": local_until})
         return RulesetIterable(
             self.start_datetime,
-            [self.rrule.as_rrule(self.start_datetime)] if self.rrule else [],
+            [rrule.as_rrule(self.start_datetime)] if rrule else [],
             self.rdate,
             [],
         )
