@@ -1,9 +1,9 @@
 """Clean-room Reference Store Edit Operations Mixin (L2, L3, L4, L5).
 
 Implements whole-series edits of exactly one UID (R-L4-001, R-L4-002, R-L4-003, R-L4-004,
-R-L4-005, R-L4-006, R-L4-007)
-and single-instance overrides (`Range=NONE`, R-L2-003..R-L2-008), inheriting `THIS_AND_FUTURE`
-split operations from `OracleSplitMixin` (R-L3-001..R-L3-008).
+R-L4-005, R-L4-006, R-L4-007, R-L4-008, R-L4-009) and single-instance overrides
+(`Range=NONE`, R-L2-003, R-L2-004, R-L2-005, R-L2-006, R-L2-007, R-L2-008, R-L2-009),
+inheriting `THIS_AND_FUTURE` split operations from `OracleSplitMixin` (R-L3-001..R-L3-010).
 """
 
 from __future__ import annotations
@@ -16,6 +16,8 @@ from .oracle_canonical import (
     CORE_COMPONENT_KEYS,
     apply_patch_fields_in_place,
     canonical_temporal_str,
+    shift_rrule_until_wall_clock,
+    shift_temporal_list_wall_clock,
 )
 from .oracle_policy import (
     SeriesEditOverrideMode,
@@ -27,11 +29,13 @@ from .oracle_temporal import (
     ParsedTemporal,
     add_temporal_duration,
     align_rid_to_master,
+    compute_wall_clock_delta,
     expand_component_candidates,
     format_canonical_rid,
+    format_stored_rid,
     format_temporal_like,
     parse_temporal,
-    shift_wall_clock,
+    temporal_class,
 )
 
 _SCHEDULE_KEYS = frozenset(
@@ -99,8 +103,12 @@ class OracleEditMixin(OracleSplitMixin):
         }
         for ov in list(standalone_overrides):
             pt_ov_rid = parse_temporal(ov["recurrence_id"], "recurrence_id")
+            ov_start_ok = not ov.get("dtstart") or temporal_class(
+                parse_temporal(ov["dtstart"], "dtstart")
+            ) == temporal_class(pt_master)
             is_valid = (
-                pt_ov_rid.is_date == pt_master.is_date
+                temporal_class(pt_ov_rid) == temporal_class(pt_master)
+                and ov_start_ok
                 and format_canonical_rid(
                     align_rid_to_master(ov["recurrence_id"], pt_master)
                 )
@@ -149,7 +157,9 @@ class OracleEditMixin(OracleSplitMixin):
     ) -> None:
         """Update master exdate, rdate, rrule.until, dtend/due, and shifted overrides when dtstart changes."""
         pt_new_start = parse_temporal(master_comp["dtstart"], "dtstart")
-        if pt_old_start is not None and pt_old_start.is_date != pt_new_start.is_date:
+        if pt_old_start is not None and temporal_class(pt_old_start) != temporal_class(
+            pt_new_start
+        ):
             if "exdate" not in patch:
                 master_comp["exdate"] = []
             if "rdate" not in patch:
@@ -160,15 +170,13 @@ class OracleEditMixin(OracleSplitMixin):
         if wall_delta and pt_old_start is not None:
             for list_k in ("exdate", "rdate"):
                 if list_k not in patch and master_comp.get(list_k):
-                    master_comp[list_k] = [
-                        format_temporal_like(
-                            shift_wall_clock(
-                                parse_temporal(val, list_k).value, wall_delta
-                            ),
-                            pt_new_start,
-                        )
-                        for val in master_comp[list_k]
-                    ]
+                    master_comp[list_k] = shift_temporal_list_wall_clock(
+                        master_comp[list_k],
+                        pt_old_start,
+                        pt_new_start,
+                        wall_delta,
+                        list_k,
+                    )
             self._shift_overrides_with_series(
                 standalone_overrides, wall_delta, pt_old_start, pt_new_start, eff_now
             )
@@ -177,9 +185,23 @@ class OracleEditMixin(OracleSplitMixin):
             and master_comp.get("rrule")
             and "UNTIL=" in master_comp["rrule"]
         ):
-            self._align_rrule_until_on_dtstart_change(
-                master_comp, pt_old_start, pt_new_start
+            until_delta = (
+                compute_wall_clock_delta(pt_old_start, pt_new_start)
+                if (
+                    pt_old_start is not None
+                    and temporal_class(pt_old_start) == temporal_class(pt_new_start)
+                    and (wall_delta or normalized_from_first_instance)
+                )
+                else datetime.timedelta(0)
             )
+            if until_delta and pt_old_start is not None:
+                master_comp["rrule"] = shift_rrule_until_wall_clock(
+                    master_comp["rrule"], pt_old_start, pt_new_start, until_delta
+                )
+            else:
+                self._align_rrule_until_on_dtstart_change(
+                    master_comp, pt_old_start, pt_new_start
+                )
         self._shift_comp_end_or_due(master_comp, patch, orig_dur)
 
     def _edit_whole_series(
@@ -227,6 +249,7 @@ class OracleEditMixin(OracleSplitMixin):
                 master_comp,
                 [(ov, pt_old_start) for ov in standalone_overrides],
                 patch,
+                pt_old_start,
                 pt_old_start,
             )
         else:
@@ -379,11 +402,13 @@ class OracleEditMixin(OracleSplitMixin):
         pt_seg_start = parse_temporal(target_seg["dtstart"], "dtstart")
         pt_rid = align_rid_to_master(recurrence_id, pt_seg_start)
         canon_rid = format_canonical_rid(pt_rid)
+        stored_rid = format_stored_rid(pt_rid)
         default_dtstart = format_temporal_like(pt_rid.value, pt_seg_start)
         override_comp = self._build_forked_override_comp(
-            target_seg, patch, canon_rid, default_dtstart, eff_now
+            target_seg, patch, stored_rid, default_dtstart, eff_now
         )
         self._validate_component_state(override_comp)
+        self._validate_uid_override_alignment(override_comp)
         self._ensure_unique_identity(
             override_comp["uid"], override_comp["recurrence_id"]
         )
@@ -399,5 +424,8 @@ class OracleEditMixin(OracleSplitMixin):
             }
             if canon_rid not in ex_rids:
                 ex_list.append(default_dtstart)
-            target_seg["exdate"] = ex_list
+                target_seg["exdate"] = ex_list
+                self._bump_revision_metadata(target_seg, eff_now)
+            else:
+                target_seg["exdate"] = ex_list
         self.components.insert(self.components.index(target_seg), override_comp)

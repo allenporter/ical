@@ -154,12 +154,55 @@ def _persisting(t: Transition) -> list[tuple[Component, Component]]:
     ]
 
 
+_RFC5546_TEMPORAL_SCALARS = ("dtstart", "dtend", "due")
+_RFC5546_TEMPORAL_LISTS = ("rdate", "exdate")
+_RFC5546_PLAIN_SCALARS = ("duration", "rrule", "status")
+
+
+def _norm_temporal_val(raw: Any, field: str) -> Any:
+    if raw is None:
+        return None
+    pt = try_parse(raw, field)
+    if pt is None:
+        return str(raw)
+    return (pt.is_date, pt.kind == "FLOATING", pt.dt_utc_or_naive)
+
+
+def _rfc5546_must_bump_changed(old: Component, new: Component) -> list[str]:
+    """Return RFC 5546 Section 2.1.4 properties whose value changed between old and new."""
+    changed: list[str] = []
+    for k in _RFC5546_TEMPORAL_SCALARS:
+        if k in new and _norm_temporal_val(old.get(k), k) != _norm_temporal_val(
+            new.get(k), k
+        ):
+            changed.append(k)
+    for k in _RFC5546_TEMPORAL_LISTS:
+        if k in new:
+            old_vals = sorted(_norm_temporal_val(x, k) for x in (old.get(k) or ()))
+            new_vals = sorted(_norm_temporal_val(x, k) for x in (new.get(k) or ()))
+            if old_vals != new_vals:
+                changed.append(k)
+    for k in _RFC5546_PLAIN_SCALARS:
+        if k in new and (old.get(k) or None) != (new.get(k) or None):
+            changed.append(k)
+    return changed
+
+
 def persisting_sequence_and_created(t: Transition) -> list[str]:
-    """SEQUENCE never decreases and CREATED never changes for a persisting component."""
+    """SEQUENCE is monotonic (strictly increasing on RFC 5546 2.1.4 edits) and CREATED is immutable."""
     errors: list[str] = []
     for old, new in _persisting(t):
-        if "sequence" in new and (new["sequence"] or 0) < (old.get("sequence") or 0):
-            errors.append(f"{identity_key(new, t.after)}: sequence decreased")
+        if "sequence" in new:
+            old_seq = old.get("sequence") or 0
+            new_seq = new["sequence"] or 0
+            if new_seq < old_seq:
+                errors.append(f"{identity_key(new, t.after)}: sequence decreased")
+            elif (
+                changed := _rfc5546_must_bump_changed(old, new)
+            ) and new_seq <= old_seq:
+                errors.append(
+                    f"{identity_key(new, t.after)}: sequence not incremented after changing {changed}"
+                )
         if old.get("created") is not None and "created" in new:
             if new["created"] != old["created"]:
                 errors.append(f"{identity_key(new, t.after)}: created changed")

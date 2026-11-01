@@ -32,7 +32,7 @@
     }
   ],
   "rationale": "Under the RFC-preferred representation (`single_edit_exdate_mode = RFC_OVERRIDE_ONLY` in R-L2-005), editing a single occurrence writes only a sibling override component with `RECURRENCE-ID` and leaves the main component's `EXDATE` untouched. Some legacy calendar stores instead operate under `single_edit_exdate_mode = LEGACY_DUAL_EXDATE`, recording BOTH the standalone `RECURRENCE-ID` override component AND appending the original occurrence timestamp to the main component's `EXDATE` list so naive readers that ignore override components do not display the unedited occurrence alongside the override. Because RFC 5545 Section 3.8.5.1 defines `EXDATE` precedence only over `RRULE` and `RDATE` (not over sibling `RECURRENCE-ID` components) and RFC 8984 Section 4.3.5 forbids combining `excluded: true` with property patches on the same slot, `LEGACY_DUAL_EXDATE` is strictly a `STORE_POLICY` compatibility mode.",
-  "store_implication": "Under `single_edit_exdate_mode = LEGACY_DUAL_EXDATE`, when a single-instance edit (`Range.NONE`) forks a new standalone override component for `recurrence_id` from a recurring main component: (1) the store creates the standalone override component (`RECURRENCE-ID = original_slot`, `rrule=None`, `rdate=[]`, `exdate=[]`) as in R-L2-003 and R-L2-004; (2) the store ALSO appends the occurrence's original timestamp (aligned to the main component's `DTSTART` value type and timezone) to the main component's `exdate` list without duplicating existing entries; and (3) timeline expansion emits the standalone override component once in place of the excluded master slot (see R-L2-005).",
+  "store_implication": "Under `single_edit_exdate_mode = LEGACY_DUAL_EXDATE`, when a single-instance edit (`Range.NONE`) forks a new standalone override component for `recurrence_id` from a recurring main component: (1) the store creates the standalone override component (`RECURRENCE-ID = original_slot`, `rrule=None`, `rdate=[]`, `exdate=[]`) as in R-L2-003 and R-L2-004; (2) the store ALSO appends the occurrence's original timestamp (aligned to the main component's `DTSTART` value type and timezone) to the main component's `exdate` list without duplicating existing entries, incrementing the main component's `sequence` and updating its `dtstamp` and `last_modified` whenever `exdate` gains an entry (per RFC 5546 Section 2.1.4 and invariant I-T-005); and (3) timeline expansion emits the standalone override component once in place of the excluded master slot (see R-L2-005).",
   "edge_cases_and_counterexamples": [
     "Re-editing an override created under `LEGACY_DUAL_EXDATE` updates the override component in place without adding a duplicate `EXDATE` entry on the main component.",
     "Candidate-set lookups (`THIS_AND_FUTURE` splits in R-L3-006, whole-series exception validation in R-L4-005, and invariant I-K-005) MUST evaluate the main component's candidates before `EXDATE` subtraction so overrides accompanied by a dual `EXDATE` are recognized as valid overrides rather than orphans."
@@ -49,7 +49,8 @@
           "dtstart": "2025-05-23T09:00:00",
           "dtend": "2025-05-23T09:30:00",
           "rrule": "FREQ=DAILY;COUNT=3",
-          "exdate": []
+          "exdate": [],
+          "sequence": 0
         }
       ],
       "operation": {
@@ -72,7 +73,8 @@
           "dtstart": "2025-05-24T10:30:00",
           "dtend": "2025-05-24T11:00:00",
           "rrule": null,
-          "exdate": []
+          "exdate": [],
+          "sequence": 1
         },
         {
           "type": "VEVENT",
@@ -84,7 +86,8 @@
           "rrule": "FREQ=DAILY;COUNT=3",
           "exdate": [
             "2025-05-24T09:00:00"
-          ]
+          ],
+          "sequence": 1
         }
       ],
       "expected_timeline": [

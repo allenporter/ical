@@ -78,11 +78,7 @@ def override_has_recurring_main(
 def override_rid_matches_main_form(
     components: list[Component], ctx: CheckContext
 ) -> list[str]:
-    """An override's RECURRENCE-ID has the main DTSTART's value type and floating-ness.
-
-    Notation convention: a RECURRENCE-ID written without UTC designator or TZID on a
-    UTC/TZID series denotes local wall-clock time in the series' time zone.
-    """
+    """An override's RECURRENCE-ID has the main DTSTART's value type and floating-ness."""
     del ctx
     errors: list[str] = []
     for comp in items(components):
@@ -97,9 +93,9 @@ def override_rid_matches_main_form(
             errors.append(f"override {label(comp)}: value type differs from DTSTART")
         elif pt_rid.kind == "OFFSET":
             errors.append(f"override {label(comp)}: fixed-offset RECURRENCE-ID")
-        elif pt_main.kind == "FLOATING" and pt_rid.kind != "FLOATING":
+        elif (pt_rid.kind == "FLOATING") != (pt_main.kind == "FLOATING"):
             errors.append(
-                f"override {label(comp)}: non-floating RID on floating series"
+                f"override {label(comp)}: RECURRENCE-ID floating-ness differs from DTSTART"
             )
     return errors
 

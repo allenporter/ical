@@ -207,13 +207,20 @@ def parse_temporal(raw: str, field_name: str = "") -> ParsedTemporal:
 
 
 def format_canonical_rid(pt: ParsedTemporal) -> str:
-    """Format a ParsedTemporal into canonical compact RECURRENCE-ID string (R-L1-005, R-L1-007)."""
+    """Format a ParsedTemporal into compact occurrence slot key (R-L1-005, R-L1-007)."""
     if pt.is_date and not isinstance(pt.value, datetime.datetime):
         return pt.value.strftime("%Y%m%d")
     assert isinstance(pt.value, datetime.datetime)
     if pt.kind == "UTC":
         return pt.value.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return pt.value.strftime("%Y%m%dT%H%M%S")
+
+
+def format_stored_rid(pt: ParsedTemporal) -> str:
+    """Format a ParsedTemporal as a stored component RECURRENCE-ID preserving TZID/Z (R-L1-007)."""
+    if pt.kind == "TZID" and pt.tzid and isinstance(pt.value, datetime.datetime):
+        return f"TZID={pt.tzid}:{pt.value.strftime('%Y%m%dT%H%M%S')}"
+    return format_canonical_rid(pt)
 
 
 def format_temporal_like(

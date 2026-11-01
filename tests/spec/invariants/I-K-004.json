@@ -12,8 +12,8 @@
       "verbatim_quote": "This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time."
     }
   ],
-  "statement": "An override's RECURRENCE-ID is a DATE iff its main DTSTART is a DATE, is never a fixed UTC offset, and is floating whenever the main DTSTART is floating. Notation convention: a RECURRENCE-ID without UTC designator or TZID on a UTC/TZID series denotes local wall-clock time in the series' zone.",
-  "rationale": "RFC 5545 Section 3.8.4.4 requires RECURRENCE-ID to have the same value type as the recurring component's DTSTART, and to be a date with local time iff DTSTART is. Overrides surviving a DATE<->DATE-TIME or floating<->zoned change of the main component violate this (review H8).",
+  "statement": "An override's RECURRENCE-ID is a DATE if and only if its main DTSTART is a DATE, is never a fixed UTC offset, and is floating local time if and only if the main DTSTART is floating local time.",
+  "rationale": "RFC 5545 Section 3.8.4.4 requires RECURRENCE-ID to have the same value type as the recurring component's DTSTART, and to be specified as a date with local time if and only if DTSTART is specified as a date with local time. Stored overrides on UTC or TZID series must therefore carry a UTC ('Z') or TZID-qualified RECURRENCE-ID, and overrides surviving a DATE<->DATE-TIME or floating<->zoned change of the main component violate this in either direction.",
   "check": "override_rid_matches_main_form",
   "positive_examples": [
     {
@@ -63,9 +63,13 @@
       ]
     },
     {
-      "name": "tzid_series_local_rid",
-      "description": "TZID series, local-notation RID.",
+      "name": "tzid_series_tzid_rid",
+      "description": "TZID series, TZID-qualified RID.",
       "components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        },
         {
           "type": "VEVENT",
           "uid": "s1",
@@ -78,7 +82,7 @@
         {
           "type": "VEVENT",
           "uid": "s1",
-          "recurrence_id": "20250502T090000",
+          "recurrence_id": "TZID=America/New_York:20250502T090000",
           "dtstart": "2025-05-02T11:00:00-04:00[America/New_York]",
           "dtend": "2025-05-02T12:00:00-04:00[America/New_York]"
         }
@@ -128,6 +132,54 @@
           "summary": "Moved",
           "dtstart": "2025-05-02T11:00:00",
           "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "floating_rid_on_utc_series",
+      "description": "Floating local RID on UTC series.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00Z",
+          "dtend": "2025-05-01T10:00:00Z",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00Z",
+          "dtend": "2025-05-02T12:00:00Z",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "floating_rid_on_tzid_series",
+      "description": "Floating local RID without TZID or Z on TZID series.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-02T12:00:00-04:00[America/New_York]",
           "sequence": 1
         }
       ]

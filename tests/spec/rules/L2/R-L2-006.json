@@ -33,12 +33,13 @@
       "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime. However, individual properties of the occurrence can be modified by a patch or multiple patches."
     }
   ],
-  "rationale": "Per RFC 5546 Section 2.1.5 (enforced as invariant I-K-001), the primary key of a recurrence instance component is (UID, RECURRENCE-ID), and per RFC 5545 Section 3.8.4.4, RECURRENCE-ID remains fixed to the original occurrence start time even after the instance's DTSTART has been moved. Therefore, when a single-instance edit is applied to an occurrence that already has an override component, it MUST update the existing override component in place (preserving previously edited fields not overwritten by the new patch and keeping RECURRENCE-ID fixed) rather than matching the master component a second time to fork a duplicate override. In addition, while RFC 5546 Section 2.1.4 mandates incrementing SEQUENCE on schedule/status changes and leaves SEQUENCE increments optional (MAY) for descriptive properties like SUMMARY, by STORE_POLICY (R-L5-002) the store increments SEQUENCE on every override re-edit.",
-  "store_implication": "When a single-instance edit is executed for a (UID, RECURRENCE-ID) pair that already has an override component (same UID, has RECURRENCE-ID, no RRULE/RDATE) in the calendar: (1) only the existing override component MUST be updated in place (retaining its prior properties merged with the new patch, preserving RECURRENCE-ID, and incrementing SEQUENCE); (2) the master component MUST NOT be matched to fork a second override component, even if the calendar was loaded from an external iCalendar stream where the master component's EXDATE list did not include that RECURRENCE-ID.",
+  "rationale": "Per RFC 5546 Section 2.1.5 (enforced as invariant I-K-001), the primary key of a recurrence instance component is (UID, RECURRENCE-ID), and per RFC 5545 Section 3.8.4.4, RECURRENCE-ID remains fixed to the original occurrence start time even after the instance's DTSTART has been moved. Therefore, when a single-instance edit is applied to an occurrence that already has an override component, it MUST update the existing override component in place (preserving previously edited fields not overwritten by the new patch and keeping RECURRENCE-ID fixed) rather than matching the master component a second time to fork a duplicate override. Furthermore, when an override re-edit modifies `dtstart` without explicitly supplying `dtend`/`due` (or `duration`), `dtend`/`due` MUST be realigned by preserving the existing override's own prior duration (`new_dtstart + existing_override_duration`), never reverting to the master component's original duration or leaving `dtend <= dtstart` (invariant I-C-005). In addition, while RFC 5546 Section 2.1.4 mandates incrementing SEQUENCE on schedule/status changes and leaves SEQUENCE increments optional (MAY) for descriptive properties like SUMMARY, by STORE_POLICY (R-L5-002) the store increments SEQUENCE on every override re-edit.",
+  "store_implication": "When a single-instance edit is executed for a (UID, RECURRENCE-ID) pair that already has an override component (same UID, has RECURRENCE-ID, no RRULE/RDATE) in the calendar: (1) only the existing override component MUST be updated in place (retaining its prior properties merged with the new patch, preserving RECURRENCE-ID, and incrementing SEQUENCE); (2) if the re-edit patch changes `dtstart` without explicitly providing `dtend`, `due`, or `duration`, the override's `dtend` or `due` MUST shift by the override's own pre-edit duration (`existing_override_end - existing_override_start`); and (3) the master component MUST NOT be matched to fork a second override component, even if the calendar was loaded from an external iCalendar stream where the master component's EXDATE list did not include that RECURRENCE-ID.",
   "edge_cases_and_counterexamples": [
     "First edit sets STATUS='COMPLETED' on recurrence_id='20240110', and second edit sets SUMMARY='Walk cat' on recurrence_id='20240110': the resulting override component MUST have both STATUS='COMPLETED' and SUMMARY='Walk cat', SEQUENCE=2, and the total number of components in the calendar MUST NOT increase on the second edit.",
     "If an iCalendar stream is loaded from an external source where the master component has no EXDATE for 20250503T090000 and a sibling component has RECURRENCE-ID:20250503T090000, a single-instance edit for recurrence_id='20250503T090000' MUST NOT match both the master and the sibling to create two override components with the same RECURRENCE-ID.",
-    "If the first edit moved DTSTART of recurrence_id='20250503T090000' to 10:00, a second edit on recurrence_id='20250503T090000' that only modifies SUMMARY MUST preserve the override's rescheduled DTSTART=10:00 (not reset it to 09:00)."
+    "If the first edit moved DTSTART of recurrence_id='20250503T090000' to 10:00, a second edit on recurrence_id='20250503T090000' that only modifies SUMMARY MUST preserve the override's rescheduled DTSTART=10:00 (not reset it to 09:00).",
+    "If the master series is 30 minutes long (`09:00..09:30`), the first override extended May 3 to 90 minutes (`10:00..11:30`), and a second re-edit patches only `dtstart='2025-05-03T14:00:00'`, the override's `dtend` MUST shift to `2025-05-03T15:30:00` (preserving the override's 90-minute duration rather than reverting to 30 minutes or leaving `dtend='2025-05-03T11:30:00' <= dtstart`)."
   ],
   "scenarios": [
     {
@@ -120,6 +121,86 @@
           "dtstart": "2025-05-03T10:30:00",
           "dtend": "2025-05-03T11:00:00",
           "summary": "May 3 override (updated)"
+        }
+      ]
+    },
+    {
+      "name": "re_edit_override_dtstart_only_preserves_override_duration",
+      "description": "Re-editing an existing 90-minute override (on a 30-minute daily series) with only a new dtstart shifts dtend by the override's own 90-minute duration.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "override-dur-uid",
+          "recurrence_id": "20250503T090000",
+          "summary": "Extended review",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T11:30:00",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "override-dur-uid",
+          "recurrence_id": null,
+          "summary": "Daily series",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "override-dur-uid",
+        "recurrence_id": "20250503T090000",
+        "range": "NONE",
+        "patch": {
+          "dtstart": "2025-05-03T14:00:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "override-dur-uid",
+          "recurrence_id": "20250503T090000",
+          "summary": "Extended review",
+          "dtstart": "2025-05-03T14:00:00",
+          "dtend": "2025-05-03T15:30:00",
+          "sequence": 2
+        },
+        {
+          "type": "VEVENT",
+          "uid": "override-dur-uid",
+          "recurrence_id": null,
+          "summary": "Daily series",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "override-dur-uid",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Daily series"
+        },
+        {
+          "uid": "override-dur-uid",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Daily series"
+        },
+        {
+          "uid": "override-dur-uid",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T14:00:00",
+          "dtend": "2025-05-03T15:30:00",
+          "summary": "Extended review"
         }
       ]
     }

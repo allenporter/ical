@@ -10,17 +10,20 @@ from __future__ import annotations
 import copy
 import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from .oracle_policy import StoreError
 from .oracle_temporal import (
     ParsedTemporal,
     align_rid_to_master,
+    attach_zone_folding_gaps,
     expand_component_candidates,
-    format_canonical_rid,
+    format_stored_rid,
     format_temporal_like,
     parse_temporal,
     replace_rrule_until,
     shift_wall_clock,
+    temporal_class,
 )
 
 DEFAULT_DTSTAMP = "2025-01-01T00:00:00Z"
@@ -122,7 +125,7 @@ def canonicalize_component(
             raise StoreError(
                 f"Invalid fixed-offset recurrence_id: {src['recurrence_id']!r}"
             )
-        canon_rid = format_canonical_rid(pt_rid)
+        canon_rid = format_stored_rid(pt_rid)
 
     dtstamp_val = canonical_temporal_str(
         src.get("dtstamp") or (now if is_add else DEFAULT_DTSTAMP), "dtstamp"
@@ -253,11 +256,69 @@ def align_rrule_until_on_dtstart_change(
             )
 
 
+def shift_rrule_until_wall_clock(
+    rrule_str: str,
+    pt_old_ref: ParsedTemporal,
+    pt_new_ref: ParsedTemporal,
+    wall_delta: datetime.timedelta,
+) -> str:
+    """Shift RRULE UNTIL by wall_delta in local wall-clock coordinates across DST (R-L3-010, R-L4-009)."""
+    rrule_parts = dict(p.split("=", 1) for p in rrule_str.split(";") if "=" in p)
+    pt_u = parse_temporal(rrule_parts["UNTIL"], "until")
+    if pt_new_ref.is_date:
+        shifted_d = shift_wall_clock(pt_u.value, wall_delta)
+        return replace_rrule_until(rrule_str, shifted_d.strftime("%Y%m%d"))
+    if pt_new_ref.kind == "FLOATING":
+        shifted_dt = shift_wall_clock(pt_u.value, wall_delta)
+        assert isinstance(shifted_dt, datetime.datetime)
+        return replace_rrule_until(rrule_str, shifted_dt.strftime("%Y%m%dT%H%M%S"))
+    assert isinstance(pt_u.value, datetime.datetime)
+    old_tz = (
+        pt_old_ref.value.tzinfo
+        if isinstance(pt_old_ref.value, datetime.datetime) and pt_old_ref.value.tzinfo
+        else datetime.timezone.utc
+    )
+    naive_new = pt_u.value.astimezone(old_tz).replace(tzinfo=None) + wall_delta
+    if pt_new_ref.kind == "TZID" and pt_new_ref.tzid:
+        zoned_new = attach_zone_folding_gaps(naive_new, ZoneInfo(pt_new_ref.tzid))
+    else:
+        zoned_new = naive_new.replace(tzinfo=datetime.timezone.utc)
+    return replace_rrule_until(
+        rrule_str,
+        zoned_new.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
+    )
+
+
+def shift_temporal_list_wall_clock(
+    values: list[str],
+    pt_old_ref: ParsedTemporal,
+    pt_new_ref: ParsedTemporal,
+    wall_delta: datetime.timedelta,
+    field_name: str,
+) -> list[str]:
+    """Shift a list of EXDATE/RDATE strings by wall_delta in local wall-clock time (R-L3-010, R-L4-009)."""
+    shifted: list[str] = []
+    for val in values:
+        pt_v = parse_temporal(val, field_name)
+        pt_aligned = (
+            align_rid_to_master(val, pt_old_ref)
+            if temporal_class(pt_v) == temporal_class(pt_old_ref)
+            else pt_v
+        )
+        shifted.append(
+            format_temporal_like(
+                shift_wall_clock(pt_aligned.value, wall_delta), pt_new_ref
+            )
+        )
+    return shifted
+
+
 def partition_future_dates(
     all_segs: list[dict[str, Any]],
     patch: dict[str, Any],
     key: str,
     split_cmp: datetime.datetime,
+    pt_target_start: ParsedTemporal | None = None,
 ) -> list[str]:
     """Extract canonical future rdate or exdate values >= split_cmp (or explicit patch list)."""
     if key in patch:
@@ -266,15 +327,17 @@ def partition_future_dates(
             for raw_x in (patch[key] or [])
             if (x := canonical_temporal_str(raw_x, key)) is not None
         ]
-    return [
-        val
-        for seg in all_segs
-        for val in (seg.get(key) or [])
-        if align_rid_to_master(
-            val, parse_temporal(seg["dtstart"], "dtstart")
-        ).dt_utc_or_naive
-        >= split_cmp
-    ]
+    out: list[str] = []
+    for seg in all_segs:
+        pt_seg = parse_temporal(seg["dtstart"], "dtstart")
+        if pt_target_start is not None and temporal_class(pt_seg) != temporal_class(
+            pt_target_start
+        ):
+            continue
+        for val in seg.get(key) or ():
+            if align_rid_to_master(val, pt_seg).dt_utc_or_naive >= split_cmp:
+                out.append(val)
+    return out
 
 
 def validate_component_state(comp: dict[str, Any]) -> None:

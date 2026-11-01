@@ -100,10 +100,10 @@ def assert_rfc_invariants(store: ReferenceStore, label: str) -> list[dict[str, A
 
 
 def test_scenario_count_and_rule_count() -> None:
-    """Ensure all 45 rules and their scenarios are discovered."""
+    """Ensure all 46 rules and their scenarios are discovered."""
     rule_files = list(RULES_DIR.rglob("*.json"))
-    assert len(rule_files) == 45
-    assert len(ALL_SCENARIOS) == 62
+    assert len(rule_files) == 46
+    assert len(ALL_SCENARIOS) == 67
 
 
 @pytest.mark.parametrize(
@@ -251,7 +251,8 @@ def test_multi_step_chain_timed_tzid_across_policy_configs(
     ov_comp = next(
         c
         for c in store.components
-        if c.get("uid") == "tz-chain-1" and c.get("recurrence_id") == "20250502T090000"
+        if c.get("uid") == "tz-chain-1"
+        and c.get("recurrence_id") == "TZID=America/New_York:20250502T090000"
     )
     expected_ov_sum = (
         "Global Standup Renamed"
@@ -481,5 +482,5 @@ def test_clean_room_and_full_rule_citation_coverage() -> None:
         )
 
     num_rules, citation_errors = verify_path(RULES_DIR)
-    assert num_rules == 45
+    assert num_rules == 46
     assert not citation_errors

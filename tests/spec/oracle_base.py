@@ -34,6 +34,7 @@ from .oracle_temporal import (
     compute_wall_clock_delta,
     expand_component_candidates,
     format_canonical_rid,
+    format_stored_rid,
     format_temporal_like,
     parse_temporal,
     replace_rrule_until,
@@ -65,6 +66,7 @@ class OracleBase:
             else:
                 canon = canonicalize_component(raw_comp, is_add=False)
                 validate_component_state(canon)
+                self._validate_uid_override_alignment(canon)
                 self._ensure_unique_identity(canon["uid"], canon["recurrence_id"])
                 self.components.append(canon)
                 # Loaded state must satisfy I-K-006 (RFC 5545 Section 3.2.19) too.
@@ -88,6 +90,45 @@ class OracleBase:
             comp, is_add=is_add, default_type=default_type, now=now
         )
 
+    def _validate_uid_override_alignment(self, comp: dict[str, Any]) -> None:
+        """Ensure override RECURRENCE-ID value type and floating-ness match main DTSTART (R-L1-007)."""
+        uid = comp["uid"]
+        if comp.get("recurrence_id") is not None:
+            main = next(
+                (
+                    c
+                    for c in self.components
+                    if c.get("type") != "VTIMEZONE"
+                    and c.get("uid") == uid
+                    and c.get("recurrence_id") is None
+                ),
+                None,
+            )
+            if main is None or not main.get("dtstart"):
+                return
+            pairs = [(comp["recurrence_id"], main["dtstart"])]
+        elif comp.get("dtstart"):
+            pairs = [
+                (c["recurrence_id"], comp["dtstart"])
+                for c in self.components
+                if c.get("type") != "VTIMEZONE"
+                and c.get("uid") == uid
+                and c.get("recurrence_id") is not None
+                and not c.get("rrule")
+                and not c.get("rdate")
+            ]
+        else:
+            return
+        for rid_raw, main_dt_raw in pairs:
+            pt_rid = parse_temporal(rid_raw, "recurrence_id")
+            pt_main = parse_temporal(main_dt_raw, "dtstart")
+            if pt_rid.is_date != pt_main.is_date or (pt_rid.kind == "FLOATING") != (
+                pt_main.kind == "FLOATING"
+            ):
+                raise StoreError(
+                    f"Override RECURRENCE-ID {rid_raw!r} form mismatches main DTSTART {main_dt_raw!r} (R-L1-007)"
+                )
+
     def _ensure_unique_identity(
         self,
         uid: str,
@@ -95,24 +136,53 @@ class OracleBase:
         ignore_comp: dict[str, Any] | None = None,
     ) -> None:
         """Raise StoreError if another component already has the same (uid, recurrence_id)."""
+        main = next(
+            (
+                c
+                for c in self.components
+                if c.get("type") != "VTIMEZONE"
+                and c.get("uid") == uid
+                and c.get("recurrence_id") is None
+            ),
+            None,
+        )
+        pt_main = (
+            parse_temporal(main["dtstart"], "dtstart")
+            if main is not None and main.get("dtstart")
+            else None
+        )
+        norm_new = (
+            format_canonical_rid(align_rid_to_master(canon_rid, pt_main))
+            if canon_rid is not None and pt_main is not None
+            else canon_rid
+        )
         for existing in self.components:
             if (
-                existing is not ignore_comp
-                and existing.get("type") != "VTIMEZONE"
-                and existing.get("uid") == uid
-                and existing.get("recurrence_id") == canon_rid
+                existing is ignore_comp
+                or existing.get("type") == "VTIMEZONE"
+                or existing.get("uid") != uid
             ):
+                continue
+            ex_rid = existing.get("recurrence_id")
+            norm_ex = (
+                format_canonical_rid(align_rid_to_master(ex_rid, pt_main))
+                if ex_rid is not None and pt_main is not None
+                else ex_rid
+            )
+            if ex_rid == canon_rid or norm_ex == norm_new:
                 raise StoreError(
                     f"Duplicate component identity (uid={uid!r}, recurrence_id={canon_rid!r})"
                 )
 
     def _register_comp_timezones(self, comp: dict[str, Any]) -> None:
-        """Register VTIMEZONE components for TZID-qualified dtstart, dtend, and due (R-L5-005, R-L5-006)."""
-        for field in ("dtstart", "dtend", "due"):
-            raw_dt = comp.get(field)
+        """Register VTIMEZONE components for TZID-qualified temporal properties (R-L5-005, R-L5-006)."""
+        raw_values = [comp.get(f) for f in ("dtstart", "dtend", "due", "recurrence_id")]
+        raw_values.extend(comp.get("rdate") or ())
+        raw_values.extend(comp.get("exdate") or ())
+        for raw_dt in raw_values:
             if not raw_dt:
                 continue
-            pt = parse_temporal(raw_dt, field)
+            pt = parse_temporal(raw_dt, "temporal")
             if pt.kind == "OFFSET":
                 raise StoreError(
                     f"Fixed-offset datetime without IANA TZID cannot be registered as VTIMEZONE: {raw_dt!r}"
@@ -379,7 +449,7 @@ class OracleBase:
         shifted_rid_str = format_temporal_like(
             shift_wall_clock(pt_rid.value, wall_delta), pt_new_ref
         )
-        ov["recurrence_id"] = format_canonical_rid(
+        ov["recurrence_id"] = format_stored_rid(
             parse_temporal(shifted_rid_str, "recurrence_id")
         )
         if ov.get("dtstart"):
@@ -414,7 +484,7 @@ class OracleBase:
             and "dtstart" in patch
             and "rrule" not in patch
             and pt_old_start is not None
-            and pt_old_start.is_date == pt_new_start.is_date
+            and temporal_class(pt_old_start) == temporal_class(pt_new_start)
         ):
             return compute_wall_clock_delta(pt_old_start, pt_new_start)
         return datetime.timedelta(0)
