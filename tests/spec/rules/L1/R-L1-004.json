@@ -2,7 +2,7 @@
   "id": "R-L1-004",
   "title": "EXDATE and RDATE Value Type and Timezone Alignment with DTSTART",
   "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
-  "authority": "RFC_8984_CALEXT",
+  "authority": "STORE_POLICY",
   "citations": [
     {
       "doc": "rfc5545.txt",
@@ -33,8 +33,8 @@
       "verbatim_quote": "The property value converts to the key in the \"recurrenceOverrides\" property value. See Section 2.1.5 how to convert DATE and DATE-TIME values. The date-time MUST be relative to the timezone identified by the \"timeZone\" property of the Event or Task object. The PatchObject value MUST be an empty JSON object."
     }
   ],
-  "rationale": "RFC 5545 Sections 3.8.5.1 and 3.8.5.2 define EXDATE (DATE-TIME or DATE) and RDATE (DATE-TIME, DATE, or PERIOD) as the date/time sets that are unioned with and subtracted from the DTSTART + RRULE expansion. As formalized in draft-ietf-calext-jscalendar-icalendar Sections 2.3.20 and 2.3.33, EXDATE and RDATE values must be comparable in the same temporal domain (DATE vs DATE-TIME and floating vs timezone-aware relative to DTSTART's timezone) so that set union and set difference against the recurrence rule are well-defined.",
-  "store_implication": "Component validation and calendar store operations MUST ensure that: (1) When DTSTART has value type DATE, all EXDATE and RDATE entries have value type DATE (and RDATE PERIOD values are rejected). (2) When DTSTART has value type DATE-TIME, all EXDATE and RDATE entries are DATE-TIME values (or PERIOD values for RDATE) with timezone awareness matching DTSTART (floating local time if DTSTART is floating; timezone-aware if DTSTART has a TZID or is UTC). (3) When a single instance is excluded via deletion, the appended EXDATE value MUST be aligned with the master component's DTSTART timezone when DTSTART is timezone-aware.",
+  "rationale": "RFC 5545 Sections 3.8.5.1 and 3.8.5.2 allow EXDATE (DATE-TIME or DATE) and RDATE (DATE-TIME, DATE, or PERIOD) value types and parameters to be specified independently on those properties, while draft-ietf-calext-jscalendar-icalendar Sections 2.3.20 and 2.3.33 require conversion into JSCalendar `recurrenceOverrides` keys to express dates/date-times in the same domain relative to the object's `timeZone`. As a STORE_POLICY choice (stricter than raw RFC 5545 syntax), the calendar store requires EXDATE and RDATE values to share the same temporal domain (DATE vs DATE-TIME and floating vs timezone-aware) as DTSTART so set union and set difference against the recurrence rule are always well-defined, and aligns unqualified wall-clock `recurrence_id` deletions to DTSTART's timezone.",
+  "store_implication": "By STORE_POLICY, component validation and calendar store operations ensure that: (1) When DTSTART has value type DATE, all EXDATE and RDATE entries have value type DATE (and RDATE PERIOD values are rejected). (2) When DTSTART has value type DATE-TIME, all EXDATE and RDATE entries are DATE-TIME values (or PERIOD values for RDATE) with timezone awareness matching DTSTART (floating local time if DTSTART is floating; timezone-aware if DTSTART has a TZID or is UTC). (3) When a single instance is excluded via deletion, the appended EXDATE value is aligned with the master component's DTSTART timezone when DTSTART is timezone-aware.",
   "edge_cases_and_counterexamples": [
     "Deleting a single occurrence of a TZID-aware series using a floating wall-clock recurrence identifier (e.g. '20250505T100000'): the appended EXDATE MUST inherit the master DTSTART's timezone so recurrence set evaluation can compare it against timezone-aware RRULE occurrences.",
     "Constructing or validating a component with a TZID-aware DTSTART and an unaligned local DATE-TIME in EXDATE or RDATE: the EXDATE/RDATE entry MUST be aligned to DTSTART's timezone (or rejected if DATE vs DATE-TIME types mismatch) so recurrence set subtraction is well-defined.",

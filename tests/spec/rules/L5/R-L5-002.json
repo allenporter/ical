@@ -2,14 +2,14 @@
   "id": "R-L5-002",
   "title": "Revision Metadata Lifecycle (SEQUENCE, CREATED, DTSTAMP, LAST-MODIFIED) on Component Edit",
   "layer": "L5_METADATA_TIMEZONE_RELATIONS",
-  "authority": "RFC_5546",
+  "authority": "STORE_POLICY",
   "citations": [
     {
       "doc": "rfc5546.txt",
       "section": "Section 2.1.4",
       "line_start": 600,
-      "line_end": 619,
-      "verbatim_quote": "The \"SEQUENCE\" property is used by the \"Organizer\" to indicate revisions to the calendar component. When the \"Organizer\" makes changes to one of the following properties, the sequence number MUST be incremented: o \"DTSTART\" o \"DTEND\" o \"DURATION\" o \"DUE\" o \"RRULE\" o \"RDATE\" o \"EXDATE\" o \"STATUS\""
+      "line_end": 622,
+      "verbatim_quote": "The \"SEQUENCE\" property is used by the \"Organizer\" to indicate revisions to the calendar component. When the \"Organizer\" makes changes to one of the following properties, the sequence number MUST be incremented: o \"DTSTART\" o \"DTEND\" o \"DURATION\" o \"DUE\" o \"RRULE\" o \"RDATE\" o \"EXDATE\" o \"STATUS\" In addition, changes made by the \"Organizer\" to other properties MAY also require the sequence number to be incremented."
     },
     {
       "doc": "rfc5545.txt",
@@ -40,7 +40,7 @@
       "verbatim_quote": "Recurrence instances of a recurring component MAY have different sequence numbers."
     }
   ],
-  "rationale": "RFC 5546 Section 2.1.4 mandates incrementing SEQUENCE on component revisions, and RFC 5545 Section 3.8.7.4 notes that recurrence instances of a recurring component may have higher sequence numbers than the master series. RFC 5545 Sections 3.8.7.2 and 3.8.7.3 require DTSTAMP (in a calendar store without METHOD) and LAST-MODIFIED to reflect the UTC timestamp when the component was last revised in the store. Section 3.8.7.1 defines CREATED as analogous to a file creation timestamp: in-place edits (`recurrence_id=None`), single-instance overrides (`Range.NONE`), and the truncated prior segment of a `THIS_AND_FUTURE` split must preserve the original CREATED timestamp of the existing component (falling back to its prior DTSTAMP only if CREATED was unset), whereas the newly created future component produced by a `THIS_AND_FUTURE` split (R-L3-001) has a distinct new UID and therefore initializes fresh creation metadata per R-L5-001 (`SEQUENCE=0`, `CREATED=DTSTAMP=edit_timestamp`, `LAST-MODIFIED=None`).",
+  "rationale": "RFC 5546 Section 2.1.4 mandates incrementing SEQUENCE when schedule or status properties (DTSTART, DTEND, DURATION, DUE, RRULE, RDATE, EXDATE, STATUS) change and permits (MAY) incrementing SEQUENCE when other properties (such as SUMMARY or LOCATION) change, while RFC 5545 Section 3.8.7.4 notes that recurrence instances may have higher sequence numbers than the master series. RFC 5545 Sections 3.8.7.2 and 3.8.7.3 define DTSTAMP (in a calendar store without METHOD) and optional LAST-MODIFIED as the UTC timestamp when the component was last revised in the store, and Section 3.8.7.1 defines optional CREATED as analogous to a file creation timestamp. By STORE_POLICY, the store uniformly increments SEQUENCE and sets both DTSTAMP and LAST-MODIFIED on every component edit (including descriptive SUMMARY-only edits): in-place edits (`recurrence_id=None`), single-instance overrides (`Range.NONE`), and the truncated prior segment of a `THIS_AND_FUTURE` split preserve the original CREATED timestamp (falling back to prior DTSTAMP only if CREATED was unset), whereas the newly created future component produced by a `THIS_AND_FUTURE` split (R-L3-001) has a distinct new UID and initializes fresh creation metadata per R-L5-001 (`SEQUENCE=0`, `CREATED=DTSTAMP=edit_timestamp`, `LAST-MODIFIED=None`).",
   "store_implication": "When preparing an edit revision on an existing stored component: (1) for an in-place edit or single-instance override, `sequence` is incremented to `existing.sequence + 1` if `existing.sequence` is non-zero, or `1` otherwise; (2) `dtstamp` and `last_modified` are both set to the edit's UTC revision timestamp; (3) for whole-series edits (`recurrence_id=None`) or single-instance overrides (`Range.NONE`), `created` must preserve `existing.created` (falling back to `existing.dtstamp` only when `existing.created` is None); (4) for a recurring series split (`recurrence_id` with `THIS_AND_FUTURE` range at a non-first instance), the truncated prior component increments `sequence` from its pre-split value, sets `dtstamp` and `last_modified` to the edit's UTC revision timestamp, and preserves its original `created`, whereas the newly created future component (which receives a new `UID` and `recurrence_id=None` per R-L3-001) initializes as a newly added component per R-L5-001 (`sequence=0`, `created` and `dtstamp` set to the edit's UTC revision timestamp, and `last_modified=None`).",
   "edge_cases_and_counterexamples": [
     "Editing the same component twice in succession (at T1 and then at T2): after the first edit at T1, the stored component's `dtstamp` is T1 while its `created` timestamp is T0. On the second edit at T2, `created` MUST preserve `existing.created` (T0) rather than copying `existing.dtstamp` (T1).",
@@ -101,7 +101,7 @@
   "audit_status": "ADVERSARIALLY_VETTED",
   "audit_notes": [
     "Scrubbed all references to internal files and private methods for 100% clean-room compliance.",
-    "Contextual RFC check (+/- 40 lines): Verified RFC 5546 Section 2.1.4 (L600-L619) and RFC 5545 Sections 3.8.7.1 (L7715-L7720), 3.8.7.2 (L7794-L7796), 3.8.7.3 (L7824-L7829), and 3.8.7.4 (L7895-L7896).",
-    "Authority check: Confirmed RFC_5546 is accurate because RFC 5546 Section 2.1.4 defines the mandatory SEQUENCE increment rules upon component revision alongside RFC 5545 Section 3.8.7's CREATED/DTSTAMP/LAST-MODIFIED semantics."
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5546 Section 2.1.4 (L600-L622) and RFC 5545 Sections 3.8.7.1 (L7715-L7720), 3.8.7.2 (L7794-L7796), 3.8.7.3 (L7824-L7829), and 3.8.7.4 (L7895-L7896).",
+    "Authority check: Reclassified from RFC_5546 to STORE_POLICY because RFC 5546 Section 2.1.4 makes SEQUENCE increments optional (MAY) for non-listed properties such as SUMMARY, and CREATED/LAST-MODIFIED are optional in RFC 5545 Section 3.8.7; incrementing SEQUENCE and setting LAST-MODIFIED on every edit is a uniform store policy."
   ]
 }
