@@ -14,7 +14,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from .util import normalize_datetime
+from .util import normalize_datetime, to_utc
 
 __all__ = ["Timespan"]
 
@@ -47,17 +47,21 @@ class Timespan:
         """Initialize a Timespan from timezone-aware start and end datetimes."""
         self._start = start
         self._end = end
-        if not self._start.tzinfo:
+        if self._start.tzinfo is None:
             raise ValueError(f"Start time did not have a timezone: {self._start}")
-        if not self._end.tzinfo:
+        if self._end.tzinfo is None:
             raise ValueError(f"End time did not have a timezone: {self._end}")
         self._tzinfo = self._start.tzinfo
-        self._start_utc = (
-            start if start.tzinfo is datetime.UTC else start.astimezone(datetime.UTC)
-        )
-        self._end_utc = (
-            end if end.tzinfo is datetime.UTC else end.astimezone(datetime.UTC)
-        )
+        try:
+            self._start_utc = to_utc(start)
+        except ValueError as err:
+            raise ValueError(
+                f"Start time did not have a timezone: {self._start}"
+            ) from err
+        try:
+            self._end_utc = to_utc(end)
+        except ValueError as err:
+            raise ValueError(f"End time did not have a timezone: {self._end}") from err
 
     @classmethod
     def of(  # pylint: disable=invalid-name]
@@ -130,6 +134,14 @@ class Timespan:
     def is_included_in(self, other: "Timespan") -> bool:
         """Return True if this timespan starts and ends within the other event."""
         return other._start_utc <= self._start_utc and self._end_utc <= other._end_utc
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Timespan):
+            return NotImplemented
+        return self._start_utc == other._start_utc and self._end_utc == other._end_utc
+
+    def __hash__(self) -> int:
+        return hash((self._start_utc, self._end_utc))
 
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Timespan):

@@ -29,7 +29,7 @@ from typing import Any, Generic, TypeVar, Union
 from dateutil import rrule
 
 from .timespan import Timespan
-from .util import normalize_datetime
+from .util import normalize_datetime, to_utc
 from .types.recur import Recur
 from .types.period import Period
 from .exceptions import CalendarParseError, RecurrenceError
@@ -87,6 +87,16 @@ class SortableItem(Generic[K, T]):
         """Return the underlying item."""
         raise NotImplementedError
 
+    def __eq__(self, other: Any) -> bool:
+        """Compare sortable items together for equality."""
+        if not isinstance(other, SortableItem):
+            return NotImplemented
+        return bool(self._key == other._key)
+
+    def __hash__(self) -> int:
+        """Return hash of the sort key."""
+        return hash(self._key)
+
     def __lt__(self, other: Any) -> bool:
         """Compare sortable items together."""
         if not isinstance(other, SortableItem):
@@ -104,7 +114,9 @@ class SeekableIterable(Iterable[T]):
     ``iter_after`` is a conservative optimization hint: implementations may
     skip historical items known to end on or before ``cutoff``, while still
     yielding some earlier items when exact bounds cannot be determined ahead
-    of time. Callers must still apply their own range predicates.
+    of time. ``cutoff`` may carry any ``tzinfo`` (including ``datetime.UTC``)
+    or be naive for floating streams. Callers must still apply their own range
+    predicates.
     """
 
     def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
@@ -414,7 +426,10 @@ class RulesetIterable(SeekableIterable[Union[datetime.datetime, datetime.date]])
         """Convert cutoff to match the type and timezone of ``self._dtstart``."""
         if any(isinstance(r, Period) for r in self._rdate):
             return None
-        safe_cutoff = cutoff - datetime.timedelta(days=2)
+        try:
+            safe_cutoff = cutoff - datetime.timedelta(days=2)
+        except OverflowError:
+            return None
         if type(self._dtstart) is datetime.date:
             return safe_cutoff.date()
         if isinstance(self._dtstart, datetime.datetime):
@@ -486,29 +501,24 @@ class RecurIterable(SeekableIterable[T]):
         for dtvalue in self._recur:
             yield self._item_cb(dtvalue)
 
+    def _start_cutoff(self, cutoff: datetime.datetime) -> datetime.datetime | None:
+        """Shift ``cutoff`` back by event duration to include in-progress occurrences."""
+        if not self._duration or self._duration <= datetime.timedelta(0):
+            return cutoff
+        # Subtract duration in UTC so DST transitions do not skew the elapsed lookback,
+        # and keep the result in UTC to avoid round-tripping through custom tzinfo.fromutc().
+        base = to_utc(cutoff) if cutoff.tzinfo is not None else cutoff
+        try:
+            return base - self._duration
+        except OverflowError:
+            return None
+
     def iter_after(self, cutoff: datetime.datetime) -> Iterator[T]:
         """Return an iterator fast-forwarded toward occurrences ending after ``cutoff``."""
+        dt_iter: Iterable[datetime.datetime | datetime.date] = self._recur
         if isinstance(self._recur, SeekableIterable):
-            if self._duration and self._duration > datetime.timedelta(0):
-                cutoff_utc = (
-                    cutoff
-                    if cutoff.tzinfo is datetime.UTC
-                    else cutoff.astimezone(datetime.UTC)
-                    if cutoff.tzinfo is not None
-                    else cutoff
-                )
-                dt_cutoff = (
-                    (cutoff_utc - self._duration).astimezone(cutoff.tzinfo)
-                    if cutoff.tzinfo is not None and cutoff.tzinfo is not datetime.UTC
-                    else cutoff_utc - self._duration
-                )
-            else:
-                dt_cutoff = cutoff
-            dt_iter: Iterable[datetime.datetime | datetime.date] = (
-                self._recur.iter_after(dt_cutoff)
-            )
-        else:
-            dt_iter = self._recur
+            if (dt_cutoff := self._start_cutoff(cutoff)) is not None:
+                dt_iter = self._recur.iter_after(dt_cutoff)
         for dtvalue in dt_iter:
             yield self._item_cb(dtvalue)
 
@@ -596,11 +606,7 @@ class SortedItemIterable(SeekableIterable[SpanOrderedItem[T]]):
 
     def iter_after(self, cutoff: datetime.datetime) -> Iterator[SpanOrderedItem[T]]:
         """Return an iterator of items ending after ``cutoff`` in sorted order."""
-        cutoff_utc = (
-            cutoff
-            if cutoff.tzinfo is datetime.UTC
-            else normalize_datetime(cutoff, self._tzinfo).astimezone(datetime.UTC)
-        )
+        cutoff_utc = to_utc(normalize_datetime(cutoff, self._tzinfo))
         return iter(
             sorted(
                 item
@@ -681,11 +687,7 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events starting after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
-        instant_utc = (
-            instant_value
-            if instant_value.tzinfo is datetime.UTC
-            else instant_value.astimezone(datetime.UTC)
-        )
+        instant_utc = to_utc(instant_value)
         for item in self._iter_after(instant_value):
             if item.key.start_utc > instant_utc:
                 yield item.item
@@ -696,11 +698,7 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active after the specified time."""
         instant_value = normalize_datetime(instant, self._tzinfo)
-        instant_utc = (
-            instant_value
-            if instant_value.tzinfo is datetime.UTC
-            else instant_value.astimezone(datetime.UTC)
-        )
+        instant_utc = to_utc(instant_value)
         for item in self._iter_after(instant_value):
             if item.key.start_utc > instant_utc or item.key.end_utc > instant_utc:
                 yield item.item
@@ -711,9 +709,13 @@ class SortableItemTimeline(Iterable[T]):
     ) -> Iterator[T]:
         """Return an iterator containing events active at the specified instant."""
         timespan = Timespan.of(instant, instant, self._tzinfo)
-        for item in self._iter_after(
-            timespan.start_utc - datetime.timedelta(seconds=1)
-        ):
+        try:
+            source = self._iter_after(
+                timespan.start_utc - datetime.timedelta(seconds=1)
+            )
+        except OverflowError:
+            source = self._iterable
+        for item in source:
             if item.key.includes(timespan):
                 yield item.item
             elif item.key > timespan:

@@ -17,6 +17,7 @@ from ical.compat import enable_compat_mode
 from ical.event import Event
 from ical.journal import Journal
 from ical.types.recur import Recur
+from ical.tzif import timezoneinfo
 from ical.timeline import generic_timeline, materialize_timeline, calendar_timeline
 
 TZ = zoneinfo.ZoneInfo("America/Regina")
@@ -1024,3 +1025,76 @@ def test_timeline_dst_fallback_southern_hemisphere() -> None:
             datetime.datetime(2024, 4, 7, 2, 20, tzinfo=sydney, fold=1),
         )
     ] == ["AEST (02:15+10)"]
+
+
+def test_timeline_tie_breaking_and_boundary_extremes() -> None:
+    """Test deterministic stream tie-breaking, custom tzinfo cutoff, and date.min bounds."""
+    tz = zoneinfo.ZoneInfo("America/Los_Angeles")
+    # 4 recurring streams colliding at 08:30Z (01:30 PDT fold=0) after earlier pops:
+    # exercises SortableItem.__eq__ / Timespan.__eq__ tuple tie-breaking in MergedIterator.
+    events = [
+        Event(
+            uid="s0",
+            summary="Series 0",
+            start=datetime.datetime(2023, 11, 5, 1, 0, tzinfo=tz, fold=0),
+            end=datetime.datetime(2023, 11, 5, 1, 15, tzinfo=tz, fold=0),
+            rrule=Recur.from_rrule("FREQ=MINUTELY;INTERVAL=30;COUNT=2"),
+        ),
+        Event(
+            uid="s1",
+            summary="Series 1",
+            start=datetime.datetime(2023, 11, 5, 1, 10, tzinfo=tz, fold=0),
+            end=datetime.datetime(2023, 11, 5, 1, 20, tzinfo=tz, fold=0),
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=1"),
+        ),
+        Event(
+            uid="s2",
+            summary="Series 2",
+            start=datetime.datetime(2023, 11, 5, 2, 0, tzinfo=tz, fold=0),
+            end=datetime.datetime(2023, 11, 5, 2, 15, tzinfo=tz, fold=0),
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=1"),
+        ),
+        Event(
+            uid="s3",
+            summary="Series 3",
+            start=datetime.datetime(2023, 11, 5, 8, 30, tzinfo=datetime.UTC),
+            end=datetime.datetime(2023, 11, 5, 8, 45, tzinfo=datetime.UTC),
+            rrule=Recur.from_rrule("FREQ=HOURLY;COUNT=1"),
+        ),
+    ]
+    tl = calendar_timeline(events, tz)
+    assert [e.summary for e in tl] == [
+        "Series 0",
+        "Series 1",
+        "Series 0",
+        "Series 3",
+        "Series 2",
+    ]
+
+    # RecurIterable._start_cutoff keeps aware cutoffs in UTC without round-tripping through custom tzinfo.fromutc()
+    seen_cutoffs: list[datetime.datetime] = []
+
+    class _RecordingSeekable(iter_mod.SeekableIterable[datetime.datetime]):
+        def __iter__(self) -> Any:
+            return iter(())
+
+        def iter_after(self, cutoff: datetime.datetime) -> Any:
+            seen_cutoffs.append(cutoff)
+            return iter(())
+
+    custom_la = timezoneinfo.read_tzinfo("America/Los_Angeles")
+    recur_it = iter_mod.RecurIterable(
+        lambda dt: dt,
+        _RecordingSeekable(),
+        duration=datetime.timedelta(minutes=30),
+    )
+    # 02:00 PST (10:00Z) minus 30m == 09:30Z (in fold=1); must stay 09:30Z rather than shifting to 10:30Z
+    list(recur_it.iter_after(datetime.datetime(2023, 11, 5, 2, 0, tzinfo=custom_la)))
+    assert seen_cutoffs == [datetime.datetime(2023, 11, 5, 9, 30, tzinfo=datetime.UTC)]
+
+    # Queries near datetime.date.min must not raise OverflowError when subtracting lookback buffers
+    utc_tl = calendar_timeline(events, datetime.UTC)
+    assert list(utc_tl.at_instant(datetime.date(1, 1, 1))) == []
+    assert (
+        list(utc_tl.overlapping(datetime.date(1, 1, 1), datetime.date(1, 1, 2))) == []
+    )
