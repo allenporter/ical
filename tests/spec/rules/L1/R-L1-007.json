@@ -158,7 +158,7 @@
         "op": "edit",
         "uid": "transition-series-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "dtstart": "2025-05-01T09:00:00",
           "dtend": "2025-05-01T09:30:00"

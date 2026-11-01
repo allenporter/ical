@@ -21,8 +21,8 @@
   ],
   "scenarios": [
     {
-      "name": "todo_status_transition_manages_completed_timestamp",
-      "description": "Marking a VTODO COMPLETED sets completed=dtstamp, and reverting status to NEEDS-ACTION clears completed=None.",
+      "name": "todo_status_transition_to_completed_sets_completed_timestamp",
+      "description": "Editing a VTODO's status from NEEDS-ACTION to COMPLETED sets completed to the edit's UTC dtstamp.",
       "initial_components": [
         {
           "uid": "todo-1",

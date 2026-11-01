@@ -21,9 +21,9 @@
     {
       "doc": "rfc5545.txt",
       "section": "Section 3.8.2.3",
-      "line_start": 5383,
-      "line_end": 5385,
-      "verbatim_quote": "Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+      "line_start": 5450,
+      "line_end": 5461,
+      "verbatim_quote": "Property Name:  DUE\n\n   Purpose:  This property defines the date and time that a to-do is\n      expected to be completed.\n\n   Value Type:  The default value type is DATE-TIME.  The value type can\n      be set to a DATE value type.\n\n   Property Parameters:  IANA, non-standard, value data type, and time\n      zone identifier property parameters can be specified on this\n      property."
     }
   ],
   "rationale": "RFC 5545 Section 3.2.19 explicitly includes `DUE` alongside `DTSTART` and `DTEND` in the list of properties that MUST specify a `TZID` parameter and have a corresponding `VTIMEZONE` component in the iCalendar object whenever a non-UTC, non-floating DATE-TIME value is used. Furthermore, when adding a VTODO whose `dtstart` is omitted and defaulted from `due` (e.g., `due - 1 day`) or from the store's local timezone, the resulting VTODO's `dtstart` and `due` carry timezone-aware datetimes whose timezones must be validated and registered in the calendar's `VTIMEZONE` collection on both `add` and `edit`.",
@@ -35,7 +35,7 @@
   ],
   "scenarios": [
     {
-      "name": "todo_add_and_edit_with_due_timezone_registers_vtimezone_and_rejects_invalid_tz",
+      "name": "todo_add_with_due_timezone_registers_vtimezone",
       "description": "Adding a VTODO with only due set in an IANA timezone registers VTIMEZONE for that timezone. The expected dtstart (due - 1 day) reflects a store policy of deriving a default DTSTART from DUE; RFC 5545 defines no such default.",
       "initial_components": [],
       "operation": {
@@ -72,7 +72,7 @@
   "audit_status": "ADVERSARIALLY_VETTED",
   "audit_notes": [
     "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
-    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.19 (L1531-L1536, L1545-L1552) and Section 3.8.2.3 (L5383-L5385).",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.19 (L1531-L1536, L1545-L1552) and Section 3.8.2.3 (L5450-L5461).",
     "Authority check: Confirmed RFC_5545 is accurate because RFC 5545 Section 3.2.19 explicitly requires TZID and VTIMEZONE definitions for non-UTC, non-floating DUE and DTSTART properties on VTODO components."
   ]
 }

@@ -153,6 +153,6 @@ def identity_key(comp: Component, components: list[Component]) -> tuple[str, str
 
 
 def op_range(operation: dict[str, Any]) -> str:
-    """Normalize the operation's recurrence range to NONE or THIS_AND_FUTURE."""
-    raw = operation.get("range") or operation.get("recurrence_range") or "NONE"
+    """Return the operation's canonical recurrence range (`NONE` or `THIS_AND_FUTURE`)."""
+    raw = operation.get("range") or "NONE"
     return "THIS_AND_FUTURE" if raw in ("THIS_AND_FUTURE", "THISANDFUTURE") else raw

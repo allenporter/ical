@@ -78,7 +78,7 @@
         "op": "delete",
         "uid": "series-uid-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE"
+        "range": "NONE"
       },
       "expected_components": [],
       "expected_timeline": []

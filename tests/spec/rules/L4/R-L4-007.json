@@ -54,7 +54,7 @@
         "op": "edit",
         "uid": "single-to-recur-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "rrule": "FREQ=DAILY;COUNT=3"
         }
@@ -129,7 +129,7 @@
         "op": "edit",
         "uid": "recur-to-single-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "summary": "One-off Check-in",
           "rrule": null

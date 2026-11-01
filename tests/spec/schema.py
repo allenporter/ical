@@ -30,7 +30,9 @@ import pathlib
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+
+from .operation_schema import validate_operation_dict
 
 SPEC_DIR = pathlib.Path(__file__).resolve().parent
 RULES_DIR = SPEC_DIR / "rules"
@@ -102,7 +104,7 @@ class AuditStatus(StrEnum):
 
 
 class RfcCitation(BaseModel):
-    """Exact citation to a local RFC or IETF draft text file."""
+    """Exact citation to a bundled RFC/draft (`str.splitlines()`, counting `\\f` as a line break)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -114,7 +116,8 @@ class RfcCitation(BaseModel):
 
 
 class MiniScenarioVector(BaseModel):
-    """A self-contained, declarative micro-scenario illustrating the rule."""
+    """Self-contained micro-scenario; `expected_components` asserts the exact non-VTIMEZONE set
+    (plus VTIMEZONEs when explicitly listed), projecting each record onto its asserted keys."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -131,6 +134,11 @@ class MiniScenarioVector(BaseModel):
     operation: dict[str, Any]
     expected_components: list[dict[str, Any]] | None = None
     expected_timeline: list[dict[str, Any]]
+
+    @field_validator("operation")
+    @classmethod
+    def _check_operation_schema(cls, val: dict[str, Any]) -> dict[str, Any]:
+        return validate_operation_dict(val)
 
 
 class ModeOption(BaseModel):
