@@ -10,7 +10,9 @@ import datetime
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
+from .operation_schema import validate_operation_dict
 from .oracle_temporal import (
     ParsedTemporal,
     StoreError,
@@ -423,3 +425,20 @@ def test_scenario_mathematical_and_structural_invariants(
     assert not errors, (
         f"Scenario {rule_id}[{scen_idx}] ({scen_name}) failed invariant verification: {errors}"
     )
+
+
+@pytest.mark.parametrize(
+    "bad_op",
+    [
+        {"op": "delete", "uid": "u1", "recurrence_range": "NONE"},
+        {"op": "edit", "uid": "u1", "patch": {}, "range": "THISANDFUTURE"},
+        {"op": "expand", "unexpected": True},
+        {"op": "unknown_op"},
+    ],
+)
+def test_operation_schema_rejects_legacy_aliases_and_unknown_keys(
+    bad_op: dict[str, Any],
+) -> None:
+    """Operation sub-schema forbids non-canonical range keys/spellings and unknown fields."""
+    with pytest.raises(ValidationError):
+        validate_operation_dict(bad_op)

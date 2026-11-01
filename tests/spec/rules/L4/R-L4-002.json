@@ -42,8 +42,8 @@
   ],
   "scenarios": [
     {
-      "name": "whole_series_edit_order_independence_master_first_vs_override_first",
-      "description": "Renaming a 5-instance daily series that has a single-instance override on May 3 yields all 5 timeline occurrences whether the component collection is ordered [master, override] or [override, master].",
+      "name": "whole_series_edit_preserves_override_independently_of_component_order",
+      "description": "Renaming a 5-instance daily series that has a single-instance override on May 3 updates both components and preserves all 5 timeline occurrences (with input-permutation equivalence across [override, master] verified via I-T-009).",
       "modes": {
         "series_edit_override_mode": "PROPAGATE_PATCH"
       },
@@ -73,7 +73,7 @@
         "op": "edit",
         "uid": "series-uid-2",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "summary": "Renamed standup"
         }

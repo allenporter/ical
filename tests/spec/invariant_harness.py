@@ -131,10 +131,11 @@ class CheckedStore(ReferenceStore):
 
 
 def _op_dict(kind: str, uid: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
-    """Build the declarative operation dict from positional/keyword call arguments."""
-    names = ["recurrence_id", "recurrence_range", "now", "new_uid"]
+    """Build the canonical declarative operation dict from call arguments."""
+    names = ["recurrence_id", "range", "now", "new_uid"]
     op: dict[str, Any] = {"op": kind, "uid": uid, **dict(zip(names, args))}
-    op.update(kwargs)
+    for key, val in kwargs.items():
+        op["range" if key == "recurrence_range" else key] = val
     return op
 
 

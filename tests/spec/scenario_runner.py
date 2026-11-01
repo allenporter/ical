@@ -34,9 +34,7 @@ def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) 
         store.delete(
             uid=op_dict["uid"],
             recurrence_id=op_dict.get("recurrence_id"),
-            recurrence_range=op_dict.get("range")
-            or op_dict.get("recurrence_range")
-            or "NONE",
+            recurrence_range=op_dict.get("range") or "NONE",
             now=op_dict.get("now"),
         )
     elif op_type == "edit":
@@ -44,9 +42,7 @@ def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) 
             uid=op_dict["uid"],
             patch=op_dict.get("patch", {}),
             recurrence_id=op_dict.get("recurrence_id"),
-            recurrence_range=op_dict.get("range")
-            or op_dict.get("recurrence_range")
-            or "NONE",
+            recurrence_range=op_dict.get("range") or "NONE",
             now=op_dict.get("now"),
             new_uid=op_dict.get("new_uid"),
         )

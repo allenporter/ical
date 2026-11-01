@@ -69,7 +69,7 @@
         "op": "edit",
         "uid": "series-uid-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "summary": "Renamed standup"
         }

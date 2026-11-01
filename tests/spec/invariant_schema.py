@@ -17,8 +17,9 @@ import pathlib
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .operation_schema import validate_operation_dict
 from .schema import (
     FORBIDDEN_IMPLEMENTATION_TERMS,
     SPEC_DIR,
@@ -57,6 +58,13 @@ class InvariantExample(BaseModel):
     after: list[dict[str, Any]] | None = None
     failed: bool = False
     permuted_afters: list[list[dict[str, Any]] | None] = Field(default_factory=list)
+
+    @field_validator("operation")
+    @classmethod
+    def _check_operation_schema(
+        cls, val: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        return validate_operation_dict(val) if val is not None else None
 
 
 class SpecInvariant(BaseModel):

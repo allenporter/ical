@@ -33,6 +33,7 @@ INVARIANT_MODULES = [
     "invariant_registry.py",
     "invariant_schema.py",
     "invariant_harness.py",
+    "operation_schema.py",
 ]
 
 

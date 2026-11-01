@@ -82,7 +82,7 @@
         "op": "edit",
         "uid": "shift-uid-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "dtstart": "2025-05-02T09:00:00",
           "dtend": "2025-05-02T09:30:00",

@@ -54,7 +54,7 @@
         "op": "edit",
         "uid": "resched-uid-1",
         "recurrence_id": null,
-        "recurrence_range": "NONE",
+        "range": "NONE",
         "patch": {
           "dtstart": "2025-06-02T09:00:00",
           "rrule": "FREQ=WEEKLY;COUNT=2",
