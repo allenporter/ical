@@ -90,7 +90,10 @@ class ReferenceStore(OracleEditMixin):
             raise
 
     def _delete_whole_uid_and_children(self, uid: str, eff_now: str) -> None:
-        """Delete one UID plus PARENT-linked children per mode (R-L4-001, R-L5-007, R-L5-008, R-L5-009).
+        """Delete one UID plus PARENT-linked children per mode (R-L4-001, R-L5-007..R-L5-011).
+
+        Covers CASCADE_DELETE (R-L5-007), DETACH_CHILDREN (R-L5-010), and LEAVE_DANGLING
+        (R-L5-011), while preserving non-PARENT relations (R-L5-008, R-L5-009).
 
         NEXT/FIRST links are ordering relations, never PARENT: other segments of a split
         chain are neither deleted nor modified (links to the deleted UID may dangle).

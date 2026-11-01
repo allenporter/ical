@@ -1,0 +1,103 @@
+{
+  "id": "R-L5-011",
+  "title": "Preserving Children With Dangling RELATED-TO PARENT Links Under LEAVE_DANGLING",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "applies_under": {
+    "parent_delete_cascade_mode": [
+      "LEAVE_DANGLING"
+    ]
+  },
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6541,
+      "line_end": 6547,
+      "verbatim_quote": "Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 9.1",
+      "line_start": 720,
+      "line_end": 721,
+      "verbatim_quote": "Deletion of the target component, for example, the target of a FIRST, NEXT, or temporal relationship, can result in broken links."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.5 states that `RELATED-TO` is intended only to provide relationship information and leaves property maintenance upon parent deletion to the calendar system, while RFC 9253 Section 9.1 explicitly notes that deleting a target component can result in broken (`RELATED-TO`) links. Under `parent_delete_cascade_mode = LEAVE_DANGLING`, deleting a parent component removes only that parent `UID` and leaves all child components and their `related_to` properties completely untouched (preserving the link if the parent is later re-imported or synced).",
+  "store_implication": "Under `parent_delete_cascade_mode = LEAVE_DANGLING`, when `delete` completely removes a component's `UID` from the store, no other component in the store is deleted or modified: child components referencing the deleted `UID` via `RELTYPE=PARENT` (or omitted/unrecognized `RELTYPE`) remain in the store with their `related_to` list, `sequence`, `dtstamp`, and `last_modified` unchanged.",
+  "edge_cases_and_counterexamples": [
+    "Deleting `parent-1` under `LEAVE_DANGLING` leaves `child-1` with `related_to=[{'uid': 'parent-1', 'reltype': 'PARENT'}]` and `sequence=0`; timeline expansion still emits `child-1` normally."
+  ],
+  "scenarios": [
+    {
+      "name": "full_delete_of_parent_leaves_child_and_related_to_unchanged",
+      "description": "Under parent_delete_cascade_mode=LEAVE_DANGLING, deleting parent-1 removes only parent-1 and keeps child-1 and its RELATED-TO link, sequence, and timestamps untouched.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "parent-1",
+          "summary": "Parent project",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "parent-1",
+        "recurrence_id": null,
+        "now": "2025-05-01T12:00:00Z"
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z",
+          "created": "2025-05-01T08:00:00Z",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "child-1",
+          "dtstart": "2025-05-01T10:00:00",
+          "summary": "Subtask",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added explicit rule and scenario covering parent_delete_cascade_mode=LEAVE_DANGLING.",
+    "Verified citations in rfc5545.txt Section 3.8.4.5 (L6541-L6547) and rfc9253.txt Section 9.1 (L720-L721)."
+  ]
+}

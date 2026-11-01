@@ -320,6 +320,132 @@
           "summary": "Custom Day 4"
         }
       ]
+    },
+    {
+      "name": "edit_this_and_future_discards_future_override_under_discard_mode",
+      "description": "Under split_future_override_mode=DISCARD, splitting a 4-day series at May 2 preserves an override before the split (May 1) under the original UID while discarding an override after the split (May 4) so the new segment starts with no overrides.",
+      "modes": {
+        "split_future_override_mode": "DISCARD",
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-1",
+          "recurrence_id": null,
+          "summary": "Daily standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "exdate": [],
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-1",
+          "recurrence_id": "20250501T090000",
+          "summary": "Custom Day 1",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-1",
+          "recurrence_id": "20250504T090000",
+          "summary": "Custom Day 4",
+          "dtstart": "2025-05-04T14:00:00",
+          "dtend": "2025-05-04T14:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "disc-uid-1",
+        "new_uid": "disc-uid-2",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Future standup"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-2",
+          "recurrence_id": null,
+          "summary": "Future standup",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "disc-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-1",
+          "recurrence_id": null,
+          "summary": "Daily standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "exdate": [],
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "disc-uid-2",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "disc-uid-1",
+          "recurrence_id": "20250501T090000",
+          "summary": "Custom Day 1",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "disc-uid-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T10:00:00",
+          "summary": "Custom Day 1"
+        },
+        {
+          "uid": "disc-uid-2",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "summary": "Future standup"
+        },
+        {
+          "uid": "disc-uid-2",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "summary": "Future standup"
+        },
+        {
+          "uid": "disc-uid-2",
+          "recurrence_id": "20250504T090000",
+          "dtstart": "2025-05-04T09:00:00",
+          "summary": "Future standup"
+        }
+      ]
     }
   ],
   "audit_status": "ADVERSARIALLY_VETTED",
