@@ -87,7 +87,7 @@
           "dtstart": "2025-05-01",
           "due": "2025-05-02",
           "rrule": "FREQ=DAILY;UNTIL=20250502",
-          "sequence": 0
+          "sequence": 1
         }
       ],
       "expected_timeline": [
@@ -173,7 +173,7 @@
           "dtstart": "2025-05-05T09:00:00-04:00[America/New_York]",
           "dtend": "2025-05-05T09:30:00-04:00[America/New_York]",
           "rrule": "FREQ=DAILY;UNTIL=20250506T125959Z",
-          "sequence": 0
+          "sequence": 1
         }
       ],
       "expected_timeline": [
