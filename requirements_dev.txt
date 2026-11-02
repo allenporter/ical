@@ -9,7 +9,7 @@ pytest-cov==7.1.0
 pytest==9.2.0
 ruff==0.17.3
 
-python-dateutil==3.0.0
+python-dateutil==4.0.0
 freezegun==1.5.5
 pydantic==2.14.2
 pytest-benchmark==5.3.1
