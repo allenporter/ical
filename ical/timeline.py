@@ -18,7 +18,7 @@ from .iter import (
     SortableItemValue,
     SpanOrderedItem,
 )
-from .util import normalize_datetime
+from .util import normalize_datetime, to_utc
 from .recur_adapter import merge_and_expand_items, ItemType
 
 __all__ = ["Timeline", "generic_timeline"]
@@ -76,9 +76,11 @@ def materialize_timeline(
     tzinfo = timeline._tzinfo
     start_dt = normalize_datetime(start, tzinfo)
     if stop:
-        timespan = Timespan.of(start, stop, tzinfo)
+        timespan = Timespan(start_dt, normalize_datetime(stop, tzinfo))
+        start_utc = timespan.start_utc
     elif max_number_of_events is not None:
         timespan = None
+        start_utc = to_utc(start_dt)
     else:
         raise ValueError("Either stop or max_number_of_events must be specified")
 
@@ -93,7 +95,7 @@ def materialize_timeline(
                 break
         else:
             # No stop specified, so include all events active after start.
-            if item.key.end > start_dt:
+            if item.key.start_utc > start_utc or item.key.end_utc > start_utc:
                 items.append(SortableItemValue(item.key, item.item))
 
     return SortableItemTimeline[ItemType](items, tzinfo)

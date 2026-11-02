@@ -8,6 +8,7 @@ from importlib import metadata
 from types import NoneType
 from typing import TYPE_CHECKING, Any, Union, cast, get_args, get_origin, overload
 import uuid
+import zoneinfo
 
 __all__ = [
     "dtstamp_factory",
@@ -54,6 +55,18 @@ def normalize_datetime(
             tzinfo = local_timezone()
         value = value.replace(tzinfo=tzinfo)
     return value
+
+
+def to_utc(value: datetime.datetime) -> datetime.datetime:
+    """Convert a timezone-aware datetime to UTC."""
+    if value.tzinfo is datetime.UTC:
+        return value
+    if value.tzinfo is None or (
+        not isinstance(value.tzinfo, (zoneinfo.ZoneInfo, datetime.timezone))
+        and value.utcoffset() is None
+    ):
+        raise ValueError(f"Datetime did not have a timezone: {value}")
+    return value.astimezone(datetime.UTC)
 
 
 @overload
