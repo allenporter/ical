@@ -11,6 +11,7 @@ from collections.abc import Callable
 from .invariant_common import (
     CheckContext,
     Component,
+    extract_raw_tzid,
     has_recurrence,
     identity_key,
     is_legacy_segment,
@@ -61,7 +62,7 @@ def single_main_per_uid(components: list[Component], ctx: CheckContext) -> list[
 def override_has_recurring_main(
     components: list[Component], ctx: CheckContext
 ) -> list[str]:
-    """Every override has a recurring main component with the same UID."""
+    """Every override has a recurring main component of the same type and UID."""
     del ctx
     errors: list[str] = []
     for comp in items(components):
@@ -72,6 +73,8 @@ def override_has_recurring_main(
             errors.append(f"override {label(comp)} has no main component")
         elif not has_recurrence(main):
             errors.append(f"override {label(comp)} has a non-recurring main")
+        elif (comp.get("type") or "VEVENT") != (main.get("type") or "VEVENT"):
+            errors.append(f"override {label(comp)} component type differs from main")
     return errors
 
 
@@ -145,23 +148,59 @@ def override_rid_is_candidate(
 def _referenced_tzids(comp: Component) -> set[str]:
     values = [comp.get(k) for k in _TZ_FIELDS]
     for key in _TZ_LIST_FIELDS:
-        values.extend(comp.get(key) or ())
-    tzids: set[str] = set()
-    for raw in values:
-        pt = try_parse(raw)
-        if pt is not None and pt.kind == "TZID" and pt.tzid:
-            tzids.add(pt.tzid)
-    return tzids
+        vals = comp.get(key)
+        if isinstance(vals, list):
+            values.extend(vals)
+    return {tzid for raw in values if (tzid := extract_raw_tzid(raw)) is not None}
 
 
 def vtimezone_coverage(components: list[Component], ctx: CheckContext) -> list[str]:
-    """A VTIMEZONE exists for every TZID referenced by a component."""
+    """A unique, non-empty VTIMEZONE exists for every TZID referenced by a component."""
     del ctx
-    defined = {c.get("tz_id") for c in components if c.get("type") == "VTIMEZONE"}
+    defined: set[str] = set()
+    errors: list[str] = []
+    for comp in components:
+        if comp.get("type") != "VTIMEZONE":
+            continue
+        tz_id = comp.get("tz_id")
+        if not isinstance(tz_id, str) or not tz_id:
+            errors.append("VTIMEZONE component has missing or empty tz_id")
+        elif tz_id in defined:
+            errors.append(f"duplicate VTIMEZONE for TZID {tz_id!r}")
+        else:
+            defined.add(tz_id)
     missing: set[str] = set()
     for comp in items(components):
         missing |= _referenced_tzids(comp) - defined
-    return [f"no VTIMEZONE for referenced TZID {tzid!r}" for tzid in sorted(missing)]
+    errors.extend(
+        f"no VTIMEZONE for referenced TZID {tzid!r}" for tzid in sorted(missing)
+    )
+    return errors
+
+
+def override_dtstart_matches_main_form(
+    components: list[Component], ctx: CheckContext
+) -> list[str]:
+    """Every override's DTSTART matches its main DTSTART's value type and floating-ness."""
+    del ctx
+    errors: list[str] = []
+    for comp in items(components):
+        main = main_of(components, str(comp.get("uid")))
+        if not is_override(comp) or main is None:
+            continue
+        pt_ov = try_parse(comp.get("dtstart"), "dtstart")
+        pt_main = try_parse(main.get("dtstart"), "dtstart")
+        if pt_ov is None or pt_main is None:
+            errors.append(f"override {label(comp)}: missing or unparsable DTSTART")
+        elif pt_ov.is_date != pt_main.is_date:
+            errors.append(
+                f"override {label(comp)}: DTSTART value type differs from main DTSTART"
+            )
+        elif (pt_ov.kind == "FLOATING") != (pt_main.kind == "FLOATING"):
+            errors.append(
+                f"override {label(comp)}: DTSTART floating-ness differs from main DTSTART"
+            )
+    return errors
 
 
 CALENDAR_CHECKS: dict[str, CalendarCheck] = {
@@ -171,4 +210,5 @@ CALENDAR_CHECKS: dict[str, CalendarCheck] = {
     "override_rid_matches_main_form": override_rid_matches_main_form,
     "override_rid_is_candidate": override_rid_is_candidate,
     "vtimezone_coverage": vtimezone_coverage,
+    "override_dtstart_matches_main_form": override_dtstart_matches_main_form,
 }

@@ -1,6 +1,6 @@
 {
   "id": "I-K-003",
-  "title": "Every Override Has a Recurring Main Component",
+  "title": "Every Override Has a Recurring Main Component of the Same Type",
   "scope": "CALENDAR",
   "authority": "RFC_5545",
   "citations": [
@@ -19,8 +19,8 @@
       "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
     }
   ],
-  "statement": "Every override (same UID, has RECURRENCE-ID, no RRULE/RDATE) has a main component with the same UID, and that main component is recurring (has RRULE or RDATE).",
-  "rationale": "RFC 5545 Section 3.8.4.4 allows RECURRENCE-ID only in an iCalendar object containing a recurring calendar component, and draft-ietf-calext-jscalendar-icalendar Section 2.1.2 defines an override relative to a same-UID main component that has RRULE. An override left behind after its series was deleted or made non-recurring is orphaned.",
+  "statement": "Every override (same UID, has RECURRENCE-ID, no RRULE/RDATE) has a main component with the same UID and component type (VEVENT vs VTODO), and that main component is recurring (has RRULE or RDATE).",
+  "rationale": "RFC 5545 Section 3.8.4.4 allows RECURRENCE-ID only in an iCalendar object containing a recurring calendar component, and draft-ietf-calext-jscalendar-icalendar Section 2.1.2 defines a VEVENT (resp. VTODO) override relative to a same-UID VEVENT (resp. VTODO) main component. An override left behind after its series was deleted, made non-recurring, or paired with a different component type is invalid.",
   "check": "override_has_recurring_main",
   "positive_examples": [
     {
@@ -83,6 +83,29 @@
           "summary": "Moved",
           "dtstart": "2025-05-02T11:00:00",
           "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "todo_override_on_event_main",
+      "description": "VTODO override attached to a VEVENT main component.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VTODO",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Wrong type",
+          "dtstart": "2025-05-02T09:00:00",
           "sequence": 1
         }
       ]

@@ -1,0 +1,184 @@
+{
+  "id": "I-T-010",
+  "title": "Operations Leave Unrelated UIDs and Non-Cascaded Relatives Unchanged",
+  "scope": "TRANSITION",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 694,
+      "line_end": 700,
+      "verbatim_quote": "To maximize interoperability and to handle messages that arrive in an unexpected order, use the following rules: 1. The primary key for referencing a particular iCalendar component is the \"UID\" property value."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6541,
+      "line_end": 6547,
+      "verbatim_quote": "Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 372,
+      "line_end": 374,
+      "verbatim_quote": "Note that the relationship types of PARENT, CHILD, and SIBLING establish a hierarchical relationship.  The new types of FIRST and NEXT are an ordering relationship."
+    }
+  ],
+  "statement": "After any successful add, edit, or delete operation, every UID other than the targeted UID, any newly minted THIS_AND_FUTURE split UID, or a transitive RELTYPE=PARENT descendant removed during a whole-UID delete has identical expanded occurrences and dateless component content before and after the operation.",
+  "rationale": "UID is the primary key isolating distinct calendar series (RFC 5546 Section 2.1.5). Edits and partial recurrence deletions never cascade onto RELTYPE=PARENT children (R-L5-008), and whole-UID deletions never cascade across ordering relations such as RELTYPE=NEXT or RELTYPE=FIRST (RFC 9253 Section 5; R-L5-007, R-L5-009).",
+  "check": "unrelated_uids_unchanged",
+  "positive_examples": [
+    {
+      "name": "whole_delete_cascades_only_parent_child",
+      "description": "Deleting parent-1 removes its PARENT child while leaving unrelated-1 and NEXT peer intact.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "parent-1",
+          "summary": "Parent",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "related_to": [
+            {
+              "uid": "next-seg",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "next-seg",
+          "summary": "Part 2",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "parent-1",
+        "recurrence_id": null
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "next-seg",
+          "summary": "Part 2",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "edit_parent_drops_child",
+      "description": "Editing parent-1 erroneously cascade-deletes child-1.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "parent-1",
+          "summary": "Parent",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "child-1",
+          "summary": "Subtask",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "parent-1",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "parent-1",
+        "patch": {
+          "summary": "Updated"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "parent-1",
+          "summary": "Updated",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00"
+        }
+      ]
+    },
+    {
+      "name": "delete_cascades_across_next_link",
+      "description": "Deleting seg-1 erroneously deletes seg-2 linked via RELTYPE=NEXT/FIRST.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "seg-1",
+          "summary": "Part 1",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "related_to": [
+            {
+              "uid": "seg-2",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "seg-2",
+          "summary": "Part 2",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "related_to": [
+            {
+              "uid": "seg-1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "seg-1",
+        "recurrence_id": null
+      },
+      "after": []
+    }
+  ],
+  "audit_notes": []
+}

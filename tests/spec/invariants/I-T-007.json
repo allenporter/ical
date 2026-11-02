@@ -26,7 +26,7 @@
       "verbatim_quote": "Any RELTYPE parameters convert to the \"relation\" property in that Relation object. The parameter values convert in lowercase."
     }
   ],
-  "statement": "For every UID N created by a successful THIS_AND_FUTURE edit of UID U: N has a recurring main component; U's main component carries exactly one RELTYPE=NEXT link and it points to N; no other component links NEXT to N; N carries exactly one RELTYPE=FIRST link, to the first UID of the chain (U's own FIRST target if U had one, else U); and N's NEXT links equal U's NEXT links before the edit (N takes over U's place in the chain).",
+  "statement": "Every successful THIS_AND_FUTURE edit of UID U whose target recurrence_id follows at least one prior active occurrence of U creates exactly one new UID N, and for every UID N created by a successful THIS_AND_FUTURE edit of U: N has a recurring main component; U's main component carries exactly one RELTYPE=NEXT link and it points to N; no other component links NEXT to N; N carries exactly one RELTYPE=FIRST link, to the first UID of the chain (U's own FIRST target if U had one, else U); and N's NEXT links equal U's NEXT links before the edit (N takes over U's place in the chain).",
   "rationale": "RFC 8984 Section 4.1.3 requires a 'next' relation on the original object for the UID of the new object and a 'first' relation on the new object for the UID of the first object in the series; the Relation definition (Section 1.4.10) gives 'first'/'next' their ordering meaning and the CalExt iCalendar mapping (draft Section 2.3.35) maps them to RELTYPE=FIRST/NEXT. Taking over the original's NEXT when a segment is inserted mid-chain is the store policy that keeps the chain a single ordered list.",
   "check": "split_links_well_formed",
   "positive_examples": [
@@ -340,6 +340,97 @@
               "reltype": "FIRST"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "non_recurring_new_segment",
+      "description": "New split segment lacks RRULE and RDATE.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1-b",
+          "summary": "New",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T10:00:00",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "s1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "truncated_without_new_segment",
+      "description": "Non-first THIS_AND_FUTURE edit truncated U without minting a new UID.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 1
         }
       ]
     }

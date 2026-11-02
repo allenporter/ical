@@ -1,6 +1,6 @@
 {
   "id": "I-C-003",
-  "title": "DTEND/DUE and DURATION Are Mutually Exclusive",
+  "title": "DTEND/DUE and DURATION Are Mutually Exclusive and DURATION Is Positive and Valid",
   "scope": "COMPONENT",
   "authority": "RFC_5545",
   "citations": [
@@ -15,12 +15,26 @@
       "doc": "rfc5545.txt",
       "section": "Section 3.6.2",
       "line_start": 3169,
-      "line_end": 3171,
-      "verbatim_quote": "; Either 'due' or 'duration' MAY appear in ; a 'todoprop', but 'due' and 'duration' ; MUST NOT occur in the same 'todoprop'."
+      "line_end": 3174,
+      "verbatim_quote": "; Either 'due' or 'duration' MAY appear in ; a 'todoprop', but 'due' and 'duration' ; MUST NOT occur in the same 'todoprop'. ; If 'duration' appear in a 'todoprop', ; then 'dtstart' MUST also appear in ; the same 'todoprop'."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.5",
+      "line_start": 5597,
+      "line_end": 5597,
+      "verbatim_quote": "Purpose: This property specifies a positive duration of time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.5",
+      "line_start": 5613,
+      "line_end": 5616,
+      "verbatim_quote": "When the \"DURATION\" property relates to a \"DTSTART\" property that is specified as a DATE value, then the \"DURATION\" property MUST be specified as a \"dur-day\" or \"dur-week\" value."
     }
   ],
-  "statement": "A VEVENT never carries both DTEND and DURATION, and a VTODO never carries both DUE and DURATION.",
-  "rationale": "The RFC 5545 VEVENT and VTODO grammars forbid DTEND (resp. DUE) and DURATION in the same component. A store that derives one from the other on edit must drop the other.",
+  "statement": "A VEVENT never carries both DTEND and DURATION, and a VTODO never carries both DUE and DURATION; whenever DURATION is present, DTSTART is also present, DURATION is a valid strictly positive RFC 5545 duration, and if DTSTART is a DATE value then DURATION uses day or week units only.",
+  "rationale": "RFC 5545 Sections 3.6.1 and 3.6.2 forbid DTEND (resp. DUE) and DURATION in the same component and require DTSTART whenever DURATION appears in a VTODO; Section 3.8.2.5 requires DURATION to specify a positive duration and restricts DATE-anchored components to dur-day or dur-week values.",
   "check": "end_xor_duration",
   "positive_examples": [
     {
@@ -52,6 +66,19 @@
           "duration": "PT1H"
         }
       ]
+    },
+    {
+      "name": "date_event_day_duration",
+      "description": "All-day event with P1D duration.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s2",
+          "summary": "Holiday",
+          "dtstart": "2025-05-01",
+          "duration": "P1D"
+        }
+      ]
     }
   ],
   "negative_examples": [
@@ -81,6 +108,41 @@
           "dtstart": "2025-05-01",
           "due": "2025-05-02",
           "duration": "P1D"
+        }
+      ]
+    },
+    {
+      "name": "todo_duration_without_dtstart",
+      "description": "VTODO carries DURATION without DTSTART.",
+      "components": [
+        {
+          "type": "VTODO",
+          "uid": "t2",
+          "duration": "PT30M"
+        }
+      ]
+    },
+    {
+      "name": "date_event_with_time_duration",
+      "description": "DATE DTSTART paired with sub-daily PT12H duration.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s3",
+          "dtstart": "2025-05-01",
+          "duration": "PT12H"
+        }
+      ]
+    },
+    {
+      "name": "negative_or_zero_duration",
+      "description": "Non-positive DURATION.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s4",
+          "dtstart": "2025-05-01T09:00:00",
+          "duration": "-PT1H"
         }
       ]
     }
