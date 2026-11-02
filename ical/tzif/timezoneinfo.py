@@ -159,7 +159,8 @@ class TzInfo(datetime.tzinfo):
     it currently ignores historical timezone information. Instead, it uses only the
     posix TZ rules that apply going forward only, but applies them for all time.
 
-    This class uses the default implementation of fromutc.
+    Honors PEP 495 ``fold`` across DST fall-back folds and spring-forward gaps,
+    and implements ``fromutc`` to set ``fold=1`` on repeated local times.
     """
 
     def __init__(self, rule: Rule, key: str | None = None) -> None:
@@ -199,14 +200,15 @@ class TzInfo(datetime.tzinfo):
 
     def dst(self, dt: datetime.datetime | None) -> datetime.timedelta | None:
         """Return the daylight saving time (DST) adjustment, if applicable."""
+        if dt is None:
+            return None
         if (
-            dt is None
-            or not self._rule.dst
+            not self._rule.dst
             or not isinstance(self._rule.dst_start, RuleDate)
             or not isinstance(self._rule.dst_end, RuleDate)
             or not self._rule.dst.offset
         ):
-            return None
+            return _ZERO
 
         dst_start = _get_rule_date_transition(
             self._rule.dst_start.month,
@@ -225,17 +227,50 @@ class TzInfo(datetime.tzinfo):
         dt_naive = dt.replace(tzinfo=None)
         dst_offset = self._rule.dst.offset - self._rule.std.offset
 
+        # Apply PEP 495 fold disambiguation across gaps and folds:
+        # fold=0 uses the pre-transition offset; fold=1 uses the post-transition offset.
+        if dt.fold == 0:
+            eff_start = max(dst_start, dst_start + dst_offset)
+            eff_end = max(dst_end, dst_end - dst_offset)
+        else:
+            eff_start = min(dst_start, dst_start + dst_offset)
+            eff_end = min(dst_end, dst_end - dst_offset)
+
         if dst_start < dst_end:
             # Northern Hemisphere: DST is between start and end
-            if dst_start <= dt_naive < dst_end:
+            if eff_start <= dt_naive < eff_end:
                 return dst_offset
         else:
             # Southern Hemisphere: DST wraps around year boundary
             # DST is active when NOT between end and start
-            if not (dst_end <= dt_naive < dst_start):
+            if not (eff_end <= dt_naive < eff_start):
                 return dst_offset
 
         return _ZERO
+
+    def fromutc(self, dt: datetime.datetime) -> datetime.datetime:
+        """Convert a datetime with UTC wall fields and ``tzinfo=self`` to local time."""
+        if not isinstance(dt, datetime.datetime):
+            raise TypeError("fromutc() requires a datetime argument")
+        if dt.tzinfo is not self:
+            raise ValueError("dt.tzinfo is not self")
+        if (
+            not self._rule.dst
+            or not isinstance(self._rule.dst_start, RuleDate)
+            or not isinstance(self._rule.dst_end, RuleDate)
+            or not self._rule.dst.offset
+        ):
+            return (dt + self._rule.std.offset).replace(fold=0)
+
+        off_first = max(self._rule.std.offset, self._rule.dst.offset)
+        off_second = min(self._rule.std.offset, self._rule.dst.offset)
+        local_first = (dt + off_first).replace(fold=0)
+        if self.utcoffset(local_first) == off_first:
+            return local_first
+
+        local_second = dt + off_second
+        fold = 1 if self.utcoffset(local_second.replace(fold=0)) != off_second else 0
+        return local_second.replace(fold=fold)
 
     def __str__(self) -> str:
         """Return the string representation of the timezone."""
