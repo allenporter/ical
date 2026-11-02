@@ -22,6 +22,8 @@ from typing import Any
 
 from .oracle_policy import StoreError
 from .oracle_temporal import (
+    IANA_BRACKET_RE,
+    ICAL_PROP_TZID_RE,
     ParsedTemporal,
     align_rid_to_master,
     format_canonical_rid,
@@ -56,6 +58,8 @@ class Transition:
     operation: dict[str, Any]
     after: list[Component]
     failed: bool = False
+    # True when `after` comes from a scenario vector that may elide unchanged metadata keys.
+    partial_after: bool = False
     # Results of applying the same operation to permutations of `before`
     # (None marks a permutation on which the operation failed).
     permuted_afters: list[list[Component] | None] = dataclasses.field(
@@ -91,6 +95,18 @@ def try_parse(raw: Any, field: str = "") -> ParsedTemporal | None:
         return parse_temporal(raw, field)
     except (StoreError, ValueError):
         return None
+
+
+def extract_raw_tzid(raw: Any) -> str | None:
+    """Extract a TZID name from a temporal string even if ZoneInfo validation fails."""
+    if not isinstance(raw, str) or not raw:
+        return None
+    if (pt := try_parse(raw)) is not None and pt.kind == "TZID" and pt.tzid:
+        return pt.tzid
+    for pattern in (IANA_BRACKET_RE, ICAL_PROP_TZID_RE):
+        if m := pattern.match(raw):
+            return m.group("tzid")
+    return None
 
 
 def label(comp: Component) -> str:

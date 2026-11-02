@@ -1,6 +1,6 @@
 {
   "id": "I-K-006",
-  "title": "A VTIMEZONE Exists for Every Referenced TZID",
+  "title": "A Unique VTIMEZONE Exists for Every Referenced TZID",
   "scope": "CALENDAR",
   "authority": "RFC_5545",
   "citations": [
@@ -12,8 +12,8 @@
       "verbatim_quote": "An individual \"VTIMEZONE\" calendar component MUST be specified for each unique \"TZID\" parameter value specified in the iCalendar object."
     }
   ],
-  "statement": "For every TZID referenced by DTSTART, DTEND, DUE, RECURRENCE-ID, RDATE or EXDATE of any component, the calendar contains a VTIMEZONE with that TZID.",
-  "rationale": "RFC 5545 Section 3.2.19 (and Section 3.6.5) requires one VTIMEZONE per unique TZID in the iCalendar object. Edits that introduce a new zone must add its VTIMEZONE (R-L5-005, R-L5-006).",
+  "statement": "Every VTIMEZONE component carries a unique non-empty TZID, and for every TZID referenced by DTSTART, DTEND, DUE, RECURRENCE-ID, RDATE or EXDATE of any component, the calendar contains a VTIMEZONE with that TZID.",
+  "rationale": "RFC 5545 Section 3.2.19 (and Section 3.6.5) requires one individual VTIMEZONE per unique TZID in the iCalendar object. Edits that introduce a new zone must add its VTIMEZONE without duplicating existing definitions (R-L5-005, R-L5-006).",
   "check": "vtimezone_coverage",
   "applies_to_scenario_vectors": false,
   "positive_examples": [
@@ -93,6 +93,31 @@
           "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
           "rrule": "FREQ=DAILY;COUNT=3",
           "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "unknown_tzid_without_vtimezone",
+      "description": "Unrecognized TZID still requires a matching VTIMEZONE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "DTSTART;TZID=Mars/Olympus_Mons:20250501T090000"
+        }
+      ]
+    },
+    {
+      "name": "duplicate_vtimezone",
+      "description": "Duplicate VTIMEZONE components for the same TZID.",
+      "components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        },
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
         }
       ]
     }

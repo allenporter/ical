@@ -170,6 +170,40 @@
           "sequence": 0
         }
       ]
+    },
+    {
+      "name": "tzid_changed_without_sequence_bump",
+      "description": "DTSTART changed from UTC to America/New_York (same first-instance instant) without incrementing SEQUENCE.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T13:00:00Z",
+          "dtend": "2025-05-01T14:00:00Z",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
     }
   ],
   "audit_notes": []

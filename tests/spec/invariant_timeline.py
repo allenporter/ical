@@ -17,10 +17,12 @@ from .invariant_common import (
     REVISION_KEYS,
     Component,
     has_recurrence,
+    identity_key,
     is_override,
     items,
     try_parse,
 )
+from .oracle_duration import try_parse_duration
 from .oracle_policy import StoreError
 from .oracle_temporal import (
     ParsedTemporal,
@@ -32,7 +34,17 @@ from .oracle_temporal import (
 )
 
 _SHAPE_KEYS = frozenset(
-    {"uid", "recurrence_id", "dtstart", "dtend", "due", "rrule", "rdate", "exdate"}
+    {
+        "uid",
+        "recurrence_id",
+        "dtstart",
+        "dtend",
+        "due",
+        "duration",
+        "rrule",
+        "rdate",
+        "exdate",
+    }
 )
 
 
@@ -63,7 +75,9 @@ def _instant(value: datetime.date | datetime.datetime) -> datetime.datetime:
 
 
 def _duration(comp: Component) -> datetime.timedelta | None:
-    """Return the component's DTSTART-to-DTEND/DUE duration (None if not computable)."""
+    """Return the component's DTSTART-to-DTEND/DUE or DURATION delta (None if absent)."""
+    if (dur := try_parse_duration(comp.get("duration"))) is not None:
+        return dur.delta
     pt_s = try_parse(comp.get("dtstart"), "dtstart")
     pt_e = try_parse(comp.get("dtend") or comp.get("due"), "end")
     if pt_s is None or pt_e is None or pt_s.is_date != pt_e.is_date:
@@ -90,8 +104,7 @@ def _occurrence(
 ) -> Occurrence:
     end = None
     if dur is not None:
-        min_days = 0 if comp.get("due") is not None else 1
-        end = _instant(add_temporal_duration(start.value, dur, min_days=min_days))
+        end = _instant(add_temporal_duration(start.value, dur, min_days=1))
     return Occurrence(
         slot=slot.dt_utc_or_naive,
         start=start.dt_utc_or_naive,
@@ -110,8 +123,10 @@ def _expand_uid(uid: str, comps: list[Component], out: OccurrenceMap) -> None:
         for rid, pt, _ in expand_component_candidates(gen, include_exdates=False):
             out[(uid, rid)] = _occurrence(gen, pt, pt, dur)
     for ov in comps:
-        if not is_override(ov) or not ov.get("dtstart"):
+        if not is_override(ov):
             continue
+        if not ov.get("dtstart"):
+            raise StoreError(f"override {ov.get('recurrence_id')!r} missing dtstart")
         pt_rid = try_parse(ov["recurrence_id"], "recurrence_id")
         pt_start = try_parse(ov["dtstart"], "dtstart")
         if pt_rid is None or pt_start is None:
@@ -121,6 +136,17 @@ def _expand_uid(uid: str, comps: list[Component], out: OccurrenceMap) -> None:
         out[(uid, format_canonical_rid(pt_rid))] = _occurrence(
             ov, pt_rid, pt_start, _duration(ov)
         )
+
+
+def dateless_items(
+    components: list[Component],
+) -> dict[tuple[str, str], tuple[Any, ...]]:
+    """Return non-revision content (including DUE) of dateless components (e.g. VTODOs)."""
+    return {
+        identity_key(c, components): (c.get("due"), _content(c))
+        for c in items(components)
+        if not c.get("dtstart") and not is_override(c)
+    }
 
 
 def expand_occurrences(components: list[Component]) -> OccurrenceMap:

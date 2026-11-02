@@ -1,0 +1,112 @@
+{
+  "id": "I-C-011",
+  "title": "EXDATE and RDATE Align with DTSTART Value Type and Floating vs Zoned Form",
+  "scope": "COMPONENT",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.1",
+      "line_start": 6718,
+      "line_end": 6723,
+      "verbatim_quote": "Value Type: The default value type for this property is DATE-TIME. The value type can be set to DATE. Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.2",
+      "line_start": 6823,
+      "line_end": 6828,
+      "verbatim_quote": "Value Type: The default value type for this property is DATE-TIME. The value type can be set to DATE or PERIOD. Property Parameters: IANA, non-standard, value data type, and time zone identifier property parameters can be specified on this property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.3.20",
+      "line_start": 2711,
+      "line_end": 2716,
+      "verbatim_quote": "The property value converts to the key in the \"recurrenceOverrides\" property value. See Section 2.1.5 how to convert DATE and DATE-TIME values. The date-time MUST be relative to the timezone identified by the \"timeZone\" property of the Event or Task. The PatchObject value MUST set the \"excluded\" member to \"true\" and MUST NOT set any other property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.3.33",
+      "line_start": 3565,
+      "line_end": 3569,
+      "verbatim_quote": "The property value converts to the key in the \"recurrenceOverrides\" property value. See Section 2.1.5 how to convert DATE and DATE-TIME values. The date-time MUST be relative to the timezone identified by the \"timeZone\" property of the Event or Task object. The PatchObject value MUST be an empty JSON object."
+    }
+  ],
+  "statement": "Every non-empty EXDATE or RDATE list on a component requires a valid DTSTART, and each entry parses as a valid RFC 5545 temporal value matching DTSTART's DATE vs DATE-TIME value type and floating vs timezone-aware (UTC/TZID) class.",
+  "rationale": "Consistent with R-L1-004 and R-L1-007, comparing floating DATE-TIMEs against UTC/TZID instants or DATEs against DATE-TIMEs is undefined in Python and RFC 5545 recurrence evaluation; JSCalendar mapping (draft Sections 2.3.20 and 2.3.33) likewise requires EXDATE and RDATE entries to align with the component's timeZone and value type.",
+  "check": "exdate_rdate_align_with_dtstart",
+  "positive_examples": [
+    {
+      "name": "zoned_series_with_zoned_exdate_and_utc_rdate",
+      "description": "TZID DTSTART with TZID EXDATE and UTC RDATE (both timezone-aware DATE-TIME).",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02T09:00:00-04:00[America/New_York]"
+          ],
+          "rdate": [
+            "2025-05-05T13:00:00Z"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "date_series_with_date_exdate",
+      "description": "DATE DTSTART with DATE EXDATE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s2",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02"
+          ]
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "floating_exdate_on_zoned_dtstart",
+      "description": "Floating EXDATE on a TZID series.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "date_rdate_on_datetime_dtstart",
+      "description": "DATE RDATE on a DATE-TIME series.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s2",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rdate": [
+            "2025-05-05"
+          ]
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "Tagged STORE_POLICY (matching R-L1-004 and R-L1-007) because RFC 5545 Sections 3.8.5.1 and 3.8.5.2 do not state an explicit MUST aligning EXDATE/RDATE with DTSTART."
+  ]
+}

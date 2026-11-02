@@ -19,7 +19,7 @@
       "verbatim_quote": "If an object is split to make a \"this and future\" change to a recurrence, the original object MUST be truncated to end at the previous occurrence before this split, and a new object is created to represent all the occurrences after the split. A \"next\" relation MUST be set on the original object's \"relatedTo\" property for the UID of the new object. A \"first\" relation for the UID of the first object in the series MUST be set on the new object. Clients can then follow these UIDs to get the complete set of objects if the user wishes to modify them all at once."
     }
   ],
-  "statement": "After a successful THIS_AND_FUTURE edit or delete of UID U at recurrence_id R, every occurrence of U whose slot (RECURRENCE-ID instant) is strictly before R is still present under U with the same start, end and content (revision and link metadata excluded).",
+  "statement": "After a successful THIS_AND_FUTURE edit or delete of UID U at recurrence_id R: (1) every occurrence of U whose slot (RECURRENCE-ID instant) is strictly before R is still present under U with the same start, end and content (revision and link metadata excluded); (2) on any THIS_AND_FUTURE delete or non-first THIS_AND_FUTURE edit, U gains no new occurrence whose slot is strictly before R; and (3) on a THIS_AND_FUTURE delete, no occurrence of U with slot >= R remains.",
   "rationale": "RANGE=THISANDFUTURE addresses the identified instance and all subsequent instances (RFC 5545 Section 3.2.13), and RFC 8984 Section 4.1.3 truncates the original object to end at the previous occurrence before the split. Instances before R are outside the addressed range; overrides are compared by RECURRENCE-ID, never by rescheduled start (RFC 5545 Section 3.8.4.4).",
   "check": "taf_preserves_prior_occurrences",
   "positive_examples": [
@@ -225,6 +225,104 @@
               "reltype": "FIRST"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "phantom_prior_occurrence_gained",
+      "description": "Prior EXDATE accidentally dropped during split, inventing a slot < R.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "recurrence_id": "20250503T090000",
+        "range": "THIS_AND_FUTURE",
+        "new_uid": "s1-b",
+        "patch": {
+          "summary": "New"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "s1-b",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1-b",
+          "summary": "New",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "s1",
+              "reltype": "FIRST"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delete_leaves_future_occurrence",
+      "description": "THIS_AND_FUTURE delete leaves an unpruned RDATE >= R.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "rdate": [
+            "2025-05-05T09:00:00"
+          ],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "rdate": [
+            "2025-05-05T09:00:00"
+          ],
+          "sequence": 1
         }
       ]
     }

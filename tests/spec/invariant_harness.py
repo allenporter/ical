@@ -1,20 +1,26 @@
-"""Harness applying the `I-*` invariants to scenario vectors and live oracle states.
+"""Harness applying the `I-*` invariants to scenario vectors and live store states.
 
 * `check_scenario_vectors` applies COMPONENT/CALENDAR invariants to a scenario's
   `initial_components` and `expected_components`, and TRANSITION invariants to
   (initial -> expected) for simple operations.
-* `CheckedStore` is a `ReferenceStore` that checks every state invariant after each
-  operation and every TRANSITION invariant for each operation, including atomicity on
-  failure and order-independence (by replaying the operation on permuted input).
+* `CheckedStore` wraps `ReferenceStore` (or any pluggable `StoreBackend` factory in
+  Phase 2) and checks every state and transition invariant around each operation,
+  including failure atomicity and input-permutation order independence.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 import copy
-from typing import Any
+from typing import Any, Protocol
 
-from .invariant_common import CheckContext, Component, Transition, is_legacy_segment
+from .invariant_common import (
+    CheckContext,
+    Component,
+    Transition,
+    is_legacy_segment,
+    is_override,
+)
 from .invariant_registry import check_state, check_transition
 from .invariant_schema import SpecInvariant, load_invariants
 from .oracle_canonical import DEFAULT_DTSTAMP
@@ -25,14 +31,50 @@ ALL_INVARIANTS: list[SpecInvariant] = load_invariants()
 _SIMPLE_OPS = {"add": "add", "add_todo": "add", "edit": "edit", "delete": "delete"}
 
 
+class StoreBackend(Protocol):
+    """Minimal store protocol checked by `CheckedStore` (ReferenceStore or real store)."""
+
+    components: list[dict[str, Any]]
+
+    def add(self, item: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+        """Add a component to the store."""
+
+    def edit(self, uid: str, patch: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+        """Edit a component or recurrence scope in the store."""
+
+    def delete(self, uid: str, *args: Any, **kwargs: Any) -> Any:
+        """Delete a component or recurrence scope from the store."""
+
+
+def _swap_main_and_override(components: list[Component]) -> list[Component] | None:
+    """Swap the first main component with one of its overrides when main precedes it."""
+    for i, comp in enumerate(components):
+        if comp.get("type") == "VTIMEZONE" or comp.get("recurrence_id") is not None:
+            continue
+        for j in range(i + 1, len(components)):
+            if components[j].get("uid") == comp.get("uid") and is_override(
+                components[j]
+            ):
+                swapped = list(components)
+                swapped[i], swapped[j] = swapped[j], swapped[i]
+                return swapped
+    return None
+
+
 def _permutations(components: list[Component]) -> list[list[Component]]:
     """Return deterministic non-identity permutations of a component list."""
     if len(components) < 2:
         return []
-    perms = [list(reversed(components))]
+    candidates = [list(reversed(components))]
     if len(components) > 2:
-        perms.append(components[1:] + components[:1])
-    return perms
+        candidates.append(components[1:] + components[:1])
+    if (swapped := _swap_main_and_override(components)) is not None:
+        candidates.append(swapped)
+    unique: list[list[Component]] = []
+    for perm in candidates:
+        if perm != components and perm not in unique:
+            unique.append(perm)
+    return unique
 
 
 def _new_legacy_segments(before: list[Component], after: list[Component]) -> list[str]:
@@ -44,7 +86,7 @@ def _new_legacy_segments(before: list[Component], after: list[Component]) -> lis
 
 
 class CheckedStore(ReferenceStore):
-    """ReferenceStore that asserts all invariants around every operation."""
+    """Store harness asserting all state and transition invariants on every write."""
 
     def __init__(
         self,
@@ -53,12 +95,27 @@ class CheckedStore(ReferenceStore):
         *,
         legacy_input: bool = False,
         strict: bool = True,
+        store_factory: Callable[[list[dict[str, Any]]], StoreBackend] | None = None,
+        error_types: tuple[type[Exception], ...] = (StoreError,),
     ) -> None:
-        super().__init__(initial_components, policy)
+        self._store_factory = store_factory
+        self._error_types = error_types
+        self._backend: StoreBackend | None = None
+        if store_factory is not None:
+            super().__init__([], policy)
+            self._backend = store_factory(copy.deepcopy(initial_components or []))
+            self.components = self._backend.components
+        else:
+            super().__init__(initial_components, policy)
         self.legacy_input = legacy_input
         self.strict = strict
         self.violations: list[str] = []
-        self._report(check_state(ALL_INVARIANTS, self.components, self._ctx()))
+        self._report(check_state(ALL_INVARIANTS, self._current_state(), self._ctx()))
+
+    def _current_state(self) -> list[Component]:
+        if self._backend is not None:
+            self.components = self._backend.components
+        return self.components
 
     def _ctx(self) -> CheckContext:
         return CheckContext(legacy_input=self.legacy_input)
@@ -68,27 +125,34 @@ class CheckedStore(ReferenceStore):
         if errors and self.strict:
             raise AssertionError(f"Invariant violations: {errors}")
 
+    def _make_peer(self, components: list[Component]) -> StoreBackend:
+        cloned = copy.deepcopy(components)
+        if self._store_factory is not None:
+            return self._store_factory(cloned)
+        return ReferenceStore(cloned, policy=self.policy)
+
     def _replay(
-        self, components: list[Component], call: Callable[[ReferenceStore], Any]
+        self, components: list[Component], call: Callable[[StoreBackend], Any]
     ) -> list[Component] | None:
         try:
-            other = ReferenceStore(copy.deepcopy(components), policy=self.policy)
+            other = self._make_peer(components)
             call(other)
-        except StoreError:
+        except self._error_types:
             return None
         return other.components
 
     def _checked(
-        self, operation: dict[str, Any], call: Callable[[ReferenceStore], Any]
+        self, operation: dict[str, Any], call: Callable[[StoreBackend], Any]
     ) -> Any:
-        before = copy.deepcopy(self.components)
-        failure: StoreError | None = None
+        target: StoreBackend = self._backend if self._backend is not None else self
+        before = copy.deepcopy(self._current_state())
+        failure: Exception | None = None
         result: Any = None
         try:
-            result = call(self)
-        except StoreError as exc:
+            result = call(target)
+        except self._error_types as exc:
             failure = exc
-        after = copy.deepcopy(self.components)
+        after = copy.deepcopy(self._current_state())
         transition = Transition(
             before=before,
             operation=operation,
@@ -116,18 +180,36 @@ class CheckedStore(ReferenceStore):
         """Add a component, checking invariants."""
         return self._checked(
             {"op": "add", "item": item},
-            lambda s: ReferenceStore.add(s, item, default_type=default_type, now=now),
+            lambda s: (
+                ReferenceStore.add(s, item, default_type=default_type, now=now)
+                if isinstance(s, ReferenceStore)
+                else s.add(item, default_type=default_type, now=now)
+            ),
         )
 
     def edit(self, uid: str, patch: dict[str, Any], *args: Any, **kwargs: Any) -> None:
         """Edit a component, checking invariants."""
         op = _op_dict("edit", uid, *args, patch=patch, **kwargs)
-        self._checked(op, lambda s: ReferenceStore.edit(s, uid, patch, *args, **kwargs))
+        self._checked(
+            op,
+            lambda s: (
+                ReferenceStore.edit(s, uid, patch, *args, **kwargs)
+                if isinstance(s, ReferenceStore)
+                else s.edit(uid, patch, *args, **kwargs)
+            ),
+        )
 
     def delete(self, uid: str, *args: Any, **kwargs: Any) -> None:
         """Delete a component or occurrences, checking invariants."""
         op = _op_dict("delete", uid, *args, **kwargs)
-        self._checked(op, lambda s: ReferenceStore.delete(s, uid, *args, **kwargs))
+        self._checked(
+            op,
+            lambda s: (
+                ReferenceStore.delete(s, uid, *args, **kwargs)
+                if isinstance(s, ReferenceStore)
+                else s.delete(uid, *args, **kwargs)
+            ),
+        )
 
 
 def _op_dict(kind: str, uid: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -157,10 +239,11 @@ def check_scenario_vectors(scenario: dict[str, Any]) -> list[str]:
             for e in check_state(
                 ALL_INVARIANTS,
                 expected,
-                CheckContext(legacy_input=False),
+                CheckContext(legacy_input=legacy),
                 vector=True,
             )
         )
+        errors.extend(f"expected: {e}" for e in _new_legacy_segments(initial, expected))
     if (
         expected is not None
         and op.get("op") in _SIMPLE_OPS
@@ -170,6 +253,7 @@ def check_scenario_vectors(scenario: dict[str, Any]) -> list[str]:
             before=initial,
             operation={**op, "op": _SIMPLE_OPS[op["op"]]},
             after=expected,
+            partial_after=True,
         )
         errors.extend(
             f"transition: {e}" for e in check_transition(ALL_INVARIANTS, transition)
