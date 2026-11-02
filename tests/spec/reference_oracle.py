@@ -16,6 +16,7 @@ from .oracle_canonical import (
     CORE_COMPONENT_KEYS,
     DEFAULT_DTSTAMP,
     canonical_temporal_str,
+    canonical_utc_timestamp,
 )
 from .oracle_edit import OracleEditMixin
 from .oracle_policy import (
@@ -66,7 +67,7 @@ __all__ = [
 
 
 class ReferenceStore(OracleEditMixin):
-    """Clean-room Reference Store Oracle implementing R-L1-001 through R-L5-009."""
+    """Clean-room Reference Store Oracle implementing R-L1-001 through R-L5-011."""
 
     def add(
         self,
@@ -77,11 +78,15 @@ class ReferenceStore(OracleEditMixin):
         """Add a new VEVENT or VTODO component to the store (R-L5-001, R-L5-004..R-L5-009)."""
         saved = copy.deepcopy(self.components)
         try:
+            if not isinstance(item, dict):
+                raise StoreError(f"Component item must be a dict, got {item!r}")
+            eff_now = canonical_utc_timestamp(now, "now")
+            assert eff_now is not None
             out_comp = self._canonicalize_component(
-                item, is_add=True, default_type=default_type, now=now
+                item, is_add=True, default_type=default_type, now=eff_now
             )
-            self._validate_component_state(out_comp)
-            self._validate_uid_override_alignment(out_comp)
+            self._validate_component_state(out_comp, allow_legacy=False)
+            self._validate_uid_override_alignment(out_comp, require_main=True)
             self._ensure_unique_identity(out_comp["uid"], out_comp["recurrence_id"])
             self._register_comp_timezones(out_comp)
             self.components.append(out_comp)
@@ -91,14 +96,7 @@ class ReferenceStore(OracleEditMixin):
             raise
 
     def _delete_whole_uid_and_children(self, uid: str, eff_now: str) -> None:
-        """Delete one UID plus PARENT-linked children per mode (R-L4-001, R-L5-007..R-L5-011).
-
-        Covers CASCADE_DELETE (R-L5-007), DETACH_CHILDREN (R-L5-010), and LEAVE_DANGLING
-        (R-L5-011), while preserving non-PARENT relations (R-L5-008, R-L5-009).
-
-        NEXT/FIRST links are ordering relations, never PARENT: other segments of a split
-        chain are neither deleted nor modified (links to the deleted UID may dangle).
-        """
+        """Delete one UID plus PARENT-linked children per mode (R-L4-001, R-L5-007, R-L5-008, R-L5-009, R-L5-010, R-L5-011)."""
         delete_uids: set[str] = {uid}
         cascade_mode = self.policy.parent_delete_cascade_mode
         changed = cascade_mode == ParentDeleteCascadeMode.CASCADE_DELETE
@@ -199,8 +197,14 @@ class ReferenceStore(OracleEditMixin):
             standalone_overrides, pt_seg_start, split_cmp
         ):
             self.components.remove(ov)
+        has_prior_overrides = any(ov in self.components for ov in standalone_overrides)
         self._truncate_segment_before(
-            target_seg, pt_split, pt_seg_start, split_cmp, eff_now
+            target_seg,
+            pt_split,
+            pt_seg_start,
+            split_cmp,
+            eff_now,
+            has_surviving_overrides=has_prior_overrides,
         )
         self._validate_component_state(target_seg)
 
@@ -215,7 +219,7 @@ class ReferenceStore(OracleEditMixin):
         saved = copy.deepcopy(self.components)
         try:
             norm_range = self._normalize_range(recurrence_range)
-            eff_now = canonical_temporal_str(now or DEFAULT_DTSTAMP, "now")
+            eff_now = canonical_utc_timestamp(now or DEFAULT_DTSTAMP, "now")
             assert eff_now is not None
             uid_comps, master_comp, recurring_segments, standalone_overrides = (
                 self._partition_uid_components(uid)
@@ -249,19 +253,20 @@ class ReferenceStore(OracleEditMixin):
         now: str | None = None,
         new_uid: str | None = None,
     ) -> None:
-        """Edit a whole series, single occurrence, or THIS_AND_FUTURE range.
-
-        `new_uid` names the new segment created by a THIS_AND_FUTURE split at a
-        non-first instance (R-L3-001); when omitted a deterministic UID is derived.
-        """
+        """Edit a whole series, single occurrence, or THIS_AND_FUTURE range."""
         saved = copy.deepcopy(self.components)
         try:
+            if not isinstance(patch, dict):
+                raise StoreError(f"patch must be a dict, got {patch!r}")
             norm_range = self._normalize_range(recurrence_range)
             self._validate_related_to(patch)
-            for t_field in ("dtstart", "dtend", "due", "completed", "dtstamp"):
+            for t_field in ("dtstart", "dtend", "due"):
                 if patch.get(t_field) is not None:
                     canonical_temporal_str(patch[t_field], t_field)
-            eff_now = canonical_temporal_str(
+            for u_field in ("completed", "dtstamp"):
+                if patch.get(u_field) is not None:
+                    canonical_utc_timestamp(patch[u_field], u_field)
+            eff_now = canonical_utc_timestamp(
                 patch.get("dtstamp") or now or DEFAULT_DTSTAMP, "dtstamp"
             )
             assert eff_now is not None
@@ -321,11 +326,11 @@ class ReferenceStore(OracleEditMixin):
         is_todo = src_comp["type"] == "VTODO"
         end_key = "due" if is_todo else "dtend"
         end_val: str | None = None
-        if src_comp.get(end_key) is not None and dur is not None:
+        if (
+            src_comp.get(end_key) is not None or src_comp.get("duration") is not None
+        ) and dur is not None:
             end_val = format_temporal_like(
-                add_temporal_duration(
-                    pt_occ.value, dur, min_days=(0 if is_todo else 1)
-                ),
+                add_temporal_duration(pt_occ.value, dur, min_days=1),
                 pt_occ,
                 use_ical_prop=None,
             )
@@ -338,6 +343,7 @@ class ReferenceStore(OracleEditMixin):
             "summary": src_comp.get("summary"),
             "dtstart": format_temporal_like(pt_occ.value, pt_occ, use_ical_prop=None),
             end_key: end_val,
+            "duration": src_comp.get("duration"),
             "sequence": src_comp.get("sequence"),
             "dtstamp": src_comp.get("dtstamp"),
             "created": src_comp.get("created"),

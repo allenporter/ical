@@ -13,11 +13,13 @@ import pytest
 from pydantic import ValidationError
 
 from .operation_schema import validate_operation_dict
+from .oracle_duration import try_parse_duration
 from .oracle_temporal import (
     ParsedTemporal,
     StoreError,
     add_temporal_duration,
     align_rid_to_master,
+    compute_temporal_duration,
     expand_component_candidates,
     format_canonical_rid,
     parse_temporal as _raw_parse_temporal,
@@ -93,9 +95,9 @@ def _verify_component_bounds_and_meta(
     if (due_raw := comp.get("due")) is not None:
         pt_due, d_errs = parse_temporal(due_raw, "due")
         errors.extend(f"{prefix} {e}" for e in d_errs)
-        if pt_start and pt_due and pt_due.dt_utc_or_naive < pt_start.dt_utc_or_naive:
+        if pt_start and pt_due and pt_due.dt_utc_or_naive <= pt_start.dt_utc_or_naive:
             errors.append(
-                f"{prefix} DUE ({due_raw}) must be >= DTSTART ({dtstart_raw}) on {uid}"
+                f"{prefix} DUE ({due_raw}) must be > DTSTART ({dtstart_raw}) on {uid}"
             )
 
     for meta_field in ("dtstamp", "created", "last_modified", "completed"):
@@ -200,6 +202,47 @@ def _verify_timeline_chronology(exp_tl: list[dict[str, Any]], prefix: str) -> li
     return errors
 
 
+def _verify_occurrence_end_bounds(
+    uid: str,
+    idx: int,
+    pt_occ: ParsedTemporal,
+    dur: datetime.timedelta | None,
+    src_comp: dict[str, Any],
+    tl_item: dict[str, Any],
+    prefix: str,
+) -> list[str]:
+    errors: list[str] = []
+    for end_key in ("dtend", "due"):
+        if end_key not in tl_item or tl_item[end_key] is None:
+            continue
+        pt_tl_e, _ = parse_temporal(tl_item[end_key], f"tl.{end_key}")
+        if dur is not None and pt_tl_e is not None:
+            expected_end = add_temporal_duration(pt_occ.value, dur, min_days=1)
+            exp_cmp = (
+                expected_end.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                if isinstance(expected_end, datetime.datetime)
+                and expected_end.tzinfo is not None
+                else (
+                    expected_end
+                    if isinstance(expected_end, datetime.datetime)
+                    else datetime.datetime(
+                        expected_end.year, expected_end.month, expected_end.day
+                    )
+                )
+            )
+            if pt_tl_e.dt_utc_or_naive != exp_cmp:
+                errors.append(
+                    f"{prefix} UID {uid!r} occ #{idx}: timeline {end_key} {tl_item[end_key]!r} != expanded {expected_end!r}"
+                )
+        elif dur is None and end_key in src_comp and pt_tl_e is not None:
+            pt_src_e, _ = parse_temporal(src_comp[end_key], f"src.{end_key}")
+            if pt_src_e and pt_tl_e.dt_utc_or_naive != pt_src_e.dt_utc_or_naive:
+                errors.append(
+                    f"{prefix} UID {uid!r} occ #{idx}: timeline {end_key} {tl_item[end_key]!r} != override {src_comp[end_key]!r}"
+                )
+    return errors
+
+
 def _verify_single_occurrence_match(
     uid: str,
     idx: int,
@@ -223,36 +266,9 @@ def _verify_single_occurrence_match(
             errors.append(
                 f"{prefix} UID {uid!r} occ #{idx}: timeline dtstart {tl_item['dtstart']!r} != expanded {pt_occ.raw!r}"
             )
-    for end_key in ("dtend", "due"):
-        if end_key in tl_item and tl_item[end_key] is not None:
-            pt_tl_e, _ = parse_temporal(tl_item[end_key], f"tl.{end_key}")
-            if dur is not None and pt_tl_e is not None:
-                expected_end = add_temporal_duration(
-                    pt_occ.value, dur, min_days=(0 if end_key == "due" else 1)
-                )
-                exp_cmp = (
-                    (
-                        expected_end.astimezone(datetime.timezone.utc).replace(
-                            tzinfo=None
-                        )
-                        if expected_end.tzinfo is not None
-                        else expected_end
-                    )
-                    if isinstance(expected_end, datetime.datetime)
-                    else datetime.datetime(
-                        expected_end.year, expected_end.month, expected_end.day
-                    )
-                )
-                if pt_tl_e.dt_utc_or_naive != exp_cmp:
-                    errors.append(
-                        f"{prefix} UID {uid!r} occ #{idx}: timeline {end_key} {tl_item[end_key]!r} != expanded {expected_end!r}"
-                    )
-            elif dur is None and end_key in src_comp and pt_tl_e is not None:
-                pt_src_e, _ = parse_temporal(src_comp[end_key], f"src.{end_key}")
-                if pt_src_e and pt_tl_e.dt_utc_or_naive != pt_src_e.dt_utc_or_naive:
-                    errors.append(
-                        f"{prefix} UID {uid!r} occ #{idx}: timeline {end_key} {tl_item[end_key]!r} != override {src_comp[end_key]!r}"
-                    )
+    errors.extend(
+        _verify_occurrence_end_bounds(uid, idx, pt_occ, dur, src_comp, tl_item, prefix)
+    )
     if "recurrence_id" in tl_item and tl_item["recurrence_id"] is not None:
         pt_tl_r, _ = parse_temporal(tl_item["recurrence_id"], "tl.recurrence_id")
         norm_tl_r = (
@@ -263,6 +279,18 @@ def _verify_single_occurrence_match(
                 f"{prefix} UID {uid!r} occ #{idx}: timeline recurrence_id {tl_item['recurrence_id']!r} != expanded {rid_key!r}"
             )
     return errors
+
+
+def _override_duration(
+    ov: dict[str, Any], pt_ov_start: ParsedTemporal
+) -> datetime.timedelta | None:
+    if (pd := try_parse_duration(ov.get("duration"))) is not None:
+        return pd.delta
+    if (end_raw := ov.get("dtend") or ov.get("due")) is not None:
+        pt_ov_e, _ = parse_temporal(end_raw, "override.end")
+        if pt_ov_e and pt_ov_e.is_date == pt_ov_start.is_date:
+            return compute_temporal_duration(pt_ov_start, pt_ov_e)
+    return None
 
 
 def _verify_uid_reconstructed_timeline(
@@ -308,22 +336,34 @@ def _verify_uid_reconstructed_timeline(
         pt_rid, _ = parse_temporal(ov["recurrence_id"], "override.recurrence_id")
         norm_rid = format_canonical_rid(pt_rid) if pt_rid else ov["recurrence_id"]
         if pt_rid is not None:
-            matched_cand = any(
-                pt_rid.is_date == pt_rc.is_date
-                and format_canonical_rid(
-                    align_rid_to_master(ov["recurrence_id"], pt_rc)
-                )
-                in cand_set
-                for pt_rc, cand_set in candidate_rids_by_seg
+            owner_pt = next(
+                (
+                    pt_rc
+                    for pt_rc, cand_set in candidate_rids_by_seg
+                    if pt_rid.is_date == pt_rc.is_date
+                    and format_canonical_rid(
+                        align_rid_to_master(ov["recurrence_id"], pt_rc)
+                    )
+                    in cand_set
+                ),
+                None,
             )
-            if not matched_cand:
+            if owner_pt is None:
                 errors.append(
                     f"{prefix} UID {uid!r}: standalone override recurrence_id {ov['recurrence_id']!r} "
                     "does not belong to any recurring segment candidate set"
                 )
+            else:
+                norm_rid = format_canonical_rid(
+                    align_rid_to_master(ov["recurrence_id"], owner_pt)
+                )
         pt_ov_start, _ = parse_temporal(ov["dtstart"], "override.dtstart")
         if pt_ov_start:
-            expanded_map[norm_rid] = (pt_ov_start, None, ov)
+            expanded_map[norm_rid] = (
+                pt_ov_start,
+                _override_duration(ov, pt_ov_start),
+                ov,
+            )
 
     reconstructed = sorted(
         expanded_map.items(), key=lambda kv: kv[1][0].dt_utc_or_naive
@@ -380,9 +420,12 @@ def verify_scenario(rule_id: str, scenario: dict[str, Any]) -> list[str]:
         if uid := item.get("uid"):
             tl_by_uid.setdefault(uid, []).append(item)
 
-    if set(comps_by_uid.keys()) != set(tl_by_uid.keys()):
+    dated_uids = {
+        u for u, cs in comps_by_uid.items() if any(c.get("dtstart") for c in cs)
+    }
+    if dated_uids != set(tl_by_uid.keys()):
         errors.append(
-            f"{prefix} UIDs in components ({set(comps_by_uid.keys())}) != "
+            f"{prefix} Dated UIDs in components ({dated_uids}) != "
             f"UIDs in expected_timeline ({set(tl_by_uid.keys())})"
         )
     for uid, u_comps in comps_by_uid.items():
