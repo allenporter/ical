@@ -2874,3 +2874,33 @@ def test_this_and_future_until_truncation_dst_and_subdaily(
     #     datetime.datetime(2025, 5, 1, 10, 0),
     # ]
     assert remaining_hourly == []
+
+
+def test_edit_rdate_only_series_keeps_exdate_of_dtstart(
+    calendar: Calendar,
+    store: EventStore,
+) -> None:
+    """Test that editing an RDATE only series keeps an EXDATE of its DTSTART.
+
+    DTSTART is an instance of the series, so excluding it stays valid and it
+    doesn't come back after the edit.
+    """
+    store.add(
+        Event(
+            summary="Series",
+            start=datetime.date(2026, 9, 22),
+            end=datetime.date(2026, 9, 23),
+            rdate=[datetime.date(2026, 9, 24), datetime.date(2026, 9, 26)],
+            exdate=[datetime.date(2026, 9, 22)],
+        )
+    )
+    uid = calendar.events[0].uid
+    assert uid is not None
+
+    store.edit(uid, Event(summary="Renamed series"))
+
+    assert calendar.events[0].exdate == [datetime.date(2026, 9, 22)]
+    assert [(e.summary, e.start) for e in calendar.timeline] == [
+        ("Renamed series", datetime.date(2026, 9, 24)),
+        ("Renamed series", datetime.date(2026, 9, 26)),
+    ]

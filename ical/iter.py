@@ -174,17 +174,6 @@ class AllDayConverter(Iterable[Union[datetime.date, datetime.datetime]]):
             yield datetime.date.fromordinal(value.toordinal())
 
 
-def _comparable(
-    left: datetime.datetime | datetime.date, right: datetime.datetime | datetime.date
-) -> bool:
-    """Return True if the two values can be ordered against each other."""
-    if isinstance(left, datetime.datetime) and isinstance(right, datetime.datetime):
-        return (left.tzinfo is None) == (right.tzinfo is None)
-    return not isinstance(left, datetime.datetime) and not isinstance(
-        right, datetime.datetime
-    )
-
-
 def _defloat(
     dt: datetime.datetime | datetime.date,
 ) -> datetime.datetime | datetime.date:
@@ -412,23 +401,17 @@ class RulesetIterable(SeekableIterable[Union[datetime.datetime, datetime.date]])
         ruleset = rrule.rruleset()
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+        if not self._rrule:
+            # DTSTART is the first instance of the recurrence set (RFC 5545
+            # 3.8.5.2). An RRULE already produces it, but RDATE alone does not.
+            # Added before RDATE: rruleset keeps the first of two equal instants,
+            # so DTSTART keeps its own zone when an RDATE repeats it.
+            ruleset.rdate(self._defloat(self._dtstart))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for rdate in self._rdate:
             if isinstance(rdate, Period):
                 ruleset.rdate(self._defloat(rdate.start))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
             else:
                 ruleset.rdate(self._defloat(rdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
-        if not self._rrule and self._rdate:
-            # DTSTART is the first instance of the recurrence set (RFC 5545
-            # 3.8.5.2). An RRULE already produces it, but RDATE alone does not.
-            dtstart = self._defloat(self._dtstart)
-            if all(
-                _comparable(
-                    dtstart,
-                    self._defloat(rdate.start if isinstance(rdate, Period) else rdate),
-                )
-                for rdate in self._rdate
-            ):
-                ruleset.rdate(dtstart)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for exdate in self._exdate:
             ruleset.exdate(self._defloat(exdate))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         return ruleset

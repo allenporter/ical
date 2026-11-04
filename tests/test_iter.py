@@ -264,7 +264,12 @@ def test_rdate_without_rrule_includes_dtstart(
     expected: list[datetime.datetime | datetime.date],
 ) -> None:
     """Test that DTSTART is the first instance of an RDATE only recurrence set."""
-    assert list(RulesetIterable(dtstart, [], rdate, exdate)) == expected
+    result = list(RulesetIterable(dtstart, [], rdate, exdate))
+    # Equality compares instants across timezones, so also compare the zone
+    # and wall-clock time that each instance keeps.
+    assert [value.isoformat() for value in result] == [
+        value.isoformat() for value in expected
+    ]
 
 
 @pytest.mark.parametrize(
@@ -289,11 +294,15 @@ def test_rdate_without_rrule_incomparable_dtstart(
     dtstart: datetime.datetime | datetime.date,
     rdate: list[datetime.datetime | datetime.date | Period],
 ) -> None:
-    """Test a DTSTART that can't be ordered against the RDATE values.
+    """Test a DTSTART that can't be ordered against the RDATE values."""
+    with pytest.raises(RecurrenceError):
+        list(RulesetIterable(dtstart, [], rdate, []))
 
-    These sets evaluate today, so DTSTART is left out rather than failing.
-    """
-    assert list(RulesetIterable(dtstart, [], rdate, [])) == rdate
+
+def test_without_rrule_or_rdate_is_dtstart() -> None:
+    """Test that a set with neither RRULE nor RDATE is just DTSTART."""
+    dtstart = datetime.datetime(2026, 9, 22, 12, 0)
+    assert list(RulesetIterable(dtstart, [], [], [])) == [dtstart]
 
 
 def test_rrule_and_rdate_dtstart_not_duplicated() -> None:
