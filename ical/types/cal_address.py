@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
+from .const import CaseInsensitiveEnum
 from .data_types import DATA_TYPE, encode_model_property_params
 from .parsing import parse_parameter_values
 from .uri import Uri
@@ -18,7 +19,7 @@ from .uri import Uri
 _LOGGER = logging.getLogger(__name__)
 
 
-class CalendarUserType(str, enum.Enum):
+class CalendarUserType(CaseInsensitiveEnum):
     """The type of calendar user."""
 
     INDIVIDUAL = "INDIVIDUAL"
@@ -28,7 +29,7 @@ class CalendarUserType(str, enum.Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class ParticipationStatus(str, enum.Enum):
+class ParticipationStatus(CaseInsensitiveEnum):
     """Participation status for a calendar user."""
 
     NEEDS_ACTION = "NEEDS-ACTION"
@@ -41,7 +42,7 @@ class ParticipationStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
 
 
-class Role(str, enum.Enum):
+class Role(CaseInsensitiveEnum):
     """Role for the calendar user."""
 
     CHAIR = "CHAIR"

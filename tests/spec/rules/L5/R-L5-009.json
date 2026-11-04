@@ -1,0 +1,118 @@
+{
+  "id": "R-L5-009",
+  "title": "RELATED-TO Accepts All RELTYPE Values; Unrecognized Values Are Treated as PARENT",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.15",
+      "line_start": 1385,
+      "line_end": 1392,
+      "verbatim_quote": "reltypeparam = \"RELTYPE\" \"=\" (\"PARENT\" ; Parent relationship - Default / \"CHILD\" ; Child relationship / \"SIBLING\" ; Sibling relationship / iana-token ; Some other IANA-registered ; iCalendar relationship type / x-name) ; A non-standard, experimental ; relationship type"
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.15",
+      "line_start": 1394,
+      "line_end": 1405,
+      "verbatim_quote": "The parameter value can be PARENT, to indicate that the referenced calendar component is a superior of calendar component; CHILD to indicate that the referenced calendar component is a subordinate of the calendar component; or SIBLING to indicate that the referenced calendar component is a peer of the calendar component. If this parameter is not specified on an allowable property, the default relationship type is PARENT. Applications MUST treat x-name and iana-token values they don't recognize the same way as they would the PARENT value."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 351,
+      "line_end": 357,
+      "verbatim_quote": "RELTYPE=FIRST:  This indicates that the referenced calendar component is the first in a series the referencing calendar component is part of. RELTYPE=NEXT:  This indicates that the referenced calendar component is the next in a series the referencing calendar component is part of."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 372,
+      "line_end": 374,
+      "verbatim_quote": "Note that the relationship types of PARENT, CHILD, and SIBLING establish a hierarchical relationship.  The new types of FIRST and NEXT are an ordering relationship."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.2.15 defines PARENT, CHILD, and SIBLING as standard hierarchical RELTYPE values and additionally allows IANA-registered (iana-token) and experimental (x-name) values, with PARENT as the default when the parameter is omitted and unrecognized values treated the same way as PARENT. RFC 9253 Section 5 registers FIRST and NEXT as standard IANA ordering relationship types used to link split recurring series segments (R-L3-001, R-L3-008), explicitly distinguishing FIRST and NEXT ordering relationships from PARENT/CHILD/SIBLING hierarchical relationships. Combining those RFC semantics with the store's persistence policy—requiring `store.add` and `store.edit` to preserve `related_to` entries verbatim as supplied without rejecting dangling target UIDs or rewriting omitted `RELTYPE` parameters—is recorded under STORE_POLICY.",
+  "store_implication": "On component `add` and `edit`: (1) the store MUST accept `related_to` entries with `RELTYPE` of `PARENT`, `CHILD`, `SIBLING`, `FIRST`, `NEXT`, an omitted `RELTYPE`, or any other iana-token/x-name value, and MUST preserve each entry's referenced UID and `RELTYPE` as supplied; (2) wherever the store applies parent/child semantics (for example, cascading behavior under `parent_delete_cascade_mode` in R-L5-007), `CHILD`, `SIBLING`, `FIRST`, and `NEXT` are recognized non-`PARENT` relationship types and MUST NOT be treated as `PARENT`, whereas an omitted `RELTYPE` and any unrecognized iana-token/x-name `RELTYPE` MUST be handled as `PARENT`.",
+  "edge_cases_and_counterexamples": [
+    "Adding a VTODO with `RELATED-TO;RELTYPE=SIBLING:other-uid` or `RELATED-TO;RELTYPE=NEXT:next-uid` must succeed and keep the SIBLING or NEXT relation on the stored component.",
+    "Split recurring segments linked by `RELTYPE=NEXT` and `RELTYPE=FIRST` (R-L3-001) use ordering relationships per RFC 9253 Section 5 and are never treated as subordinate `PARENT` children.",
+    "Adding a VEVENT with `RELATED-TO;RELTYPE=X-DEPENDS-ON:other-uid` must succeed; for parent/child semantics the unrecognized `X-DEPENDS-ON` relation behaves as `RELTYPE=PARENT`.",
+    "A `RELATED-TO` entry without a `RELTYPE` parameter is a PARENT relation, identical in effect to an explicit `RELTYPE=PARENT`."
+  ],
+  "scenarios": [
+    {
+      "name": "add_component_with_sibling_and_child_reltypes_is_accepted",
+      "description": "Adding an event whose RELATED-TO list includes SIBLING and CHILD relations succeeds and preserves both relations unchanged.",
+      "initial_components": [
+        {
+          "uid": "peer-1",
+          "summary": "Peer task",
+          "dtstart": "2025-05-01T08:00:00",
+          "dtend": "2025-05-01T08:30:00"
+        }
+      ],
+      "operation": {
+        "op": "add",
+        "item": {
+          "uid": "related-1",
+          "summary": "Related task",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "peer-1",
+              "reltype": "SIBLING"
+            },
+            {
+              "uid": "sub-1",
+              "reltype": "CHILD"
+            }
+          ]
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "peer-1",
+          "summary": "Peer task",
+          "dtstart": "2025-05-01T08:00:00",
+          "dtend": "2025-05-01T08:30:00"
+        },
+        {
+          "uid": "related-1",
+          "summary": "Related task",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "peer-1",
+              "reltype": "SIBLING"
+            },
+            {
+              "uid": "sub-1",
+              "reltype": "CHILD"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "peer-1",
+          "summary": "Peer task",
+          "dtstart": "2025-05-01T08:00:00"
+        },
+        {
+          "uid": "related-1",
+          "summary": "Related task",
+          "dtstart": "2025-05-01T10:00:00"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Split out of R-L5-007, which previously rejected RELTYPE=CHILD and RELTYPE=SIBLING in contradiction with RFC 5545 Section 3.2.15. RELTYPE acceptance is mode-independent; cascade behavior on parent deletion remains in R-L5-007 under parent_delete_cascade_mode.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.2.15 (L1385-L1392 and L1394-L1405) and confirmed 100% clean-room compliance."
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "single_edit_exdate_mode",
+  "title": "Whether a Single-Instance Edit Also Records EXDATE on the Master",
+  "question": "When a single instance is edited (Range NONE) and an override component with RECURRENCE-ID is created, does the store also add that instance to the master component's EXDATE?",
+  "spec_gap": "RFC 5545 Section 3.8.5.1 gives EXDATE precedence only over the inclusion properties RRULE and RDATE; it says nothing about override components. No RFC defines what happens when an EXDATE and a RECURRENCE-ID override name the same instance. RFC 8984 cannot represent both for one key (an excluded patch MUST NOT patch any other property), so a converter must drop one of them, and which one wins is unspecified.",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.1",
+      "line_start": 6751,
+      "line_end": 6754,
+      "verbatim_quote": "This implies that start DATE-TIME values specified by \"EXDATE\" properties take precedence over those specified by inclusion properties (i.e., \"RDATE\" and \"RRULE\")."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1505,
+      "line_end": 1508,
+      "verbatim_quote": "If the patch object defines the \"excluded\" property of an occurrence to be true, this occurrence is omitted from the final set of recurrences for the calendar object (like an EXDATE from iCalendar). Such a patch object MUST NOT patch any other property."
+    }
+  ],
+  "options": [
+    {
+      "id": "RFC_OVERRIDE_ONLY",
+      "summary": "Only the override component is written; the master's EXDATE is untouched. The override replaces the master occurrence during expansion by matching (UID, RECURRENCE-ID).",
+      "consequences": [
+        "Matches the JSCalendar mapping (an override is a non-excluded recurrenceOverrides entry) and avoids the undefined EXDATE-plus-override combination.",
+        "Expansion must suppress the master occurrence for every override, since there is no EXDATE to do it."
+      ],
+      "citations": [
+        {
+          "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+          "section": "Section 2.1.2",
+          "line_start": 609,
+          "line_end": 610,
+          "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set"
+        }
+      ]
+    },
+    {
+      "id": "LEGACY_DUAL_EXDATE",
+      "summary": "The override component is written and the instance is also added to the master's EXDATE, so a reader that ignores overrides never shows the original occurrence.",
+      "consequences": [
+        "Relies on behavior no RFC defines: a reader that applies EXDATE precedence strictly may hide the override as well.",
+        "Every rule that validates overrides or EXDATEs against the recurrence set must use the candidate set before EXDATE subtraction, or it will treat each override as orphaned.",
+        "Deleting or re-editing the override must keep the EXDATE and the override in step."
+      ]
+    }
+  ],
+  "open_questions": [
+    "Regardless of the store's own write mode, calendars imported from other producers may contain either form; rules about reading and deleting overrides should hold for both."
+  ]
+}

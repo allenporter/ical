@@ -92,6 +92,29 @@ def test_binary_attachment() -> None:
     assert attachment.encoding == "BASE64"
 
 
+def test_binary_attachment_case_insensitive_params() -> None:
+    """Test parsing an inline binary attachment with lowercase VALUE/ENCODING."""
+    raw_data = b"hello binary world"
+    base64_data = base64.b64encode(raw_data).decode("ascii")
+
+    model = FakeModel.model_validate(
+        {
+            "attach": [
+                ParsedProperty(
+                    name="attach",
+                    value=base64_data,
+                    params=[
+                        ParsedPropertyParameter(name="VALUE", values=["binary"]),
+                        ParsedPropertyParameter(name="ENCODING", values=["base64"]),
+                    ],
+                )
+            ]
+        }
+    )
+    assert len(model.attach) == 1
+    assert model.attach[0].content == raw_data
+
+
 def test_binary_attachment_with_newlines() -> None:
     """Test parsing an inline binary attachment with newlines/whitespace inside base64."""
     raw_data = b"hello binary world with multi-line base64 content"

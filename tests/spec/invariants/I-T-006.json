@@ -1,0 +1,136 @@
+{
+  "id": "I-T-006",
+  "title": "DTSTAMP and LAST-MODIFIED Never Move Backwards",
+  "scope": "TRANSITION",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.2",
+      "line_start": 7765,
+      "line_end": 7769,
+      "verbatim_quote": "In the case of an iCalendar object that doesn't specify a \"METHOD\" property, this property specifies the date and time that the information associated with the calendar component was last revised in the calendar store."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.3",
+      "line_start": 7824,
+      "line_end": 7826,
+      "verbatim_quote": "This property specifies the date and time that the information associated with the calendar component was last revised in the calendar store."
+    }
+  ],
+  "statement": "For every component whose (UID, RECURRENCE-ID) exists both before and after an operation, a DTSTAMP or LAST-MODIFIED value present before is still present after and is not earlier.",
+  "rationale": "In a calendar store (no METHOD) DTSTAMP and LAST-MODIFIED record when the component was last revised (RFC 5545 Sections 3.8.7.2 and 3.8.7.3). Assuming the store's revision clock is monotonic (a store policy: the RFC does not constrain the clock), the last-revision time can only move forward. Operations that do not state a revision time must therefore not stamp a default earlier than the existing value.",
+  "check": "persisting_timestamps_monotonic",
+  "positive_examples": [
+    {
+      "name": "dtstamp_advances",
+      "description": "08:00 -> 09:00.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "dtstamp": "2025-05-01T09:00:00Z",
+          "last_modified": "2025-05-01T09:00:00Z"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "dtstamp_moves_back",
+      "description": "09:00 -> 08:00.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "dtstamp": "2025-05-01T09:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "dtstamp": "2025-05-01T08:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "last_modified_dropped",
+      "description": "LAST-MODIFIED cleared.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "last_modified": "2025-05-01T09:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "last_modified": null
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

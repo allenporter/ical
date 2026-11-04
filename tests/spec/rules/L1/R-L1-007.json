@@ -1,0 +1,363 @@
+{
+  "id": "R-L1-007",
+  "title": "DATE vs DATE-TIME and Floating vs Zoned Consistency and Transitions Across Master, UNTIL, EXDATE, RDATE, and RECURRENCE-ID",
+  "layer": "L1_RECURRENCE_SET_AND_BOUNDS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6391,
+      "line_end": 6397,
+      "verbatim_quote": "Value Type:  The default value type is DATE-TIME.  The value type can be set to a DATE value type.  This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component.  Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6412,
+      "line_end": 6413,
+      "verbatim_quote": "If the value of the \"DTSTART\" property is a DATE type value, then the value MUST be the calendar date for the recurrence instance."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.3.10",
+      "line_start": 2299,
+      "line_end": 2305,
+      "verbatim_quote": "The value of the UNTIL rule part MUST have the same value type as the \"DTSTART\" property.  Furthermore, if the \"DTSTART\" property is specified as a date with local time, then the UNTIL rule part MUST also be specified as a date with local time.  If the \"DTSTART\" property is specified as a date with UTC time or a date with local time and time zone reference, then the UNTIL rule part MUST be specified as a date with UTC time."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.2.2",
+      "line_start": 5390,
+      "line_end": 5394,
+      "verbatim_quote": "Within the \"VEVENT\" calendar component, this property defines the date and time by which the event ends.  The value type of this property MUST be the same as the \"DTSTART\" property, and its value MUST be later in time than the value of the \"DTSTART\" property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 3.2",
+      "line_start": 4316,
+      "line_end": 4327,
+      "verbatim_quote": "In the iCalendar component, the value data types of the DTSTART, DUE and RECURRENCE-ID properties all MUST be of the same form, either DATE, or DATE WITH LOCAL TIME, or DATE WITH UTC TIME (see Section 3.3.5 of [RFC5545]).  It MUST be DATE if the \"showWithoutTime\" property value is \"true\", the \"timeZone\" property value is null, and the time component is zero in the values of the \"start\", due\", \"duration\", \"estimatedDuration\", \"recurrenceId\" properties, and the \"until\" property of the RecurrenceRule object, and in any key of the \"recurrenceOverrides\" property value."
+    }
+  ],
+  "rationale": "RFC 5545 Section 3.8.4.4 mandates that RECURRENCE-ID MUST have the same value type (DATE vs DATE-TIME) as the DTSTART property of the recurring component, and MUST be specified as a date with local time if and only if DTSTART is specified as a date with local time (enforced in both directions by invariant I-K-004); if DTSTART is a DATE value, RECURRENCE-ID MUST be the calendar DATE for the recurrence instance (e.g., YYYYMMDD). Similarly, RFC 5545 Section 3.3.10 requires the RRULE UNTIL part to match DTSTART's value type and floating vs UTC nature (and forbids BYSECOND, BYMINUTE, BYHOUR when DTSTART is a DATE), Section 3.8.2.2 requires DTEND to have the same value type as DTSTART, and draft-ietf-calext-jscalendar-icalendar Section 3.2 requires DTSTART, DUE, RECURRENCE-ID, UNTIL, and recurrenceOverrides keys to share a uniform temporal form. Consequently, all recurrence properties of a series must agree on temporal class (`DATE`, floating `DATE-TIME`, or timezone-aware `UTC`/`TZID` `DATE-TIME`), and if a whole-series edit transitions the master component's DTSTART across temporal classes (`DATE <-> DATE-TIME` or `floating <-> UTC/TZID`), any prior EXDATEs, RDATEs, and RECURRENCE-ID overrides of the old temporal class cannot remain attached unchanged.",
+  "store_implication": "1. Within any recurring series, the master component's DTSTART temporal class (`DATE`, floating `DATE-TIME`, or timezone-aware `UTC`/`TZID` `DATE-TIME`) governs DTEND/DUE, RRULE UNTIL, EXDATE, RDATE, and the stored RECURRENCE-ID of all single-instance override components (same UID, has RECURRENCE-ID, no RRULE/RDATE): overrides on `UTC` or `TZID` series MUST store a `UTC` (`...Z`) or `TZID=...:YYYYMMDDTHHMMSS` RECURRENCE-ID, and overrides on floating series MUST store a floating RECURRENCE-ID.\n2. For an all-day series (`DTSTART;VALUE=DATE`), single-instance edits/deletions MUST emit `RECURRENCE-ID;VALUE=DATE:YYYYMMDD` and `EXDATE;VALUE=DATE:YYYYMMDD`, and `THIS_AND_FUTURE` splits/truncations MUST emit `UNTIL=YYYYMMDD` on the truncated prior series and `DTSTART;VALUE=DATE:YYYYMMDD` (with `RECURRENCE-ID=None`) on any new-UID future segment (date-only, never midnight `YYYYMMDDT000000Z`).\n3. When a whole-series edit (`recurrence_id=None`) transitions a recurring series across temporal classes (`DATE <-> DATE-TIME` or `floating <-> UTC/TZID`), the updated component's DTSTART, DTEND/DUE, and inherited RRULE UNTIL must align to the new temporal class, and unpatched EXDATEs, RDATEs, and standalone overrides of the old temporal class MUST be pruned (under both `PRUNE_INVALID` and `SHIFT_WITH_SERIES`) rather than crashing or leaving mismatched floating/zoned overrides that violate RFC 5545 Section 3.8.4.4 (I-K-004).",
+  "edge_cases_and_counterexamples": [
+    "All-day recurring event (`DTSTART;VALUE=DATE:20250501`, `RRULE:FREQ=DAILY;COUNT=3`): editing the 2025-05-02 instance with Range=NONE MUST set `RECURRENCE-ID;VALUE=DATE:20250502` (not `RECURRENCE-ID:20250502T000000`).",
+    "All-day recurring event split or deleted with THIS_AND_FUTURE at `20250503`: the truncated master's RRULE MUST set `UNTIL=20250502` (a DATE value, one calendar day before `2025-05-03`), never `UNTIL=20250502T235959` (which violates RFC 5545 Section 3.3.10).",
+    "Transitioning a recurring series from all-day (`DATE: 2025-05-01`) to timed (`DATE-TIME: 2025-05-01T09:00:00`) via a whole-series edit (`recurrence_id=None`): prior `VALUE=DATE` EXDATEs (`2025-05-02`) and `VALUE=DATE` override components (`RECURRENCE-ID;VALUE=DATE:20250503`) are pruned so the resulting calendar satisfies RFC 5545 Section 3.8.4.4.",
+    "Transitioning a timed recurring series between floating (`2025-05-01T09:00:00`) and UTC/TZID (`2025-05-01T09:00:00Z` or `America/New_York`) via a whole-series edit (`recurrence_id=None`): prior floating EXDATEs/RDATEs and floating overrides cannot remain on a UTC/TZID master (nor can UTC/TZID EXDATEs/RDATEs and overrides remain on a floating master without crashing or violating RFC 5545 Section 3.8.4.4) and MUST be pruned.",
+    "Per RFC 5545 Section 3.3.10, `BYSECOND`, `BYMINUTE`, and `BYHOUR` rule parts MUST NOT be specified when `DTSTART` has a `DATE` value type (and MUST be ignored if present in legacy non-compliant data)."
+  ],
+  "scenarios": [
+    {
+      "name": "all_day_single_instance_edit_and_delete_preserve_date_value_type",
+      "description": "On an all-day (VALUE=DATE) daily series, deleting May 2 (Range=NONE) records a DATE EXDATE (2025-05-02) and editing May 3 (Range=NONE) creates a RECURRENCE-ID override with a DATE recurrence_id (20250503) and DATE dtstart/dtend.",
+      "modes": {
+        "single_edit_exdate_mode": "RFC_OVERRIDE_ONLY"
+      },
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "allday-series-1",
+          "summary": "All-Day Conference",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "operation": {
+        "op": "delete_then_edit",
+        "delete": {
+          "uid": "allday-series-1",
+          "recurrence_id": "20250502",
+          "range": "NONE"
+        },
+        "edit": {
+          "uid": "allday-series-1",
+          "recurrence_id": "20250503",
+          "range": "NONE",
+          "patch": {
+            "summary": "Closing Day Conference"
+          }
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "allday-series-1",
+          "summary": "All-Day Conference",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02"
+          ],
+          "recurrence_id": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "allday-series-1",
+          "summary": "Closing Day Conference",
+          "dtstart": "2025-05-03",
+          "dtend": "2025-05-04",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503"
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "allday-series-1",
+          "recurrence_id": "20250501",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "summary": "All-Day Conference"
+        },
+        {
+          "uid": "allday-series-1",
+          "recurrence_id": "20250503",
+          "dtstart": "2025-05-03",
+          "dtend": "2025-05-04",
+          "summary": "Closing Day Conference"
+        }
+      ]
+    },
+    {
+      "name": "whole_series_transition_from_date_to_datetime_prunes_date_exdate_and_override",
+      "description": "Converting an all-day recurring series (with a DATE EXDATE and a DATE RECURRENCE-ID override) to a timed DATE-TIME series via a whole-series edit updates DTSTART/DTEND to DATE-TIME and prunes the incompatible DATE EXDATE and DATE override.",
+      "modes": {
+        "series_reschedule_exception_mode": "PRUNE_INVALID"
+      },
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "transition-series-1",
+          "summary": "Team Sync",
+          "dtstart": "2025-05-01",
+          "dtend": "2025-05-02",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02"
+          ],
+          "recurrence_id": null
+        },
+        {
+          "type": "VEVENT",
+          "uid": "transition-series-1",
+          "summary": "Team Sync Override",
+          "dtstart": "2025-05-03",
+          "dtend": "2025-05-04",
+          "rrule": null,
+          "exdate": [],
+          "recurrence_id": "20250503"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "transition-series-1",
+        "recurrence_id": null,
+        "range": "NONE",
+        "patch": {
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "transition-series-1",
+          "summary": "Team Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "recurrence_id": null
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "transition-series-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Team Sync"
+        },
+        {
+          "uid": "transition-series-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Team Sync"
+        },
+        {
+          "uid": "transition-series-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "summary": "Team Sync"
+        }
+      ]
+    },
+    {
+      "name": "whole_series_transition_from_floating_to_utc_prunes_floating_exdate_and_override",
+      "description": "Converting a floating recurring series (with a floating EXDATE and a floating RECURRENCE-ID override) to UTC via a whole-series edit updates DTSTART/DTEND and UNTIL to UTC and prunes the incompatible floating EXDATE and floating override (satisfying I-K-004).",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "float-to-utc-1",
+          "recurrence_id": null,
+          "summary": "Floating Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T090000",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "float-to-utc-1",
+          "recurrence_id": "20250503T090000",
+          "summary": "Floating Override",
+          "dtstart": "2025-05-03T10:00:00",
+          "dtend": "2025-05-03T10:30:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "float-to-utc-1",
+        "recurrence_id": null,
+        "range": "NONE",
+        "patch": {
+          "dtstart": "2025-05-01T09:00:00Z",
+          "dtend": "2025-05-01T09:30:00Z"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "float-to-utc-1",
+          "recurrence_id": null,
+          "summary": "Floating Standup",
+          "dtstart": "2025-05-01T09:00:00Z",
+          "dtend": "2025-05-01T09:30:00Z",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T090000Z",
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "float-to-utc-1",
+          "recurrence_id": "20250501T090000Z",
+          "dtstart": "2025-05-01T09:00:00Z",
+          "dtend": "2025-05-01T09:30:00Z",
+          "summary": "Floating Standup"
+        },
+        {
+          "uid": "float-to-utc-1",
+          "recurrence_id": "20250502T090000Z",
+          "dtstart": "2025-05-02T09:00:00Z",
+          "dtend": "2025-05-02T09:30:00Z",
+          "summary": "Floating Standup"
+        },
+        {
+          "uid": "float-to-utc-1",
+          "recurrence_id": "20250503T090000Z",
+          "dtstart": "2025-05-03T09:00:00Z",
+          "dtend": "2025-05-03T09:30:00Z",
+          "summary": "Floating Standup"
+        }
+      ]
+    },
+    {
+      "name": "whole_series_transition_from_tzid_to_floating_prunes_tzid_exdate_and_override",
+      "description": "Converting an America/New_York recurring series (with a zoned EXDATE and a TZID RECURRENCE-ID override) to floating local time via a whole-series edit updates DTSTART/DTEND and UNTIL to floating and prunes the incompatible zoned EXDATE and override without crashing.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tzid-to-float-1",
+          "recurrence_id": null,
+          "summary": "NY Standup",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T09:30:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T130000Z",
+          "exdate": [
+            "2025-05-02T09:00:00-04:00[America/New_York]"
+          ],
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "tzid-to-float-1",
+          "recurrence_id": "TZID=America/New_York:20250503T090000",
+          "summary": "NY Override",
+          "dtstart": "2025-05-03T10:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-03T10:30:00-04:00[America/New_York]",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "tzid-to-float-1",
+        "recurrence_id": null,
+        "range": "NONE",
+        "patch": {
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "tzid-to-float-1",
+          "recurrence_id": null,
+          "summary": "NY Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T090000",
+          "exdate": [],
+          "sequence": 1
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "tzid-to-float-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "NY Standup"
+        },
+        {
+          "uid": "tzid-to-float-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "NY Standup"
+        },
+        {
+          "uid": "tzid-to-float-1",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "summary": "NY Standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Verified +/- 40 lines around all five citations in rfc5545.txt (Sections 3.8.4.4, 3.3.10, 3.8.2.2) and draft-ietf-calext-jscalendar-icalendar.txt (Section 3.2).",
+    "Reclassified authority from RFC_5545 to STORE_POLICY during Wave 3 adversarial audit: while RFC 5545 Sections 3.8.4.4, 3.3.10, and 3.8.2.2 strictly mandate uniform value types (DATE vs DATE-TIME) across DTSTART, DTEND, UNTIL, and RECURRENCE-ID, the store behavior of automatically pruning incompatible prior EXDATEs and RECURRENCE-ID overrides when a whole-series edit transitions DTSTART between DATE and DATE-TIME is an active store maintenance policy grounded in those RFC invariants.",
+    "Confirmed 100% clean-room independence and mathematical consistency across both scenarios."
+  ]
+}

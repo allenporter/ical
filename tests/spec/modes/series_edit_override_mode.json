@@ -1,0 +1,40 @@
+{
+  "id": "series_edit_override_mode",
+  "title": "Whether Whole-Series Metadata Edits Propagate to Existing Overrides",
+  "question": "When a whole series is edited (recurrence_id=None) to change non-schedule properties such as SUMMARY, LOCATION, or STATUS, are the changed properties also applied to existing override components that remain valid?",
+  "spec_gap": "In JSCalendar an override is a patch over the main object, so an unpatched property follows the main object automatically while a patched property keeps its override value. iCalendar override components are full copies with no record of which properties were customized, so a store must choose between copying the change into overrides or leaving them alone. RFC 5546 only notes that instance-specific information is lost on an entire rescheduling unless it is explicitly included; it does not address metadata-only edits.",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1510,
+      "line_end": 1512,
+      "verbatim_quote": "By default, an occurrence inherits all properties from the main object except the start (or due) date-time, which is shifted to match the recurrence id LocalDateTime."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.7",
+      "line_start": 5862,
+      "line_end": 5864,
+      "verbatim_quote": "Note that since this is an entire rescheduling of the event, any instance-specific information will be lost, unless explicitly included with the update \"REQUEST\"."
+    }
+  ],
+  "options": [
+    {
+      "id": "PROPAGATE_PATCH",
+      "summary": "Properties explicitly present in the whole-series patch are also written to every valid override; properties absent from the patch, and each override's schedule (DTSTART, DTEND, DUE, DURATION, RECURRENCE-ID), are left as they are.",
+      "consequences": [
+        "Approximates JSCalendar inheritance for the edited properties.",
+        "An override that had customized a property in the patch (for example, its own SUMMARY) loses that customization."
+      ]
+    },
+    {
+      "id": "MASTER_ONLY",
+      "summary": "Only the master component is updated; override components are left unchanged.",
+      "consequences": [
+        "Never discards per-instance customizations.",
+        "Overridden instances keep stale series-wide values (for example, the old SUMMARY) until edited individually."
+      ]
+    }
+  ]
+}

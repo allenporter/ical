@@ -1,0 +1,148 @@
+{
+  "id": "R-L3-001",
+  "title": "THIS_AND_FUTURE Series Split Creates a New-UID Recurring Component Linked by NEXT and FIRST",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.13",
+      "line_start": 1323,
+      "line_end": 1330,
+      "verbatim_quote": "The parameter specifies the effective range of recurrence instances that is specified by the property. The effective range is from the recurrence identifier specified by the property. If this parameter is not specified on an allowed property, then the default range is the single instance specified by the recurrence identifier value of the property. The parameter value can only be \"THISANDFUTURE\" to indicate a range defined by the recurrence identifier and all subsequent instances."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6454,
+      "line_end": 6461,
+      "verbatim_quote": "Assuming an unbounded recurring calendar component scheduled to occur on Mondays and Wednesdays, the \"RANGE\" parameter could not be used to reschedule only the future Monday instances to occur on Tuesday instead. In such cases, the calendar application could simply truncate the unbounded recurring calendar component (i.e., with the \"COUNT\" or \"UNTIL\" rule parts), and create two new unbounded recurring calendar components for the future instances."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.1.3",
+      "line_start": 767,
+      "line_end": 775,
+      "verbatim_quote": "If an object is split to make a \"this and future\" change to a recurrence, the original object MUST be truncated to end at the previous occurrence before this split, and a new object is created to represent all the occurrences after the split. A \"next\" relation MUST be set on the original object's \"relatedTo\" property for the UID of the new object. A \"first\" relation for the UID of the first object in the series MUST be set on the new object. Clients can then follow these UIDs to get the complete set of objects if the user wishes to modify them all at once."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.1",
+      "line_start": 1069,
+      "line_end": 1071,
+      "verbatim_quote": "If present, this JSCalendar object represents one occurrence of a recurring JSCalendar object. If present, the \"recurrenceRules\" and \"recurrenceOverrides\" properties MUST NOT be present."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal. The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 351,
+      "line_end": 357,
+      "verbatim_quote": "RELTYPE=FIRST:  This indicates that the referenced calendar component is the first in a series the referencing calendar component is part of. RELTYPE=NEXT:  This indicates that the referenced calendar component is the next in a series the referencing calendar component is part of."
+    }
+  ],
+  "rationale": "RFC 5545 defines two ways to modify a recurrence instance and all subsequent instances: (1) emitting an override component with RECURRENCE-ID;RANGE=THISANDFUTURE for uniform start/duration shifts (Section 3.2.13 and Section 3.8.4.4; only THISANDPRIOR is deprecated, not THISANDFUTURE), or (2) splitting the series by truncating the prior recurring component and creating a new recurring component for the future instances (Section 3.8.4.4 Note). Choosing to split the series rather than emitting RANGE=THISANDFUTURE is a STORE_POLICY choice, because RANGE=THISANDFUTURE cannot represent RRULE changes and does not map to a standard JSCalendar element. However, once a store splits a recurring series, the output shape is governed by CalExt standards (RFC_8984_CALEXT): RFC 8984 Section 4.3.1 forbids recurrenceRules on any object with recurrenceId, draft-ietf-calext-jscalendar-icalendar Section 2.1.2 defines any same-UID component with RECURRENCE-ID as a single-instance recurrence override, and RFC 8984 Section 4.1.3 (mapped to iCalendar RELATED-TO via RFC 9253 Section 5) mandates that the original object MUST be truncated before the split, a NEW recurring object with a new UID and no RECURRENCE-ID MUST be created for the occurrences from the split onward, a RELTYPE=NEXT relation MUST be set on the original component pointing to the new UID, and a RELTYPE=FIRST relation MUST be set on the new component pointing to the UID of the first component in the series.",
+  "store_implication": "When an edit operation with THIS_AND_FUTURE range targets a candidate occurrence strictly after the recurring component's DTSTART: (1) Prior component: its RRULE is truncated strictly before the split RECURRENCE-ID (R-L3-003), future RDATEs/EXDATEs >= split are removed (R-L3-007), its SEQUENCE is incremented and DTSTAMP/LAST-MODIFIED are updated to the edit timestamp while CREATED is preserved (R-L5-002), and its RELATED-TO sets RELTYPE=NEXT pointing to the new segment's UID. (2) New future component: a new recurring VEVENT/VTODO is created with a globally unique new UID, RECURRENCE-ID=None, SEQUENCE=0, CREATED=DTSTAMP=edit_timestamp, LAST-MODIFIED=None (R-L5-001, R-L5-002), DTSTART set to the patched start or the split occurrence's start time, RRULE set per R-L3-004, RDATE/EXDATE partitioned from >= split (filtered to valid candidates of the new segment), and RELATED-TO setting RELTYPE=FIRST pointing to the first component in the split chain (following the prior component's own FIRST relation if present, else the prior component's UID). (3) Timeline state: both independent recurring series expand normally, emitting the prior occurrences under the original UID followed by the future occurrences under the new UID (each with its own occurrence RECURRENCE-ID).",
+  "edge_cases_and_counterexamples": [
+    "Emitting a forked recurring component that keeps the original UID and carries both RECURRENCE-ID and RRULE violates RFC 8984 Section 4.3.1 and draft-ietf-calext-jscalendar-icalendar Section 2.1.2 (see invariant I-C-006 and legacy read-only rule R-L3-009).",
+    "Because the new future segment is an ordinary recurring master with its own UID and RECURRENCE-ID=None, single-instance edits/deletes on any occurrence of the new segment (including its first occurrence) work identically to any unsplit series without key collisions.",
+    "If the original series had EXDATE values at or after the split point, only EXDATE values that remain valid candidate occurrences of the new segment are retained on the new segment.",
+    "Non-chain RELATED-TO entries (such as RELTYPE=PARENT) on the prior component are inherited by the new segment unless replaced in the patch, while ordering relations (NEXT/FIRST) are managed per RFC 8984 Section 4.1.3."
+  ],
+  "scenarios": [
+    {
+      "name": "split_weekly_series_this_and_future_summary_change",
+      "description": "Editing the second occurrence of a 3-instance weekly series with THIS_AND_FUTURE range truncates the original component (sequence=1, RELTYPE=NEXT -> mock-uid-2) and creates a new-UID recurring component (mock-uid-2, recurrence_id=None, sequence=0, RELTYPE=FIRST -> mock-uid-1) starting at the second occurrence.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "mock-uid-1",
+          "summary": "Monday meeting",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "rrule": "FREQ=WEEKLY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "mock-uid-1",
+        "new_uid": "mock-uid-2",
+        "recurrence_id": "20220905T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Team meeting"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "mock-uid-2",
+          "recurrence_id": null,
+          "summary": "Team meeting",
+          "dtstart": "2022-09-05T09:00:00",
+          "dtend": "2022-09-05T09:30:00",
+          "rrule": "FREQ=WEEKLY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "mock-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "mock-uid-1",
+          "recurrence_id": null,
+          "summary": "Monday meeting",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "rrule": "FREQ=WEEKLY;UNTIL=20220905T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "mock-uid-2",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "mock-uid-1",
+          "recurrence_id": "20220829T090000",
+          "dtstart": "2022-08-29T09:00:00",
+          "dtend": "2022-08-29T09:30:00",
+          "summary": "Monday meeting"
+        },
+        {
+          "uid": "mock-uid-2",
+          "recurrence_id": "20220905T090000",
+          "dtstart": "2022-09-05T09:00:00",
+          "dtend": "2022-09-05T09:30:00",
+          "summary": "Team meeting"
+        },
+        {
+          "uid": "mock-uid-2",
+          "recurrence_id": "20220912T090000",
+          "dtstart": "2022-09-12T09:00:00",
+          "dtend": "2022-09-12T09:30:00",
+          "summary": "Team meeting"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Replaced legacy non-standard SHARED_UID split model with normative RFC 8984 Section 4.1.3 / RFC 9253 Section 5 new-UID split linked by RELTYPE=NEXT and RELTYPE=FIRST.",
+    "Distinguished clearly between choosing to split vs RANGE=THISANDFUTURE (STORE_POLICY; only THISANDPRIOR is deprecated in RFC 5545) and the mandatory new-UID + NEXT/FIRST representation once split (RFC_8984_CALEXT).",
+    "Verified all 6 citations byte-for-byte against rfc5545.txt, rfc8984.txt, draft-ietf-calext-jscalendar-icalendar.txt, and rfc9253.txt."
+  ]
+}

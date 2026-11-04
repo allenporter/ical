@@ -62,22 +62,34 @@ class ParsedComponent:
         name = self.name.upper()
         contentlines.append(f"{ATTR_BEGIN}:{name}")
         for prop in self.properties:
-            contentlines.extend(_fold(prop.ics()))
+            line = prop.ics()
+            if len(line) <= FOLD_LEN and "\n" not in line and "\r" not in line:
+                contentlines.append(line)
+            else:
+                contentlines.extend(_fold(line))
         contentlines.extend([component.ics() for component in self.components])
         contentlines.append(f"{ATTR_END}:{name}")
         return "\n".join(contentlines)
 
 
+_FOLD_WRAPPER = textwrap.TextWrapper(
+    width=FOLD_LEN,
+    subsequent_indent=FOLD_INDENT,
+    drop_whitespace=False,
+    replace_whitespace=False,
+    expand_tabs=False,
+    break_on_hyphens=False,
+)
+
+
 def _fold(contentline: str) -> list[str]:
-    return textwrap.wrap(
-        contentline,
-        width=FOLD_LEN,
-        subsequent_indent=FOLD_INDENT,
-        drop_whitespace=False,
-        replace_whitespace=False,
-        expand_tabs=False,
-        break_on_hyphens=False,
-    )
+    if (
+        len(contentline) <= FOLD_LEN
+        and "\n" not in contentline
+        and "\r" not in contentline
+    ):
+        return [contentline]
+    return _FOLD_WRAPPER.wrap(contentline)
 
 
 def parse_content(content: str) -> list[ParsedComponent]:

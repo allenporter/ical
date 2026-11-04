@@ -1,0 +1,123 @@
+{
+  "id": "R-L2-009",
+  "title": "Dual Override and Master EXDATE Recording Under LEGACY_DUAL_EXDATE Mode",
+  "layer": "L2_SINGLE_INSTANCE_EDIT_DELETE",
+  "authority": "STORE_POLICY",
+  "applies_under": {
+    "single_edit_exdate_mode": [
+      "LEGACY_DUAL_EXDATE"
+    ]
+  },
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.5.1",
+      "line_start": 6751,
+      "line_end": 6754,
+      "verbatim_quote": "This implies that start DATE-TIME values specified by \"EXDATE\" properties take precedence over those specified by inclusion properties (i.e., \"RDATE\" and \"RRULE\")."
+    },
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.3.5",
+      "line_start": 1505,
+      "line_end": 1508,
+      "verbatim_quote": "If the patch object defines the \"excluded\" property of an occurrence to be true, this occurrence is omitted from the final set of recurrences for the calendar object (like an EXDATE from iCalendar). Such a patch object MUST NOT patch any other property."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 2.1.2",
+      "line_start": 609,
+      "line_end": 614,
+      "verbatim_quote": "A VEVENT (or VTODO) component is a recurrence override if it has the RECURRENCE-ID property set, and the iCalendar object contains a VEVENT (or VTODO) component that does not have the RECURRENCE-ID but the RRULE property set, and the UID property values of the two components are equal.  The component without the RECURRENCE-ID property is in that case referred to as the \"main component\"."
+    }
+  ],
+  "rationale": "Under the RFC-preferred representation (`single_edit_exdate_mode = RFC_OVERRIDE_ONLY` in R-L2-005), editing a single occurrence writes only a sibling override component with `RECURRENCE-ID` and leaves the main component's `EXDATE` untouched. Some legacy calendar stores instead operate under `single_edit_exdate_mode = LEGACY_DUAL_EXDATE`, recording BOTH the standalone `RECURRENCE-ID` override component AND appending the original occurrence timestamp to the main component's `EXDATE` list so naive readers that ignore override components do not display the unedited occurrence alongside the override. Because RFC 5545 Section 3.8.5.1 defines `EXDATE` precedence only over `RRULE` and `RDATE` (not over sibling `RECURRENCE-ID` components) and RFC 8984 Section 4.3.5 forbids combining `excluded: true` with property patches on the same slot, `LEGACY_DUAL_EXDATE` is strictly a `STORE_POLICY` compatibility mode.",
+  "store_implication": "Under `single_edit_exdate_mode = LEGACY_DUAL_EXDATE`, when a single-instance edit (`Range.NONE`) forks a new standalone override component for `recurrence_id` from a recurring main component: (1) the store creates the standalone override component (`RECURRENCE-ID = original_slot`, `rrule=None`, `rdate=[]`, `exdate=[]`) as in R-L2-003 and R-L2-004; (2) the store ALSO appends the occurrence's original timestamp (aligned to the main component's `DTSTART` value type and timezone) to the main component's `exdate` list without duplicating existing entries, incrementing the main component's `sequence` and updating its `dtstamp` and `last_modified` whenever `exdate` gains an entry (per RFC 5546 Section 2.1.4 and invariant I-T-005); and (3) timeline expansion emits the standalone override component once in place of the excluded master slot (see R-L2-005).",
+  "edge_cases_and_counterexamples": [
+    "Re-editing an override created under `LEGACY_DUAL_EXDATE` updates the override component in place without adding a duplicate `EXDATE` entry on the main component.",
+    "Candidate-set lookups (`THIS_AND_FUTURE` splits in R-L3-006, whole-series exception validation in R-L4-005, and invariant I-K-005) MUST evaluate the main component's candidates before `EXDATE` subtraction so overrides accompanied by a dual `EXDATE` are recognized as valid overrides rather than orphans."
+  ],
+  "scenarios": [
+    {
+      "name": "single_instance_edit_under_legacy_dual_exdate_writes_override_and_master_exdate",
+      "description": "Under single_edit_exdate_mode=LEGACY_DUAL_EXDATE, editing the second occurrence of a 3-day series creates the RECURRENCE-ID override component and also appends that slot to the main component's EXDATE list while emitting all 3 occurrences on the timeline.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dual-exdate-1",
+          "summary": "Daily standup",
+          "dtstart": "2025-05-23T09:00:00",
+          "dtend": "2025-05-23T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "dual-exdate-1",
+        "recurrence_id": "20250524T090000",
+        "range": "NONE",
+        "patch": {
+          "summary": "Moved standup",
+          "dtstart": "2025-05-24T10:30:00",
+          "dtend": "2025-05-24T11:00:00"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "dual-exdate-1",
+          "recurrence_id": "20250524T090000",
+          "summary": "Moved standup",
+          "dtstart": "2025-05-24T10:30:00",
+          "dtend": "2025-05-24T11:00:00",
+          "rrule": null,
+          "exdate": [],
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "dual-exdate-1",
+          "recurrence_id": null,
+          "summary": "Daily standup",
+          "dtstart": "2025-05-23T09:00:00",
+          "dtend": "2025-05-23T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-24T09:00:00"
+          ],
+          "sequence": 1
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "dual-exdate-1",
+          "recurrence_id": "20250523T090000",
+          "dtstart": "2025-05-23T09:00:00",
+          "dtend": "2025-05-23T09:30:00",
+          "summary": "Daily standup"
+        },
+        {
+          "uid": "dual-exdate-1",
+          "recurrence_id": "20250524T090000",
+          "dtstart": "2025-05-24T10:30:00",
+          "dtend": "2025-05-24T11:00:00",
+          "summary": "Moved standup"
+        },
+        {
+          "uid": "dual-exdate-1",
+          "recurrence_id": "20250525T090000",
+          "dtstart": "2025-05-25T09:00:00",
+          "dtend": "2025-05-25T09:30:00",
+          "summary": "Daily standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Added explicit rule and scenario covering single_edit_exdate_mode=LEGACY_DUAL_EXDATE.",
+    "Verified citations in rfc5545.txt Section 3.8.5.1 (L6751-L6754), rfc8984.txt Section 4.3.5 (L1505-L1508), and draft-ietf-calext-jscalendar-icalendar.txt Section 2.1.2 (L609-L614)."
+  ]
+}

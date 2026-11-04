@@ -1,0 +1,44 @@
+{
+  "id": "parent_delete_cascade_mode",
+  "title": "Effect on RELATED-TO Children When a Parent Component Is Deleted Entirely",
+  "question": "When a component is removed from the store entirely (every component with its UID is gone), what happens to components whose RELATED-TO references it with RELTYPE=PARENT?",
+  "spec_gap": "RFC 5545 Section 3.8.4.5 says only that deleting a PARENT has an 'implied impact' on its CHILD components and that it is up to the target calendar system to maintain any property implications. It does not mandate deletion, does not define the impact, and says nothing about grandchildren.",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6541,
+      "line_end": 6547,
+      "verbatim_quote": "Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    }
+  ],
+  "options": [
+    {
+      "id": "CASCADE_DELETE",
+      "summary": "Components that reference the deleted UID with RELTYPE=PARENT are also deleted.",
+      "consequences": [
+        "Matches a subtask model where children have no meaning without the parent.",
+        "Must define whether the cascade is transitive (grandchildren) and must not follow non-PARENT relations such as NEXT/FIRST links between split segments."
+      ]
+    },
+    {
+      "id": "DETACH_CHILDREN",
+      "summary": "Children are kept, and the RELATED-TO reference to the deleted UID is removed from them.",
+      "consequences": [
+        "Never deletes user data implicitly.",
+        "Modifies the children (which arguably requires their SEQUENCE/DTSTAMP to be updated)."
+      ]
+    },
+    {
+      "id": "LEAVE_DANGLING",
+      "summary": "Children are kept unchanged, with a RELATED-TO reference to a UID that no longer exists in the store.",
+      "consequences": [
+        "Simplest, and lossless if the parent is later restored or synced back.",
+        "Readers must tolerate RELATED-TO values that do not resolve."
+      ]
+    }
+  ],
+  "open_questions": [
+    "Is the cascade transitive under CASCADE_DELETE?"
+  ]
+}

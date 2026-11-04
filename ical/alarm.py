@@ -7,14 +7,14 @@ from typing import Optional, Self, Union
 from pydantic import Field, field_serializer, model_validator
 
 from .component import ComponentModel
-from .types import Attachment, CalAddress, ExtraProperty
+from .types import Attachment, CalAddress, CaseInsensitiveEnum, ExtraProperty
 from .types.data_types import serialize_field
 
 
 __all__ = ["Alarm", "Action"]
 
 
-class Action(str, enum.Enum):
+class Action(CaseInsensitiveEnum):
     """Type of actioninvoked when alarm is triggered."""
 
     AUDIO = "AUDIO"
@@ -85,7 +85,7 @@ class Alarm(ComponentModel):
     def parse_display_required_fields(self) -> Self:
         """Validate required fields for display actions."""
         action = self.action
-        if action != Action.DISPLAY:
+        if action.upper() != Action.DISPLAY:
             return self
         if self.description is None:
             raise ValueError(f"Description value is required for action {action}")
@@ -95,7 +95,7 @@ class Alarm(ComponentModel):
     def parse_email_required_fields(self) -> Self:
         """Validate required fields for email actions."""
         action = self.action
-        if action != Action.EMAIL:
+        if action.upper() != Action.EMAIL:
             return self
         if self.description is None:
             raise ValueError(f"Description value is required for action {action}")

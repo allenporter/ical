@@ -1,0 +1,321 @@
+{
+  "id": "R-L3-008",
+  "title": "Successive THIS_AND_FUTURE Splits and Chain Insertion Across NEXT / FIRST Links",
+  "layer": "L3_THIS_AND_FUTURE_SPLIT",
+  "authority": "RFC_8984_CALEXT",
+  "citations": [
+    {
+      "doc": "rfc8984.txt",
+      "section": "Section 4.1.3",
+      "line_start": 767,
+      "line_end": 775,
+      "verbatim_quote": "If an object is split to make a \"this and future\" change to a recurrence, the original object MUST be truncated to end at the previous occurrence before this split, and a new object is created to represent all the occurrences after the split. A \"next\" relation MUST be set on the original object's \"relatedTo\" property for the UID of the new object. A \"first\" relation for the UID of the first object in the series MUST be set on the new object. Clients can then follow these UIDs to get the complete set of objects if the user wishes to modify them all at once."
+    },
+    {
+      "doc": "rfc9253.txt",
+      "section": "Section 5",
+      "line_start": 351,
+      "line_end": 357,
+      "verbatim_quote": "RELTYPE=FIRST:  This indicates that the referenced calendar component is the first in a series the referencing calendar component is part of. RELTYPE=NEXT:  This indicates that the referenced calendar component is the next in a series the referencing calendar component is part of."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6454,
+      "line_end": 6461,
+      "verbatim_quote": "Assuming an unbounded recurring calendar component scheduled to occur on Mondays and Wednesdays, the \"RANGE\" parameter could not be used to reschedule only the future Monday instances to occur on Tuesday instead.  In such cases, the calendar application could simply truncate the unbounded recurring calendar component (i.e., with the \"COUNT\" or \"UNTIL\" rule parts), and create two new unbounded recurring calendar components for the future instances."
+    }
+  ],
+  "rationale": "Under RFC 8984 Section 4.1.3 and RFC 9253 Section 5 (R-L3-001), splitting a series at `T1` produces two separate recurring series: Segment 1 (`uid=U1, DTSTART=T0, RRULE=...;UNTIL=T1-1s, SEQUENCE=1, RELATED-TO=[NEXT -> U2]`) and Segment 2 (`uid=U2, DTSTART=T1, RRULE=..., SEQUENCE=0, RELATED-TO=[FIRST -> U1]`). Two multi-split cases follow directly from each segment being an independent UID linked by `NEXT`/`FIRST`: (1) Forward split (`T2 > T1` targeting `uid=U2`): Segment 1 (`U1`) is untouched (`SEQUENCE=1`, `NEXT -> U2`); Segment 2 (`U2`) is truncated to `UNTIL=T2-1s` (`SEQUENCE=1`, `NEXT -> U3`, keeping `FIRST -> U1`); and a new Segment 3 (`uid=U3`, `SEQUENCE=0`) is created whose `RELATED-TO` sets `FIRST -> U1` (following Segment 2's own `FIRST` link to the chain head `U1`, NOT `U2`). (2) Earlier re-split / chain insertion (`T_early < T1` targeting `uid=U1`): because `U1` is already bounded by `UNTIL=T1-1s`, splitting `U1` at `T_early` creates a middle segment `U_mid` covering `[T_early, T1)` (inheriting `U1`'s `UNTIL=T1-1s`), rewires `U1`'s `NEXT` relation to `U_mid`, transfers `U1`'s previous `NEXT -> U2` link onto `U_mid` alongside `FIRST -> U1`, and leaves Segment 2 (`U2`) completely untouched without losing occurrences from `T1` onward.",
+  "store_implication": "1. Forward multi-split (`edit` or `delete` with `THIS_AND_FUTURE` targeting `uid=U2` at `T2`): (a) if `T2 == U2.dtstart`, the operation normalizes to a whole-UID edit or delete of `U2` alone (R-L3-002), leaving `U1` intact; (b) if `T2 > U2.dtstart`, `U2` is truncated at `T2` (`sequence` incremented, `NEXT` updated to `U3` on an edit), and on an edit a new segment `U3` (`sequence=0`) is created with `RELTYPE=FIRST` pointing to the chain head (`U2`'s `FIRST` target if present, else `U2`).\n2. Chain insertion on earlier re-split (`edit` with `THIS_AND_FUTURE` targeting `uid=U1` at `T0 < T_early < T1` when `U1` already carries `RELTYPE=NEXT -> U2`): `U1` is truncated before `T_early` with `RELTYPE=NEXT -> U_mid`; `U_mid` inherits `U1`'s pre-split `UNTIL` bound (aligned if `DTSTART` shifted), sets `RELTYPE=FIRST` to the chain head, and takes over `U1`'s outgoing `RELTYPE=NEXT -> U2` link; downstream segment `U2` is untouched.",
+  "edge_cases_and_counterexamples": [
+    "3-way forward split chain: Segment 1 (`chain-uid-1`, `sequence=1`, `NEXT -> chain-uid-2`) and Segment 2 (`chain-uid-2`, `sequence=0`, `FIRST -> chain-uid-1`) are split at May 5 on `chain-uid-2`. Segment 3 (`chain-uid-3`, `sequence=0`) MUST link `FIRST -> chain-uid-1` (the original first object in the series per RFC 8984 Section 4.1.3), NOT `FIRST -> chain-uid-2`.",
+    "Re-splitting Segment 1 (`May 1..2`, `UNTIL=20250503T085959`, `NEXT -> chain-uid-2`) at May 2 with a summary change: Segment 2 (`May 3..6`) is NOT deleted; instead `chain-uid-mid` covers May 2 (`UNTIL=20250503T085959`) with `NEXT -> chain-uid-2` and `FIRST -> chain-uid-1`, preserving all 6 timeline occurrences.",
+    "Deleting THIS_AND_FUTURE at the first occurrence of `chain-uid-2` removes `chain-uid-2` completely while leaving `chain-uid-1` intact (RFC 9253 Section 9.1 notes that deleting the target of a `NEXT` relation may leave a dangling `NEXT` link without cascading)."
+  ],
+  "scenarios": [
+    {
+      "name": "second_this_and_future_split_creates_three_segment_chain",
+      "description": "Applying a second THIS_AND_FUTURE edit on May 5 to Segment 2 (chain-uid-2, May 3..6) of an already-split series leaves Segment 1 (chain-uid-1, May 1..2, sequence=1) untouched, truncates Segment 2 (sequence=1, NEXT -> chain-uid-3, FIRST -> chain-uid-1), and creates Segment 3 (chain-uid-3, sequence=0, FIRST -> chain-uid-1).",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-2",
+          "recurrence_id": null,
+          "summary": "Phase 2 Standup",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=4",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-1",
+          "recurrence_id": null,
+          "summary": "Phase 1 Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "chain-uid-2",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "chain-uid-2",
+        "new_uid": "chain-uid-3",
+        "recurrence_id": "20250505T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Phase 3 Standup"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-3",
+          "recurrence_id": null,
+          "summary": "Phase 3 Standup",
+          "dtstart": "2025-05-05T09:00:00",
+          "dtend": "2025-05-05T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-2",
+          "recurrence_id": null,
+          "summary": "Phase 2 Standup",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250505T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            },
+            {
+              "uid": "chain-uid-3",
+              "reltype": "NEXT"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-1",
+          "recurrence_id": null,
+          "summary": "Phase 1 Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "chain-uid-2",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "chain-uid-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Phase 1 Standup"
+        },
+        {
+          "uid": "chain-uid-1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Phase 1 Standup"
+        },
+        {
+          "uid": "chain-uid-2",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "summary": "Phase 2 Standup"
+        },
+        {
+          "uid": "chain-uid-2",
+          "recurrence_id": "20250504T090000",
+          "dtstart": "2025-05-04T09:00:00",
+          "dtend": "2025-05-04T09:30:00",
+          "summary": "Phase 2 Standup"
+        },
+        {
+          "uid": "chain-uid-3",
+          "recurrence_id": "20250505T090000",
+          "dtstart": "2025-05-05T09:00:00",
+          "dtend": "2025-05-05T09:30:00",
+          "summary": "Phase 3 Standup"
+        },
+        {
+          "uid": "chain-uid-3",
+          "recurrence_id": "20250506T090000",
+          "dtstart": "2025-05-06T09:00:00",
+          "dtend": "2025-05-06T09:30:00",
+          "summary": "Phase 3 Standup"
+        }
+      ]
+    },
+    {
+      "name": "resplit_earlier_segment_inserts_into_next_chain_without_losing_later_segment",
+      "description": "Splitting Segment 1 (chain-uid-1, May 1..2, UNTIL=20250503T085959, NEXT -> chain-uid-2) at May 2 inserts chain-uid-mid into the NEXT chain (chain-uid-1 -> chain-uid-mid -> chain-uid-2, FIRST -> chain-uid-1) while leaving Segment 2 (chain-uid-2, May 3..4) completely intact.",
+      "initial_components": [
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-2",
+          "recurrence_id": null,
+          "summary": "Phase 2 Standup",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-1",
+          "recurrence_id": null,
+          "summary": "Phase 1 Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "sequence": 1,
+          "related_to": [
+            {
+              "uid": "chain-uid-2",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "chain-uid-1",
+        "new_uid": "chain-uid-mid",
+        "recurrence_id": "20250502T090000",
+        "range": "THIS_AND_FUTURE",
+        "patch": {
+          "summary": "Phase 1b Standup"
+        }
+      },
+      "expected_components": [
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-2",
+          "recurrence_id": null,
+          "summary": "Phase 2 Standup",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=2",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-mid",
+          "recurrence_id": null,
+          "summary": "Phase 1b Standup",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250503T085959",
+          "sequence": 0,
+          "related_to": [
+            {
+              "uid": "chain-uid-2",
+              "reltype": "NEXT"
+            },
+            {
+              "uid": "chain-uid-1",
+              "reltype": "FIRST"
+            }
+          ]
+        },
+        {
+          "type": "VEVENT",
+          "uid": "chain-uid-1",
+          "recurrence_id": null,
+          "summary": "Phase 1 Standup",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;UNTIL=20250502T085959",
+          "sequence": 2,
+          "related_to": [
+            {
+              "uid": "chain-uid-mid",
+              "reltype": "NEXT"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "chain-uid-1",
+          "recurrence_id": "20250501T090000",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "summary": "Phase 1 Standup"
+        },
+        {
+          "uid": "chain-uid-mid",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02T09:00:00",
+          "dtend": "2025-05-02T09:30:00",
+          "summary": "Phase 1b Standup"
+        },
+        {
+          "uid": "chain-uid-2",
+          "recurrence_id": "20250503T090000",
+          "dtstart": "2025-05-03T09:00:00",
+          "dtend": "2025-05-03T09:30:00",
+          "summary": "Phase 2 Standup"
+        },
+        {
+          "uid": "chain-uid-2",
+          "recurrence_id": "20250504T090000",
+          "dtstart": "2025-05-04T09:00:00",
+          "dtend": "2025-05-04T09:30:00",
+          "summary": "Phase 2 Standup"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Rewrote R-L3-008 around RFC 8984 Section 4.1.3 and RFC 9253 Section 5 NEXT/FIRST chains, fixing unreachable initial sequence=0 on Segment 1 and adding explicit chain-insertion semantics for earlier re-splits without data loss.",
+    "Verified all citations against rfc8984.txt, rfc9253.txt, and rfc5545.txt."
+  ]
+}

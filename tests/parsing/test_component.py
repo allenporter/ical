@@ -62,6 +62,45 @@ def test_parse_contentlines_benchmark(
     benchmark(parse)
 
 
+def _build_large_ics(num_events: int = 500) -> str:
+    """Build a multi-event ICS string with parameters and folded lines."""
+    lines = [
+        "BEGIN:VCALENDAR",
+        "PRODID:-//example//1.2.3",
+        "VERSION:2.0",
+    ]
+    for i in range(num_events):
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:event-{i}@example.com",
+                f"SUMMARY:Event {i} with a short summary",
+                "DTSTART;TZID=America/New_York:20250101T090000",
+                "DTEND;TZID=America/New_York:20250101T100000",
+                "ATTENDEE;CN=Jane Doe;PARTSTAT=ACCEPTED;RSVP=TRUE:mailto:jane@example.com",
+                f"DESCRIPTION:Event {i} has a longer description that exceeds the seventy-five character folding limit in RFC 5545.",
+                "END:VEVENT",
+            ]
+        )
+    lines.append("END:VCALENDAR")
+    return "\n".join(lines)
+
+
+def test_parse_large_component_benchmark(benchmark: Any) -> None:
+    """Benchmark parsing a 500-event ICS payload into ParsedComponents."""
+    ics = _build_large_ics(500)
+    components = benchmark(parse_content, ics)
+    assert len(components[0].components) == 500
+
+
+def test_encode_large_component_benchmark(benchmark: Any) -> None:
+    """Benchmark encoding a 500-event ParsedComponent tree back to ICS."""
+    ics = _build_large_ics(500)
+    components = parse_content(ics)
+    encoded = benchmark(encode_content, components)
+    assert encoded.startswith("BEGIN:VCALENDAR\n")
+
+
 def test_unfold_preserves_leading_pipe() -> None:
     """Test that a newline followed by '|' is not treated as a fold."""
     ics = "BEGIN:VEVENT\nSUMMARY:Line1\n|Line2\nEND:VEVENT"

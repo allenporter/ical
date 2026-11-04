@@ -1,8 +1,9 @@
+import datetime
 import pytest
 from typing import List, Any, cast
 from ical.types import RequestStatus
-from ical.types.data_types import Registry, _expand_repeated_property
-from ical.parsing.property import ParsedProperty
+from ical.types.data_types import DATA_TYPE, Registry, _expand_repeated_property
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
 
 def test_get_ordered_field_types_unsupported_list() -> None:
@@ -96,3 +97,13 @@ def test_request_status_escaped_delimiters() -> None:
         ParsedProperty(name="request-status", value=encoded)
     )
     assert roundtripped == rs
+
+
+def test_parse_property_lowercase_value_param() -> None:
+    """Test that VALUE property parameter lookup is case-insensitive."""
+    prop = ParsedProperty(
+        name="dtstart",
+        value="20250501",
+        params=[ParsedPropertyParameter(name="VALUE", values=["date"])],
+    )
+    assert DATA_TYPE.parse_property(datetime.date, prop) == datetime.date(2025, 5, 1)

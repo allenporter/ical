@@ -8,12 +8,13 @@ from pydantic import model_validator
 
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 
+from .const import CaseInsensitiveEnum
 from .data_types import DATA_TYPE
 from .parsing import parse_parameter_values
 
 
 @DATA_TYPE.register("RELATIONSHIP-TYPE")
-class RelationshipType(str, enum.Enum):
+class RelationshipType(CaseInsensitiveEnum):
     """Type of hierarchical relationship associated with the calendar component."""
 
     PARENT = "PARENT"

@@ -34,6 +34,7 @@ events = recurring_ical_events.of(cal).between(start, end)
 | Feature | `ical` | `icalendar` | `ics.py` |
 |---|---|---|---|
 | Built-in recurrence expansion | ✅ | ❌ needs `recurring-ical-events` | ❌ |
+| Incremental recurrence & timezone caching | ✅ | ❌ | ❌ |
 | Pythonic attribute access (`event.start`, `event.summary`) | ✅ | ❌ (`event.get('DTSTART').dt`) | ✅ |
 | Input validation with clear error messages | ✅ | ❌ | ❌ |
 | Full type annotations (`py.typed`) | ✅ strict `ty` | ✅ v7+ | ❌ |
@@ -165,6 +166,24 @@ store.add(Event(summary="Meeting", start=datetime(2024, 1, 15, 9, tzinfo=timezon
 ```
 
 See the [full documentation](https://allenporter.github.io/ical/) for the complete API reference.
+
+## Performance
+
+`ical` is optimized for applications like Home Assistant that repeatedly check a calendar for today's events or the next upcoming event — even when the calendar has thousands of events or recurring rules (like birthdays and weekly meetings) that started years ago:
+
+- **Only builds events you actually read:** Scanning a timeline compares lightweight start/end times and only constructs full `Event` objects for occurrences that match your query.
+- **Caches recurring rules and timezone transitions:** Expanding a decades-old recurrence rule takes work the first time, so `ical` caches expanded dates and timezone daylight-saving transitions as you query. Subsequent lookups reuse that cache instead of recalculating from the beginning.
+- **Skips past history on range queries:** Methods like `overlapping()`, `on_date()`, and `active_after()` jump directly to your start date rather than walking through years of past occurrences one by one.
+
+| Workload | `ical` | `icalendar` + `recurring-ical-events` |
+|---|---:|---:|
+| Recurring range query (100 recurring series, cold / first query) | ~252 ms | ~254 ms |
+| Recurring range query (100 recurring series, warm) | **~2.4 ms** (~41,000 series/s) | ~254 ms (~390 series/s) |
+| Large recurring calendar query (1,000 recurring series, cold / first query) | ~2,370 ms | ~2,320 ms |
+| Large recurring calendar query (1,000 recurring series, warm) | **~28 ms** (~35,000 series/s) | ~2,320 ms (~430 series/s) |
+| Non-recurring range query (2,000 events with custom `VTIMEZONE`) | **~8.9 ms** (~225,000 events/s) | ~42 ms (~47,000 events/s) |
+| `.ics` serialization (500 `VEVENT`s) | **~6.9 ms** (~72,000 events/s) | ~10.6 ms (~47,000 events/s) |
+| `.ics` parsing + Pydantic validation (500 `VEVENT`s) | **~29 ms** (~17,000 events/s) | ~18.5 ms (unvalidated AST) |
 
 ## Technical Guides
 

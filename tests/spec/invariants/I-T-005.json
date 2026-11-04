@@ -1,0 +1,210 @@
+{
+  "id": "I-T-005",
+  "title": "SEQUENCE Monotonicity, Mandatory RFC 5546 Increment, and CREATED Immutability for Persisting Components",
+  "scope": "TRANSITION",
+  "authority": "RFC_5546",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.4",
+      "line_start": 7876,
+      "line_end": 7879,
+      "verbatim_quote": "When a calendar component is created, its sequence number is 0. It is monotonically incremented by the \"Organizer's\" CUA each time the \"Organizer\" makes a significant revision to the calendar component."
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.4",
+      "line_start": 600,
+      "line_end": 619,
+      "verbatim_quote": "The \"SEQUENCE\" property is used by the \"Organizer\" to indicate revisions to the calendar component.  When the \"Organizer\" makes changes to one of the following properties, the sequence number MUST be incremented:\n\n   o  \"DTSTART\"\n\n   o  \"DTEND\"\n\n   o  \"DURATION\"\n\n   o  \"DUE\"\n\n   o  \"RRULE\"\n\n   o  \"RDATE\"\n\n   o  \"EXDATE\"\n\n   o  \"STATUS\""
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.7.1",
+      "line_start": 7715,
+      "line_end": 7717,
+      "verbatim_quote": "This property specifies the date and time that the calendar information was created by the calendar user agent in the calendar store."
+    }
+  ],
+  "statement": "For every component whose (UID, RECURRENCE-ID) exists both before and after an operation: (1) SEQUENCE after >= SEQUENCE before (absent counts as 0); (2) if any of DTSTART, DTEND, DURATION, DUE, RRULE, RDATE, EXDATE, or STATUS changed on that component, SEQUENCE after > SEQUENCE before; and (3) a CREATED value present before is unchanged after.",
+  "rationale": "SEQUENCE is monotonically incremented (RFC 5545 Section 3.8.7.4), MUST strictly increase whenever DTSTART, DTEND, DURATION, DUE, RRULE, RDATE, EXDATE, or STATUS changes on a component (RFC 5546 Section 2.1.4, including EXDATE additions on a recurring component), and CREATED records when the component was first created in the store (RFC 5545 Section 3.8.7.1), which no later revision changes. A split's new segment is a new component (new UID), so it starts at SEQUENCE 0 with its own CREATED and is not 'persisting'.",
+  "check": "persisting_sequence_and_created",
+  "positive_examples": [
+    {
+      "name": "edit_bumps_sequence",
+      "description": "Whole-series edit 0 -> 1.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "sequence_decreases",
+      "description": "2 -> 1.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 2
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "created_rewritten",
+      "description": "CREATED replaced by the edit time.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0,
+          "created": "2025-05-01T08:00:00Z"
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1,
+          "created": "2025-05-01T09:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "exdate_added_without_sequence_bump",
+      "description": "EXDATE appended to recurring component without incrementing SEQUENCE.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [],
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "delete",
+        "uid": "s1",
+        "recurrence_id": "20250502T090000",
+        "range": "NONE"
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ],
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "tzid_changed_without_sequence_bump",
+      "description": "DTSTART changed from UTC to America/New_York (same first-instance instant) without incrementing SEQUENCE.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T13:00:00Z",
+          "dtend": "2025-05-01T14:00:00Z",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

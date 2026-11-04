@@ -71,7 +71,9 @@ class Image(BaseModel):
         ):
             value_type = values.get("VALUE")
             encoding = values.get("ENCODING")
-            if value_type == "BINARY" or encoding == "BASE64":
+            if (isinstance(value_type, str) and value_type.upper() == "BINARY") or (
+                isinstance(encoding, str) and encoding.upper() == "BASE64"
+            ):
                 try:
                     # Strip whitespaces/newlines from the base64 content
                     clean_value = "".join(value.split())

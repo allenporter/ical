@@ -1,0 +1,51 @@
+{
+  "id": "series_reschedule_exception_mode",
+  "title": "Fate of EXDATEs and Overrides When a Whole-Series Edit Changes the Recurrence Set",
+  "question": "When a whole-series edit (recurrence_id=None) changes DTSTART, RRULE, or RDATE so that existing EXDATE values or override RECURRENCE-IDs no longer name instances of the series, are those exceptions pruned or moved along with the series?",
+  "spec_gap": "RFC 5546 only says that on an entire rescheduling any instance-specific information is lost unless explicitly included in the update. No RFC defines moving EXDATE or RECURRENCE-ID values when the series start changes; RFC 5545 fixes RECURRENCE-ID to the original instance time for a given UID and SEQUENCE. The only defined shift is RANGE=THISANDFUTURE, which explicitly does not affect instances defined in separate components.",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 4.4.7",
+      "line_start": 5862,
+      "line_end": 5864,
+      "verbatim_quote": "Note that since this is an entire rescheduling of the event, any instance-specific information will be lost, unless explicitly included with the update \"REQUEST\"."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6422,
+      "line_end": 6424,
+      "verbatim_quote": "For a given pair of \"UID\" and \"SEQUENCE\" property values, the \"RECURRENCE-ID\" value for a recurrence instance is fixed."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6432,
+      "line_end": 6434,
+      "verbatim_quote": "Subsequent instances defined in separate components are not impacted by the given recurrence instance."
+    }
+  ],
+  "options": [
+    {
+      "id": "PRUNE_INVALID",
+      "summary": "After the edit, EXDATE values and standalone overrides whose value is not a candidate instance of the updated series (DTSTART + RRULE + RDATE, before EXDATE subtraction) are removed; those that are still candidates are kept unchanged.",
+      "consequences": [
+        "Simple and never leaves orphaned exceptions.",
+        "Changing only the time of day invalidates every exception: instances the user deleted reappear at the new time, and all per-instance edits are lost."
+      ]
+    },
+    {
+      "id": "SHIFT_WITH_SERIES",
+      "summary": "When the edit moves DTSTART by a fixed offset without otherwise changing the pattern, EXDATE values and override RECURRENCE-IDs (and the overrides' DTSTART/DTEND) are moved by the same offset; exceptions that still cannot be mapped to a candidate instance are pruned.",
+      "consequences": [
+        "Preserves the user's deletions and per-instance edits across a simple time change.",
+        "Requires defining when an edit counts as a uniform shift (for example, DST-aware wall-clock offset vs absolute duration) and what happens when RRULE also changes.",
+        "Rewrites RECURRENCE-ID values, which RFC 5545 fixes per (UID, SEQUENCE); the SEQUENCE increment on the series edit is what makes this permissible."
+      ]
+    }
+  ],
+  "open_questions": [
+    "Should a DATE <-> DATE-TIME transition of the series be treated as a shift (mapping each date to the new time of day) or always prune?"
+  ]
+}

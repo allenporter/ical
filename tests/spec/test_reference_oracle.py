@@ -1,0 +1,486 @@
+"""Comprehensive verification test suite for the clean-room Reference Store Oracle."""
+
+# pylint: disable=duplicate-code,line-too-long
+
+from __future__ import annotations
+
+import itertools
+from typing import Any
+
+import pytest
+
+from .invariant_harness import ALL_INVARIANTS, CheckedStore
+from .invariant_registry import check_state
+from .reference_oracle import (
+    ParentDeleteCascadeMode,
+    PolicyConfig,
+    ReferenceStore,
+    SeriesEditOverrideMode,
+    SeriesRescheduleExceptionMode,
+    SingleEditExdateMode,
+    SplitFutureOverrideMode,
+    StoreError,
+    is_policy_compatible,
+)
+from .scenario_runner import execute_scenario
+from .schema import (
+    FORBIDDEN_IMPLEMENTATION_TERMS,
+    RULES_DIR,
+    SPEC_DIR as SPEC_ENGINE_DIR,
+    effective_scenario_modes,
+    load_all_scenarios,
+    load_rules_from_path,
+    verify_path,
+)
+from .test_verify_scenarios import verify_scenario
+
+ALL_RULES = load_rules_from_path(RULES_DIR)
+ALL_SCENARIOS = load_all_scenarios()
+RULES_BY_ID = {r.id: r for r in ALL_RULES}
+
+ALL_POLICY_CONFIGS = [
+    PolicyConfig(
+        series_edit_override_mode=s_mode,
+        single_edit_exdate_mode=e_mode,
+    )
+    for s_mode, e_mode in itertools.product(
+        SeriesEditOverrideMode,
+        SingleEditExdateMode,
+    )
+]
+
+ALL_48_POLICIES = [
+    PolicyConfig(
+        series_edit_override_mode=s_edit,
+        single_edit_exdate_mode=s_ex,
+        series_reschedule_exception_mode=s_resched,
+        split_future_override_mode=sp_ov,
+        parent_delete_cascade_mode=p_del,
+    )
+    for s_edit, s_ex, s_resched, sp_ov, p_del in itertools.product(
+        SeriesEditOverrideMode,
+        SingleEditExdateMode,
+        SeriesRescheduleExceptionMode,
+        SplitFutureOverrideMode,
+        ParentDeleteCascadeMode,
+    )
+]
+
+
+def policy_params(policies: list[PolicyConfig]) -> list[Any]:
+    """Parametrize policies with readable ids."""
+    return [
+        pytest.param(
+            p,
+            id=f"{p.series_edit_override_mode.value}-{p.single_edit_exdate_mode.value}",
+        )
+        for p in policies
+    ]
+
+
+def assert_rfc_invariants(store: ReferenceStore, label: str) -> list[dict[str, Any]]:
+    """Assert all state invariants (`I-C-*`, `I-K-*`) plus timeline consistency on store.
+
+    Stores built as `CheckedStore` additionally check every TRANSITION invariant on
+    each operation that led here.
+    """
+    state_errors = check_state(ALL_INVARIANTS, store.components)
+    assert not state_errors, f"Invariant violations at {label}: {state_errors}"
+    timeline = store.expand_timeline()
+    synthetic_scenario = {
+        "name": label,
+        "initial_components": [],
+        "operation": {"op": "verify_state"},
+        "expected_components": store.components,
+        "expected_timeline": timeline,
+    }
+    errors = verify_scenario("ORACLE-INVARIANT", synthetic_scenario)
+    assert not errors, f"RFC invariant violations at {label}: {errors}"
+    return timeline
+
+
+def test_scenario_count_and_rule_count() -> None:
+    """Ensure all 46 rules and their scenarios are discovered."""
+    rule_files = list(RULES_DIR.rglob("*.json"))
+    assert len(rule_files) == 46
+    assert len(ALL_SCENARIOS) == 67
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "scen_idx", "scen_name", "scenario"),
+    ALL_SCENARIOS,
+    ids=[f"{r}[{i}]-{n}" for r, i, n, _ in ALL_SCENARIOS],
+)
+def test_all_rule_scenarios(
+    rule_id: str, scen_idx: int, scen_name: str, scenario: dict[str, Any]
+) -> None:
+    """Execute each MiniScenarioVector under its effective mode policy and compatible variants."""
+    actual_components, actual_timeline = execute_scenario(scenario)
+    if scenario.get("expected_components") is not None:
+        assert actual_components == scenario["expected_components"], (
+            f"[{rule_id} #{scen_idx} {scen_name}] actual_components != expected_components"
+        )
+    assert actual_timeline == scenario["expected_timeline"], (
+        f"[{rule_id} #{scen_idx} {scen_name}] actual_timeline != expected_timeline"
+    )
+
+    rule = RULES_BY_ID[rule_id]
+    eff_modes = effective_scenario_modes(rule, rule.scenarios[scen_idx])
+    compatible = [p for p in ALL_48_POLICIES if is_policy_compatible(p, eff_modes)]
+    assert compatible, f"No compatible PolicyConfig for {rule_id}[{scen_idx}]"
+    for alt_policy in compatible:
+        alt_comps, alt_tl = execute_scenario(scenario, policy=alt_policy)
+        assert alt_tl == scenario["expected_timeline"], (
+            f"[{rule_id} #{scen_idx}] timeline diverged under compatible policy {alt_policy}"
+        )
+        if scenario.get("expected_components") is not None:
+            assert alt_comps == scenario["expected_components"], (
+                f"[{rule_id} #{scen_idx}] components diverged under compatible policy {alt_policy}"
+            )
+
+
+def test_invalid_operations_raise_store_error_without_mutation() -> None:
+    """Verify invalid operations (R-L2-007, R-L5-005, R-L5-006, R-L1-006) raise StoreError cleanly."""
+    store = CheckedStore(
+        [
+            {
+                "type": "VEVENT",
+                "uid": "rrule-err-1",
+                "summary": "Weekly Sync",
+                "dtstart": "2025-05-05T09:00:00",
+                "dtend": "2025-05-05T09:30:00",
+                "rrule": "FREQ=WEEKLY;COUNT=3",
+            }
+        ]
+    )
+    with pytest.raises(
+        StoreError, match="Cannot modify RRULE on a single-instance override"
+    ):
+        store.edit(
+            uid="rrule-err-1",
+            recurrence_id="20250512T090000",
+            recurrence_range="NONE",
+            patch={"rrule": "FREQ=DAILY;COUNT=2"},
+        )
+    assert len(store.components) == 1
+
+    empty_store = CheckedStore()
+    with pytest.raises(StoreError, match="Fixed-offset datetime"):
+        empty_store.add(
+            {
+                "type": "VTODO",
+                "uid": "bad-tz-todo",
+                "summary": "Bad TZ task",
+                "due": "2025-05-01T10:00:00+02:00",
+            }
+        )
+    assert empty_store.components == []
+
+    with pytest.raises(StoreError, match="Fixed-offset datetime"):
+        store.edit(
+            uid="rrule-err-1",
+            patch={"dtstart": "2025-05-05T09:00:00-05:00"},
+        )
+
+    with pytest.raises(StoreError, match="Value type mismatch"):
+        store.delete(
+            uid="rrule-err-1",
+            recurrence_id="20250505",
+            recurrence_range="NONE",
+        )
+
+
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
+def test_multi_step_chain_timed_tzid_across_policy_configs(
+    policy: PolicyConfig,
+) -> None:
+    """Execute a 6-step operation chain on a timezone-aware series across PolicyConfig combinations."""
+    store = CheckedStore(policy=policy)
+    store.add(
+        {
+            "type": "VEVENT",
+            "uid": "tz-chain-1",
+            "summary": "Daily Standup",
+            "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+            "dtend": "2025-05-01T09:30:00-04:00[America/New_York]",
+            "rrule": "FREQ=DAILY;COUNT=6",
+            "exdate": [],
+            "sequence": 0,
+        }
+    )
+    assert len(assert_rfc_invariants(store, "step1_add")) == 6
+
+    store.edit(
+        uid="tz-chain-1",
+        recurrence_id="20250502T090000",
+        recurrence_range="NONE",
+        patch={
+            "summary": "May 2 Moved Standup",
+            "dtstart": "2025-05-02T10:30:00-04:00[America/New_York]",
+            "dtend": "2025-05-02T11:00:00-04:00[America/New_York]",
+        },
+    )
+    assert len(assert_rfc_invariants(store, "step2_single_edit")) == 6
+    master = next(
+        c
+        for c in store.components
+        if c.get("uid") == "tz-chain-1" and c.get("recurrence_id") is None
+    )
+    expected_exdate = (
+        ["2025-05-02T09:00:00-04:00[America/New_York]"]
+        if policy.single_edit_exdate_mode == SingleEditExdateMode.LEGACY_DUAL_EXDATE
+        else []
+    )
+    assert master["exdate"] == expected_exdate
+
+    store.edit(
+        uid="tz-chain-1",
+        recurrence_id="TZID=America/New_York:20250502T090000",
+        recurrence_range="NONE",
+        patch={"summary": "May 2 Re-Edited Standup"},
+    )
+    assert len(assert_rfc_invariants(store, "step3_re_edit_override")) == 6
+
+    store.edit(
+        uid="tz-chain-1",
+        recurrence_id=None,
+        recurrence_range="NONE",
+        patch={"summary": "Global Standup Renamed"},
+    )
+    assert len(assert_rfc_invariants(store, "step4_whole_series_edit")) == 6
+    ov_comp = next(
+        c
+        for c in store.components
+        if c.get("uid") == "tz-chain-1"
+        and c.get("recurrence_id") == "TZID=America/New_York:20250502T090000"
+    )
+    expected_ov_sum = (
+        "Global Standup Renamed"
+        if policy.series_edit_override_mode == SeriesEditOverrideMode.PROPAGATE_PATCH
+        else "May 2 Re-Edited Standup"
+    )
+    assert ov_comp["summary"] == expected_ov_sum
+
+    store.delete(
+        uid="tz-chain-1", recurrence_id="20250503T090000", recurrence_range="NONE"
+    )
+    assert len(assert_rfc_invariants(store, "step5_single_delete")) == 5
+
+    store.edit(
+        uid="tz-chain-1",
+        recurrence_id="20250505T090000",
+        recurrence_range="THIS_AND_FUTURE",
+        patch={
+            "summary": "Phase 2 Standup",
+            "dtstart": "2025-05-05T11:00:00-04:00[America/New_York]",
+        },
+    )
+    assert len(assert_rfc_invariants(store, "step6_this_and_future_split")) == 5
+    uids = {c.get("uid") for c in store.components if c.get("type") != "VTIMEZONE"}
+    assert uids == {"tz-chain-1", "tz-chain-1-split-20250505T090000"}
+
+
+@pytest.mark.parametrize("policy", policy_params(ALL_POLICY_CONFIGS))
+def test_multi_step_chain_allday_overrides_and_relations_across_policy_configs(
+    policy: PolicyConfig,
+) -> None:
+    """Test all-day series, override purging on split/delete (R-L3-006), and RELATED-TO cascade (R-L5-007/008)."""
+    store = CheckedStore(policy=policy)
+    store.add(
+        {
+            "type": "VEVENT",
+            "uid": "allday-parent",
+            "summary": "Sprint Day",
+            "dtstart": "2025-05-01",
+            "dtend": "2025-05-02",
+            "rrule": "FREQ=DAILY;COUNT=5",
+            "exdate": [],
+            "sequence": 0,
+        }
+    )
+    store.add(
+        {
+            "type": "VEVENT",
+            "uid": "allday-child",
+            "summary": "Sprint Retro Prep",
+            "dtstart": "2025-05-01",
+            "dtend": "2025-05-02",
+            "related_to": [{"uid": "allday-parent", "reltype": "PARENT"}],
+            "sequence": 0,
+        }
+    )
+    assert len(assert_rfc_invariants(store, "allday_step1_add")) == 6
+
+    store.edit(
+        uid="allday-parent",
+        recurrence_id="20250504",
+        recurrence_range="NONE",
+        patch={"summary": "Special Sprint Day 4"},
+    )
+    assert len(assert_rfc_invariants(store, "allday_step2_override")) == 6
+
+    store.delete(
+        uid="allday-parent",
+        recurrence_id="20250503",
+        recurrence_range="THIS_AND_FUTURE",
+    )
+    tl3 = assert_rfc_invariants(store, "allday_step3_taf_delete")
+    assert len(tl3) == 3
+    assert any(c.get("uid") == "allday-child" for c in store.components)
+
+    store.delete(
+        uid="allday-parent",
+        recurrence_id="20250501",
+        recurrence_range="THIS_AND_FUTURE",
+    )
+    tl4 = assert_rfc_invariants(store, "allday_step4_full_delete_cascade")
+    assert store.components == []
+    assert tl4 == []
+
+
+def test_series_reschedule_shift_with_series_mode() -> None:
+    """Test SeriesRescheduleExceptionMode.SHIFT_WITH_SERIES shifts EXDATE, RDATE, and override RECURRENCE-ID."""
+    policy = PolicyConfig(
+        series_reschedule_exception_mode=SeriesRescheduleExceptionMode.SHIFT_WITH_SERIES
+    )
+    store = CheckedStore(
+        [
+            {
+                "type": "VEVENT",
+                "uid": "shift-1",
+                "recurrence_id": None,
+                "summary": "Standup",
+                "dtstart": "2025-05-01T09:00:00",
+                "dtend": "2025-05-01T09:30:00",
+                "rrule": "FREQ=DAILY;COUNT=4",
+                "rdate": ["2025-05-10T09:00:00"],
+                "exdate": ["2025-05-02T09:00:00"],
+            },
+            {
+                "type": "VEVENT",
+                "uid": "shift-1",
+                "recurrence_id": "20250503T090000",
+                "summary": "Custom Day 3",
+                "dtstart": "2025-05-03T11:00:00",
+                "dtend": "2025-05-03T11:30:00",
+                "rrule": None,
+            },
+        ],
+        policy=policy,
+    )
+    store.edit(
+        uid="shift-1", recurrence_id=None, patch={"dtstart": "2025-05-01T10:00:00"}
+    )
+    tl = assert_rfc_invariants(store, "shift_with_series")
+    master = next(c for c in store.components if c.get("recurrence_id") is None)
+    ov = next(c for c in store.components if c.get("recurrence_id") is not None)
+    assert master["exdate"] == ["2025-05-02T10:00:00"]
+    assert master["rdate"] == ["2025-05-10T10:00:00"]
+    assert (ov["recurrence_id"], ov["dtstart"]) == (
+        "20250503T100000",
+        "2025-05-03T12:00:00",
+    )
+    assert [item["dtstart"] for item in tl] == [
+        "2025-05-01T10:00:00",
+        "2025-05-03T12:00:00",
+        "2025-05-04T10:00:00",
+        "2025-05-10T10:00:00",
+    ]
+
+
+def test_split_future_override_migrate_mode() -> None:
+    """MIGRATE_TO_FUTURE_SERIES re-keys a candidate override to the new UID, RID unchanged (R-L3-006)."""
+    policy = PolicyConfig(
+        split_future_override_mode=SplitFutureOverrideMode.MIGRATE_TO_FUTURE_SERIES,
+    )
+    initial = [
+        {
+            "type": "VEVENT",
+            "uid": "mig-1",
+            "recurrence_id": None,
+            "summary": "Sync",
+            "dtstart": "2025-05-01T09:00:00",
+            "dtend": "2025-05-01T10:00:00",
+            "rrule": "FREQ=DAILY;COUNT=4",
+        },
+        {
+            "type": "VEVENT",
+            "uid": "mig-1",
+            "recurrence_id": "20250504T090000",
+            "summary": "Day 4 Custom",
+            "dtstart": "2025-05-04T14:00:00",
+            "dtend": "2025-05-04T15:00:00",
+            "rrule": None,
+        },
+    ]
+    store = CheckedStore(initial, policy=policy)
+    store.edit(
+        uid="mig-1",
+        recurrence_id="20250502T090000",
+        recurrence_range="THIS_AND_FUTURE",
+        patch={"summary": "Future"},
+        new_uid="mig-2",
+    )
+    tl = assert_rfc_invariants(store, "migrate_override_kept")
+    ov = next(c for c in store.components if c.get("recurrence_id") is not None)
+    assert (ov["uid"], ov["recurrence_id"], ov["dtstart"], len(tl)) == (
+        "mig-2",
+        "20250504T090000",
+        "2025-05-04T14:00:00",
+        4,
+    )
+
+    shifted = CheckedStore(initial, policy=policy)
+    shifted.edit(
+        uid="mig-1",
+        recurrence_id="20250502T090000",
+        recurrence_range="THIS_AND_FUTURE",
+        patch={"dtstart": "2025-05-02T10:00:00"},
+        new_uid="mig-2",
+    )
+    tl_shift = assert_rfc_invariants(shifted, "migrate_override_discarded")
+    assert not any(c.get("recurrence_id") for c in shifted.components)
+    assert [item["dtstart"] for item in tl_shift] == [
+        "2025-05-01T09:00:00",
+        "2025-05-02T10:00:00",
+        "2025-05-03T10:00:00",
+        "2025-05-04T10:00:00",
+    ]
+
+
+def test_clean_room_and_full_rule_citation_coverage() -> None:
+    """Verify clean-room oracle modules have 0 forbidden terms and cite all 40 rules."""
+    cleanroom_files = [
+        "oracle_policy.py",
+        "oracle_temporal.py",
+        "oracle_canonical.py",
+        "oracle_base.py",
+        "oracle_split.py",
+        "oracle_edit.py",
+        "reference_oracle.py",
+        "scenario_runner.py",
+        "test_modes.py",
+        "test_verify_scenarios.py",
+        "test_reference_oracle.py",
+        "test_oracle_redteam.py",
+        "test_oracle_adversarial.py",
+    ]
+    combined_oracle_text = ""
+    for fname in cleanroom_files:
+        fpath = SPEC_ENGINE_DIR / fname
+        text = fpath.read_text(encoding="utf-8")
+        if not fname.startswith("test_"):
+            combined_oracle_text += text
+        for term in FORBIDDEN_IMPLEMENTATION_TERMS:
+            assert term not in text, (
+                f"Clean-room violation in {fname}: forbidden term {term!r}"
+            )
+
+    for rule in ALL_RULES:
+        assert rule.id in combined_oracle_text, (
+            f"Rule ID {rule.id} must be explicitly cited in the clean-room oracle modules"
+        )
+
+    num_rules, citation_errors = verify_path(RULES_DIR)
+    assert num_rules == 46
+    assert not citation_errors

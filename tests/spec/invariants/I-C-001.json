@@ -1,0 +1,75 @@
+{
+  "id": "I-C-001",
+  "title": "Every VEVENT/VTODO Has a UID",
+  "scope": "COMPONENT",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.6.2",
+      "line_start": 3151,
+      "line_end": 3154,
+      "verbatim_quote": "; The following are REQUIRED, ; but MUST NOT occur more than once. ; dtstamp / uid /"
+    },
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 697,
+      "line_end": 700,
+      "verbatim_quote": "The primary key for referencing a particular iCalendar component is the \"UID\" property value. To reference an instance of a recurring component, the primary key is composed of the \"UID\" and the \"RECURRENCE-ID\" properties."
+    }
+  ],
+  "statement": "Every VEVENT and VTODO component in a calendar state has a non-empty string UID.",
+  "rationale": "RFC 5545 makes UID a REQUIRED property of VEVENT (Section 3.6.1) and VTODO (Section 3.6.2), and RFC 5546 Section 2.1.5 makes UID the primary key for referencing a component. A component without UID cannot be addressed by any edit or delete operation.",
+  "check": "uid_present",
+  "positive_examples": [
+    {
+      "name": "event_with_uid",
+      "description": "A plain event with a UID.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "event_without_uid",
+      "description": "UID key missing.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "event_with_empty_uid",
+      "description": "UID is the empty string.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "DTSTAMP is also REQUIRED by RFC 5545 but scenario vectors elide it; only UID presence is checked here."
+  ]
+}

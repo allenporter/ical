@@ -8,7 +8,22 @@ from ical.parsing.property import ParsedProperty
 from .data_types import DATA_TYPE
 
 
-class ExtensibleEnum(str, enum.Enum):
+class CaseInsensitiveEnum(str, enum.Enum):
+    """Base class for enums that match values case-insensitively per RFC 5545."""
+
+    @classmethod
+    def _missing_(cls, value: object) -> Self | None:
+        """Match known enum values case-insensitively."""
+        if not isinstance(value, str):
+            return None
+        upper_val = value.upper()
+        for member in cls:
+            if member.value == upper_val:
+                return member
+        return None
+
+
+class ExtensibleEnum(CaseInsensitiveEnum):
     """Base class for extensible enums that allow non-standard fallback values."""
 
     @classmethod
@@ -19,10 +34,8 @@ class ExtensibleEnum(str, enum.Enum):
         value = str(value)
 
         # Check case-insensitive matching for known values to be user friendly
-        upper_val = value.upper()
-        for member in cls:
-            if member.value == upper_val:
-                return member
+        if (member := super()._missing_(value)) is not None:
+            return member
 
         obj = str.__new__(cls, value)
         obj._name_ = value

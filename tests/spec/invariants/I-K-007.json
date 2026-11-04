@@ -1,0 +1,92 @@
+{
+  "id": "I-K-007",
+  "title": "Override DTSTART Matches Main DTSTART Value Type and Floating vs Zoned Form",
+  "scope": "CALENDAR",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6391,
+      "line_end": 6397,
+      "verbatim_quote": "Value Type: The default value type is DATE-TIME. The value type can be set to a DATE value type. This property MUST have the same value type as the \"DTSTART\" property contained within the recurring component. Furthermore, this property MUST be specified as a date with local time if and only if the \"DTSTART\" property contained within the recurring component is specified as a date with local time."
+    },
+    {
+      "doc": "draft-ietf-calext-jscalendar-icalendar.txt",
+      "section": "Section 3.2",
+      "line_start": 4316,
+      "line_end": 4327,
+      "verbatim_quote": "In the iCalendar component, the value data types of the DTSTART, DUE and RECURRENCE-ID properties all MUST be of the same form, either DATE, or DATE WITH LOCAL TIME, or DATE WITH UTC TIME (see Section 3.3.5 of [RFC5545]). It MUST be DATE if the \"showWithoutTime\" property value is \"true\", the \"timeZone\" property value is null, and the time component is zero in the values of the \"start\", due\", \"duration\", \"estimatedDuration\", \"recurrenceId\" properties, and the \"until\" property of the RecurrenceRule object, and in any key of the \"recurrenceOverrides\" property value."
+    }
+  ],
+  "statement": "Every override component carries a valid DTSTART matching its main component's DTSTART in value type (DATE vs DATE-TIME) and floating vs timezone-aware (UTC/TZID) class.",
+  "rationale": "Consistent with R-L1-007 and draft-ietf-calext-jscalendar-icalendar Section 3.2, all instances in a recurrence set must share a uniform temporal class so timeline ordering never mixes naive floating DATE-TIMEs with timezone-aware UTC/TZID instants or DATEs with DATE-TIMEs.",
+  "check": "override_dtstart_matches_main_form",
+  "positive_examples": [
+    {
+      "name": "zoned_override_in_different_iana_zone",
+      "description": "TZID main with an override rescheduled into UTC or another TZID.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "TZID=America/New_York:20250502T090000",
+          "dtstart": "2025-05-02T15:00:00Z",
+          "dtend": "2025-05-02T16:00:00Z"
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "floating_override_dtstart_on_zoned_main",
+      "description": "Override has zoned RECURRENCE-ID but floating DTSTART.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "TZID=America/New_York:20250502T090000",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00"
+        }
+      ]
+    },
+    {
+      "name": "date_override_dtstart_on_datetime_main",
+      "description": "Override has DATE-TIME RECURRENCE-ID but DATE DTSTART.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "dtstart": "2025-05-02",
+          "dtend": "2025-05-03"
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "Tagged STORE_POLICY because RFC 5545 Section 3.8.4.4 constrains RECURRENCE-ID directly rather than an override's rescheduled DTSTART, whereas uniform timeline ordering and JSCalendar mapping require uniform temporal class."
+  ]
+}

@@ -58,6 +58,7 @@ from ical.parsing.property import ParsedProperty
 from ical.util import parse_date_and_datetime
 from ical.tzif import timezoneinfo
 
+from .const import CaseInsensitiveEnum
 from .data_types import DATA_TYPE, serialize_field
 from .date import DateEncoder
 from .date_time import DateTimeEncoder
@@ -66,7 +67,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # Note: This can be StrEnum in python 3.11 and higher
-class Weekday(str, enum.Enum):
+class Weekday(CaseInsensitiveEnum):
     """Corresponds to a day of the week."""
 
     SUNDAY = "SU"
@@ -117,7 +118,7 @@ class WeekdayValue:
         return wd(self.occurrence)
 
 
-class Frequency(str, enum.Enum):
+class Frequency(CaseInsensitiveEnum):
     """Type of recurrence rule."""
 
     DAILY = "DAILY"
@@ -142,7 +143,7 @@ class Frequency(str, enum.Enum):
     """Repeating events based on an interval of a second or more."""
 
 
-class Range(str, enum.Enum):
+class Range(CaseInsensitiveEnum):
     """Specifies an effective range of recurrence instances for a recurrence id.
 
     This is used when modifying a recurrence rule and specifying that the action
@@ -318,7 +319,7 @@ RRULE_WEEKDAY = {
     Weekday.SATURDAY: rrule.SA,
     Weekday.SUNDAY: rrule.SU,
 }
-WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Z]+)")
+WEEKDAY_REGEX = re.compile(r"([-+]?[0-9]*)([A-Za-z]+)")
 
 RecurInputDict = dict[
     str,

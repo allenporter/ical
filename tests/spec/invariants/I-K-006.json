@@ -1,0 +1,128 @@
+{
+  "id": "I-K-006",
+  "title": "A Unique VTIMEZONE Exists for Every Referenced TZID",
+  "scope": "CALENDAR",
+  "authority": "RFC_5545",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.2.19",
+      "line_start": 1549,
+      "line_end": 1552,
+      "verbatim_quote": "An individual \"VTIMEZONE\" calendar component MUST be specified for each unique \"TZID\" parameter value specified in the iCalendar object."
+    }
+  ],
+  "statement": "Every VTIMEZONE component carries a unique non-empty TZID, and for every TZID referenced by DTSTART, DTEND, DUE, RECURRENCE-ID, RDATE or EXDATE of any component, the calendar contains a VTIMEZONE with that TZID.",
+  "rationale": "RFC 5545 Section 3.2.19 (and Section 3.6.5) requires one individual VTIMEZONE per unique TZID in the iCalendar object. Edits that introduce a new zone must add its VTIMEZONE without duplicating existing definitions (R-L5-005, R-L5-006).",
+  "check": "vtimezone_coverage",
+  "applies_to_scenario_vectors": false,
+  "positive_examples": [
+    {
+      "name": "tzid_with_vtimezone",
+      "description": "Zone defined.",
+      "components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "floating_needs_none",
+      "description": "Floating and UTC need no VTIMEZONE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s2",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T13:00:00Z",
+          "dtend": "2025-05-01T14:00:00Z",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "missing_vtimezone",
+      "description": "TZID without VTIMEZONE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "wrong_vtimezone",
+      "description": "Only another zone defined.",
+      "components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "Europe/Berlin"
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00-04:00[America/New_York]",
+          "dtend": "2025-05-01T10:00:00-04:00[America/New_York]",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    },
+    {
+      "name": "unknown_tzid_without_vtimezone",
+      "description": "Unrecognized TZID still requires a matching VTIMEZONE.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "dtstart": "DTSTART;TZID=Mars/Olympus_Mons:20250501T090000"
+        }
+      ]
+    },
+    {
+      "name": "duplicate_vtimezone",
+      "description": "Duplicate VTIMEZONE components for the same TZID.",
+      "components": [
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        },
+        {
+          "type": "VTIMEZONE",
+          "tz_id": "America/New_York"
+        }
+      ]
+    }
+  ],
+  "audit_notes": [
+    "Scenario vectors elide VTIMEZONE components unless the scenario is about them (schema convention), so this invariant is applied to complete store states only (applies_to_scenario_vectors=false)."
+  ]
+}

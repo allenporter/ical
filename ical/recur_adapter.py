@@ -12,7 +12,9 @@ from typing import Generic, TypeVar, cast
 from .iter import (
     MergedIterable,
     RecurIterable,
+    SeekableIterable,
     SortableItemValue,
+    SortedItemIterable,
     SpanOrderedItem,
     LazySortableItem,
     SortableItem,
@@ -43,7 +45,7 @@ def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
     return RecurrenceId.__parse_property_value__(dt)
 
 
-class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
+class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
     """An iterable that filters out dates from a recurrence expansion.
 
     This wraps a recurrence iterable and excludes dates that have been
@@ -58,11 +60,42 @@ class FilteredRecurrenceIterable(Iterable[_DateOrDatetime]):
         """Initialize the filtered iterable."""
         self._recur = recur
         self._exclude_ids = exclude_ids
+        exclude_dts: set[_DateOrDatetime] = set()
+        for rid in exclude_ids:
+            try:
+                val = RecurrenceId.to_value(rid)
+            except ValueError:
+                continue
+            if isinstance(val, datetime.datetime) and val.tzinfo is not None:
+                val = val.replace(tzinfo=None)
+            exclude_dts.add(val)
+        self._exclude_dts = frozenset(exclude_dts)
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
-        for dt in self._recur:
-            if _recurrence_id_for(dt) not in self._exclude_ids:
+        return self._filter(self._recur)
+
+    def iter_after(self, cutoff: datetime.datetime) -> Iterator[_DateOrDatetime]:
+        """Iterate over recurrence dates fast-forwarded toward ``cutoff``, excluding overridden ones."""
+        source = (
+            self._recur.iter_after(cutoff)
+            if isinstance(self._recur, SeekableIterable)
+            else self._recur
+        )
+        return self._filter(source)
+
+    def _filter(self, source: Iterable[_DateOrDatetime]) -> Iterator[_DateOrDatetime]:
+        exclude_dts = self._exclude_dts
+        if not exclude_dts:
+            yield from source
+            return
+        for dt in source:
+            dt_cmp = (
+                dt.replace(tzinfo=None)
+                if isinstance(dt, datetime.datetime) and dt.tzinfo is not None
+                else dt
+            )
+            if dt_cmp not in exclude_dts:
                 yield dt
 
 
@@ -156,6 +189,7 @@ def merge_and_expand_items(
     grouped = items_by_uid(items)
 
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
+    non_recurring: list[SpanOrderedItem[ItemType]] = []
     for uid_items in grouped.values():
         # Collect recurrence_ids from edited instances for O(1) lookup.
         # An edited instance has a recurrence_id (identifying which
@@ -169,13 +203,11 @@ def merge_and_expand_items(
         for item in uid_items:
             if not (recur := item.as_rrule()):
                 # Non-recurring item (includes edited instances)
-                iters.append(
-                    [
-                        SortableItemValue(
-                            item.timespan_of(tzinfo),
-                            item,
-                        )
-                    ]
+                non_recurring.append(
+                    SortableItemValue(
+                        item.timespan_of(tzinfo),
+                        item,
+                    )
                 )
             else:
                 # Recurring item - filter out overridden instances if any
@@ -185,7 +217,17 @@ def merge_and_expand_items(
                     else recur
                 )
                 iters.append(
-                    RecurIterable(RecurAdapter(item, tzinfo=tzinfo).get, dates)
+                    RecurIterable(
+                        RecurAdapter(item, tzinfo=tzinfo).get,
+                        dates,
+                        item.computed_duration,
+                    )
                 )
+
+    if non_recurring:
+        non_recurring_iter = SortedItemIterable(lambda: non_recurring, tzinfo)
+        if not iters:
+            return non_recurring_iter
+        iters.append(non_recurring_iter)
 
     return MergedIterable(iters)

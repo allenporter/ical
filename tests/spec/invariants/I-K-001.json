@@ -1,0 +1,111 @@
+{
+  "id": "I-K-001",
+  "title": "(UID, RECURRENCE-ID) Is Unique",
+  "scope": "CALENDAR",
+  "authority": "RFC_5546",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 697,
+      "line_end": 700,
+      "verbatim_quote": "The primary key for referencing a particular iCalendar component is the \"UID\" property value. To reference an instance of a recurring component, the primary key is composed of the \"UID\" and the \"RECURRENCE-ID\" properties."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6377,
+      "line_end": 6381,
+      "verbatim_quote": "This property is used in conjunction with the \"UID\" and \"SEQUENCE\" properties to identify a specific instance of a recurring \"VEVENT\", \"VTODO\", or \"VJOURNAL\" calendar component. The property value is the original value of the \"DTSTART\" property of the recurrence instance."
+    }
+  ],
+  "statement": "No two VEVENT/VTODO components in a calendar share the same UID and the same RECURRENCE-ID (compared after aligning the RECURRENCE-ID to the series DTSTART, so different notations of one instant collide).",
+  "rationale": "RFC 5546 Section 2.1.5 makes (UID, RECURRENCE-ID) the primary key of an instance; RFC 5545 Section 3.8.4.4 says RECURRENCE-ID together with UID identifies a specific instance. Two components with the same key would make every reference to that instance ambiguous.",
+  "check": "unique_identity",
+  "positive_examples": [
+    {
+      "name": "master_and_override",
+      "description": "Distinct keys.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "same_rid_two_notations",
+      "description": "Same instant written two ways.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "2025-05-02T09:00:00",
+          "summary": "Dup",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "duplicate_main",
+      "description": "Two mains with one UID.",
+      "components": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Other",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        }
+      ]
+    }
+  ],
+  "audit_notes": []
+}

@@ -1,0 +1,124 @@
+{
+  "id": "R-L5-008",
+  "title": "Preservation of RELATED-TO (RELTYPE=PARENT) Children on Parent Edit and Partial Recurrence Deletion",
+  "layer": "L5_METADATA_TIMEZONE_RELATIONS",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6520,
+      "line_end": 6522,
+      "verbatim_quote": "Description: The property value consists of the persistent, globally unique identifier of another calendar component. This value would be represented in a calendar component by the \"UID\" property."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.5",
+      "line_start": 6541,
+      "line_end": 6547,
+      "verbatim_quote": "Similarly, if a PARENT calendar component is cancelled or deleted, then there is an implied impact to the related CHILD calendar components. This property is intended only to provide information on the relationship of calendar components. It is up to the target calendar system to maintain any property implications of this relationship."
+    },
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.7",
+      "line_start": 6676,
+      "line_end": 6680,
+      "verbatim_quote": "The full range of calendar components specified by a recurrence set is referenced by referring to just the \"UID\" property value corresponding to the calendar component. The \"RECURRENCE-ID\" property allows the reference to an individual instance within the recurrence set."
+    }
+  ],
+  "rationale": "Per RFC 5545 Sections 3.8.4.5 and 3.8.4.7, `RELATED-TO` references a parent component by its persistent `UID` (which identifies the full recurrence set), and cascading deletion of subordinate `CHILD` components only applies when the `PARENT` component itself is cancelled or deleted. When a parent component is edited (whether across the whole series, for a single instance `Range.NONE`, or for `Range.THIS_AND_FUTURE`) or when a recurring parent series undergoes a partial deletion (deleting a single occurrence via `Range.NONE` by adding an `EXDATE`, or truncating future occurrences via `Range.THIS_AND_FUTURE` on a non-initial instance by setting `UNTIL`), the parent component `UID` continues to exist in the calendar store. Therefore, child components with `RELATED-TO` (`RELTYPE=PARENT`) pointing to `parent_uid` MUST NOT be deleted during parent edits or partial recurrence deletions.",
+  "store_implication": "In calendar store delete and edit operations: (1) Cascading deletion of subordinate components whose `related_to` references `parent_uid` (`RELTYPE=PARENT`) MUST only occur when the parent `UID` is being removed in its entirety from the store (i.e., full-series deletion where no component with `parent_uid` remains in the store), and MUST NOT occur when merely appending an `EXDATE` (`Range.NONE`) or truncating `rrule.until` (`Range.THIS_AND_FUTURE` after the first instance). (2) Editing a parent component (even if implemented internally by replacing or splitting the stored parent component) MUST NOT trigger cascading deletion of `RELATED-TO` children.",
+  "edge_cases_and_counterexamples": [
+    "Editing a parent component's summary or start time (`edit('parent-uid', ...)`): if an edit internally removes the old parent record before inserting the updated parent record, triggering cascading delete during that internal removal erroneously wipes out all `RELATED-TO` children of `'parent-uid'`.",
+    "Deleting a single occurrence of a recurring parent (`delete('parent-uid', recurrence_id='20250502T090000', range='NONE')`): only adds an `EXDATE` to the parent series; `RELATED-TO` children referencing `'parent-uid'` must remain intact.",
+    "Deleting `THIS_AND_FUTURE` on a non-first occurrence of a recurring parent (`delete('parent-uid', recurrence_id='20250503T090000', range='THIS_AND_FUTURE')`): truncates `UNTIL` on the parent series so earlier instances of `'parent-uid'` still exist in the store; `RELATED-TO` children referencing `'parent-uid'` must remain intact."
+  ],
+  "scenarios": [
+    {
+      "name": "edit_parent_and_partial_delete_preserve_related_children",
+      "description": "Editing a parent series summary and deleting a single recurrence instance (Range.NONE) both preserve RELATED-TO (RELTYPE=PARENT) child components.",
+      "initial_components": [
+        {
+          "uid": "parent-uid",
+          "summary": "Parent series",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3"
+        },
+        {
+          "uid": "child-uid",
+          "summary": "Child event",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "parent-uid",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "operation": {
+        "op": "edit_then_partial_delete",
+        "edit": {
+          "uid": "parent-uid",
+          "patch": {
+            "summary": "Parent series (renamed)"
+          }
+        },
+        "delete": {
+          "uid": "parent-uid",
+          "recurrence_id": "20250502T090000",
+          "range": "NONE"
+        }
+      },
+      "expected_components": [
+        {
+          "uid": "parent-uid",
+          "summary": "Parent series (renamed)",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T09:30:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "exdate": [
+            "2025-05-02T09:00:00"
+          ]
+        },
+        {
+          "uid": "child-uid",
+          "summary": "Child event",
+          "dtstart": "2025-05-01T10:00:00",
+          "dtend": "2025-05-01T10:30:00",
+          "related_to": [
+            {
+              "uid": "parent-uid",
+              "reltype": "PARENT"
+            }
+          ]
+        }
+      ],
+      "expected_timeline": [
+        {
+          "uid": "parent-uid",
+          "summary": "Parent series (renamed)",
+          "dtstart": "2025-05-01T09:00:00"
+        },
+        {
+          "uid": "child-uid",
+          "summary": "Child event",
+          "dtstart": "2025-05-01T10:00:00"
+        },
+        {
+          "uid": "parent-uid",
+          "summary": "Parent series (renamed)",
+          "dtstart": "2025-05-03T09:00:00"
+        }
+      ]
+    }
+  ],
+  "audit_status": "ADVERSARIALLY_VETTED",
+  "audit_notes": [
+    "Scrubbed all references to internal files, classes, and methods for 100% clean-room compliance.",
+    "Contextual RFC check (+/- 40 lines): Verified RFC 5545 Section 3.8.4.5 (L6520-L6522, L6541-L6547) and Section 3.8.4.7 (L6676-L6680).",
+    "Authority check: Confirmed STORE_POLICY is accurate as it defines the store invariant that RELTYPE=PARENT cascading deletion only triggers when the parent UID is completely removed from the store."
+  ]
+}

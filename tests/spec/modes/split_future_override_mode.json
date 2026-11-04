@@ -1,0 +1,33 @@
+{
+  "id": "split_future_override_mode",
+  "title": "Fate of Existing Overrides at or After the Split Point on a THIS_AND_FUTURE Edit",
+  "question": "When a THIS_AND_FUTURE edit splits a series at split_rid, what happens to existing single-instance overrides whose RECURRENCE-ID is at or after split_rid?",
+  "spec_gap": "RFC 5545 states that a RANGE=THISANDFUTURE change does not impact subsequent instances defined in separate components, while RFC 8984 Section 4.1.3 requires splitting into a new recurring object with a new UID without specifying whether per-instance overrides at or after the split point are discarded or migrated to the new series. A THIS_AND_FUTURE delete clearly removes them; for an edit, an override's RECURRENCE-ID may still match a candidate occurrence of the new future segment.",
+  "citations": [
+    {
+      "doc": "rfc5545.txt",
+      "section": "Section 3.8.4.4",
+      "line_start": 6431,
+      "line_end": 6434,
+      "verbatim_quote": "Subsequent instances are determined by their \"RECURRENCE-ID\" value and not their current scheduled start time. Subsequent instances defined in separate components are not impacted by the given recurrence instance."
+    }
+  ],
+  "options": [
+    {
+      "id": "DISCARD",
+      "summary": "Standalone overrides with RECURRENCE-ID >= split_rid are removed; the new future segment starts with no exceptions.",
+      "consequences": [
+        "Simple, and identical to the THIS_AND_FUTURE delete behavior.",
+        "Per-instance edits after the split point are silently lost."
+      ]
+    },
+    {
+      "id": "MIGRATE_TO_FUTURE_SERIES",
+      "summary": "Standalone overrides with RECURRENCE-ID >= split_rid whose RECURRENCE-ID instant is a candidate occurrence of the new future segment are kept and re-keyed to the new segment's UID (with RECURRENCE-ID unchanged in instant); overrides that are not candidates of the new segment (for example, when the split edit shifted DTSTART) are removed.",
+      "consequences": [
+        "Preserves per-instance edits after the split point whenever the recurrence slots still align.",
+        "When the split edit shifts DTSTART to a different time of day or changes the RRULE pattern so an override's RECURRENCE-ID is no longer a candidate of the new segment, that override is discarded."
+      ]
+    }
+  ]
+}

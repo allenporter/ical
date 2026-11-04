@@ -38,15 +38,18 @@ def test_default_reltype() -> None:
 
 
 @pytest.mark.parametrize(
-    "reltype",
+    ("reltype", "expected"),
     [
-        ("PARENT"),
-        ("CHILD"),
-        ("SIBLING"),
-        ("SIBBLING"),
+        ("PARENT", RelationshipType.PARENT),
+        ("parent", RelationshipType.PARENT),
+        ("CHILD", RelationshipType.CHILD),
+        ("Child", RelationshipType.CHILD),
+        ("SIBLING", RelationshipType.SIBLING),
+        ("sibling", RelationshipType.SIBLING),
+        ("SIBBLING", RelationshipType.SIBBLING),
     ],
 )
-def test_reltype(reltype: str) -> None:
+def test_reltype(reltype: str, expected: RelationshipType) -> None:
     """Test explicit reltype specified with both lowercase and uppercase parameter name."""
 
     model = FakeModel.model_validate(
@@ -62,7 +65,7 @@ def test_reltype(reltype: str) -> None:
     )
     assert model.example
     assert model.example.uid == "example-uid@example.com"
-    assert model.example.reltype == reltype
+    assert model.example.reltype == expected
 
 
 def test_invalid_reltype() -> None:

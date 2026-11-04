@@ -18,6 +18,7 @@ from .component import ComponentModel, validate_until_dtstart, validate_recurren
 from .types import (
     Attachment,
     CalAddress,
+    CaseInsensitiveEnum,
     Classification,
     ExtraProperty,
     Image,
@@ -49,7 +50,7 @@ _ONE_HOUR = datetime.timedelta(hours=1)
 _ONE_DAY = datetime.timedelta(days=1)
 
 
-class JournalStatus(str, enum.Enum):
+class JournalStatus(CaseInsensitiveEnum):
     """Status or confirmation of the journal entry."""
 
     DRAFT = "DRAFT"

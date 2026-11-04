@@ -118,6 +118,12 @@ def test_free_busy_type_parse() -> None:
     )
     assert (
         FreeBusyType.__parse_property_value__(
+            ParsedProperty(name="FBTYPE", value="Busy-Tentative")
+        )
+        == FreeBusyType.BUSY_TENTATIVE
+    )
+    assert (
+        FreeBusyType.__parse_property_value__(
             ParsedProperty(name="FBTYPE", value="INVALID")
         )
         is None

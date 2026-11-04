@@ -6,7 +6,7 @@ from . import boolean, date, date_time, duration  # noqa: F401
 from . import float as float_pkg  # noqa: F401
 from .extra import ExtraProperty, ExtraPropertyParameter
 from .cal_address import CalAddress, Role, CalendarUserType, ParticipationStatus
-from .const import Classification, ExtensibleEnum
+from .const import CaseInsensitiveEnum, Classification, ExtensibleEnum
 from .geo import Geo
 from .period import FreeBusyType, Period
 from .priority import Priority
@@ -23,6 +23,7 @@ __all__ = [
     "Attachment",
     "CalAddress",
     "CalendarUserType",
+    "CaseInsensitiveEnum",
     "Classification",
     "Conference",
     "Display",

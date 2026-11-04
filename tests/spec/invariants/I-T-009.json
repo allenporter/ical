@@ -1,0 +1,214 @@
+{
+  "id": "I-T-009",
+  "title": "Component Order in the Input Does Not Change the Result",
+  "scope": "TRANSITION",
+  "authority": "STORE_POLICY",
+  "citations": [
+    {
+      "doc": "rfc5546.txt",
+      "section": "Section 2.1.5",
+      "line_start": 694,
+      "line_end": 700,
+      "verbatim_quote": "To maximize interoperability and to handle messages that arrive in an unexpected order, use the following rules: 1. The primary key for referencing a particular iCalendar component is the \"UID\" property value."
+    }
+  ],
+  "statement": "Applying the same operation to any permutation of the same input components yields the same success/failure outcome and, on success, the same set of resulting components (compared order-insensitively).",
+  "rationale": "Components are identified by (UID, RECURRENCE-ID) (RFC 5546 Section 2.1.5), not by their position in the VCALENDAR; nothing in RFC 5545 gives component order a meaning. A result that depends on whether an override precedes its main component is therefore a store defect (cf. R-L4-001, R-L4-002 edge cases).",
+  "check": "order_independent_result",
+  "positive_examples": [
+    {
+      "name": "reversed_input_same_result",
+      "description": "Reversed input, same result.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "permuted_afters": [
+        [
+          {
+            "type": "VEVENT",
+            "uid": "s1",
+            "recurrence_id": "20250502T090000",
+            "summary": "Moved",
+            "dtstart": "2025-05-02T11:00:00",
+            "dtend": "2025-05-02T12:00:00",
+            "sequence": 1
+          },
+          {
+            "type": "VEVENT",
+            "uid": "s1",
+            "summary": "Renamed",
+            "dtstart": "2025-05-01T09:00:00",
+            "dtend": "2025-05-01T10:00:00",
+            "rrule": "FREQ=DAILY;COUNT=3",
+            "sequence": 1
+          }
+        ]
+      ]
+    }
+  ],
+  "negative_examples": [
+    {
+      "name": "reversed_input_differs",
+      "description": "Reversed input lost the override.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "permuted_afters": [
+        [
+          {
+            "type": "VEVENT",
+            "uid": "s1",
+            "summary": "Renamed",
+            "dtstart": "2025-05-01T09:00:00",
+            "dtend": "2025-05-01T10:00:00",
+            "rrule": "FREQ=DAILY;COUNT=3",
+            "sequence": 1
+          }
+        ]
+      ]
+    },
+    {
+      "name": "reversed_input_fails",
+      "description": "Reversed input was rejected.",
+      "before": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Sync",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 0
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "operation": {
+        "op": "edit",
+        "uid": "s1",
+        "patch": {
+          "summary": "Renamed"
+        }
+      },
+      "after": [
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "summary": "Renamed",
+          "dtstart": "2025-05-01T09:00:00",
+          "dtend": "2025-05-01T10:00:00",
+          "rrule": "FREQ=DAILY;COUNT=3",
+          "sequence": 1
+        },
+        {
+          "type": "VEVENT",
+          "uid": "s1",
+          "recurrence_id": "20250502T090000",
+          "summary": "Moved",
+          "dtstart": "2025-05-02T11:00:00",
+          "dtend": "2025-05-02T12:00:00",
+          "sequence": 1
+        }
+      ],
+      "permuted_afters": [
+        null
+      ]
+    }
+  ],
+  "audit_notes": []
+}

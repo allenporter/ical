@@ -152,7 +152,7 @@ class Registry:
             value_type := prop.get_parameter_value("VALUE")
         ) and field_type not in self._disable_value_param:
             # Property parameter specified a strong type
-            if func := self._parse_parameter_by_name.get(value_type):
+            if func := self._parse_parameter_by_name.get(value_type.upper()):
                 _LOGGER.debug("Parsing %s as value type '%s'", prop.name, value_type)
                 return func(prop)
 

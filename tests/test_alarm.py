@@ -53,6 +53,11 @@ def test_display_required_fields() -> None:
     ):
         Alarm(action="DISPLAY", trigger=datetime.timedelta(minutes=-5))
 
+    with pytest.raises(
+        CalendarParseError, match="Description value is required for action Display"
+    ):
+        Alarm(action="Display", trigger=datetime.timedelta(minutes=-5))
+
     alarm = Alarm(
         action="DISPLAY",
         trigger=datetime.timedelta(minutes=-5),
@@ -80,6 +85,11 @@ def test_email_required_fields() -> None:
         CalendarParseError, match="Description value is required for action EMAIL"
     ):
         Alarm(action="EMAIL", trigger=datetime.timedelta(minutes=-5))
+
+    with pytest.raises(
+        CalendarParseError, match="Description value is required for action email"
+    ):
+        Alarm(action="email", trigger=datetime.timedelta(minutes=-5))
 
     # Missing summary
     with pytest.raises(CalendarParseError):
