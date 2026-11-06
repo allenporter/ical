@@ -199,6 +199,7 @@ def test_as_rrule_with_rdate() -> None:
         ]
     )
     assert list(recurrences.as_rrule()) == [
+        datetime.date(2022, 8, 1),
         datetime.date(2022, 8, 3),
         datetime.date(2022, 8, 4),
         datetime.date(2022, 8, 5),
