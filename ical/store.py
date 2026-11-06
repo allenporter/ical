@@ -287,6 +287,24 @@ class GenericStore(Generic[_T]):
         When deleting individual instances, the range property may specify
         if deletion of just a specific instance, or a range of instances.
         """
+        self._delete(uid, recurrence_id, recurrence_range)
+        if not any(item.uid == uid for item in self._items):
+            for child in [
+                event
+                for event in self._items
+                if any(
+                    relation.reltype == RelationshipType.PARENT and relation.uid == uid
+                    for relation in (event.related_to or ())
+                )
+            ]:
+                self._items.remove(child)
+
+    def _delete(
+        self,
+        uid: str,
+        recurrence_id: str | None = None,
+        recurrence_range: Range = Range.NONE,
+    ) -> None:
         items_to_delete: list[_T] = [
             item for _, item in _match_items(self._items, uid, recurrence_id)
         ]
@@ -312,17 +330,6 @@ class GenericStore(Generic[_T]):
             # Editing the first instance and all forward is the same as editing the
             # entire series so don't bother forking a new event
             recurrence_id = None
-
-        children = []
-        for event in self._items:
-            for relation in event.related_to or ():
-                if (
-                    relation.reltype == RelationshipType.PARENT
-                    and relation.uid == store_item.uid
-                ):
-                    children.append(event)
-        for child in children:
-            self._items.remove(child)
 
         # Deleting all instances in the series
         if not recurrence_id or not store_item.rrule:
@@ -470,7 +477,7 @@ class GenericStore(Generic[_T]):
         # Editing a single instance of a recurring item is like deleting that instance
         # then adding a new instance on the specified date. If recurrence id is not
         # specified then the entire item is replaced.
-        self.delete(
+        self._delete(
             store_item.uid,
             recurrence_id=recurrence_id,
             recurrence_range=recurrence_range,

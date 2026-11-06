@@ -2322,10 +2322,7 @@ def test_edit_parent_and_partial_delete_preserve_children(
 
     # 1. Editing the parent series should NOT delete the child
     store.edit("parent-uid", Event(summary="Parent series (renamed)"))
-    # BROKEN: _apply_edit calls self.delete(), which unconditionally removes all
-    # RelatedTo(reltype=RelationshipType.PARENT) children from the calendar.
-    # assert any(e.uid == "child-uid" for e in calendar.events)
-    assert not any(e.uid == "child-uid" for e in calendar.events)
+    assert any(e.uid == "child-uid" for e in calendar.events)
     assert any(
         e.uid == "parent-uid" and e.summary == "Parent series (renamed)"
         for e in calendar.events
@@ -2333,10 +2330,7 @@ def test_edit_parent_and_partial_delete_preserve_children(
 
     # 2. Deleting a single occurrence should NOT delete the child
     store.delete("parent-uid", recurrence_id="20250502T090000")
-    # BROKEN: _apply_delete also unconditionally removes RelatedTo children even when
-    # only adding an EXDATE for a single recurrence instance (Range.NONE).
-    # assert any(e.uid == "child-uid" for e in calendar.events)
-    assert not any(e.uid == "child-uid" for e in calendar.events)
+    assert any(e.uid == "child-uid" for e in calendar.events)
 
     # 3. Deleting the parent series completely deletes the child
     store.delete("parent-uid")
