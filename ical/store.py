@@ -46,7 +46,9 @@ _MAX_SCAN_DATE = datetime.date.today() + datetime.timedelta(days=365 * 100)
 
 
 def _ensure_timezone(
-    dtvalue: datetime.datetime | datetime.date | None, timezones: list[Timezone]
+    dtvalue: datetime.datetime | datetime.date | None,
+    timezones: list[Timezone],
+    exc: type[StoreError] = EventStoreError,
 ) -> Timezone | None:
     """Create a timezone object for the specified date if it does not already exist."""
     if (
@@ -67,9 +69,7 @@ def _ensure_timezone(
     try:
         return Timezone.from_tzif(key)
     except TimezoneInfoError as err:
-        raise EventStoreError(
-            f"No timezone information available for event: {key}"
-        ) from err
+        raise exc(f"No timezone information available for event: {key}") from err
 
 
 def _match_item(item: _T, uid: str, recurrence_id: str | None) -> bool:
@@ -263,9 +263,11 @@ class GenericStore(Generic[_T]):
                 raise self._exc(f"Unsupported relationship type {relation.reltype}")
 
         _LOGGER.debug("Adding item: %s", new_item)
-        self._ensure_timezone(item.dtstart)
-        if isinstance(item, Event) and item.dtend:
-            self._ensure_timezone(item.dtend)
+        self._ensure_timezone(new_item.dtstart)
+        if isinstance(new_item, Event) and new_item.dtend:
+            self._ensure_timezone(new_item.dtend)
+        elif isinstance(new_item, Todo) and new_item.due:
+            self._ensure_timezone(new_item.due)
         self._items.append(new_item)
         return new_item
 
@@ -460,6 +462,8 @@ class GenericStore(Generic[_T]):
         self._ensure_timezone(new_item.dtstart)
         if isinstance(new_item, Event) and new_item.dtend:
             self._ensure_timezone(new_item.dtend)
+        elif isinstance(new_item, Todo) and new_item.due:
+            self._ensure_timezone(new_item.due)
 
         # Clean up EXDATE entries that are no longer valid occurrences of the recurrence rule
         if new_item.exdate and (new_item.rrule or new_item.rdate):
@@ -480,7 +484,9 @@ class GenericStore(Generic[_T]):
     def _ensure_timezone(
         self, dtvalue: datetime.datetime | datetime.date | None
     ) -> None:
-        if (new_timezone := _ensure_timezone(dtvalue, self._timezones)) is not None:
+        if (
+            new_timezone := _ensure_timezone(dtvalue, self._timezones, self._exc)
+        ) is not None:
             self._timezones.append(new_timezone)
 
 
