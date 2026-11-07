@@ -28,10 +28,9 @@ from dataclasses import dataclass
 import datetime
 import logging
 import re
-from typing import Any, Optional, Self, Union
+from typing import Any, Optional, Union
 
 from dateutil import rrule
-from pydantic import BaseModel, field_validator, model_validator
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -138,10 +137,6 @@ class RuleOccurrence:
     offset: datetime.timedelta
     """UTC offset for this timezone occurrence (not time added to local time)."""
 
-    def __post_init__(self) -> None:
-        """Convert the offset from time added to local time to get UTC to a UTC offset."""
-        self.offset = _ZERO - self.offset
-
 
 @dataclass
 class Rule:
@@ -159,12 +154,6 @@ class Rule:
     dst_end: Union[RuleDate, RuleDay, None] = None
     """Describes when dst ends (std starts)."""
 
-    def __post_init__(self) -> None:
-        """Infer the default DST offset if not specified."""
-        if self.dst and not self.dst.offset:
-            # If the dst offset is omitted, it defaults to one hour ahead of standard time.
-            self.dst.offset = self.std.offset + datetime.timedelta(hours=1)
-
 
 # Regexp for parsing the TZ string
 _OFFSET_RE_PATTERN: re.Pattern[str] = re.compile(
@@ -179,25 +168,32 @@ _START_END_RE_PATTERN = re.compile(
 )
 
 
-def _rule_occurrence_from_match(match: re.Match[str]) -> RuleOccurrence:
+def _rule_occurrence_from_match(
+    match: re.Match[str], default_offset: datetime.timedelta = _ZERO
+) -> RuleOccurrence:
     """Create a rule occurrence from a regex match."""
+    offset = _parse_time(match.groupdict())
     return RuleOccurrence(
-        name=match.group("name"), offset=_parse_time(match.groupdict()) or _ZERO
+        name=match.group("name"),
+        offset=(_ZERO - offset) if offset is not None else default_offset,
     )
 
 
 def _rule_date_from_match(match: re.Match[str]) -> Union[RuleDay, RuleDate]:
     """Create a rule date from a regex match."""
+    time = _parse_time(match.groupdict())
+    if time is None:
+        time = _DEFAULT_TIME_DELTA
     if match["day_of_year"] is not None:
         return RuleDay(
             day_of_year=int(match.group("day_of_year")),
-            time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
+            time=time,
         )
     return RuleDate(
         month=int(match.group("month")),
         week_of_month=int(match.group("week_of_month")),
         day_of_week=int(match.group("day_of_week")),
-        time=_parse_time(match.groupdict()) or _DEFAULT_TIME_DELTA,
+        time=time,
     )
 
 
@@ -221,9 +217,16 @@ def parse_tz_rule(tz_str: str) -> Rule:
         raise ValueError(
             f"Unable to parse TZ string, unexpected trailing data: {tz_str}"
         )
+    std = _rule_occurrence_from_match(std_match)
     return Rule(
-        std=_rule_occurrence_from_match(std_match),
-        dst=_rule_occurrence_from_match(dst_match) if dst_match else None,
+        std=std,
+        dst=(
+            _rule_occurrence_from_match(
+                dst_match, default_offset=std.offset + datetime.timedelta(hours=1)
+            )
+            if dst_match
+            else None
+        ),
         dst_start=_rule_date_from_match(std_start) if std_start else None,
         dst_end=_rule_date_from_match(std_end) if std_end else None,
     )
