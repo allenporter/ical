@@ -1,8 +1,8 @@
 """Clean-room Canonical Component Schema and Validation for ReferenceStore.
 
 Implements canonical VEVENT / VTODO / VTIMEZONE dictionary normalization,
-extra-property preservation, temporal constraint checking, and RELATED-TO
-validation (R-L1-003, R-L1-004, R-L5-001, R-L5-004..R-L5-009).
+extra-property preservation, temporal constraint checking, DURATION mutual
+exclusion, and RELATED-TO validation (R-L1-003, R-L1-004, R-L5-001, R-L5-004..R-L5-009).
 """
 
 from __future__ import annotations
@@ -10,20 +10,16 @@ from __future__ import annotations
 import copy
 import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from .oracle_duration import canonical_duration_str, parse_rfc5545_duration
 from .oracle_policy import StoreError
 from .oracle_temporal import (
     ParsedTemporal,
-    align_rid_to_master,
-    attach_zone_folding_gaps,
     expand_component_candidates,
     format_stored_rid,
     format_temporal_like,
     parse_temporal,
-    replace_rrule_until,
     shift_wall_clock,
-    temporal_class,
 )
 
 DEFAULT_DTSTAMP = "2025-01-01T00:00:00Z"
@@ -36,6 +32,7 @@ CORE_COMPONENT_KEYS = frozenset(
         "dtstart",
         "dtend",
         "due",
+        "duration",
         "rrule",
         "rdate",
         "exdate",
@@ -67,12 +64,21 @@ def is_parent_relation(rel: dict[str, Any]) -> bool:
 
 def validate_related_to(comp_or_patch: dict[str, Any]) -> None:
     """Validate RELATED-TO property constraints, accepting all RELTYPE values (R-L5-009)."""
-    for rel in comp_or_patch.get("related_to") or ():
-        if not isinstance(rel, dict) or not rel.get("uid"):
-            raise StoreError("RELATED-TO entry missing uid (R-L5-009)")
+    rels = comp_or_patch.get("related_to")
+    if rels is None:
+        return
+    if not isinstance(rels, list):
+        raise StoreError(f"related_to must be a list, got {rels!r} (R-L5-009)")
+    for rel in rels:
+        if (
+            not isinstance(rel, dict)
+            or not isinstance(rel.get("uid"), str)
+            or not rel["uid"]
+        ):
+            raise StoreError("RELATED-TO entry missing non-empty string uid (R-L5-009)")
 
 
-def canonical_temporal_str(raw: str | None, field_name: str) -> str | None:
+def canonical_temporal_str(raw: Any, field_name: str) -> str | None:
     """Parse and format a temporal string into canonical ISO / ISO[TZID] / Z form."""
     if raw is None:
         return None
@@ -84,6 +90,61 @@ def canonical_temporal_str(raw: str | None, field_name: str) -> str | None:
     return format_temporal_like(pt.value, pt, use_ical_prop=None)
 
 
+def canonical_utc_timestamp(raw: Any, field_name: str) -> str | None:
+    """Parse and format a required-UTC timestamp (DTSTAMP/CREATED/LAST-MODIFIED/COMPLETED)."""
+    if raw is None:
+        return None
+    pt = parse_temporal(raw, field_name)
+    if pt.kind != "UTC":
+        raise StoreError(f"{field_name} must be a UTC date-time, got {raw!r} (I-C-002)")
+    return format_temporal_like(pt.value, pt, use_ical_prop=None)
+
+
+def max_utc_timestamp(base_utc: str, *candidates: str | None) -> str:
+    """Return the latest UTC timestamp among base_utc and any non-None candidates (I-T-006)."""
+    best_str = base_utc
+    best_cmp = parse_temporal(base_utc, "dtstamp").dt_utc_or_naive
+    for cand in candidates:
+        if not cand:
+            continue
+        pt_c = parse_temporal(cand, "dtstamp")
+        if pt_c.dt_utc_or_naive > best_cmp:
+            best_cmp = pt_c.dt_utc_or_naive
+            best_str = format_temporal_like(pt_c.value, pt_c, use_ical_prop=None)
+    return best_str
+
+
+def canonical_temporal_list(raw_list: Any, field_name: str) -> list[str]:
+    """Canonicalize an RDATE or EXDATE list, rejecting non-lists or None items."""
+    if raw_list is None:
+        return []
+    if not isinstance(raw_list, list):
+        raise StoreError(f"{field_name} must be a list, got {raw_list!r}")
+    out: list[str] = []
+    for item in raw_list:
+        if item is None:
+            raise StoreError(f"{field_name} entry cannot be None")
+        canon = canonical_temporal_str(item, field_name)
+        assert canon is not None
+        out.append(canon)
+    return out
+
+
+def _validate_sequence_value(seq: Any) -> None:
+    if seq is not None and (
+        not isinstance(seq, int) or isinstance(seq, bool) or seq < 0
+    ):
+        raise StoreError(f"sequence must be a non-negative integer, got {seq!r}")
+
+
+def _validate_rrule_type(rrule_val: Any) -> str | None:
+    if rrule_val is None:
+        return None
+    if not isinstance(rrule_val, str) or not rrule_val:
+        raise StoreError(f"rrule must be a non-empty string or None, got {rrule_val!r}")
+    return rrule_val
+
+
 def _resolve_type_and_defaults(
     src: dict[str, Any], default_type: str | None, is_add: bool
 ) -> tuple[str, bool]:
@@ -91,8 +152,20 @@ def _resolve_type_and_defaults(
     ctype = src.get("type") or default_type
     if ctype not in (None, "VEVENT", "VTODO"):
         raise StoreError(f"Unsupported component type: {ctype!r}")
-    is_todo = ctype == "VTODO" or any(k in src for k in ("due", "status", "completed"))
-    if is_add and is_todo and not src.get("dtstart") and src.get("due"):
+    is_todo = ctype == "VTODO" or (
+        ctype is None and any(k in src for k in ("due", "status", "completed"))
+    )
+    if is_todo and src.get("dtend") is not None:
+        raise StoreError("VTODO component cannot carry DTEND")
+    if not is_todo and src.get("due") is not None:
+        raise StoreError("VEVENT component cannot carry DUE")
+    if (
+        is_add
+        and is_todo
+        and not src.get("dtstart")
+        and src.get("due")
+        and src.get("duration") is None
+    ):
         pt_due = parse_temporal(src["due"], "due")
         if pt_due.kind == "OFFSET":
             raise StoreError(
@@ -127,14 +200,17 @@ def canonicalize_component(
             )
         canon_rid = format_stored_rid(pt_rid)
 
-    dtstamp_val = canonical_temporal_str(
+    dtstamp_val = canonical_utc_timestamp(
         src.get("dtstamp") or (now if is_add else DEFAULT_DTSTAMP), "dtstamp"
     )
     assert dtstamp_val is not None
     created_raw = src.get("created") or (dtstamp_val if is_add else None)
     seq_val = (
-        src["sequence"] if src.get("sequence") is not None else (0 if is_add else None)
+        src["sequence"]
+        if "sequence" in src and src["sequence"] is not None
+        else (0 if is_add else None)
     )
+    _validate_sequence_value(seq_val)
 
     out: dict[str, Any] = {
         "type": comp_type,
@@ -142,35 +218,27 @@ def canonicalize_component(
         "recurrence_id": canon_rid,
         "summary": src.get("summary"),
         "dtstart": canonical_temporal_str(src.get("dtstart"), "dtstart"),
+        ("due" if is_todo else "dtend"): canonical_temporal_str(
+            src.get("due" if is_todo else "dtend"), "due" if is_todo else "dtend"
+        ),
+        "duration": canonical_duration_str(src.get("duration"), "duration"),
+        "rrule": _validate_rrule_type(src.get("rrule")),
+        "rdate": canonical_temporal_list(src.get("rdate"), "rdate"),
+        "exdate": canonical_temporal_list(src.get("exdate"), "exdate"),
+        "dtstamp": dtstamp_val,
+        "created": canonical_utc_timestamp(created_raw, "created"),
+        "sequence": seq_val,
+        "last_modified": canonical_utc_timestamp(
+            src.get("last_modified"), "last_modified"
+        ),
     }
-    if is_todo:
-        out["due"] = canonical_temporal_str(src.get("due"), "due")
-    else:
-        out["dtend"] = canonical_temporal_str(src.get("dtend"), "dtend")
-    out["rrule"] = src.get("rrule")
-    out["rdate"] = [
-        x
-        for raw_r in (src.get("rdate") or [])
-        if (x := canonical_temporal_str(raw_r, "rdate")) is not None
-    ]
-    out["exdate"] = [
-        x
-        for raw_e in (src.get("exdate") or [])
-        if (x := canonical_temporal_str(raw_e, "exdate")) is not None
-    ]
-    out["dtstamp"] = dtstamp_val
-    out["created"] = canonical_temporal_str(created_raw, "created")
-    out["sequence"] = seq_val
-    out["last_modified"] = canonical_temporal_str(
-        src.get("last_modified"), "last_modified"
-    )
     if is_todo:
         status_val = src.get("status")
         completed_raw = src.get("completed")
         if is_add and status_val == "COMPLETED" and not completed_raw:
             completed_raw = dtstamp_val
         out["status"] = status_val
-        out["completed"] = canonical_temporal_str(completed_raw, "completed")
+        out["completed"] = canonical_utc_timestamp(completed_raw, "completed")
     validate_related_to(src)
     out["related_to"] = [
         {"uid": str(rel["uid"]), "reltype": str(rel.get("reltype") or "PARENT")}
@@ -182,188 +250,139 @@ def canonicalize_component(
     return out
 
 
+def _validate_patch_constraints(comp: dict[str, Any], patch: dict[str, Any]) -> None:
+    if "type" in patch and patch["type"] != comp.get("type"):
+        raise StoreError(
+            f"Cannot change component type from {comp.get('type')!r} to {patch['type']!r}"
+        )
+    is_todo = comp.get("type") == "VTODO"
+    if (is_todo and patch.get("dtend") is not None) or (
+        not is_todo and patch.get("due") is not None
+    ):
+        raise StoreError(f"Invalid end/due field for {comp.get('type')}")
+    if patch.get("duration") is not None and (
+        patch.get("dtend") is not None or patch.get("due") is not None
+    ):
+        raise StoreError(
+            "Cannot specify both dtend/due and duration in patch (I-C-003)"
+        )
+
+
+def _apply_single_patch_field(
+    comp: dict[str, Any], patch: dict[str, Any], k: str, v: Any
+) -> None:
+    if k in ("dtstart", "dtend", "due"):
+        comp[k] = canonical_temporal_str(v, k)
+        if k in ("dtend", "due") and comp[k] is not None:
+            comp["duration"] = None
+    elif k == "completed":
+        comp[k] = canonical_utc_timestamp(v, k)
+    elif k == "duration":
+        comp["duration"] = canonical_duration_str(v, "duration")
+        if comp["duration"] is not None:
+            comp.update({ek: None for ek in ("dtend", "due") if ek in comp})
+    elif k == "rrule":
+        comp["rrule"] = _validate_rrule_type(v)
+    elif k in ("rdate", "exdate"):
+        comp[k] = canonical_temporal_list(v, k)
+    elif k == "related_to":
+        validate_related_to(patch)
+        comp["related_to"] = [
+            {"uid": str(r["uid"]), "reltype": str(r.get("reltype") or "PARENT")}
+            for r in (v or [])
+        ]
+    else:
+        comp[k] = copy.deepcopy(v)
+
+
 def apply_patch_fields_in_place(comp: dict[str, Any], patch: dict[str, Any]) -> None:
     """Apply user-mutable patch fields onto an existing canonical component dictionary."""
-    skip = {"dtstamp", "uid", "recurrence_id", "sequence", "created", "last_modified"}
+    _validate_patch_constraints(comp, patch)
+    skip = {
+        "type",
+        "dtstamp",
+        "uid",
+        "recurrence_id",
+        "sequence",
+        "created",
+        "last_modified",
+    }
     for k, v in patch.items():
-        if k in skip:
-            continue
-        if k in ("dtstart", "dtend", "due", "completed"):
-            comp[k] = canonical_temporal_str(v, k)
-        elif k in ("rdate", "exdate"):
-            comp[k] = [
-                x
-                for raw_x in (v or [])
-                if (x := canonical_temporal_str(raw_x, k)) is not None
-            ]
-        elif k == "related_to":
-            validate_related_to(patch)
-            comp["related_to"] = [
-                {"uid": str(r["uid"]), "reltype": str(r.get("reltype") or "PARENT")}
-                for r in (v or [])
-            ]
-        else:
-            comp[k] = copy.deepcopy(v)
+        if k not in skip:
+            _apply_single_patch_field(comp, patch, k, v)
 
 
-def align_rrule_until_on_dtstart_change(
-    comp: dict[str, Any],
-    pt_old_start: ParsedTemporal | None,
-    pt_new_start: ParsedTemporal,
+def _validate_duration_bounds(
+    comp: dict[str, Any], pt_start: ParsedTemporal | None
 ) -> None:
-    """Align RRULE UNTIL value type and timezone form when DTSTART changes (R-L1-003, R-L1-007)."""
-    rrule_parts = dict(p.split("=", 1) for p in comp["rrule"].split(";") if "=" in p)
-    pt_u = parse_temporal(rrule_parts["UNTIL"], "until")
-    if pt_new_start.is_date and not pt_u.is_date:
-        assert isinstance(pt_u.value, datetime.datetime)
-        comp["rrule"] = replace_rrule_until(
-            comp["rrule"], pt_u.value.date().strftime("%Y%m%d")
+    if comp.get("duration") is None:
+        return
+    if comp.get("dtend") is not None or comp.get("due") is not None:
+        raise StoreError("Component cannot carry both DTEND/DUE and DURATION (I-C-003)")
+    if pt_start is None:
+        raise StoreError("DURATION requires DTSTART (I-C-003)")
+    dur = parse_rfc5545_duration(comp["duration"], "duration")
+    if dur.delta <= datetime.timedelta(0):
+        raise StoreError(f"DURATION must be strictly positive: {comp['duration']!r}")
+    if pt_start.is_date and dur.has_time_part:
+        raise StoreError(
+            f"DATE DTSTART requires day/week DURATION, got {comp['duration']!r} (I-C-003)"
         )
-    elif not pt_new_start.is_date and pt_u.is_date:
-        assert isinstance(pt_new_start.value, datetime.datetime)
-        comb_dt = datetime.datetime.combine(pt_u.value, pt_new_start.value.time())
-        if pt_new_start.value.tzinfo is not None:
-            comb_dt = comb_dt.replace(tzinfo=pt_new_start.value.tzinfo).astimezone(
-                datetime.timezone.utc
-            )
-            new_u_str = comb_dt.strftime("%Y%m%dT%H%M%SZ")
-        else:
-            new_u_str = comb_dt.strftime("%Y%m%dT%H%M%S")
-        comp["rrule"] = replace_rrule_until(comp["rrule"], new_u_str)
-    elif not pt_new_start.is_date and not pt_u.is_date:
-        assert isinstance(pt_new_start.value, datetime.datetime)
-        assert isinstance(pt_u.value, datetime.datetime)
-        if pt_new_start.value.tzinfo is not None and pt_u.value.tzinfo is None:
-            comb_dt = pt_u.value.replace(tzinfo=pt_new_start.value.tzinfo).astimezone(
-                datetime.timezone.utc
-            )
-            comp["rrule"] = replace_rrule_until(
-                comp["rrule"], comb_dt.strftime("%Y%m%dT%H%M%SZ")
-            )
-        elif pt_new_start.value.tzinfo is None and pt_u.value.tzinfo is not None:
-            ref_tz = (
-                pt_old_start.value.tzinfo
-                if (pt_old_start and isinstance(pt_old_start.value, datetime.datetime))
-                else None
-            )
-            local_u = (
-                pt_u.value.astimezone(ref_tz).replace(tzinfo=None)
-                if ref_tz
-                else pt_u.value.replace(tzinfo=None)
-            )
-            comp["rrule"] = replace_rrule_until(
-                comp["rrule"], local_u.strftime("%Y%m%dT%H%M%S")
-            )
 
 
-def shift_rrule_until_wall_clock(
-    rrule_str: str,
-    pt_old_ref: ParsedTemporal,
-    pt_new_ref: ParsedTemporal,
-    wall_delta: datetime.timedelta,
-) -> str:
-    """Shift RRULE UNTIL by wall_delta in local wall-clock coordinates across DST (R-L3-010, R-L4-009)."""
-    rrule_parts = dict(p.split("=", 1) for p in rrule_str.split(";") if "=" in p)
-    pt_u = parse_temporal(rrule_parts["UNTIL"], "until")
-    if pt_new_ref.is_date:
-        shifted_d = shift_wall_clock(pt_u.value, wall_delta)
-        return replace_rrule_until(rrule_str, shifted_d.strftime("%Y%m%d"))
-    if pt_new_ref.kind == "FLOATING":
-        shifted_dt = shift_wall_clock(pt_u.value, wall_delta)
-        assert isinstance(shifted_dt, datetime.datetime)
-        return replace_rrule_until(rrule_str, shifted_dt.strftime("%Y%m%dT%H%M%S"))
-    assert isinstance(pt_u.value, datetime.datetime)
-    old_tz = (
-        pt_old_ref.value.tzinfo
-        if isinstance(pt_old_ref.value, datetime.datetime) and pt_old_ref.value.tzinfo
-        else datetime.timezone.utc
-    )
-    naive_new = pt_u.value.astimezone(old_tz).replace(tzinfo=None) + wall_delta
-    if pt_new_ref.kind == "TZID" and pt_new_ref.tzid:
-        zoned_new = attach_zone_folding_gaps(naive_new, ZoneInfo(pt_new_ref.tzid))
-    else:
-        zoned_new = naive_new.replace(tzinfo=datetime.timezone.utc)
-    return replace_rrule_until(
-        rrule_str,
-        zoned_new.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
-    )
-
-
-def shift_temporal_list_wall_clock(
-    values: list[str],
-    pt_old_ref: ParsedTemporal,
-    pt_new_ref: ParsedTemporal,
-    wall_delta: datetime.timedelta,
-    field_name: str,
-) -> list[str]:
-    """Shift a list of EXDATE/RDATE strings by wall_delta in local wall-clock time (R-L3-010, R-L4-009)."""
-    shifted: list[str] = []
-    for val in values:
-        pt_v = parse_temporal(val, field_name)
-        pt_aligned = (
-            align_rid_to_master(val, pt_old_ref)
-            if temporal_class(pt_v) == temporal_class(pt_old_ref)
-            else pt_v
-        )
-        shifted.append(
-            format_temporal_like(
-                shift_wall_clock(pt_aligned.value, wall_delta), pt_new_ref
-            )
-        )
-    return shifted
-
-
-def partition_future_dates(
-    all_segs: list[dict[str, Any]],
-    patch: dict[str, Any],
-    key: str,
-    split_cmp: datetime.datetime,
-    pt_target_start: ParsedTemporal | None = None,
-) -> list[str]:
-    """Extract canonical future rdate or exdate values >= split_cmp (or explicit patch list)."""
-    if key in patch:
-        return [
-            x
-            for raw_x in (patch[key] or [])
-            if (x := canonical_temporal_str(raw_x, key)) is not None
-        ]
-    out: list[str] = []
-    for seg in all_segs:
-        pt_seg = parse_temporal(seg["dtstart"], "dtstart")
-        if pt_target_start is not None and temporal_class(pt_seg) != temporal_class(
-            pt_target_start
-        ):
+def _validate_end_and_duration(
+    comp: dict[str, Any], pt_start: ParsedTemporal | None
+) -> None:
+    """Enforce I-C-003 (DURATION XOR DTEND/DUE), I-C-004 (value/floating match), and I-C-005 (> DTSTART)."""
+    _validate_duration_bounds(comp, pt_start)
+    for end_field in ("dtend", "due"):
+        if comp.get(end_field) is None:
             continue
-        for val in seg.get(key) or ():
-            if align_rid_to_master(val, pt_seg).dt_utc_or_naive >= split_cmp:
-                out.append(val)
-    return out
+        pt_e = parse_temporal(comp[end_field], end_field)
+        if end_field == "dtend" and pt_start is None:
+            raise StoreError("DTEND requires DTSTART")
+        if pt_start is not None:
+            if pt_start.is_date != pt_e.is_date or (pt_start.kind == "FLOATING") != (
+                pt_e.kind == "FLOATING"
+            ):
+                raise StoreError(
+                    f"{end_field.upper()} value type and floating-ness must match DTSTART (I-C-004)"
+                )
+            if pt_e.dt_utc_or_naive <= pt_start.dt_utc_or_naive:
+                raise StoreError(
+                    f"{end_field.upper()} must be strictly after DTSTART (I-C-005)"
+                )
 
 
-def validate_component_state(comp: dict[str, Any]) -> None:
-    """Validate temporal bounds, RRULE/RDATE/EXDATE alignment, and RELATED-TO."""
+def validate_component_state(
+    comp: dict[str, Any], *, allow_legacy: bool = False
+) -> None:
+    """Validate temporal bounds, DURATION, RRULE/RDATE/EXDATE alignment, and RELATED-TO."""
+    if comp.get("type") not in ("VEVENT", "VTODO"):
+        raise StoreError(f"Unsupported component type: {comp.get('type')!r}")
+    _validate_sequence_value(comp.get("sequence"))
     validate_related_to(comp)
+    for utc_field in ("dtstamp", "created", "last_modified", "completed"):
+        canonical_utc_timestamp(comp.get(utc_field), utc_field)
     for t_field in ("dtstart", "dtend", "due", "recurrence_id"):
         if comp.get(t_field) is not None:
-            pt_f = parse_temporal(comp[t_field], t_field)
-            if pt_f.kind == "OFFSET":
-                raise StoreError(
-                    f"Fixed-offset datetime without TZID is invalid for {t_field}: {comp[t_field]!r}"
-                )
-    if comp.get("dtstart"):
-        pt_start = parse_temporal(comp["dtstart"], "dtstart")
-        if comp.get("dtend") is not None:
-            pt_end = parse_temporal(comp["dtend"], "dtend")
-            if pt_start.is_date != pt_end.is_date:
-                raise StoreError("DTEND value type must match DTSTART")
-            if pt_end.dt_utc_or_naive <= pt_start.dt_utc_or_naive:
-                raise StoreError("DTEND must be strictly after DTSTART")
-        if comp.get("due") is not None:
-            pt_due = parse_temporal(comp["due"], "due")
-            if pt_start.is_date != pt_due.is_date:
-                raise StoreError("DUE value type must match DTSTART")
-            if pt_due.dt_utc_or_naive < pt_start.dt_utc_or_naive:
-                raise StoreError("DUE must not precede DTSTART")
+            canonical_temporal_str(comp[t_field], t_field)
+
+    if comp["type"] == "VEVENT" and not comp.get("dtstart"):
+        raise StoreError("VEVENT component requires DTSTART (I-C-012)")
+    if comp.get("recurrence_id") is not None:
+        if not comp.get("dtstart"):
+            raise StoreError("Override component requires DTSTART (I-K-007)")
+        if not allow_legacy and any(comp.get(k) for k in ("rrule", "rdate", "exdate")):
+            raise StoreError(
+                "Component with RECURRENCE-ID cannot carry RRULE, RDATE, or EXDATE (I-C-006)"
+            )
+
+    pt_start = (
+        parse_temporal(comp["dtstart"], "dtstart") if comp.get("dtstart") else None
+    )
+    _validate_end_and_duration(comp, pt_start)
+    if pt_start is not None:
         expand_component_candidates(comp, include_exdates=False)
-    elif comp.get("rrule") or comp.get("rdate"):
+    elif any(comp.get(k) for k in ("rrule", "rdate", "exdate")):
         raise StoreError("Recurring component requires dtstart")
