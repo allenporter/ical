@@ -26,7 +26,7 @@ repos:
     hooks:
       - id: ty
         name: ty check
-        entry: uv run ty check . --ignore unresolved-import --exclude ".venv/"
+        entry: uv run --no-project ty check . --ignore import-not-found --exclude ".venv/"
         language: system
         pass_filenames: false
   - repo: https://github.com/codespell-project/codespell
