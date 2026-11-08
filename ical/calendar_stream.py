@@ -37,6 +37,7 @@ stream = await IcsCalendarStream.from_url("https://example.com/calendar.ics")
 
 from __future__ import annotations
 
+import base64
 import logging
 from typing import TYPE_CHECKING
 
@@ -62,6 +63,20 @@ _ASYNC_EXTRA_ERROR = (
 )
 
 
+def _encode_basic_auth(username: str, password: str) -> str:
+    """Encode HTTP Basic Authentication credentials for the Authorization header."""
+    try:
+        from aiohttp import encode_basic_auth  # noqa: PLC0415
+    except ImportError:
+        if ":" in username:
+            raise ValueError(
+                'A ":" is not allowed in username (RFC 7617#section-2)'
+            ) from None
+        creds = f"{username}:{password}".encode()
+        return f"Basic {base64.b64encode(creds).decode('ascii')}"
+    return encode_basic_auth(username, password)
+
+
 class CalendarStream(ComponentModel):
     """A container that is a collection of calendaring information.
 
@@ -84,7 +99,11 @@ class CalendarStream(ComponentModel):
 
     @classmethod
     async def from_url(
-        cls, url: str, session: "aiohttp.ClientSession | None" = None
+        cls,
+        url: str,
+        session: "aiohttp.ClientSession | None" = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> "CalendarStream":
         """Async factory method to fetch and parse an rfc5545 iCalendar url.
 
@@ -97,15 +116,36 @@ class CalendarStream(ComponentModel):
         `ical[async]` extra. An existing `aiohttp.ClientSession` may be
         passed in to reuse connection pooling; otherwise a session is created
         and closed automatically for this single request.
+
+        Optional HTTP Basic Authentication credentials may be provided via
+        `username` and `password` (`username` is required if `password` is
+        specified):
+
+        ```python
+        stream = await CalendarStream.from_url(
+            "https://example.com/calendar.ics",
+            username="user",
+            password="secret",
+        )
+        ```
         """
+        if password is not None and username is None:
+            raise ValueError("username must be provided when password is specified")
+
         try:
             import aiohttp  # noqa: PLC0415
         except ImportError as err:
             raise ImportError(_ASYNC_EXTRA_ERROR) from err
 
+        headers: dict[str, str] | None = None
+        if username is not None:
+            headers = {
+                "Authorization": _encode_basic_auth(username, password or ""),
+            }
+
         async def _fetch(active_session: aiohttp.ClientSession) -> str:
             try:
-                async with active_session.get(url) as response:
+                async with active_session.get(url, headers=headers) as response:
                     response.raise_for_status()
                     return await response.text()
             except aiohttp.ClientError as err:
@@ -136,14 +176,24 @@ class IcsCalendarStream(CalendarStream):
 
     @classmethod
     async def calendar_from_url(
-        cls, url: str, session: "aiohttp.ClientSession | None" = None
+        cls,
+        url: str,
+        session: "aiohttp.ClientSession | None" = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> Calendar:
         """Async convenience method to fetch and load a single calendar from a url.
 
-        See `from_url` for details on the optional `ical[async]` dependency
-        and the `session` argument.
+        See `from_url` for details on the optional `ical[async]` dependency,
+        the `session` argument, and HTTP Basic Authentication (`username` and
+        `password`).
         """
-        stream = await cls.from_url(url, session=session)
+        stream = await cls.from_url(
+            url,
+            session=session,
+            username=username,
+            password=password,
+        )
         return cls._single_calendar(stream)
 
     @staticmethod

@@ -102,6 +102,16 @@ for event in cal.timeline:
 
 An existing `aiohttp.ClientSession` can be passed in via the `session` argument to reuse connection pooling; otherwise a session is created and closed automatically for the request.
 
+Password-protected feeds using HTTP Basic Authentication can be fetched by passing `username` and `password`:
+
+```python
+cal = await IcsCalendarStream.calendar_from_url(
+    "https://example.com/calendar.ics",
+    username="user",
+    password="secret",
+)
+```
+
 ### Creating a calendar
 
 ```python
