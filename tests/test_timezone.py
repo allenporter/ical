@@ -6,6 +6,7 @@ from collections.abc import Generator
 import copy
 import datetime
 import inspect
+import zoneinfo
 from typing import Any
 
 import pytest
@@ -13,6 +14,7 @@ from freezegun import freeze_time
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
+from ical.event import Event
 from ical.exceptions import CalendarParseError
 from ical.timezone import IcsTimezoneInfo, Observance, Timezone
 from ical.types import UtcOffset
@@ -333,3 +335,151 @@ END:VCALENDAR"""
     assert isinstance(copied_events[0].dtstart, datetime.datetime)
     assert copied_events[0].dtstart.tzname() == events[0].dtstart.tzname()
     assert copied_events[0].dtstart.utcoffset() == events[0].dtstart.utcoffset()
+
+
+@pytest.mark.parametrize(
+    "key,spring_utc,fall_utc",
+    [
+        (
+            "America/Los_Angeles",
+            datetime.datetime(2023, 3, 12, 9, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2023, 11, 5, 8, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Australia/Sydney",
+            datetime.datetime(2024, 10, 5, 15, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2024, 4, 6, 15, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Asia/Tokyo",
+            datetime.datetime(2023, 3, 12, 0, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2023, 11, 5, 0, 0, tzinfo=datetime.UTC),
+        ),
+    ],
+)
+def test_ics_timezone_info_pep495_parity_with_zoneinfo(
+    key: str,
+    spring_utc: datetime.datetime,
+    fall_utc: datetime.datetime,
+) -> None:
+    """Verify IcsTimezoneInfo matches ZoneInfo across folds, gaps, and fromutc()."""
+    ics_tz = IcsTimezoneInfo.from_timezone(Timezone.from_tzif(key))
+    zi = zoneinfo.ZoneInfo(key)
+
+    for base_utc in (spring_utc, fall_utc):
+        for step in range(16):
+            u = base_utc + datetime.timedelta(minutes=15 * step)
+            local_ics = u.astimezone(ics_tz)
+            local_zi = u.astimezone(zi)
+            assert local_ics.replace(tzinfo=None) == local_zi.replace(tzinfo=None)
+            assert local_ics.fold == local_zi.fold
+            assert local_ics.utcoffset() == local_zi.utcoffset()
+            assert local_ics.dst() == local_zi.dst()
+            assert local_ics.tzname() == local_zi.tzname()
+            assert local_ics.astimezone(datetime.UTC) == u
+
+            for fold in (0, 1):
+                wall_naive = (
+                    base_utc.replace(tzinfo=None)
+                    + (local_zi.utcoffset() or datetime.timedelta(0))
+                    + datetime.timedelta(minutes=15 * step - 60)
+                )
+                d_ics = wall_naive.replace(tzinfo=ics_tz, fold=fold)
+                d_zi = wall_naive.replace(tzinfo=zi, fold=fold)
+                assert d_ics.utcoffset() == d_zi.utcoffset()
+                assert d_ics.dst() == d_zi.dst()
+                assert d_ics.tzname() == d_zi.tzname()
+
+
+def test_ics_timezone_info_first_transition_gap_and_fromutc_errors() -> None:
+    """Verify pre-transition, first-transition gap/fold, duplicate onset, and fromutc validation."""
+    ics_tz = IcsTimezoneInfo.from_timezone(Timezone.from_tzif("America/New_York"))
+    # Before first transition (2010-03-14 02:00 EST -> 03:00 EDT), EST (-05:00) applies
+    pre_utc = datetime.datetime(2010, 3, 14, 6, 30, tzinfo=datetime.UTC)
+    pre_local = pre_utc.astimezone(ics_tz)
+    assert pre_local.replace(tzinfo=None) == datetime.datetime(2010, 3, 14, 1, 30)
+    assert pre_local.fold == 0
+    assert pre_local.utcoffset() == datetime.timedelta(hours=-5)
+    assert pre_local.astimezone(datetime.UTC) == pre_utc
+
+    gap_fold0 = datetime.datetime(2010, 3, 14, 2, 30, tzinfo=ics_tz, fold=0)
+    gap_fold1 = datetime.datetime(2010, 3, 14, 2, 30, tzinfo=ics_tz, fold=1)
+    assert gap_fold0.utcoffset() == datetime.timedelta(hours=-5)
+    assert gap_fold0.tzname() == "EST"
+    assert gap_fold1.utcoffset() == datetime.timedelta(hours=-4)
+    assert gap_fold1.tzname() == "EDT"
+
+    # Southern Hemisphere first transition (2010-04-04 03:00 AEDT -> 02:00 AEST fall-back)
+    syd_tz = IcsTimezoneInfo.from_timezone(Timezone.from_tzif("Australia/Sydney"))
+    u0 = datetime.datetime(2010, 4, 3, 15, 30, tzinfo=datetime.UTC)
+    u1 = datetime.datetime(2010, 4, 3, 16, 30, tzinfo=datetime.UTC)
+    l0 = u0.astimezone(syd_tz)
+    l1 = u1.astimezone(syd_tz)
+    assert (l0.fold, l0.utcoffset()) == (0, datetime.timedelta(hours=11))
+    assert (l1.fold, l1.utcoffset()) == (1, datetime.timedelta(hours=10))
+    assert l0.astimezone(datetime.UTC) == u0
+    assert l1.astimezone(datetime.UTC) == u1
+
+    # Observance with RDATE only (no RRULE) and duplicate onset tie-breaking
+    dup_tz = IcsTimezoneInfo.from_timezone(
+        Timezone(
+            tzid="Custom/RDate",
+            standard=[
+                Observance(
+                    start=datetime.datetime(2023, 1, 1, 0, 0),
+                    tz_offset_from=UtcOffset(datetime.timedelta(hours=1)),
+                    tz_offset_to=UtcOffset(datetime.timedelta(hours=1)),
+                    rdate=[datetime.datetime(2023, 10, 29, 3, 0)],
+                ),
+            ],
+            daylight=[
+                Observance(
+                    start=datetime.datetime(2023, 1, 1, 0, 0),
+                    tz_offset_from=UtcOffset(datetime.timedelta(hours=1)),
+                    tz_offset_to=UtcOffset(datetime.timedelta(hours=2)),
+                    rdate=[datetime.datetime(2023, 3, 26, 2, 0)],
+                ),
+            ],
+        )
+    )
+    summer = datetime.datetime(2023, 7, 1, 10, 0, tzinfo=datetime.UTC).astimezone(
+        dup_tz
+    )
+    winter = datetime.datetime(2023, 11, 1, 10, 0, tzinfo=datetime.UTC).astimezone(
+        dup_tz
+    )
+    assert summer.utcoffset() == datetime.timedelta(hours=2)
+    assert winter.utcoffset() == datetime.timedelta(hours=1)
+
+    with pytest.raises(TypeError, match="datetime argument"):
+        ics_tz.fromutc("2023-11-05")  # ty: ignore[invalid-argument-type]
+    with pytest.raises(ValueError, match="dt.tzinfo is not self"):
+        ics_tz.fromutc(datetime.datetime(2023, 11, 5, 9, 0, tzinfo=datetime.UTC))
+
+
+def test_custom_vtimezone_timeline_across_dst_fallback() -> None:
+    """Verify Timeline & Timespan order fold=0/fold=1 events under an embedded custom VTIMEZONE."""
+    ics_tz = IcsTimezoneInfo.from_timezone(_customized_timezone())
+    # 2023-10-29 in Customized Time Zone: 03:00+02:00 falls back to 02:00+01:00
+    ev_first = Event(
+        summary="First (02:45+02)",
+        start=datetime.datetime(2023, 10, 29, 2, 45, tzinfo=ics_tz, fold=0),
+        end=datetime.datetime(2023, 10, 29, 2, 55, tzinfo=ics_tz, fold=0),
+    )
+    ev_second = Event(
+        summary="Second (02:15+01)",
+        start=datetime.datetime(2023, 10, 29, 2, 15, tzinfo=ics_tz, fold=1),
+        end=datetime.datetime(2023, 10, 29, 2, 30, tzinfo=ics_tz, fold=1),
+    )
+    cal = Calendar(events=[ev_second, ev_first])
+    tl = cal.timeline_tz(ics_tz)
+    assert [e.summary for e in tl.on_date(datetime.date(2023, 10, 29))] == [
+        "First (02:45+02)",
+        "Second (02:15+01)",
+    ]
+    # Round-trip from UTC via IcsTimezoneInfo.fromutc sets fold=1 and queries accurately
+    probe = datetime.datetime(2023, 10, 29, 1, 20, tzinfo=datetime.UTC).astimezone(
+        ics_tz
+    )
+    assert probe.fold == 1
+    assert [e.summary for e in tl.at_instant(probe)] == ["Second (02:15+01)"]
