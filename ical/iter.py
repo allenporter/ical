@@ -401,6 +401,12 @@ class RulesetIterable(SeekableIterable[Union[datetime.datetime, datetime.date]])
         ruleset = rrule.rruleset()
         for rule in self._rrule:
             ruleset.rrule(self._converter(rule))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+        if not self._rrule:
+            # DTSTART is the first instance of the recurrence set (RFC 5545
+            # 3.8.5.2). An RRULE already produces it, but RDATE alone does not.
+            # Added before RDATE: rruleset keeps the first of two equal instants,
+            # so DTSTART keeps its own zone when an RDATE repeats it.
+            ruleset.rdate(self._defloat(self._dtstart))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         for rdate in self._rdate:
             if isinstance(rdate, Period):
                 ruleset.rdate(self._defloat(rdate.start))  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]

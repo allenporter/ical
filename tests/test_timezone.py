@@ -269,6 +269,56 @@ def test_customized_timezone_observance_offsets() -> None:
         assert winter.observance.tz_offset_to.offset == datetime.timedelta(hours=1)
 
 
+def test_fixed_offset_observance_without_rrule() -> None:
+    """Resolve the offset of an observance with neither RRULE nor RDATE.
+
+    Its DTSTART is its only onset, as in the fixed offset VTIMEZONE built for
+    Asia/Tokyo.
+    """
+    tz_info = IcsTimezoneInfo.from_timezone(Timezone.from_tzif("Asia/Tokyo"))
+    value = datetime.datetime(2026, 1, 15, 12, 0, 0)
+    assert tz_info.utcoffset(value) == datetime.timedelta(hours=9)
+    assert tz_info.tzname(value) == "JST"
+
+
+def test_rdate_observance_starts_at_dtstart() -> None:
+    """Resolve offsets of observances listing their onsets with RDATE.
+
+    DTSTART is the first onset of each observance, before the RDATE ones.
+    """
+    timezone = Timezone(
+        tzid="Custom RDATE Zone",
+        standard=[
+            Observance(
+                start=datetime.datetime(2025, 10, 26, 3, 0, 0),
+                tz_offset_to=UtcOffset(datetime.timedelta(hours=1)),
+                tz_offset_from=UtcOffset(datetime.timedelta(hours=2)),
+                rdate=[datetime.datetime(2026, 10, 25, 3, 0, 0)],
+            ),
+        ],
+        daylight=[
+            Observance(
+                start=datetime.datetime(2025, 3, 30, 2, 0, 0),
+                tz_offset_to=UtcOffset(datetime.timedelta(hours=2)),
+                tz_offset_from=UtcOffset(datetime.timedelta(hours=1)),
+                rdate=[datetime.datetime(2026, 3, 29, 2, 0, 0)],
+            ),
+        ],
+    )
+
+    for value, hours in (
+        (datetime.datetime(2025, 7, 15, 12, 0, 0), 2),
+        (datetime.datetime(2025, 12, 15, 12, 0, 0), 1),
+        (datetime.datetime(2026, 7, 15, 12, 0, 0), 2),
+        (datetime.datetime(2026, 12, 15, 12, 0, 0), 1),
+    ):
+        observance = timezone.get_observance(value)
+        assert observance is not None, value
+        assert observance.observance.tz_offset_to.offset == datetime.timedelta(
+            hours=hours
+        )
+
+
 @pytest.mark.benchmark(min_rounds=1, warmup=False)
 def test_benchmark_get_observance_repeated_calls(benchmark: Any) -> None:
     """Benchmark get_observance on a "Customized Time Zone" embedded VTIMEZONE.

@@ -1098,3 +1098,82 @@ def test_timeline_tie_breaking_and_boundary_extremes() -> None:
     assert (
         list(utc_tl.overlapping(datetime.date(1, 1, 1), datetime.date(1, 1, 2))) == []
     )
+
+
+def _rdate_only_calendar(rdate: str, *extra: str) -> Calendar:
+    """Return a calendar with an RDATE only series starting 2026-09-22 noon in New York."""
+    return IcsCalendarStream.calendar_from_ics(
+        "\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "PRODID:-//example//1.2.3",
+                "VERSION:2.0",
+                "BEGIN:VEVENT",
+                "UID:series",
+                "DTSTAMP:20260901T000000Z",
+                "SUMMARY:Series",
+                "DTSTART;TZID=America/New_York:20260922T120000",
+                "DTEND;TZID=America/New_York:20260922T130000",
+                rdate,
+                "END:VEVENT",
+                *extra,
+                "END:VCALENDAR",
+            ]
+        )
+    )
+
+
+def test_rdate_only_series_range_queries() -> None:
+    """Test that range queries return DTSTART of an RDATE only series in order."""
+    tz = zoneinfo.ZoneInfo("America/New_York")
+    calendar = _rdate_only_calendar(
+        "RDATE;TZID=America/New_York:20260915T120000,20260929T120000"
+    )
+    tl = calendar.timeline_tz(tz)
+
+    assert [
+        e.start.isoformat()
+        for e in tl.overlapping(
+            datetime.datetime(2026, 9, 20, tzinfo=tz),
+            datetime.datetime(2026, 9, 26, tzinfo=tz),
+        )
+    ] == ["2026-09-22T12:00:00-04:00"]
+    assert [e.start.isoformat() for e in tl.on_date(datetime.date(2026, 9, 22))] == [
+        "2026-09-22T12:00:00-04:00"
+    ]
+    assert [
+        e.start.isoformat()
+        for e in tl.start_after(datetime.datetime(2026, 9, 14, tzinfo=tz))
+    ] == [
+        "2026-09-15T12:00:00-04:00",
+        "2026-09-22T12:00:00-04:00",
+        "2026-09-29T12:00:00-04:00",
+    ]
+    assert [
+        e.start.isoformat()
+        for e in tl.active_after(datetime.datetime(2026, 9, 22, 12, 30, tzinfo=tz))
+    ] == ["2026-09-22T12:00:00-04:00", "2026-09-29T12:00:00-04:00"]
+
+
+def test_rdate_only_series_override_of_dtstart_repeated_in_utc() -> None:
+    """Test an override of DTSTART when an RDATE repeats it in UTC.
+
+    DTSTART keeps its own timezone, so the RECURRENCE-ID of the override
+    matches it and the first instance is not returned twice.
+    """
+    calendar = _rdate_only_calendar(
+        "RDATE:20260922T160000Z,20260924T160000Z",
+        "BEGIN:VEVENT",
+        "UID:series",
+        "DTSTAMP:20260901T000000Z",
+        "SUMMARY:Override",
+        "RECURRENCE-ID;TZID=America/New_York:20260922T120000",
+        "DTSTART;TZID=America/New_York:20260922T140000",
+        "DTEND;TZID=America/New_York:20260922T150000",
+        "END:VEVENT",
+    )
+
+    assert [(e.summary, e.start.isoformat()) for e in calendar.timeline] == [
+        ("Override", "2026-09-22T14:00:00-04:00"),
+        ("Series", "2026-09-24T16:00:00+00:00"),
+    ]
