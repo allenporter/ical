@@ -17,7 +17,7 @@ types-python-dateutil==2.9.0.20261104
 wheel==0.48.0
 PyYAML==6.0.3
 types-PyYAML==6.0.12.20261103
-syrupy==6.1.1
+syrupy==7.0.0
 
 # emoji is a dev only dependency used by script/update_emoji.py
 emoji==2.16.0
