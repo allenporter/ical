@@ -33,7 +33,6 @@ from .types.data_types import DATA_TYPE, get_field_type_info
 from .types.period import Period
 from .types.text import TextEncoder
 from .exceptions import CalendarParseError, ParameterValueError
-from .compat import dtstart_until_compat
 
 if TYPE_CHECKING:
     from typing import TypeVar
@@ -58,23 +57,31 @@ def _adjust_recurrence_date(
     """Apply fixes to the recurrence rule date."""
     if isinstance(dtstart, datetime.datetime):
         if not isinstance(date_value, datetime.datetime):
-            if dtstart_until_compat.is_dtstart_until_compat_enabled():
-                # Convert UNTIL DATE to DATE-TIME matching the DTSTART type.
-                # Some providers (e.g. Google Calendar) incorrectly generate
-                # RRULE UNTIL as a DATE when DTSTART is a DATE-TIME, violating
-                # RFC 5545 section 3.3.10.
-                # Preserve the tzinfo from DTSTART: UTC for timezone-aware,
-                # None for floating DTSTART.
-                return datetime.datetime.fromordinal(date_value.toordinal()).replace(
-                    tzinfo=datetime.timezone.utc if dtstart.tzinfo is not None else None
-                )
-            raise ValueError(
-                "DTSTART was DATE-TIME but UNTIL was DATE: must be the same value type"
+            # rfc5545 section 3.3.10 requires UNTIL to share DTSTART's value
+            # type, but producers (Google Calendar among them) write a DATE
+            # UNTIL under a DATE-TIME DTSTART. Read it as the end of that day
+            # in DTSTART's zone, so an occurrence on the UNTIL day is kept, and
+            # as UTC when DTSTART is timezone-aware, as the rfc requires.
+            until = datetime.datetime.combine(
+                date_value, datetime.time(23, 59, 59), tzinfo=dtstart.tzinfo
             )
+            if dtstart.tzinfo is not None:
+                until = until.astimezone(datetime.timezone.utc)
+            return until
         if dtstart.tzinfo is None:
             if date_value.tzinfo is not None:
                 raise ValueError("DTSTART is date local but UNTIL was not")
             return date_value
+
+        if date_value.tzinfo is None:
+            # rfc5545 section 3.3.10: a timezone-aware DTSTART requires UNTIL
+            # in UTC, but producers write it floating, in the same wall-clock
+            # time as DTSTART -- including X-WR-TIMEZONE calendars, where
+            # DTSTART only becomes aware after parsing. Read it in DTSTART's
+            # zone and convert, which is also exact for a DTSTART in UTC.
+            return date_value.replace(tzinfo=dtstart.tzinfo).astimezone(
+                datetime.timezone.utc
+            )
 
         if date_value.utcoffset():
             raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
@@ -120,6 +127,16 @@ def _as_datetime(
     if not isinstance(date_value, datetime.datetime):
         new_dt = datetime.datetime.combine(date_value, dtstart.time())
         return new_dt.replace(tzinfo=dtstart.tzinfo)
+    if date_value.tzinfo is None and dtstart.tzinfo is not None:
+        # A DATE gets dtstart's tzinfo a few lines up, but a naive DATE-TIME
+        # was passed through untouched -- and the recurrence iterator cannot
+        # compare it against an aware dtstart, so the whole expansion raises
+        # rather than the date being applied. Align it the same way: read the
+        # naive value as dtstart's zone, the wall time the producer wrote it
+        # as. The mirror case (aware value, floating dtstart) already
+        # expanded correctly and is left alone, because dropping the offset
+        # here would silently rewrite it on the way back out.
+        return date_value.replace(tzinfo=dtstart.tzinfo)
     return date_value
 
 
