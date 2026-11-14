@@ -25,6 +25,7 @@ from .todo import Todo
 from .util import local_timezone, prodid_factory
 from .tzif import timezoneinfo
 from .compat import timezone_compat
+from .compat.recurrence_id_compat import normalize_recurrence_ids
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -150,6 +151,12 @@ class Calendar(ComponentModel):
         events are returned.
         """
         return calendar_timeline(self.events, tzinfo=tzinfo or local_timezone())
+
+    @model_validator(mode="after")
+    def _normalize_recurrence_ids(self) -> Calendar:
+        """Repair Exchange exception identifiers only in compatibility mode."""
+        normalize_recurrence_ids(self.events)
+        return self
 
     @model_validator(mode="before")
     @classmethod
