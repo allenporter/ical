@@ -81,3 +81,7 @@ init_forbid_extra = false
 init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
+
+[tool.coverage.run]
+core = "sysmon"
+disable_warnings = ["no-sysmon"]
