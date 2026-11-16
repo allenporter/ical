@@ -12,6 +12,7 @@ different calendaring systems.
 
 from __future__ import annotations
 
+import bisect
 import copy
 import traceback
 import datetime
@@ -56,6 +57,7 @@ _LOGGER = logging.getLogger(__name__)
 _TZ_START = datetime.datetime(2010, 1, 1, 0, 0, 0)
 
 _ZERO = datetime.timedelta(0)
+_DAY = datetime.timedelta(days=1)
 
 
 class Observance(ComponentModel):
@@ -137,12 +139,37 @@ class _ObservanceInfo:
     observance_type: _ObservanceType
     observance: Observance
 
+    @property
+    def offset_delta(self) -> datetime.timedelta:
+        """Return the wall-clock shift (tz_offset_to - tz_offset_from) at onset."""
+        return (
+            self.observance.tz_offset_to.offset - self.observance.tz_offset_from.offset
+        )
+
     def get(
         self,
         value: datetime.datetime | datetime.date,
     ) -> tuple[datetime.datetime | datetime.date, "_ObservanceInfo"]:
         """Adapt for an iterator over observances."""
         return (value, self)
+
+
+def _transition_onset(
+    item: tuple[datetime.datetime | datetime.date, _ObservanceInfo],
+) -> datetime.datetime | datetime.date:
+    return item[0]
+
+
+def _transition_utc_onset(
+    item: tuple[datetime.datetime | datetime.date, _ObservanceInfo],
+) -> datetime.datetime:
+    onset, info = item
+    dt = (
+        onset
+        if isinstance(onset, datetime.datetime)
+        else datetime.datetime.combine(onset, datetime.time.min)
+    )
+    return dt - info.observance.tz_offset_from.offset
 
 
 class Timezone(ComponentModel):
@@ -257,13 +284,77 @@ class Timezone(ComponentModel):
             )
         return iters
 
+    def _extend_cache(
+        self, upper_bound: datetime.datetime
+    ) -> list[tuple[datetime.datetime | datetime.date, _ObservanceInfo]]:
+        if self._observance_timeline is None:
+            self._observance_timeline = CachedTransitionTimeline(self._observances())
+        cached = self._observance_timeline._cached
+        cached.extend_through(lambda item: item[0] <= upper_bound)
+        return cached._cache
+
+    def _fallback_prior_observance(
+        self, cur_info: _ObservanceInfo
+    ) -> _ObservanceInfo | None:
+        """Find a defined observance matching ``cur_info.tz_offset_from`` before index 0."""
+        target = cur_info.observance.tz_offset_from.offset
+        for obs in self.standard:
+            if obs.tz_offset_to.offset == target:
+                return _ObservanceInfo(_ObservanceType.STANDARD, obs)
+        for obs in self.daylight:
+            if obs.tz_offset_to.offset == target:
+                return _ObservanceInfo(_ObservanceType.DAYLIGHT, obs)
+        return None
+
     def get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:
         """Return the specified observance for the specified date."""
         if value.tzinfo is not None:
             raise ValueError("Start time must be in local time format")
-        if self._observance_timeline is None:
-            self._observance_timeline = CachedTransitionTimeline(self._observances())
-        return self._observance_timeline.active_at(value)
+        cache_list = self._extend_cache(value)
+        n = len(cache_list)
+        index = bisect.bisect_right(cache_list, value, hi=n, key=_transition_onset)
+        # Ambiguous fall-back fold: when fold=1 falls in [next_onset + delta, next_onset),
+        # select the post-transition observance.
+        if value.fold == 1 and index < n:
+            next_onset, next_info = cache_list[index]
+            delta_next = next_info.offset_delta
+            if (
+                delta_next < _ZERO
+                and isinstance(next_onset, datetime.datetime)
+                and next_onset + delta_next <= value
+            ):
+                return next_info
+        if index == 0:
+            return self._fallback_prior_observance(cache_list[0][1]) if n else None
+        cur_onset, cur_info = cache_list[index - 1]
+        # Non-existent spring-forward gap: when fold=0 falls in [cur_onset, cur_onset + delta),
+        # select the pre-transition observance when one exists.
+        if value.fold == 0 and isinstance(cur_onset, datetime.datetime):
+            delta_cur = cur_info.offset_delta
+            if delta_cur > _ZERO and value < cur_onset + delta_cur:
+                if index >= 2:
+                    return cache_list[index - 2][1]
+                if prior := self._fallback_prior_observance(cur_info):
+                    return prior
+        return cur_info
+
+    def _get_utc_observance(
+        self, utc_naive: datetime.datetime
+    ) -> _ObservanceInfo | None:
+        """Return the observance active at ``utc_naive``."""
+        try:
+            upper = utc_naive + _DAY
+        except OverflowError:
+            upper = datetime.datetime.max
+        cache_list = self._extend_cache(upper)
+        index = bisect.bisect_right(cache_list, utc_naive, key=_transition_utc_onset)
+        if index == 0:
+            return (
+                self._fallback_prior_observance(cache_list[0][1])
+                if cache_list
+                else None
+            )
+        return cache_list[index - 1][1]
 
     @model_validator(mode="after")
     def parse_required_timezoneinfo(self) -> Self:
@@ -284,6 +375,9 @@ class IcsTimezoneInfo(datetime.tzinfo):
     used within a calendar. An rfc5545 calendar is an unambiguous definition of
     a calendar, and as a result, must encode all timezone information used in
     the calendar, hence this class.
+
+    Honors PEP 495 ``fold`` across DST fall-back folds and spring-forward gaps,
+    and implements ``fromutc`` to set ``fold=1`` on repeated local times.
     """
 
     def __init__(self, timezone: Timezone) -> None:
@@ -325,10 +419,24 @@ class IcsTimezoneInfo(datetime.tzinfo):
             or obs.observance_type != _ObservanceType.DAYLIGHT
         ):
             return _ZERO
-        return obs.observance.tz_offset_to.offset - obs.observance.tz_offset_from.offset
+        return obs.offset_delta
 
     def _get_observance(self, value: datetime.datetime) -> _ObservanceInfo | None:
         return self._timezone.get_observance(value.replace(tzinfo=None))
+
+    def fromutc(self, dt: datetime.datetime) -> datetime.datetime:
+        """Convert a datetime with UTC wall fields and ``tzinfo=self`` to local time."""
+        if not isinstance(dt, datetime.datetime):
+            raise TypeError("fromutc() requires a datetime argument")
+        if dt.tzinfo is not self:
+            raise ValueError("dt.tzinfo is not self")
+        obs = self._timezone._get_utc_observance(dt.replace(tzinfo=None))
+        if obs is None:
+            return dt.replace(fold=0)
+        offset_to = obs.observance.tz_offset_to.offset
+        local_dt = dt + offset_to
+        fold = 1 if self.utcoffset(local_dt.replace(fold=0)) != offset_to else 0
+        return local_dt.replace(fold=fold)
 
     def __str__(self) -> str:
         """A string representation of the timezone object."""
