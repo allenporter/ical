@@ -30,10 +30,13 @@ def test_invalid_zoneinfo() -> None:
             "America/Los_Angeles",
             [
                 datetime.datetime(2021, 3, 14, 1, 59, 0),
+                datetime.datetime(2021, 3, 14, 2, 0, 0),
                 datetime.datetime(2021, 11, 7, 2, 0, 0),
                 datetime.datetime(2022, 3, 13, 1, 59, 0),
+                datetime.datetime(2022, 3, 13, 2, 0, 0),
                 datetime.datetime(2022, 11, 6, 2, 0, 0),
                 datetime.datetime(2023, 3, 12, 1, 59, 0),
+                datetime.datetime(2023, 3, 12, 2, 0, 0),
                 datetime.datetime(2023, 11, 5, 2, 0, 0),
             ],
             "PST",
@@ -42,11 +45,14 @@ def test_invalid_zoneinfo() -> None:
         (
             "America/Los_Angeles",
             [
-                datetime.datetime(2021, 3, 14, 2, 0, 0),
+                datetime.datetime(2021, 3, 14, 2, 0, 0, fold=1),
+                datetime.datetime(2021, 3, 14, 3, 0, 0),
                 datetime.datetime(2021, 11, 7, 1, 59, 0),
-                datetime.datetime(2022, 3, 13, 2, 0, 0),
+                datetime.datetime(2022, 3, 13, 2, 0, 0, fold=1),
+                datetime.datetime(2022, 3, 13, 3, 0, 0),
                 datetime.datetime(2022, 11, 6, 1, 59, 0),
-                datetime.datetime(2023, 3, 12, 2, 0, 0),
+                datetime.datetime(2023, 3, 12, 2, 0, 0, fold=1),
+                datetime.datetime(2023, 3, 12, 3, 0, 0),
                 datetime.datetime(2023, 11, 5, 1, 59, 0),
             ],
             "PDT",
@@ -56,12 +62,16 @@ def test_invalid_zoneinfo() -> None:
             "Europe/Warsaw",
             [
                 datetime.datetime(2021, 3, 28, 1, 59, 0),
+                datetime.datetime(2021, 3, 28, 2, 0, 0),
                 datetime.datetime(2021, 10, 31, 3, 0, 0),
                 datetime.datetime(2022, 3, 27, 1, 59, 0),
+                datetime.datetime(2022, 3, 27, 2, 0, 0),
                 datetime.datetime(2022, 10, 30, 3, 0, 0),
                 datetime.datetime(2023, 3, 26, 1, 59, 0),
+                datetime.datetime(2023, 3, 26, 2, 0, 0),
                 datetime.datetime(2023, 10, 29, 3, 0, 0),
                 datetime.datetime(2024, 3, 31, 1, 59, 0),
+                datetime.datetime(2024, 3, 31, 2, 0, 0),
                 datetime.datetime(2024, 10, 27, 3, 0, 0),
             ],
             "CET",
@@ -70,13 +80,17 @@ def test_invalid_zoneinfo() -> None:
         (
             "Europe/Warsaw",
             [
-                datetime.datetime(2021, 3, 28, 2, 0, 0),
+                datetime.datetime(2021, 3, 28, 2, 0, 0, fold=1),
+                datetime.datetime(2021, 3, 28, 3, 0, 0),
                 datetime.datetime(2021, 10, 31, 2, 59, 0),
-                datetime.datetime(2022, 3, 27, 2, 0, 0),
+                datetime.datetime(2022, 3, 27, 2, 0, 0, fold=1),
+                datetime.datetime(2022, 3, 27, 3, 0, 0),
                 datetime.datetime(2022, 10, 30, 2, 59, 0),
-                datetime.datetime(2023, 3, 26, 2, 0, 0),
+                datetime.datetime(2023, 3, 26, 2, 0, 0, fold=1),
+                datetime.datetime(2023, 3, 26, 3, 0, 0),
                 datetime.datetime(2023, 10, 29, 2, 59, 0),
-                datetime.datetime(2024, 3, 31, 2, 0, 0),
+                datetime.datetime(2024, 3, 31, 2, 0, 0, fold=1),
+                datetime.datetime(2024, 3, 31, 3, 0, 0),
                 datetime.datetime(2024, 10, 27, 2, 59, 0),
             ],
             "CEST",
@@ -267,3 +281,76 @@ def test_benchmark_dst_repeated_calls(benchmark: Any) -> None:
 
     result = benchmark(call_dst)
     assert result == len(dts)
+
+
+@pytest.mark.parametrize(
+    "key,spring_utc,fall_utc",
+    [
+        (
+            "America/Los_Angeles",
+            datetime.datetime(2023, 3, 12, 9, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2023, 11, 5, 8, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Europe/Warsaw",
+            datetime.datetime(2023, 3, 26, 0, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2023, 10, 29, 0, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Australia/Sydney",
+            datetime.datetime(2024, 10, 5, 15, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2024, 4, 6, 15, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Australia/Lord_Howe",
+            datetime.datetime(2024, 10, 5, 14, 30, tzinfo=datetime.UTC),
+            datetime.datetime(2024, 4, 6, 14, 0, tzinfo=datetime.UTC),
+        ),
+        (
+            "Asia/Tokyo",
+            datetime.datetime(2023, 3, 12, 0, 0, tzinfo=datetime.UTC),
+            datetime.datetime(2023, 12, 31, 14, 0, tzinfo=datetime.UTC),
+        ),
+    ],
+)
+def test_tzinfo_pep495_parity_with_zoneinfo(
+    key: str,
+    spring_utc: datetime.datetime,
+    fall_utc: datetime.datetime,
+) -> None:
+    """Verify TzInfo matches ZoneInfo for fold=0/fold=1 and fromutc() across transitions."""
+    tz = timezoneinfo.read_tzinfo(key)
+    zi = zoneinfo.ZoneInfo(key)
+
+    # 1. Sweep UTC instants in 15-minute steps across both transitions (tests fromutc + round-trip)
+    for base_utc in (spring_utc, fall_utc):
+        for step in range(16):
+            u = base_utc + datetime.timedelta(minutes=15 * step)
+            local_tz = u.astimezone(tz)
+            local_zi = u.astimezone(zi)
+            assert local_tz.replace(tzinfo=None) == local_zi.replace(tzinfo=None)
+            assert local_tz.fold == local_zi.fold
+            assert local_tz.utcoffset() == local_zi.utcoffset()
+            assert local_tz.dst() == local_zi.dst()
+            assert local_tz.astimezone(datetime.UTC) == u
+
+            # Also verify both fold=0 and fold=1 on local wall times around the transition
+            for fold in (0, 1):
+                wall_naive = (
+                    base_utc.replace(tzinfo=None)
+                    + (local_zi.utcoffset() or datetime.timedelta(0))
+                ) + datetime.timedelta(minutes=15 * step - 60)
+                d_tz = wall_naive.replace(tzinfo=tz, fold=fold)
+                d_zi = wall_naive.replace(tzinfo=zi, fold=fold)
+                assert d_tz.utcoffset() == d_zi.utcoffset()
+                assert d_tz.dst() == d_zi.dst()
+
+
+def test_tzinfo_fromutc_validation() -> None:
+    """Verify TzInfo.fromutc validates argument type and tzinfo identity."""
+    tz = timezoneinfo.read_tzinfo("America/Los_Angeles")
+    other = timezoneinfo.read_tzinfo("America/New_York")
+    with pytest.raises(TypeError, match="datetime argument"):
+        tz.fromutc("2023-11-05")  # ty: ignore[invalid-argument-type]
+    with pytest.raises(ValueError, match="dt.tzinfo is not self"):
+        tz.fromutc(datetime.datetime(2023, 11, 5, 9, 0, tzinfo=other))
