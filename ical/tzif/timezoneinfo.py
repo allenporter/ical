@@ -100,12 +100,10 @@ def _read_cache(key: str) -> TimezoneInfo:
     try:
         with resources.files(package).joinpath(resource).open("rb") as tzdata_file:
             return read_tzif(tzdata_file.read())
-    except ModuleNotFoundError:
-        # Unexpected given we previously read the list of timezones
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Package or resource not in tzdata; fall back to local disk
         pass
     except ValueError as err:
-        raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
-    except FileNotFoundError as err:
         raise TimezoneInfoError(f"Unable to load tzdata module: {key}") from err
 
     # Fallback to zoneinfo file on local disk
