@@ -1,5 +1,6 @@
 """Tests for timeline related calendar events."""
 
+import base64
 from collections.abc import Awaitable, Callable, Generator
 import itertools
 import json
@@ -39,8 +40,36 @@ ICS_CONTENT = textwrap.dedent(
 )
 
 
+AUTH_USERNAME = "caluser"
+AUTH_PASSWORD = "calpassword"
+EXPECTED_AUTH_HEADER = f"Basic {base64.b64encode(f'{AUTH_USERNAME}:{AUTH_PASSWORD}'.encode()).decode('ascii')}"
+EXPECTED_USERNAME_ONLY_HEADER = (
+    f"Basic {base64.b64encode(f'{AUTH_USERNAME}:'.encode()).decode('ascii')}"
+)
+
+
 async def _ics_handler(request: web.Request) -> web.Response:
     """Fake server handler that returns a fixed ics payload."""
+    return web.Response(text=ICS_CONTENT, content_type="text/calendar")
+
+
+async def _auth_ics_handler(request: web.Request) -> web.Response:
+    """Fake server handler requiring HTTP Basic Auth to return an ics payload."""
+    if request.headers.get("Authorization") != EXPECTED_AUTH_HEADER:
+        return web.Response(
+            status=401,
+            headers={"WWW-Authenticate": 'Basic realm="Calendar"'},
+        )
+    return web.Response(text=ICS_CONTENT, content_type="text/calendar")
+
+
+async def _auth_username_only_handler(request: web.Request) -> web.Response:
+    """Fake server handler requiring HTTP Basic Auth with empty password."""
+    if request.headers.get("Authorization") != EXPECTED_USERNAME_ONLY_HEADER:
+        return web.Response(
+            status=401,
+            headers={"WWW-Authenticate": 'Basic realm="Calendar"'},
+        )
     return web.Response(text=ICS_CONTENT, content_type="text/calendar")
 
 
@@ -51,6 +80,8 @@ async def mock_ics_client(
     """Fixture that fakes a remote server serving an ics file (no real network)."""
     app = web.Application()
     app.router.add_get("/calendar.ics", _ics_handler)
+    app.router.add_get("/auth/calendar.ics", _auth_ics_handler)
+    app.router.add_get("/auth/token-only.ics", _auth_username_only_handler)
     return await aiohttp_client(app)
 
 
@@ -281,3 +312,118 @@ async def test_from_url_missing_optional_dependency(
 
     with pytest.raises(ImportError, match=r"ical\[async\]"):
         await CalendarStream.from_url("https://example.com/calendar.ics")
+
+
+async def test_from_url_with_basic_auth(ics_client: TestClient) -> None:
+    """Test fetching an authenticated ics feed with a newly created session."""
+    url = str(ics_client.make_url("/auth/calendar.ics"))
+    stream = await CalendarStream.from_url(
+        url,
+        username=AUTH_USERNAME,
+        password=AUTH_PASSWORD,
+    )
+    assert len(stream.calendars) == 1
+    assert [event.summary for event in stream.calendars[0].events] == ["Example Event"]
+
+
+async def test_from_url_with_basic_auth_shared_session(
+    ics_client: TestClient,
+) -> None:
+    """Test fetching an authenticated ics feed reusing a shared session."""
+    stream = await CalendarStream.from_url(
+        "/auth/calendar.ics",
+        session=cast(aiohttp.ClientSession, ics_client),
+        username=AUTH_USERNAME,
+        password=AUTH_PASSWORD,
+    )
+    assert len(stream.calendars) == 1
+    assert stream.calendars[0].events[0].summary == "Example Event"
+
+
+async def test_calendar_from_url_with_basic_auth(ics_client: TestClient) -> None:
+    """Test `calendar_from_url` forwarding HTTP Basic Authentication credentials."""
+    calendar = await IcsCalendarStream.calendar_from_url(
+        "/auth/calendar.ics",
+        session=cast(aiohttp.ClientSession, ics_client),
+        username=AUTH_USERNAME,
+        password=AUTH_PASSWORD,
+    )
+    assert calendar.events[0].summary == "Example Event"
+
+
+async def test_from_url_with_username_only(ics_client: TestClient) -> None:
+    """Test HTTP Basic Authentication when only username is provided."""
+    stream = await CalendarStream.from_url(
+        "/auth/token-only.ics",
+        session=cast(aiohttp.ClientSession, ics_client),
+        username=AUTH_USERNAME,
+    )
+    assert len(stream.calendars) == 1
+    assert stream.calendars[0].events[0].summary == "Example Event"
+
+
+@pytest.mark.parametrize(
+    ("username", "password"),
+    [
+        (None, None),
+        (AUTH_USERNAME, "wrong-password"),
+        ("wrong-user", AUTH_PASSWORD),
+    ],
+    ids=["missing-credentials", "wrong-password", "wrong-username"],
+)
+async def test_from_url_unauthorized(
+    ics_client: TestClient,
+    username: str | None,
+    password: str | None,
+) -> None:
+    """Test missing or invalid credentials raise CalendarFetchError on HTTP 401."""
+    with pytest.raises(CalendarFetchError, match="Failed to fetch calendar"):
+        await CalendarStream.from_url(
+            "/auth/calendar.ics",
+            session=cast(aiohttp.ClientSession, ics_client),
+            username=username,
+            password=password,
+        )
+
+
+async def test_from_url_password_without_username() -> None:
+    """Test passing password without username raises ValueError."""
+    with pytest.raises(ValueError, match="username must be provided"):
+        await CalendarStream.from_url(
+            "https://example.com/calendar.ics",
+            password=AUTH_PASSWORD,
+        )
+
+
+async def test_from_url_colon_in_username() -> None:
+    """Test username containing a colon raises ValueError."""
+    with pytest.raises(ValueError, match="':'|\":\""):
+        await CalendarStream.from_url(
+            "https://example.com/calendar.ics",
+            username="bad:user",
+            password=AUTH_PASSWORD,
+        )
+
+
+async def test_from_url_basic_auth_fallback_encoding(
+    ics_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the base64 fallback when `aiohttp.encode_basic_auth` is unavailable."""
+    monkeypatch.delattr(aiohttp, "encode_basic_auth", raising=False)
+
+    stream = await CalendarStream.from_url(
+        "/auth/calendar.ics",
+        session=cast(aiohttp.ClientSession, ics_client),
+        username=AUTH_USERNAME,
+        password=AUTH_PASSWORD,
+    )
+    assert stream.calendars[0].events[0].summary == "Example Event"
+
+    with pytest.raises(ValueError, match='":"'):
+        await CalendarStream.from_url(
+            "/auth/calendar.ics",
+            session=cast(aiohttp.ClientSession, ics_client),
+            username="bad:user",
+            password=AUTH_PASSWORD,
+        )
