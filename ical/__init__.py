@@ -6,6 +6,7 @@ __all__ = [
     "alarm",
     "calendar",
     "calendar_stream",
+    "diff",
     "event",
     "freebusy",
     "journal",
