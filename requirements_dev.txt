@@ -15,7 +15,7 @@ pydantic==2.14.4
 pytest-benchmark==5.3.1
 types-python-dateutil==2.9.0.20261116
 wheel==0.48.0
-PyYAML==6.0.3
+PyYAML==6.0.4
 types-PyYAML==6.0.12.20261113
 syrupy==7.0.2
 
