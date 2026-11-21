@@ -1,9 +1,9 @@
 """Clean-room Base Store Class and Segment/Override Helpers for ReferenceStore.
 
-Implements shared metadata lifecycle (R-L5-001..R-L5-003), VTIMEZONE registration
-(R-L5-005, R-L5-006), candidate-based series lookup (R-L3-006), the legacy shared-UID
-write guard (R-L3-009), and DST-safe duration/truncation/shift helpers (R-L3-003,
-R-L4-004, R-L4-005).
+Implements shared metadata lifecycle (R-L5-001, R-L5-002, R-L5-003, R-L5-004),
+VTIMEZONE registration (R-L5-005, R-L5-006), candidate-based series lookup (R-L3-002,
+R-L3-006), the legacy shared-UID write guard (R-L3-009), and DST-safe duration/truncation/shift
+delegation (R-L3-003, R-L3-007, R-L4-004, R-L4-005).
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from typing import Any
 
 from .oracle_canonical import (
     DEFAULT_DTSTAMP,
-    align_rrule_until_on_dtstart_change,
     canonicalize_component,
     is_parent_relation,
+    max_utc_timestamp,
     normalize_range,
     validate_component_state,
     validate_related_to,
@@ -25,22 +25,59 @@ from .oracle_policy import (
     SeriesRescheduleExceptionMode,
     StoreError,
 )
+from .oracle_schedule import (
+    align_rrule_until_on_dtstart_change,
+    compute_component_duration,
+    filter_valid_exdates,
+    shift_comp_end_or_due,
+    shift_override_in_place,
+    truncate_segment_terms,
+)
 from .oracle_temporal import (
     ParsedTemporal,
-    add_temporal_duration,
     align_rid_to_master,
-    compute_temporal_duration,
-    compute_until_string,
     compute_wall_clock_delta,
     expand_component_candidates,
     format_canonical_rid,
-    format_stored_rid,
-    format_temporal_like,
     parse_temporal,
-    replace_rrule_until,
-    shift_wall_clock,
     temporal_class,
 )
+
+
+def _check_override_pair(
+    ov: dict[str, Any], main: dict[str, Any], *, check_candidate: bool
+) -> None:
+    """Validate I-K-003, I-K-004, I-K-005 (optional), and I-K-007 between ov and main."""
+    if not (main.get("rrule") or main.get("rdate")):
+        raise StoreError(
+            f"Override on uid={ov['uid']!r} requires a recurring main (I-K-003)"
+        )
+    if ov.get("type") != main.get("type"):
+        raise StoreError(
+            f"Override type mismatches main on uid={ov['uid']!r} (I-K-003)"
+        )
+    pt_main = parse_temporal(main["dtstart"], "dtstart")
+    pt_rid = parse_temporal(ov["recurrence_id"], "recurrence_id")
+    pt_ov_s = parse_temporal(ov["dtstart"], "dtstart")
+    if temporal_class(pt_rid) != temporal_class(pt_main):
+        raise StoreError(
+            f"Override RECURRENCE-ID {ov['recurrence_id']!r} form mismatches main DTSTART (R-L1-007)"
+        )
+    if temporal_class(pt_ov_s) != temporal_class(pt_main):
+        raise StoreError(
+            f"Override DTSTART {ov['dtstart']!r} form mismatches main DTSTART (I-K-007)"
+        )
+    if check_candidate:
+        canon_rid = format_canonical_rid(
+            align_rid_to_master(ov["recurrence_id"], pt_main)
+        )
+        cands = {
+            rid for rid, _, _ in expand_component_candidates(main, include_exdates=True)
+        }
+        if canon_rid not in cands:
+            raise StoreError(
+                f"Override RECURRENCE-ID {ov['recurrence_id']!r} is not a candidate of main (I-K-005)"
+            )
 
 
 class OracleBase:
@@ -56,8 +93,8 @@ class OracleBase:
         for raw_comp in initial_components or ():
             if raw_comp.get("type") == "VTIMEZONE":
                 tz_id = raw_comp.get("tz_id")
-                if not tz_id:
-                    raise StoreError("VTIMEZONE missing tz_id")
+                if not isinstance(tz_id, str) or not tz_id:
+                    raise StoreError("VTIMEZONE missing non-empty string tz_id")
                 if not any(
                     c.get("type") == "VTIMEZONE" and c.get("tz_id") == tz_id
                     for c in self.components
@@ -65,17 +102,23 @@ class OracleBase:
                     self.components.append({"type": "VTIMEZONE", "tz_id": tz_id})
             else:
                 canon = canonicalize_component(raw_comp, is_add=False)
-                validate_component_state(canon)
-                self._validate_uid_override_alignment(canon)
+                validate_component_state(canon, allow_legacy=True)
+                self._validate_uid_override_alignment(canon, require_main=False)
                 self._ensure_unique_identity(canon["uid"], canon["recurrence_id"])
                 self.components.append(canon)
-                # Loaded state must satisfy I-K-006 (RFC 5545 Section 3.2.19) too.
                 self._register_comp_timezones(canon)
 
     _normalize_range = staticmethod(normalize_range)
     _is_parent_relation = staticmethod(is_parent_relation)
     _validate_related_to = staticmethod(validate_related_to)
     _validate_component_state = staticmethod(validate_component_state)
+    _align_rrule_until_on_dtstart_change = staticmethod(
+        align_rrule_until_on_dtstart_change
+    )
+    _filter_valid_exdates = staticmethod(filter_valid_exdates)
+    _compute_duration = staticmethod(compute_component_duration)
+    _shift_comp_end_or_due = staticmethod(shift_comp_end_or_due)
+    _shift_override_in_place = staticmethod(shift_override_in_place)
 
     def _canonicalize_component(
         self,
@@ -85,15 +128,21 @@ class OracleBase:
         default_type: str | None = None,
         now: str = DEFAULT_DTSTAMP,
     ) -> dict[str, Any]:
-        """Delegate canonical dictionary normalization to oracle_canonical."""
         return canonicalize_component(
             comp, is_add=is_add, default_type=default_type, now=now
         )
 
-    def _validate_uid_override_alignment(self, comp: dict[str, Any]) -> None:
-        """Ensure override RECURRENCE-ID value type and floating-ness match main DTSTART (R-L1-007)."""
+    def _validate_uid_override_alignment(
+        self, comp: dict[str, Any], *, require_main: bool = False
+    ) -> None:
+        """Ensure override RECURRENCE-ID and DTSTART align with main DTSTART (R-L1-007, I-K-003..007)."""
         uid = comp["uid"]
-        if comp.get("recurrence_id") is not None:
+        is_ov = (
+            comp.get("recurrence_id") is not None
+            and not comp.get("rrule")
+            and not comp.get("rdate")
+        )
+        if is_ov:
             main = next(
                 (
                     c
@@ -104,30 +153,25 @@ class OracleBase:
                 ),
                 None,
             )
-            if main is None or not main.get("dtstart"):
+            if main is None:
+                if require_main:
+                    raise StoreError(
+                        f"Override on uid={uid!r} has no main component (I-K-003)"
+                    )
                 return
-            pairs = [(comp["recurrence_id"], main["dtstart"])]
-        elif comp.get("dtstart"):
-            pairs = [
-                (c["recurrence_id"], comp["dtstart"])
-                for c in self.components
-                if c.get("type") != "VTIMEZONE"
-                and c.get("uid") == uid
-                and c.get("recurrence_id") is not None
-                and not c.get("rrule")
-                and not c.get("rdate")
-            ]
-        else:
+            _check_override_pair(comp, main, check_candidate=require_main)
             return
-        for rid_raw, main_dt_raw in pairs:
-            pt_rid = parse_temporal(rid_raw, "recurrence_id")
-            pt_main = parse_temporal(main_dt_raw, "dtstart")
-            if pt_rid.is_date != pt_main.is_date or (pt_rid.kind == "FLOATING") != (
-                pt_main.kind == "FLOATING"
-            ):
-                raise StoreError(
-                    f"Override RECURRENCE-ID {rid_raw!r} form mismatches main DTSTART {main_dt_raw!r} (R-L1-007)"
-                )
+        if comp.get("recurrence_id") is None and comp.get("dtstart"):
+            for ov in self.components:
+                if (
+                    ov is not comp
+                    and ov.get("type") != "VTIMEZONE"
+                    and ov.get("uid") == uid
+                    and ov.get("recurrence_id") is not None
+                    and not ov.get("rrule")
+                    and not ov.get("rdate")
+                ):
+                    _check_override_pair(ov, comp, check_candidate=False)
 
     def _ensure_unique_identity(
         self,
@@ -183,16 +227,11 @@ class OracleBase:
             if not raw_dt:
                 continue
             pt = parse_temporal(raw_dt, "temporal")
-            if pt.kind == "OFFSET":
-                raise StoreError(
-                    f"Fixed-offset datetime without IANA TZID cannot be registered as VTIMEZONE: {raw_dt!r}"
-                )
             if pt.kind == "TZID" and pt.tzid:
-                has_vtz = any(
+                if not any(
                     c.get("type") == "VTIMEZONE" and c.get("tz_id") == pt.tzid
                     for c in self.components
-                )
-                if not has_vtz:
+                ):
                     vtz_idx = sum(
                         1 for c in self.components if c.get("type") == "VTIMEZONE"
                     )
@@ -249,7 +288,7 @@ class OracleBase:
         norm_range: str,
         master_comp: dict[str, Any] | None,
     ) -> bool:
-        """Return True if a THIS_AND_FUTURE operation targets a recurring master's first occurrence."""
+        """Return True if a THIS_AND_FUTURE operation targets the earliest candidate occurrence."""
         if (
             recurrence_id is None
             or norm_range != "THIS_AND_FUTURE"
@@ -259,30 +298,13 @@ class OracleBase:
         ):
             return False
         pt_m = parse_temporal(master_comp["dtstart"], "dtstart")
-        return format_canonical_rid(
-            align_rid_to_master(recurrence_id, pt_m)
-        ) == format_canonical_rid(pt_m)
-
-    @staticmethod
-    def _filter_valid_exdates(comp: dict[str, Any]) -> list[str]:
-        """Filter a component's exdate list against its unexcluded candidate set (R-L1-004, R-L4-004)."""
-        if not (comp.get("rrule") or comp.get("rdate")) or not comp.get("exdate"):
-            return []
-        pt_start = parse_temporal(comp["dtstart"], "dtstart")
-        valid_rids = {
-            rid for rid, _, _ in expand_component_candidates(comp, include_exdates=True)
-        }
-        kept: list[str] = []
-        for ex_raw in comp["exdate"]:
-            pt_ex = parse_temporal(ex_raw, "exdate")
-            if temporal_class(pt_ex) != temporal_class(pt_start):
-                continue
-            if (
-                format_canonical_rid(align_rid_to_master(ex_raw, pt_start))
-                in valid_rids
-            ):
-                kept.append(ex_raw)
-        return kept
+        cands = expand_component_candidates(master_comp, include_exdates=True)
+        if not cands:
+            return False
+        return (
+            format_canonical_rid(align_rid_to_master(recurrence_id, pt_m))
+            == cands[0][0]
+        )
 
     def _truncate_segment_before(
         self,
@@ -291,67 +313,29 @@ class OracleBase:
         pt_seg_start: ParsedTemporal,
         split_cmp: datetime.datetime,
         eff_now: str,
+        *,
+        has_surviving_overrides: bool = False,
     ) -> None:
-        """Truncate target_seg strictly before pt_split and update its revision metadata."""
-        if target_seg.get("rrule"):
-            until_str = compute_until_string(pt_split, pt_seg_start)
-            target_seg["rrule"] = replace_rrule_until(target_seg["rrule"], until_str)
-        if target_seg.get("rdate"):
-            target_seg["rdate"] = [
-                rd
-                for rd in target_seg["rdate"]
-                if align_rid_to_master(rd, pt_seg_start).dt_utc_or_naive < split_cmp
-            ]
-        target_seg["exdate"] = self._filter_valid_exdates(target_seg)
+        """Truncate target_seg strictly before pt_split and bump revision metadata."""
+        truncate_segment_terms(
+            target_seg,
+            pt_split,
+            pt_seg_start,
+            split_cmp,
+            has_surviving_overrides=has_surviving_overrides,
+        )
         self._bump_revision_metadata(target_seg, eff_now)
-
-    _align_rrule_until_on_dtstart_change = staticmethod(
-        align_rrule_until_on_dtstart_change
-    )
-
-    @staticmethod
-    def _compute_duration(comp: dict[str, Any]) -> datetime.timedelta | None:
-        """Compute physical elapsed duration of comp across DST transitions."""
-        dtstart_raw = comp.get("dtstart")
-        end_raw = comp.get("dtend") or comp.get("due")
-        if not dtstart_raw or not end_raw:
-            return None
-        pt_s = parse_temporal(dtstart_raw, "dtstart")
-        pt_e = parse_temporal(end_raw, "dtend/due")
-        if pt_s.is_date != pt_e.is_date:
-            return None
-        return compute_temporal_duration(pt_s, pt_e)
-
-    @staticmethod
-    def _shift_comp_end_or_due(
-        comp: dict[str, Any],
-        patch: dict[str, Any],
-        orig_dur: datetime.timedelta | None,
-    ) -> None:
-        """Shift dtend/due on comp using DST-safe physical duration when dtstart changes."""
-        if (
-            "dtstart" not in patch
-            or "dtend" in patch
-            or "due" in patch
-            or orig_dur is None
-            or not comp.get("dtstart")
-        ):
-            return
-        end_key = "due" if comp.get("type") == "VTODO" else "dtend"
-        if comp.get(end_key) is None:
-            return
-        pt_ns = parse_temporal(comp["dtstart"], "dtstart")
-        min_days = 0 if end_key == "due" else 1
-        new_end_v = add_temporal_duration(pt_ns.value, orig_dur, min_days=min_days)
-        comp[end_key] = format_temporal_like(new_end_v, pt_ns)
 
     @staticmethod
     def _bump_revision_metadata(comp: dict[str, Any], eff_now: str) -> None:
-        """Increment sequence and update dtstamp and last_modified (preserving created)."""
+        """Increment sequence and monotonically update dtstamp and last_modified (I-T-005, I-T-006)."""
         old_seq = comp.get("sequence") or 0
         comp["sequence"] = old_seq + 1 if old_seq else 1
-        comp["dtstamp"] = eff_now
-        comp["last_modified"] = eff_now
+        mono_now = max_utc_timestamp(
+            eff_now, comp.get("dtstamp"), comp.get("last_modified")
+        )
+        comp["dtstamp"] = mono_now
+        comp["last_modified"] = mono_now
 
     @classmethod
     def _apply_in_place_edit_metadata(cls, comp: dict[str, Any], eff_now: str) -> None:
@@ -390,8 +374,6 @@ class OracleBase:
         true_recurring = [
             s for s in recurring_segments if s.get("rrule") or s.get("rdate")
         ]
-        if not true_recurring:
-            return None
         ordered = sorted(
             true_recurring,
             key=lambda s: parse_temporal(s["dtstart"], "dtstart").dt_utc_or_naive,
@@ -434,40 +416,6 @@ class OracleBase:
             if format_canonical_rid(ov_pt) == canon_target:
                 return ov
         return None
-
-    @staticmethod
-    def _shift_override_in_place(
-        ov: dict[str, Any],
-        wall_delta: datetime.timedelta,
-        pt_old_ref: ParsedTemporal,
-        pt_new_ref: ParsedTemporal,
-    ) -> None:
-        """Shift an override component's recurrence_id, dtstart, and dtend/due in wall-clock time."""
-        if not wall_delta:
-            return
-        pt_rid = align_rid_to_master(ov["recurrence_id"], pt_old_ref)
-        shifted_rid_str = format_temporal_like(
-            shift_wall_clock(pt_rid.value, wall_delta), pt_new_ref
-        )
-        ov["recurrence_id"] = format_stored_rid(
-            parse_temporal(shifted_rid_str, "recurrence_id")
-        )
-        if ov.get("dtstart"):
-            orig_dur = OracleBase._compute_duration(ov)
-            pt_ov_s = parse_temporal(ov["dtstart"], "dtstart")
-            ov["dtstart"] = format_temporal_like(
-                shift_wall_clock(pt_ov_s.value, wall_delta), pt_ov_s
-            )
-            pt_ov_ns = parse_temporal(ov["dtstart"], "dtstart")
-            for end_k in ("dtend", "due"):
-                if ov.get(end_k) is not None and orig_dur is not None:
-                    min_days = 0 if end_k == "due" else 1
-                    ov[end_k] = format_temporal_like(
-                        add_temporal_duration(
-                            pt_ov_ns.value, orig_dur, min_days=min_days
-                        ),
-                        pt_ov_ns,
-                    )
 
     def _should_shift_series_exceptions(
         self,

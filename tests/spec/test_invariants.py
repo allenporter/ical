@@ -39,6 +39,16 @@ INVARIANT_MODULES = [
     "invariant_harness.py",
     "operation_schema.py",
     "oracle_duration.py",
+    "oracle_tz.py",
+    "oracle_temporal.py",
+    "oracle_canonical.py",
+    "oracle_schedule.py",
+    "oracle_base.py",
+    "oracle_split.py",
+    "oracle_edit.py",
+    "oracle_policy.py",
+    "reference_oracle.py",
+    "scenario_runner.py",
 ]
 
 

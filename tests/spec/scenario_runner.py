@@ -10,11 +10,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from .oracle_canonical import DEFAULT_DTSTAMP
 from .oracle_policy import PolicyConfig, StoreError, policy_from_modes
 from .oracle_temporal import (
+    ParsedTemporal,
+    align_rid_to_master,
     format_canonical_rid,
     format_temporal_like,
     parse_temporal,
+    temporal_class,
 )
 from .reference_oracle import ReferenceStore
 
@@ -26,16 +30,21 @@ _TEMPORAL_SCALAR_KEYS = frozenset(
 def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) -> None:
     """Dispatch a single or composite declarative scenario operation to ReferenceStore."""
     op_type = op_dict.get("op")
+    top_now = op_dict.get("now")
     if op_type == "add":
-        store.add(op_dict["item"], default_type=op_dict["item"].get("type"))
+        store.add(
+            op_dict["item"],
+            default_type=op_dict["item"].get("type"),
+            now=top_now or DEFAULT_DTSTAMP,
+        )
     elif op_type == "add_todo":
-        store.add(op_dict["item"], default_type="VTODO")
+        store.add(op_dict["item"], default_type="VTODO", now=top_now or DEFAULT_DTSTAMP)
     elif op_type == "delete":
         store.delete(
             uid=op_dict["uid"],
             recurrence_id=op_dict.get("recurrence_id"),
             recurrence_range=op_dict.get("range") or "NONE",
-            now=op_dict.get("now"),
+            now=top_now,
         )
     elif op_type == "edit":
         store.edit(
@@ -43,7 +52,7 @@ def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) 
             patch=op_dict.get("patch", {}),
             recurrence_id=op_dict.get("recurrence_id"),
             recurrence_range=op_dict.get("range") or "NONE",
-            now=op_dict.get("now"),
+            now=top_now,
             new_uid=op_dict.get("new_uid"),
         )
     elif op_type == "expand":
@@ -54,23 +63,34 @@ def dispatch_scenario_operation(store: ReferenceStore, op_dict: dict[str, Any]) 
             uid=del_op["uid"],
             recurrence_id=del_op.get("recurrence_id"),
             recurrence_range=del_op.get("range") or "NONE",
+            now=del_op.get("now") or top_now,
         )
         store.edit(
             uid=edit_op["uid"],
             patch=edit_op.get("patch", {}),
             recurrence_id=edit_op.get("recurrence_id"),
             recurrence_range=edit_op.get("range") or "NONE",
+            now=edit_op.get("now") or top_now,
+            new_uid=edit_op.get("new_uid"),
         )
     elif op_type == "edit_twice":
-        store.edit(uid=op_dict["uid"], patch=op_dict["first_patch"])
-        store.edit(uid=op_dict["uid"], patch=op_dict["second_patch"])
+        store.edit(uid=op_dict["uid"], patch=op_dict["first_patch"], now=top_now)
+        store.edit(uid=op_dict["uid"], patch=op_dict["second_patch"], now=top_now)
     elif op_type == "edit_then_partial_delete":
         edit_op, del_op = op_dict["edit"], op_dict["delete"]
-        store.edit(uid=edit_op["uid"], patch=edit_op.get("patch", {}))
+        store.edit(
+            uid=edit_op["uid"],
+            patch=edit_op.get("patch", {}),
+            recurrence_id=edit_op.get("recurrence_id"),
+            recurrence_range=edit_op.get("range") or "NONE",
+            now=edit_op.get("now") or top_now,
+            new_uid=edit_op.get("new_uid"),
+        )
         store.delete(
             uid=del_op["uid"],
             recurrence_id=del_op.get("recurrence_id"),
             recurrence_range=del_op.get("range") or "NONE",
+            now=del_op.get("now") or top_now,
         )
     else:
         raise StoreError(f"Unsupported operation type: {op_type!r}")
@@ -122,15 +142,28 @@ def _project_dict_like_expected(
     return projected
 
 
-def _comp_identity_key(comp: dict[str, Any]) -> tuple[str | None, str | None]:
-    """Return `(uid, canonical_recurrence_id)` for bijection matching."""
+def _main_starts_by_uid(items: list[dict[str, Any]]) -> dict[str, ParsedTemporal]:
+    mains: dict[str, ParsedTemporal] = {}
+    for comp in items:
+        uid = comp.get("uid")
+        if uid and comp.get("recurrence_id") is None and comp.get("dtstart"):
+            mains[uid] = parse_temporal(comp["dtstart"], "dtstart")
+    return mains
+
+
+def _comp_identity_key(
+    comp: dict[str, Any], mains: dict[str, ParsedTemporal]
+) -> tuple[str | None, str | None]:
+    """Return `(uid, canonical_recurrence_id)` aligned to main DTSTART for bijection matching."""
+    uid = comp.get("uid")
     rid_raw = comp.get("recurrence_id")
-    canon_rid = (
-        format_canonical_rid(parse_temporal(rid_raw, "recurrence_id"))
-        if isinstance(rid_raw, str)
-        else None
-    )
-    return comp.get("uid"), canon_rid
+    if not isinstance(rid_raw, str):
+        return uid, None
+    pt_rid = parse_temporal(rid_raw, "recurrence_id")
+    pt_main = mains.get(uid) if isinstance(uid, str) else None
+    if pt_main is not None and temporal_class(pt_rid) == temporal_class(pt_main):
+        pt_rid = align_rid_to_master(rid_raw, pt_main)
+    return uid, format_canonical_rid(pt_rid)
 
 
 def _project_components(
@@ -149,8 +182,10 @@ def _project_components(
     if len(act_items) != len(exp_items):
         return [*out, *act_items]
 
-    act_keys = [_comp_identity_key(c) for c in act_items]
-    exp_keys = [_comp_identity_key(c) for c in exp_items]
+    act_mains = _main_starts_by_uid(act_items)
+    exp_mains = _main_starts_by_uid(exp_items)
+    act_keys = [_comp_identity_key(c, act_mains) for c in act_items]
+    exp_keys = [_comp_identity_key(c, exp_mains) for c in exp_items]
     if (
         act_keys != exp_keys
         and len(set(act_keys)) == len(act_keys)

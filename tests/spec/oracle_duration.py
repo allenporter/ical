@@ -78,3 +78,23 @@ def try_parse_duration(raw: Any) -> ParsedDuration | None:
         return parse_rfc5545_duration(raw)
     except StoreError:
         return None
+
+
+def canonical_duration_str(raw: Any, field_name: str = "duration") -> str | None:
+    """Validate and return a strictly positive RFC 5545 DURATION string (or None)."""
+    if raw is None:
+        return None
+    dur = parse_rfc5545_duration(raw, field_name)
+    if dur.delta <= datetime.timedelta(0):
+        raise StoreError(
+            f"DURATION must be strictly positive for {field_name}: {raw!r}"
+        )
+    return dur.raw
+
+
+def coerce_duration_for_date(raw_dur: str, is_date: bool) -> str:
+    """Convert a sub-day/time DURATION to whole days (min P1D) when DTSTART becomes DATE."""
+    dur = parse_rfc5545_duration(raw_dur)
+    if is_date and dur.has_time_part:
+        return f"P{max(1, dur.delta.days)}D"
+    return dur.raw
