@@ -1192,10 +1192,6 @@ def test_recur_case_insensitive_enums() -> None:
 
 def test_recurrence_id_tzid_range_and_roundtrip() -> None:
     """RecurrenceId preserves TZID and RANGE on parse and ICS serialization."""
-    from ical.calendar import Calendar
-    from ical.calendar_stream import IcsCalendarStream
-    from ical.event import Event
-
     ny = zoneinfo.ZoneInfo("America/New_York")
     rid = RecurrenceId.__parse_property_value__(
         "TZID=America/New_York:20250511T090000"
@@ -1235,9 +1231,6 @@ def test_recurrence_id_tzid_range_and_roundtrip() -> None:
 
 def test_until_requires_utc_when_dtstart_is_aware() -> None:
     """RFC 5545 §3.3.10: aware DTSTART rejects floating or non-UTC UNTIL."""
-    from ical.event import Event
-    from ical.exceptions import CalendarParseError
-
     ny = zoneinfo.ZoneInfo("America/New_York")
     with pytest.raises(CalendarParseError, match="UNTIL must be UTC"):
         Event(
