@@ -467,33 +467,32 @@ def test_o5_monotonicity_shift_meta_and_migration() -> None:
     )
 
 
-def test_first_instance_this_and_future_without_dtstart_applies_split_policy() -> None:
+@pytest.mark.parametrize(
+    "policy",
+    ALL_48_POLICIES,
+    ids=lambda p: (
+        f"{p.series_edit_override_mode.value[:4]}-{p.single_edit_exdate_mode.value[:3]}-"
+        f"{p.series_reschedule_exception_mode.value[:5]}-{p.split_future_override_mode.value[:3]}-"
+        f"{p.parent_delete_cascade_mode.value[:4]}"
+    ),
+)
+def test_first_instance_this_and_future_without_dtstart_applies_split_policy(
+    policy: PolicyConfig,
+) -> None:
     """First-instance THIS_AND_FUTURE metadata edit honors split_future_override_mode (R-L3-002/006)."""
-    for policy in ALL_48_POLICIES:
-        store = CheckedStore(policy=policy)
-        store.add(
-            {
-                "uid": "fi-1",
-                "summary": "Base",
-                "dtstart": "2025-05-01T09:00:00",
-                "dtend": "2025-05-01T10:00:00",
-                "rrule": "FREQ=DAILY;COUNT=4",
-            }
-        )
-        store.edit(
-            "fi-1",
-            {"summary": "Custom Day 3"},
-            recurrence_id="20250503T090000",
-        )
-        store.edit(
-            "fi-1",
-            {"summary": "Renamed"},
-            recurrence_id="20250501T090000",
-            recurrence_range="THIS_AND_FUTURE",
-        )
-        overrides = [c for c in store.components if c.get("recurrence_id")]
-        if policy.split_future_override_mode == SplitFutureOverrideMode.DISCARD:
-            assert overrides == []
-            assert [o["summary"] for o in store.expand_timeline()] == ["Renamed"] * 4
-        else:
-            assert len(overrides) == 1
+    comp = {
+        "uid": "fi-1",
+        "summary": "Base",
+        "dtstart": "2025-05-01T09:00:00",
+        "dtend": "2025-05-01T10:00:00",
+        "rrule": "FREQ=DAILY;COUNT=4",
+    }
+    store = CheckedStore([comp], policy=policy)
+    store.edit("fi-1", {"summary": "Custom Day 3"}, recurrence_id="20250503T090000")
+    store.edit("fi-1", {"summary": "Renamed"}, "20250501T090000", "THIS_AND_FUTURE")
+    overrides = [c for c in store.components if c.get("recurrence_id")]
+    if policy.split_future_override_mode == SplitFutureOverrideMode.DISCARD:
+        assert overrides == []
+        assert [o["summary"] for o in store.expand_timeline()] == ["Renamed"] * 4
+    else:
+        assert len(overrides) == 1
