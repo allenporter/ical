@@ -288,11 +288,7 @@ class OracleEditMixin(OracleSplitMixin):
             for ov in standalone_overrides:
                 if ov in self.components:
                     self.components.remove(ov)
-        elif (
-            normalized_from_first_instance
-            and pt_old_start is not None
-            and "dtstart" in eff_patch
-        ):
+        elif normalized_from_first_instance and pt_old_start is not None:
             self._apply_split_override_policy(
                 master_comp,
                 [(ov, pt_old_start) for ov in standalone_overrides],
