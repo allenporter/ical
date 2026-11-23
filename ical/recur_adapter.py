@@ -38,7 +38,13 @@ def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
     DST fall-back ``fold=1`` occurrences, normalizes to UTC so the identifier
     uniquely distinguishes ``fold=1`` from ``fold=0``.
     """
-    if isinstance(dt, datetime.datetime) and dt.tzinfo is not None and dt.fold == 1:
+    if (
+        isinstance(dt, datetime.datetime)
+        and dt.tzinfo is not None
+        and dt.fold == 1
+        and (offset := dt.utcoffset()) is not None
+        and dt.replace(fold=0).utcoffset() != offset
+    ):
         dt = dt.astimezone(datetime.timezone.utc)
     return RecurrenceId.__parse_property_value__(dt)
 
@@ -55,18 +61,18 @@ class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
         recur: Iterable[_DateOrDatetime],
         exclude_ids: Iterable[RecurrenceId],
         tzinfo: datetime.tzinfo | None = None,
+        *,
+        floating: bool = False,
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
         self._exclude_ids = tuple(exclude_ids)
-        self._floating = tzinfo is None
+        self._floating = floating
         exclude_keys: set[_DateOrDatetime] = set()
         for rid in self._exclude_ids:
             try:
                 exclude_keys.add(
-                    RecurrenceId.comparable_key(
-                        rid, tzinfo=tzinfo, floating=self._floating
-                    )
+                    RecurrenceId.comparable_key(rid, tzinfo=tzinfo, floating=floating)
                 )
             except ValueError:
                 continue
@@ -205,14 +211,15 @@ def merge_and_expand_items(
                 )
             else:
                 # Recurring item - filter out overridden instances if any
-                item_tzinfo = (
-                    item.dtstart.tzinfo
-                    if isinstance(item.dtstart, datetime.datetime)
-                    else None
-                )
+                is_dt = isinstance(item.dtstart, datetime.datetime)
+                item_tzinfo = item.dtstart.tzinfo if is_dt else None
+                is_floating = is_dt and item_tzinfo is None
                 dates = (
                     FilteredRecurrenceIterable(
-                        recur, override_rids, tzinfo=item_tzinfo
+                        recur,
+                        override_rids,
+                        tzinfo=item_tzinfo,
+                        floating=is_floating,
                     )
                     if override_rids
                     else recur

@@ -404,5 +404,10 @@ def test_unparsable_override_is_ignored() -> None:
         _UTC,
         "RECURRENCE-ID:not-a-date\nDTSTART:20261003T150000Z\nDTEND:20261003T153000Z",
     )
-
     assert len(timeline) == 6
+
+    timeline_eq = _timeline(
+        _UTC,
+        "RECURRENCE-ID:foo=bar\nDTSTART:20261003T150000Z\nDTEND:20261003T153000Z",
+    )
+    assert len(timeline_eq) == 6

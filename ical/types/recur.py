@@ -54,6 +54,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
+from ical.exceptions import CalendarParseError
 from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import parse_date_and_datetime
 from ical.tzif import timezoneinfo
@@ -203,8 +204,13 @@ class RecurrenceId(str):
         - Inline TZID parameter: 'TZID=America/New_York:20250511T020000'
         """
         # Handle the inline "TZID=tz:DATETIME" format by re-parsing via ParsedProperty
-        if "=" in recurrence_id.split(":")[0]:
-            prop = ParsedProperty.from_ics(f"RECURRENCE-ID;{recurrence_id}")
+        if ":" in recurrence_id and "=" in recurrence_id.split(":", 1)[0]:
+            try:
+                prop = ParsedProperty.from_ics(f"RECURRENCE-ID;{recurrence_id}")
+            except CalendarParseError as err:
+                raise ValueError(
+                    f"Unable to parse inline RECURRENCE-ID parameters: {err}"
+                ) from err
             return DateTimeEncoder.__parse_property_value__(prop)
 
         tzinfo = (
@@ -289,13 +295,19 @@ class RecurrenceId(str):
     @classmethod
     def __encode_property_json__(cls, value: "RecurrenceId") -> str | dict[str, str]:
         """Encode a RecurrenceId for ICS serialization, preserving TZID and RANGE."""
+        raw = str(value)
         tzinfo = getattr(value, "tzinfo", None)
         range_val = getattr(value, "range", Range.NONE)
-        has_tzid = tzinfo is not None and tzinfo != datetime.timezone.utc
+        has_tzid = (
+            tzinfo is not None
+            and tzinfo != datetime.timezone.utc
+            and "T" in raw
+            and not raw.endswith("Z")
+        )
         has_range = range_val != Range.NONE
         if not has_tzid and not has_range:
-            return str(value)
-        data: dict[str, str] = {"VALUE": str(value)}
+            return raw
+        data: dict[str, str] = {"VALUE": raw}
         if has_tzid:
             data["TZID"] = str(tzinfo)
         if has_range:
@@ -348,9 +360,12 @@ class RecurrenceId(str):
             raw_str = DateEncoder.__encode_property_json__(value)
         elif isinstance(value, ParsedProperty):
             raw_str = value.value
-        elif isinstance(value, str) and "=" in value.split(":")[0]:
-            value = ParsedProperty.from_ics(f"RECURRENCE-ID;{value}")
-            raw_str = value.value
+        elif isinstance(value, str) and ":" in value and "=" in value.split(":", 1)[0]:
+            try:
+                value = ParsedProperty.from_ics(f"RECURRENCE-ID;{value}")
+                raw_str = value.value
+            except CalendarParseError:
+                raw_str = value
         else:
             raw_str = str(value)
 
