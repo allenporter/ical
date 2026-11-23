@@ -4,11 +4,9 @@ Implements the `THIS_AND_FUTURE` split prescribed by RFC 8984 Section 4.1.3 (R-L
 the original recurring component is truncated before the split and a NEW recurring
 component with a NEW UID and no RECURRENCE-ID represents the occurrences from the split
 onward, linked by RELTYPE=NEXT (original -> new) and RELTYPE=FIRST (new -> first
-component of the chain). Also implements `COUNT` recalculation (R-L3-004), end/due
+component of the chain). Also implements `COUNT` recalculation (R-L3-004), end/due/duration
 realignment (R-L3-005), override discard/migration (R-L3-006), `RDATE`/`EXDATE`
-partitioning (R-L3-007), chain insertion on re-split (R-L3-008), inherited `UNTIL` /
-`EXDATE` / `RDATE` wall-clock realignment on start-time shift (R-L3-010), and the new
-segment's creation metadata (R-L5-001, R-L5-002).
+partitioning (R-L3-007), chain insertion on re-split (R-L3-008), and wall-clock shift (R-L3-010).
 """
 
 from __future__ import annotations
@@ -21,17 +19,22 @@ from .oracle_base import OracleBase
 from .oracle_canonical import (
     CORE_COMPONENT_KEYS,
     canonical_temporal_str,
-    partition_future_dates,
-    shift_rrule_until_wall_clock,
-    shift_temporal_list_wall_clock,
 )
+from .oracle_duration import canonical_duration_str, coerce_duration_for_date
 from .oracle_policy import (
     SingleEditExdateMode,
     SplitFutureOverrideMode,
     StoreError,
 )
+from .oracle_schedule import (
+    adapted_rrule_for_anchor,
+    dedup_temporals,
+    partition_future_dates,
+    shift_temporal_list_wall_clock,
+)
 from .oracle_temporal import (
     ParsedTemporal,
+    _expand_rrule_occurrences,
     add_temporal_duration,
     align_rid_to_master,
     compute_wall_clock_delta,
@@ -40,7 +43,6 @@ from .oracle_temporal import (
     format_stored_rid,
     format_temporal_like,
     parse_temporal,
-    replace_rrule_count,
     temporal_class,
 )
 
@@ -72,46 +74,77 @@ class OracleSplitMixin(OracleBase):
             if pt_rid.dt_utc_or_naive >= split_cmp
         ]
 
-    def _resolve_future_rrule(
+    def _resolve_split_schedule(
         self,
         target_seg: dict[str, Any],
         patch: dict[str, Any],
-        split_cmp: datetime.datetime,
         pt_split: ParsedTemporal,
         pt_seg_start: ParsedTemporal,
-        pt_future_start: ParsedTemporal,
-    ) -> str | None:
-        """RRULE of the new segment: explicit patch rule, else inherited COUNT / shifted UNTIL (R-L3-004, R-L3-010)."""
+        split_cmp: datetime.datetime,
+    ) -> tuple[str, ParsedTemporal, str | None, list[str]]:
+        """Resolve (future_dtstart, pt_future_start, future_rrule, extra_rdates)."""
+        default_dtstart = format_temporal_like(pt_split.value, pt_seg_start)
+        if "dtstart" in patch and patch["dtstart"] is None:
+            raise StoreError("THIS_AND_FUTURE split requires non-null dtstart")
+        raw_dtstart = patch.get("dtstart", default_dtstart)
+        future_dtstart = canonical_temporal_str(raw_dtstart, "dtstart")
+        assert future_dtstart is not None
+        pt_future_start = parse_temporal(future_dtstart, "dtstart")
+
         if "rrule" in patch:
-            return patch["rrule"]
-        future_rrule = target_seg.get("rrule")
-        if future_rrule and "COUNT=" in future_rrule:
-            prior_count = sum(
-                1
-                for _, pt_o, _ in expand_component_candidates(
-                    {**target_seg, "rdate": []}, include_exdates=True
-                )
-                if pt_o.dt_utc_or_naive < split_cmp
+            r_val = patch["rrule"]
+            if r_val is not None and (not isinstance(r_val, str) or not r_val):
+                raise StoreError(f"Invalid rrule in patch: {r_val!r}")
+            return future_dtstart, pt_future_start, r_val, []
+
+        rrule_str = target_seg.get("rrule")
+        if not rrule_str:
+            return future_dtstart, pt_future_start, None, []
+
+        rem_pts = [
+            pt
+            for _, pt, _ in expand_component_candidates(
+                {**target_seg, "rdate": []}, include_exdates=True
             )
-            parts = dict(p.split("=", 1) for p in future_rrule.split(";") if "=" in p)
-            return replace_rrule_count(
-                future_rrule, max(1, int(parts["COUNT"]) - prior_count)
+            if pt.dt_utc_or_naive >= split_cmp
+        ]
+        if not rem_pts:
+            return future_dtstart, pt_future_start, None, []
+        if "dtstart" in patch:
+            cand_rrule = adapted_rrule_for_anchor(
+                rrule_str, len(rem_pts), patch, pt_split, pt_seg_start, pt_future_start
             )
-        if future_rrule and "UNTIL=" in future_rrule:
-            if "dtstart" in patch and temporal_class(pt_split) == temporal_class(
-                pt_future_start
-            ):
-                wall_delta = compute_wall_clock_delta(pt_split, pt_future_start)
-                if wall_delta:
-                    return shift_rrule_until_wall_clock(
-                        future_rrule, pt_seg_start, pt_future_start, wall_delta
-                    )
-            tmp_c = {"rrule": future_rrule}
-            self._align_rrule_until_on_dtstart_change(
-                tmp_c, pt_seg_start, pt_future_start
+            return future_dtstart, pt_future_start, cand_rrule, []
+
+        is_bounded = "COUNT=" in rrule_str.upper() or "UNTIL=" in rrule_str.upper()
+        for idx, pt_cand in enumerate(rem_pts):
+            cand_rrule = adapted_rrule_for_anchor(
+                rrule_str, len(rem_pts) - idx, patch, pt_split, pt_seg_start, pt_cand
             )
-            return tmp_c["rrule"]
-        return future_rrule
+            exp_utcs = sorted(
+                p.dt_utc_or_naive
+                for p in _expand_rrule_occurrences(cand_rrule, pt_cand).values()
+            )
+            target_utcs = [p.dt_utc_or_naive for p in rem_pts[idx:]]
+            matches = (
+                exp_utcs == target_utcs
+                if is_bounded
+                else exp_utcs[: len(target_utcs)] == target_utcs
+            )
+            if matches:
+                if idx == 0 and pt_split.dt_utc_or_naive == pt_cand.dt_utc_or_naive:
+                    return future_dtstart, pt_future_start, cand_rrule, []
+                anchor_str = format_temporal_like(pt_cand.value, pt_seg_start)
+                pt_anchor = parse_temporal(anchor_str, "dtstart")
+                spill = [default_dtstart] + [
+                    format_temporal_like(p.value, pt_seg_start) for p in rem_pts[:idx]
+                ]
+                return anchor_str, pt_anchor, cand_rrule, spill
+
+        spill_all = [default_dtstart] + [
+            format_temporal_like(p.value, pt_seg_start) for p in rem_pts
+        ]
+        return future_dtstart, pt_future_start, None, spill_all
 
     def _resolve_new_uid(
         self, target_seg: dict[str, Any], canon_split_rid: str, new_uid: str | None
@@ -139,11 +172,7 @@ class OracleSplitMixin(OracleBase):
     def _link_split_segments(
         target_seg: dict[str, Any], patch: dict[str, Any], future_uid: str
     ) -> list[dict[str, str]]:
-        """Point the original's NEXT at the new segment; return the new segment's links.
-
-        The new segment inherits non-chain relations, takes over the original's NEXT
-        (chain insertion, R-L3-008) and links FIRST to the chain head (R-L3-001).
-        """
+        """Point the original's NEXT at the new segment; return the new segment's links."""
         own = target_seg.get("related_to") or []
         inherited = [
             {"uid": str(r["uid"]), "reltype": str(r.get("reltype") or "PARENT")}
@@ -164,26 +193,42 @@ class OracleSplitMixin(OracleBase):
         ]
         return [*inherited, *old_next, {"uid": first_uid, "reltype": "FIRST"}]
 
-    def _future_end(
+    def _future_end_and_duration(
         self,
         target_seg: dict[str, Any],
         patch: dict[str, Any],
         pt_future_start: ParsedTemporal,
-    ) -> str | None:
-        """DTEND/DUE of the new segment: explicit, else shifted by the original duration (R-L3-005)."""
+    ) -> tuple[str | None, str | None]:
+        """Resolve (dtend_or_due, duration) for a forked segment or override (R-L2-003, R-L3-005)."""
         is_todo = target_seg["type"] == "VTODO"
         end_key = "due" if is_todo else "dtend"
+        other_end = "dtend" if is_todo else "due"
+        if patch.get(other_end) is not None:
+            raise StoreError(f"Cannot set {other_end} on {target_seg['type']}")
+        if patch.get("duration") is not None and patch.get(end_key) is not None:
+            raise StoreError(
+                "Cannot specify both dtend/due and duration in patch (I-C-003)"
+            )
+        if end_key in patch and patch[end_key] is not None:
+            return canonical_temporal_str(patch[end_key], end_key), None
+        if "duration" in patch:
+            return None, canonical_duration_str(patch["duration"], "duration")
         if end_key in patch:
-            return canonical_temporal_str(patch[end_key], end_key)
+            return None, None
+        if target_seg.get("duration") is not None:
+            return None, coerce_duration_for_date(
+                target_seg["duration"], pt_future_start.is_date
+            )
         orig_dur = self._compute_duration(target_seg)
-        if orig_dur is None:
-            return None
-        return format_temporal_like(
-            add_temporal_duration(
-                pt_future_start.value, orig_dur, min_days=(0 if is_todo else 1)
-            ),
-            pt_future_start,
-        )
+        if target_seg.get(end_key) is not None and orig_dur is not None:
+            return (
+                format_temporal_like(
+                    add_temporal_duration(pt_future_start.value, orig_dur, min_days=1),
+                    pt_future_start,
+                ),
+                None,
+            )
+        return None, None
 
     def _build_forked_future_comp(
         self,
@@ -195,13 +240,29 @@ class OracleSplitMixin(OracleBase):
         eff_now: str,
     ) -> dict[str, Any]:
         """Build the new recurring segment (new UID, no RECURRENCE-ID) (R-L3-001, R-L5-002)."""
+        if "type" in patch and patch["type"] != target_seg["type"]:
+            raise StoreError("Cannot change component type during THIS_AND_FUTURE edit")
         split_cmp = pt_split.dt_utc_or_naive
-        future_dtstart = canonical_temporal_str(
-            patch.get("dtstart", format_temporal_like(pt_split.value, pt_seg_start)),
-            "dtstart",
+        future_dtstart, pt_future_start, future_rrule, extra_rdates = (
+            self._resolve_split_schedule(
+                target_seg, patch, pt_split, pt_seg_start, split_cmp
+            )
         )
-        assert future_dtstart is not None
-        pt_future_start = parse_temporal(future_dtstart, "dtstart")
+        end_val, dur_val = self._future_end_and_duration(
+            target_seg, patch, pt_future_start
+        )
+        rdate_vals = partition_future_dates(
+            [target_seg], patch, "rdate", split_cmp, pt_future_start
+        )
+        if extra_rdates and "rdate" not in patch:
+            rdate_vals = dedup_temporals([*extra_rdates, *rdate_vals], pt_future_start)
+        if not future_rrule and not rdate_vals:
+            if "rrule" in patch or "rdate" in patch:
+                raise StoreError(
+                    "THIS_AND_FUTURE split segment must remain recurring (I-T-007)"
+                )
+            rdate_vals = [future_dtstart]
+
         is_todo = target_seg["type"] == "VTODO"
         future_comp: dict[str, Any] = {
             "type": target_seg["type"],
@@ -209,15 +270,10 @@ class OracleSplitMixin(OracleBase):
             "recurrence_id": None,
             "summary": patch.get("summary", target_seg.get("summary")),
             "dtstart": future_dtstart,
-            ("due" if is_todo else "dtend"): self._future_end(
-                target_seg, patch, pt_future_start
-            ),
-            "rrule": self._resolve_future_rrule(
-                target_seg, patch, split_cmp, pt_split, pt_seg_start, pt_future_start
-            ),
-            "rdate": partition_future_dates(
-                [target_seg], patch, "rdate", split_cmp, pt_future_start
-            ),
+            ("due" if is_todo else "dtend"): end_val,
+            "duration": dur_val,
+            "rrule": future_rrule,
+            "rdate": rdate_vals,
             "exdate": partition_future_dates(
                 [target_seg], patch, "exdate", split_cmp, pt_future_start
             ),
@@ -280,7 +336,7 @@ class OracleSplitMixin(OracleBase):
         target_overrides: list[tuple[dict[str, Any], ParsedTemporal]],
         patch: dict[str, Any],
     ) -> None:
-        """MIGRATE_TO_FUTURE_SERIES: keep overrides that are candidates of the new segment."""
+        """MIGRATE_TO_FUTURE_SERIES: keep overrides on active candidates of the new segment."""
         ordered_overrides = sorted(
             target_overrides,
             key=lambda item: (
@@ -294,7 +350,7 @@ class OracleSplitMixin(OracleBase):
         future_rids = {
             rid
             for rid, _, _ in expand_component_candidates(
-                future_comp, include_exdates=True
+                future_comp, include_exdates=False
             )
         }
         legacy_dual = (
@@ -390,6 +446,10 @@ class OracleSplitMixin(OracleBase):
         target_overrides = self._collect_future_overrides(
             standalone_overrides, pt_seg_start, split_cmp
         )
+        future_obs = {id(ov) for ov, _ in target_overrides}
+        has_prior_overrides = any(
+            id(ov) not in future_obs for ov in standalone_overrides
+        )
         future_uid = self._resolve_new_uid(
             target_seg, format_canonical_rid(pt_split), new_uid
         )
@@ -400,7 +460,12 @@ class OracleSplitMixin(OracleBase):
             future_comp, target_overrides, patch, pt_split, pt_seg_start
         )
         self._truncate_segment_before(
-            target_seg, pt_split, pt_seg_start, split_cmp, eff_now
+            target_seg,
+            pt_split,
+            pt_seg_start,
+            split_cmp,
+            eff_now,
+            has_surviving_overrides=has_prior_overrides,
         )
         self._validate_component_state(target_seg)
         self._validate_component_state(future_comp)

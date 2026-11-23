@@ -449,11 +449,14 @@ def test_split_future_override_migrate_mode() -> None:
 
 
 def test_clean_room_and_full_rule_citation_coverage() -> None:
-    """Verify clean-room oracle modules have 0 forbidden terms and cite all 40 rules."""
+    """Verify clean-room oracle modules have 0 forbidden terms and cite all 46 rules."""
     cleanroom_files = [
         "oracle_policy.py",
+        "oracle_duration.py",
+        "oracle_tz.py",
         "oracle_temporal.py",
         "oracle_canonical.py",
+        "oracle_schedule.py",
         "oracle_base.py",
         "oracle_split.py",
         "oracle_edit.py",
@@ -464,6 +467,7 @@ def test_clean_room_and_full_rule_citation_coverage() -> None:
         "test_reference_oracle.py",
         "test_oracle_redteam.py",
         "test_oracle_adversarial.py",
+        "test_oracle_round3.py",
     ]
     combined_oracle_text = ""
     for fname in cleanroom_files:
