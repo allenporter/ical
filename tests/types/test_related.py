@@ -47,6 +47,10 @@ def test_default_reltype() -> None:
         ("SIBLING", RelationshipType.SIBLING),
         ("sibling", RelationshipType.SIBLING),
         ("SIBBLING", RelationshipType.SIBBLING),
+        ("FIRST", RelationshipType.FIRST),
+        ("first", RelationshipType.FIRST),
+        ("NEXT", RelationshipType.NEXT),
+        ("next", RelationshipType.NEXT),
     ],
 )
 def test_reltype(reltype: str, expected: RelationshipType) -> None:

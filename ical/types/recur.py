@@ -54,7 +54,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from ical.parsing.property import ParsedProperty
+from ical.parsing.property import ParsedProperty, ParsedPropertyParameter
 from ical.util import parse_date_and_datetime
 from ical.tzif import timezoneinfo
 
@@ -244,6 +244,81 @@ class RecurrenceId(str):
             errors.append(err)
 
         raise ValueError(f"Unable to parse date/time value: {errors}")
+
+    @classmethod
+    def resolve(
+        cls,
+        recurrence_id: str,
+        tzinfo: datetime.tzinfo | None = None,
+    ) -> datetime.datetime | datetime.date:
+        """Resolve a RecurrenceId to a date or datetime, aligning naive values to ``tzinfo``."""
+        val = cls.to_value(recurrence_id)
+        if (
+            isinstance(val, datetime.datetime)
+            and val.tzinfo is None
+            and tzinfo is not None
+        ):
+            return val.replace(tzinfo=tzinfo)
+        return val
+
+    @classmethod
+    def comparable_key(
+        cls,
+        value: "str | datetime.datetime | datetime.date",
+        tzinfo: datetime.tzinfo | None = None,
+        *,
+        floating: bool = False,
+    ) -> datetime.datetime | datetime.date:
+        """Return a canonical comparison key for matching recurrence instances.
+
+        Timezone-aware datetimes are normalized to UTC so cross-timezone
+        RECURRENCE-IDs match and DST fall-back ``fold=0`` / ``fold=1`` instants
+        remain distinct. When ``floating`` is True (matching against a floating
+        series), datetimes are compared by naive wall time. Dates stay dates.
+        """
+        val = cls.resolve(value, tzinfo=tzinfo) if isinstance(value, str) else value
+        if isinstance(val, datetime.datetime) and val.tzinfo is not None:
+            if floating or val.utcoffset() is None:
+                return val.replace(tzinfo=None)
+            try:
+                return val.astimezone(datetime.timezone.utc)
+            except OverflowError:
+                return val
+        return val
+
+    @classmethod
+    def __encode_property_json__(cls, value: "RecurrenceId") -> str | dict[str, str]:
+        """Encode a RecurrenceId for ICS serialization, preserving TZID and RANGE."""
+        tzinfo = getattr(value, "tzinfo", None)
+        range_val = getattr(value, "range", Range.NONE)
+        has_tzid = tzinfo is not None and tzinfo != datetime.timezone.utc
+        has_range = range_val != Range.NONE
+        if not has_tzid and not has_range:
+            return str(value)
+        data: dict[str, str] = {"VALUE": str(value)}
+        if has_tzid:
+            data["TZID"] = str(tzinfo)
+        if has_range:
+            data["RANGE"] = range_val.value
+        return data
+
+    @classmethod
+    def __encode_property__(cls, value: str | dict[str, Any]) -> ParsedProperty:
+        """Encode a RecurrenceId into a ParsedProperty with TZID/RANGE parameters."""
+        if isinstance(value, str):
+            return ParsedProperty(name="", value=value)
+        params: list[ParsedPropertyParameter] = []
+        if tzid := value.get("TZID"):
+            params.append(ParsedPropertyParameter(name="TZID", values=[str(tzid)]))
+        if range_val := value.get("RANGE"):
+            params.append(
+                ParsedPropertyParameter(name="RANGE", values=[str(range_val)])
+            )
+        return ParsedProperty(
+            name="",
+            value=str(value["VALUE"]),
+            params=params or None,
+        )
 
     @classmethod
     def __parse_property_value__(cls, value: Any) -> "RecurrenceId":

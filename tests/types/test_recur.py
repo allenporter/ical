@@ -1188,3 +1188,78 @@ def test_recur_case_insensitive_enums() -> None:
     assert recur.wkst == Weekday.SUNDAY
     assert Range("thisandfuture") == Range.THIS_AND_FUTURE
     assert Frequency._missing_(123) is None
+
+
+def test_recurrence_id_tzid_range_and_roundtrip() -> None:
+    """RecurrenceId preserves TZID and RANGE on parse and ICS serialization."""
+    from ical.calendar import Calendar
+    from ical.calendar_stream import IcsCalendarStream
+    from ical.event import Event
+
+    ny = zoneinfo.ZoneInfo("America/New_York")
+    rid = RecurrenceId.__parse_property_value__(
+        "TZID=America/New_York:20250511T090000"
+    )
+    assert rid == "20250511T090000"
+    assert rid.tzinfo == ny
+    assert rid.range == Range.NONE
+    assert RecurrenceId.to_value(rid) == datetime.datetime(
+        2025, 5, 11, 9, 0, tzinfo=ny
+    )
+    assert RecurrenceId.to_value("2025-05-11T13:00:00Z") == datetime.datetime(
+        2025, 5, 11, 13, 0, tzinfo=datetime.timezone.utc
+    )
+
+    cal = Calendar(
+        events=[
+            Event(
+                uid="rid-rt-1",
+                summary="Override",
+                dtstart=datetime.datetime(2025, 5, 11, 10, 0, tzinfo=ny),
+                dtend=datetime.datetime(2025, 5, 11, 11, 0, tzinfo=ny),
+                recurrence_id=RecurrenceId(
+                    "20250511T090000", tzinfo=ny, range=Range.THIS_AND_FUTURE
+                ),
+            )
+        ]
+    )
+    ics = IcsCalendarStream.calendar_to_ics(cal)
+    assert "RECURRENCE-ID;TZID=America/New_York;RANGE=THISANDFUTURE:20250511T090000" in ics
+    parsed = IcsCalendarStream.calendar_from_ics(ics)
+    parsed_rid = parsed.events[0].recurrence_id
+    assert parsed_rid == "20250511T090000"
+    assert parsed_rid is not None
+    assert parsed_rid.tzinfo == ny
+    assert parsed_rid.range == Range.THIS_AND_FUTURE
+
+
+def test_until_requires_utc_when_dtstart_is_aware() -> None:
+    """RFC 5545 §3.3.10: aware DTSTART rejects floating or non-UTC UNTIL."""
+    from ical.event import Event
+    from ical.exceptions import CalendarParseError
+
+    ny = zoneinfo.ZoneInfo("America/New_York")
+    with pytest.raises(CalendarParseError, match="UNTIL must be UTC"):
+        Event(
+            summary="Bad UNTIL",
+            dtstart=datetime.datetime(2025, 5, 1, 9, 0, tzinfo=ny),
+            dtend=datetime.datetime(2025, 5, 1, 10, 0, tzinfo=ny),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2025, 5, 5, 9, 0),
+            ),
+        )
+    with pytest.raises(CalendarParseError, match="UNTIL must be UTC"):
+        Event(
+            summary="Bad UTC UNTIL",
+            dtstart=datetime.datetime(
+                2025, 5, 1, 9, 0, tzinfo=datetime.timezone.utc
+            ),
+            dtend=datetime.datetime(
+                2025, 5, 1, 10, 0, tzinfo=datetime.timezone.utc
+            ),
+            rrule=Recur(
+                freq=Frequency.DAILY,
+                until=datetime.datetime(2025, 5, 5, 9, 0),
+            ),
+        )

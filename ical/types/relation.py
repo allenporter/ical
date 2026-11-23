@@ -29,6 +29,12 @@ class RelationshipType(CaseInsensitiveEnum):
     SIBBLING = "SIBBLING"
     """Backwards-compatible alias for misspelled sibling relationship."""
 
+    FIRST = "FIRST"
+    """First component in a split recurrence chain (RFC 9253)."""
+
+    NEXT = "NEXT"
+    """Next component in a split recurrence chain (RFC 9253)."""
+
     @classmethod
     def __parse_property_value__(cls, prop: ParsedProperty) -> Self | None:
         """Parse value into enum."""
