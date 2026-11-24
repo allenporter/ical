@@ -188,7 +188,7 @@ class Timezone(ComponentModel):
             raise ValueError("Unsupported timezoneinfo had no rule")
 
         dst_offset = rule.std.offset
-        if rule.dst and rule.dst.offset:
+        if rule.dst:
             dst_offset = rule.dst.offset
 
         std_timezone_info = Observance(

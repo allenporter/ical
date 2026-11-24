@@ -222,3 +222,24 @@ def test_parse_tz_rule_benchmark(benchmark: Any) -> None:
         tz_rule.parse_tz_rule("<-03>3<-02>,M3.5.0/-2,M10.5.0/-1")
 
     benchmark(parse)
+
+
+def test_explicit_zero_dst_offset_dublin() -> None:
+    """Test explicit 0 DST offset (Europe/Dublin) is not overwritten."""
+    rule = tz_rule.parse_tz_rule("IST-1GMT0,M10.5.0,M3.5.0/1")
+    assert rule.std.offset == datetime.timedelta(hours=1)
+    assert rule.dst is not None
+    assert rule.dst.name == "GMT"
+    assert rule.dst.offset == datetime.timedelta(hours=0)
+
+
+def test_zero_transition_time_azores() -> None:
+    """Test /0 transition time and implicit 0 DST offset (Atlantic/Azores)."""
+    rule = tz_rule.parse_tz_rule("<-01>1<+00>,M3.5.0/0,M10.5.0/1")
+    assert rule.std.offset == datetime.timedelta(hours=-1)
+    assert rule.dst is not None
+    assert rule.dst.offset == datetime.timedelta(hours=0)
+    assert isinstance(rule.dst_start, tz_rule.RuleDate)
+    assert rule.dst_start.time == datetime.timedelta(hours=0)
+    assert isinstance(rule.dst_end, tz_rule.RuleDate)
+    assert rule.dst_end.time == datetime.timedelta(hours=1)
