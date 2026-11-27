@@ -76,7 +76,7 @@ def _adjust_recurrence_date(
                 raise ValueError("DTSTART is date local but UNTIL was not")
             return date_value
 
-        if date_value.utcoffset():
+        if date_value.tzinfo is None or date_value.utcoffset() != datetime.timedelta(0):
             raise ValueError("DTSTART had UTC or local and UNTIL must be UTC")
 
         return date_value

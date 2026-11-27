@@ -34,14 +34,18 @@ _DateOrDatetime = datetime.datetime | datetime.date
 def _recurrence_id_for(dt: _DateOrDatetime) -> RecurrenceId:
     """Compute the RecurrenceId for a recurrence date.
 
-    This converts a date/datetime from a recurrence expansion into the
-    floating-time RecurrenceId string used to identify that instance.
+    Preserves timezone metadata on the returned RecurrenceId. For ambiguous
+    DST fall-back ``fold=1`` occurrences, normalizes to UTC so the identifier
+    uniquely distinguishes ``fold=1`` from ``fold=0``.
     """
-    # Make recurrence_id floating time to avoid dealing with serializing
-    # TZID. This value will still be unique within the series and is in
-    # the context of dtstart which may have a timezone.
-    if isinstance(dt, datetime.datetime) and dt.tzinfo:
-        dt = dt.replace(tzinfo=None)
+    if (
+        isinstance(dt, datetime.datetime)
+        and dt.tzinfo is not None
+        and dt.fold == 1
+        and (offset := dt.utcoffset()) is not None
+        and dt.replace(fold=0).utcoffset() != offset
+    ):
+        dt = dt.astimezone(datetime.timezone.utc)
     return RecurrenceId.__parse_property_value__(dt)
 
 
@@ -55,21 +59,24 @@ class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
     def __init__(
         self,
         recur: Iterable[_DateOrDatetime],
-        exclude_ids: frozenset[RecurrenceId],
+        exclude_ids: Iterable[RecurrenceId],
+        tzinfo: datetime.tzinfo | None = None,
+        *,
+        floating: bool = False,
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
-        self._exclude_ids = exclude_ids
-        exclude_dts: set[_DateOrDatetime] = set()
-        for rid in exclude_ids:
+        self._exclude_ids = tuple(exclude_ids)
+        self._floating = floating
+        exclude_keys: set[_DateOrDatetime] = set()
+        for rid in self._exclude_ids:
             try:
-                val = RecurrenceId.to_value(rid)
+                exclude_keys.add(
+                    RecurrenceId.comparable_key(rid, tzinfo=tzinfo, floating=floating)
+                )
             except ValueError:
                 continue
-            if isinstance(val, datetime.datetime) and val.tzinfo is not None:
-                val = val.replace(tzinfo=None)
-            exclude_dts.add(val)
-        self._exclude_dts = frozenset(exclude_dts)
+        self._exclude_keys = frozenset(exclude_keys)
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
@@ -85,17 +92,13 @@ class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
         return self._filter(source)
 
     def _filter(self, source: Iterable[_DateOrDatetime]) -> Iterator[_DateOrDatetime]:
-        exclude_dts = self._exclude_dts
-        if not exclude_dts:
+        exclude_keys = self._exclude_keys
+        if not exclude_keys:
             yield from source
             return
+        floating = self._floating
         for dt in source:
-            dt_cmp = (
-                dt.replace(tzinfo=None)
-                if isinstance(dt, datetime.datetime) and dt.tzinfo is not None
-                else dt
-            )
-            if dt_cmp not in exclude_dts:
+            if RecurrenceId.comparable_key(dt, floating=floating) not in exclude_keys:
                 yield dt
 
 
@@ -191,14 +194,11 @@ def merge_and_expand_items(
     iters: list[Iterable[SpanOrderedItem[ItemType]]] = []
     non_recurring: list[SpanOrderedItem[ItemType]] = []
     for uid_items in grouped.values():
-        # Collect recurrence_ids from edited instances for O(1) lookup.
-        # An edited instance has a recurrence_id (identifying which
-        # instance it replaces) but no rrule (it's a single instance).
-        exclude_ids = frozenset(
+        override_rids = [
             item.recurrence_id
             for item in uid_items
-            if item.recurrence_id and not item.rrule
-        )
+            if item.recurrence_id and not item.rrule and not item.rdate
+        ]
 
         for item in uid_items:
             if not (recur := item.as_rrule()):
@@ -211,9 +211,17 @@ def merge_and_expand_items(
                 )
             else:
                 # Recurring item - filter out overridden instances if any
+                is_dt = isinstance(item.dtstart, datetime.datetime)
+                item_tzinfo = item.dtstart.tzinfo if is_dt else None
+                is_floating = is_dt and item_tzinfo is None
                 dates = (
-                    FilteredRecurrenceIterable(recur, exclude_ids)
-                    if exclude_ids
+                    FilteredRecurrenceIterable(
+                        recur,
+                        override_rids,
+                        tzinfo=item_tzinfo,
+                        floating=is_floating,
+                    )
+                    if override_rids
                     else recur
                 )
                 iters.append(
