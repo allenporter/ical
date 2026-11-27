@@ -59,17 +59,35 @@ class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
     ) -> None:
         """Initialize the filtered iterable."""
         self._recur = recur
-        self._exclude_ids = exclude_ids
-        exclude_dts: set[_DateOrDatetime] = set()
-        for rid in exclude_ids:
+        # A RECURRENCE-ID may be written as a date, a floating time, a time
+        # with a TZID or a UTC time, independently of how DTSTART is written.
+        # Timed values with a zone name an instant, so they are compared as
+        # instants. A floating value is read in the zone of the series. A
+        # floating series has no instant to compare against, so it is matched
+        # by the wall time each value was written in, zoned values included,
+        # as a TZID RECURRENCE-ID was already matched by its string.
+        self._dates: set[datetime.date] = set()
+        self._wall_times: set[datetime.datetime] = set()
+        self._floating: set[datetime.datetime] = set()
+        self._instants: set[datetime.datetime] = set()
+        for recurrence_id in exclude_ids:
             try:
-                val = RecurrenceId.to_value(rid)
+                value = RecurrenceId.to_value(recurrence_id)
             except ValueError:
                 continue
-            if isinstance(val, datetime.datetime) and val.tzinfo is not None:
-                val = val.replace(tzinfo=None)
-            exclude_dts.add(val)
-        self._exclude_dts = frozenset(exclude_dts)
+            if not isinstance(value, datetime.datetime):
+                self._dates.add(value)
+                continue
+            self._wall_times.add(value.replace(tzinfo=None))
+            if value.tzinfo is None and (
+                tzinfo := getattr(recurrence_id, "tzinfo", None)
+            ):
+                value = value.replace(tzinfo=tzinfo)
+            if value.tzinfo is None:
+                self._floating.add(value)
+            else:
+                self._instants.add(value.astimezone(datetime.timezone.utc))
+        self._has_exclusions = bool(self._dates or self._wall_times)
 
     def __iter__(self) -> Iterator[_DateOrDatetime]:
         """Iterate over recurrence dates, excluding overridden ones."""
@@ -84,18 +102,23 @@ class FilteredRecurrenceIterable(SeekableIterable[_DateOrDatetime]):
         )
         return self._filter(source)
 
+    def _is_excluded(self, dt: _DateOrDatetime) -> bool:
+        """Return True if an edited instance replaces this recurrence date."""
+        if not isinstance(dt, datetime.datetime):
+            return dt in self._dates
+        if dt.tzinfo is None:
+            return dt in self._wall_times
+        return (
+            dt.replace(tzinfo=None) in self._floating
+            or dt.astimezone(datetime.timezone.utc) in self._instants
+        )
+
     def _filter(self, source: Iterable[_DateOrDatetime]) -> Iterator[_DateOrDatetime]:
-        exclude_dts = self._exclude_dts
-        if not exclude_dts:
+        if not self._has_exclusions:
             yield from source
             return
         for dt in source:
-            dt_cmp = (
-                dt.replace(tzinfo=None)
-                if isinstance(dt, datetime.datetime) and dt.tzinfo is not None
-                else dt
-            )
-            if dt_cmp not in exclude_dts:
+            if not self._is_excluded(dt):
                 yield dt
 
 
